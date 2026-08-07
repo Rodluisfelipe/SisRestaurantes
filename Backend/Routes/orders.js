@@ -659,7 +659,10 @@ router.post("/", (req, res, next) => {
         title: `🆕 Nuevo Pedido #${orderNumber}`,
         body: `Nuevo pedido de ${customerName} - ${numericTotalAmount.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}`,
         clickUrl: `/admin/orders/${savedOrder._id}`,
-        data: { orderId: savedOrder._id.toString(), orderNumber, status: ORDER_STATUS.PENDING }
+        /* El estado real, no 'pending' fijo: un pedido del POS nace
+           'confirmed' y uno del menú 'pending_payment'. Quien reaccione a
+           este dato estaba recibiendo un estado que no era el del pedido. */
+        data: { orderId: savedOrder._id.toString(), orderNumber, status: initialStatus }
       };
       await sendPushToBusinessId(businessObjectId.toString(), payload);
     } catch (pushError) {
@@ -1086,19 +1089,41 @@ router.patch("/:id/status", tenantAuth, validateUpdateOrderStatus, async (req, r
       return res.status(400).json({ message: "Invalid status value" });
     }
 
-    // Valid state transitions — prevents impossible reversals
+    /* Transiciones válidas: impide retrocesos imposibles, pero sin obligar a
+       pasar por estados intermedios que nadie usa.
+
+       Antes, ningún canal podía completar un pedido desde su estado inicial:
+       el POS y el pedido rápido nacen en 'confirmed', WhatsApp en 'pending', y
+       desde ninguno se permitía 'completed'. Como los botones de completar sí
+       estaban en pantalla, el cajero le daba y el servidor lo rechazaba.
+       Eso explica que 'preparing' y 'ready' tengan CERO usos en más de 5.000
+       pedidos: la gente no quiere ese trámite, quiere despachar.
+
+       Ahora se puede completar (o entregar) desde cualquier estado en que el
+       pedido ya está aceptado. Los estados de cocina siguen disponibles para
+       quien los quiera usar, pero dejan de ser obligatorios.
+
+       'pending_payment' y 'payment_uploaded' son la excepción a propósito: ahí
+       nadie ha confirmado que el cliente pagó, y completar sería dar por
+       cobrado algo que no lo está. */
+    const FIN = ['completed', 'delivered', 'cancelled'];
     const VALID_TRANSITIONS = {
-      'pending': ['confirmed', 'preparing', 'inProgress', 'cancelled', 'pending_payment'],
+      'pending': ['confirmed', 'preparing', 'inProgress', 'ready', 'pending_payment', ...FIN],
       'pending_payment': ['payment_uploaded', 'payment_confirmed', 'cancelled'],
       'payment_uploaded': ['payment_confirmed', 'confirmed', 'preparing', 'cancelled'],
-      'payment_confirmed': ['confirmed', 'preparing', 'inProgress', 'cancelled'],
-      'confirmed': ['preparing', 'inProgress', 'ready', 'cancelled'],
-      'preparing': ['ready', 'completed', 'delivered', 'cancelled'],
-      'inProgress': ['ready', 'completed', 'delivered', 'cancelled'],
-      'ready': ['completed', 'delivered', 'cancelled'],
-      'completed': ['delivered'], // completed can only go to delivered
-      'delivered': [], // terminal state
-      'cancelled': [] // terminal state
+      'payment_confirmed': ['confirmed', 'preparing', 'inProgress', 'ready', ...FIN],
+      'confirmed': ['preparing', 'inProgress', 'ready', ...FIN],
+      'preparing': ['ready', ...FIN],
+      'inProgress': ['ready', ...FIN],
+      'ready': [...FIN],
+      /* 'completed' es terminal. Antes decía que podía pasar a 'delivered',
+         pero completar archiva el pedido a otra colección y este endpoint
+         busca en la de activos: la transición devolvía 404 y por eso
+         'delivered' se usó UNA vez en toda la historia. Para los domicilios,
+         'delivered' sigue disponible desde los estados de arriba. */
+      'completed': [],
+      'delivered': [],
+      'cancelled': []
     };
     
     // Fetch order first to check current status
