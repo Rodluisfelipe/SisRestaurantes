@@ -68,9 +68,13 @@ const crewWalletTxnSchema = new mongoose.Schema({
   note: { type: String, maxlength: 300, default: '' },
   metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
 
-  // Quién originó el movimiento (admin/SuperAdmin para ajustes)
+  /* Quién originó el movimiento (admin/SuperAdmin para ajustes).
+     `crew_employer` va acá igual que en `actorType`: cuando se añadió el
+     empleador externo se actualizaron `actorType` y `counterpartType` pero se
+     olvidó este enum, así que cada operación de plata de un empleador
+     descontaba el saldo y después reventaba al escribir el asiento. */
   performedBy: {
-    kind: { type: String, enum: ['system', 'admin', 'superadmin', 'worker', 'business'], default: 'system' },
+    kind: { type: String, enum: ['system', 'admin', 'superadmin', 'worker', 'business', 'crew_employer'], default: 'system' },
     id: { type: mongoose.Schema.Types.ObjectId, default: null },
   },
 }, { timestamps: true });

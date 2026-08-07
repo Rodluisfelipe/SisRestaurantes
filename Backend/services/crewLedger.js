@@ -227,17 +227,35 @@ async function reserveShiftEscrow({ shift, performedBy, ...legacyOwner }) {
     throw err;
   }
 
-  await CrewWalletTxn.create({
-    actorType: owner.ownerType, actorId: owner.ownerId,
-    kind: 'shift_reserve', direction: 'out', amount: quote.totalReserveNeeded,
-    balanceAfter: updated.crewWallet.balance,
-    pendingAfter: updated.crewWallet.pendingBalance,
-    shiftId: shift._id,
-    idempotencyKey: `shift_reserve:${shift._id}`,
-    note: `Reserva de ${shift.workersNeeded} cupo(s) — ${shift.title}`,
-    metadata: { quote, workersNeeded: shift.workersNeeded },
-    performedBy: performedBy || { kind: 'system' },
-  });
+  /* Si el asiento no se escribe, se deshace la reserva. El caller borra el
+     turno al recibir el error, así que sin esta vuelta atrás la plata quedaba
+     encerrada en pendingBalance sin turno que la justificara. */
+  try {
+    await CrewWalletTxn.create({
+      actorType: owner.ownerType, actorId: owner.ownerId,
+      kind: 'shift_reserve', direction: 'out', amount: quote.totalReserveNeeded,
+      balanceAfter: updated.crewWallet.balance,
+      pendingAfter: updated.crewWallet.pendingBalance,
+      shiftId: shift._id,
+      idempotencyKey: `shift_reserve:${shift._id}`,
+      note: `Reserva de ${shift.workersNeeded} cupo(s) — ${shift.title}`,
+      metadata: { quote, workersNeeded: shift.workersNeeded },
+      performedBy: performedBy || { kind: 'system' },
+    });
+  } catch (e) {
+    await Model.findByIdAndUpdate(owner.ownerId, {
+      $inc: {
+        'crewWallet.balance': quote.totalReserveNeeded,
+        'crewWallet.pendingBalance': -quote.totalReserveNeeded,
+        'crewWallet.totalReserved': -quote.totalReserveNeeded,
+      },
+    }).catch(() => {});
+    logger.error('No se pudo registrar la reserva del turno — reserva revertida', {
+      ownerType: owner.ownerType, ownerId: String(owner.ownerId),
+      shiftId: String(shift._id), amount: quote.totalReserveNeeded, error: e.message,
+    });
+    throw e;
+  }
 
   return { quote, wallet: updated.crewWallet, owner };
 }
@@ -376,7 +394,18 @@ async function releaseBookingFunds({ bookingId, performedBy }) {
       performedBy: performedBy || { kind: 'system' },
     });
   }
-  await CrewWalletTxn.insertMany(entries);
+  /* Acá no se revierte: el trabajador ya tiene la plata y el booking ya quedó
+     en `released`. Fallar el llamado haría creer que el pago no ocurrió. Se
+     registra el fallo con todo lo necesario para reponer el asiento a mano. */
+  try {
+    await CrewWalletTxn.insertMany(entries);
+  } catch (e) {
+    logger.error('PAGO SIN ASIENTO — el trabajador cobró pero el ledger no lo registró', {
+      bookingId: String(booking._id), workerId: String(booking.workerId),
+      ownerType: owner.ownerType, ownerId: String(owner.ownerId),
+      payout, commission, error: e.message,
+    });
+  }
 
   return {
     booking,
@@ -596,7 +625,19 @@ async function cancelShiftPost({ shiftId, reason, performedBy }) {
     }
   }
 
-  if (ledgerEntries.length) await CrewWalletTxn.insertMany(ledgerEntries);
+  /* Igual que en la liberación: la plata ya se movió y los bookings ya quedan
+     cancelados, así que se deja constancia del fallo en vez de fingir que la
+     cancelación no ocurrió. */
+  if (ledgerEntries.length) {
+    try {
+      await CrewWalletTxn.insertMany(ledgerEntries);
+    } catch (e) {
+      logger.error('CANCELACIÓN SIN ASIENTO — la plata se movió pero el ledger no lo registró', {
+        shiftId: String(shift._id), ownerType: owner.ownerType, ownerId: String(owner.ownerId),
+        refund, penalty, workerCompensations, error: e.message,
+      });
+    }
+  }
 
   // Actualizar totales del shift
   const totalReleased = activeBookings.reduce((s, bk) => s + (bk.agreedTotal + (bk.agreedCommission || 0)), 0);
@@ -710,17 +751,31 @@ async function chargeVacancyFee({ ownerType, ownerId, vacancyId, amount, perform
     throw err;
   }
 
-  const txn = await CrewWalletTxn.create({
-    actorType: ownerType, actorId: ownerId,
-    counterpartType: 'platform',
-    kind: 'vacancy_post', direction: 'out', amount: charge,
-    balanceAfter: updated.crewWallet.balance,
-    pendingAfter: updated.crewWallet.pendingBalance,
-    idempotencyKey: `vacancy_post:${vacancyId}`,
-    note: 'Publicación de vacante',
-    metadata: { vacancyId: String(vacancyId) },
-    performedBy: performedBy || { kind: 'system' },
-  });
+  /* El asiento es la única prueba del cobro. Si no se puede escribir, se
+     devuelve la plata en vez de quedárnosla sin registro: antes el descuento
+     sobrevivía al fallo y el dueño perdía el fee sin vacante ni rastro. */
+  let txn;
+  try {
+    txn = await CrewWalletTxn.create({
+      actorType: ownerType, actorId: ownerId,
+      counterpartType: 'platform',
+      kind: 'vacancy_post', direction: 'out', amount: charge,
+      balanceAfter: updated.crewWallet.balance,
+      pendingAfter: updated.crewWallet.pendingBalance,
+      idempotencyKey: `vacancy_post:${vacancyId}`,
+      note: 'Publicación de vacante',
+      metadata: { vacancyId: String(vacancyId) },
+      performedBy: performedBy || { kind: 'system' },
+    });
+  } catch (e) {
+    await Model.findByIdAndUpdate(ownerId, {
+      $inc: { 'crewWallet.balance': charge, 'crewWallet.totalCommissionPaid': -charge },
+    }).catch(() => {});
+    logger.error('No se pudo registrar el cobro de vacante — cobro revertido', {
+      ownerType, ownerId: String(ownerId), vacancyId: String(vacancyId), charge, error: e.message,
+    });
+    throw e;
+  }
 
   return { duplicated: false, txn, wallet: updated.crewWallet, charged: charge };
 }
