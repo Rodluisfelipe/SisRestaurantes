@@ -8,6 +8,11 @@ const mongoose = require('mongoose');
  */
 const cronRunSchema = new mongoose.Schema({
   task: { type: String, required: true, unique: true, index: true },
+  /* Momento en que un proceso reclamó la tarea. Sirve de candado: durante el
+     despliegue solapado hay dos contenedores vivos unos segundos y los dos
+     tienen los crons registrados, así que sin esto una tarea podría ejecutarse
+     dos veces —mandar el mismo recordatorio duplicado, por ejemplo—. */
+  startedAt: { type: Date, default: null },
   lastRunAt: { type: Date, default: null },
   lastStatus: { type: String, enum: ['ok', 'error'], default: null },
   lastError: { type: String, default: null },

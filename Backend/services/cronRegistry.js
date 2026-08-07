@@ -15,11 +15,49 @@ const TASKS = {
   dailyDigest:     { label: 'Resumen diario por correo', schedule: 'Diario 7:00 a. m.', maxAgeHours: 30 },
 };
 
+/* Ventana en la que una misma tarea no se vuelve a ejecutar. Cubre de sobra
+   el solape de un despliegue, que dura segundos, y queda muy por debajo de la
+   frecuencia del cron más seguido (reservas, cada 15 minutos). */
+const VENTANA_MS = 5 * 60 * 1000;
+
+/**
+ * Reclama la tarea de forma atómica. Devuelve false si otro proceso ya la
+ * tomó hace poco.
+ *
+ * El candado es la base de datos, no la memoria: durante un despliegue
+ * solapado conviven dos contenedores y cada uno tiene su propio proceso, así
+ * que una bandera en memoria no los coordinaría.
+ */
+async function reclamar(task) {
+  const corte = new Date(Date.now() - VENTANA_MS);
+  try {
+    const r = await CronRun.updateOne(
+      { task, $or: [{ startedAt: { $lte: corte } }, { startedAt: null }] },
+      { $set: { task, startedAt: new Date() } },
+      { upsert: true }
+    );
+    return r.modifiedCount > 0 || r.upsertedCount > 0;
+  } catch (err) {
+    /* El índice único de `task` hace que, si otro proceso lo reclamó entre el
+       filtro y la inserción, esto falle con clave duplicada. Es justo la señal
+       de que alguien más lo tiene. */
+    if (err?.code === 11000) return false;
+    // Cualquier otro problema no debe impedir que la tarea corra
+    logger.warn(`No se pudo reclamar el cron ${task}, se ejecuta igual`, { error: err.message });
+    return true;
+  }
+}
+
 /**
  * Envuelve la corrida de un cron para dejar registro de cuándo pasó y cómo le
  * fue. Nunca cambia el comportamiento: si el registro falla, la tarea sigue.
  */
 async function trackRun(task, fn) {
+  if (!(await reclamar(task))) {
+    logger.info(`Cron ${task} omitido: otro proceso lo está ejecutando`);
+    return undefined;
+  }
+
   const started = Date.now();
   try {
     const result = await fn();

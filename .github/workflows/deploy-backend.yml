@@ -10,7 +10,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Deploy to DigitalOcean
@@ -24,27 +24,15 @@ jobs:
 
             echo "=== Starting deploy $(date) ==="
 
-            # Pull latest code (preserving .env)
+            # Traer el código (preservando .env)
             cd /opt/sisrestaurantes
             cp Backend/.env /tmp/.env.backup 2>/dev/null || true
             git fetch origin produccion
             git reset --hard origin/produccion
             cp /tmp/.env.backup Backend/.env 2>/dev/null || true
 
-            # Rebuild and restart container
-            cd Backend
-            docker compose build
-            docker compose up -d --wait
-
-            # Cleanup old images
-            docker image prune -af
-
-            # Verify health
-            sleep 5
-            if curl -sf http://localhost:5000/api/health > /dev/null; then
-              echo "=== Deploy OK $(date) ==="
-            else
-              echo "=== HEALTH CHECK FAILED ==="
-              docker logs backend-backend-1 --tail 20
-              exit 1
-            fi
+            # Despliegue solapado: levanta el contenedor nuevo en el otro
+            # puerto, lo prueba, y solo entonces mueve nginx y apaga el viejo.
+            # Antes se apagaba primero y quedaban 30-60s de 502 en cada deploy.
+            chmod +x Backend/deploy.sh
+            ./Backend/deploy.sh
