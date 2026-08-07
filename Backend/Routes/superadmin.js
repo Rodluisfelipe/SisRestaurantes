@@ -78,6 +78,58 @@ router.patch('/business/:id/marketplace', requireRole('admin'), async (req, res)
   }
 });
 
+/* ── Complementos (add-ons) ──
+   Se venden aparte del plan, así que se activan por negocio sin moverlo de
+   escalón. La lista vive en utils/commercialPlans (ADDONS) y el resto del
+   sistema los ve a través de los features efectivos de la suscripción. */
+router.get('/addons', requireRole('support'), async (req, res) => {
+  const { ADDONS } = require('../utils/commercialPlans');
+  res.json({ addons: Object.values(ADDONS) });
+});
+
+router.patch('/business/:id/addons/:addonKey', requireRole('admin'), async (req, res) => {
+  try {
+    const { id, addonKey } = req.params;
+    const { enabled, billingCycle, periodEnd, note } = req.body || {};
+    const { getAddonConfig, getAddonPrice } = require('../utils/commercialPlans');
+
+    const addon = getAddonConfig(addonKey);
+    if (!addon) return res.status(400).json({ message: 'Complemento desconocido' });
+
+    const subscription = await Subscription.findOne({ businessId: id });
+    if (!subscription) return res.status(404).json({ message: 'El negocio no tiene suscripción' });
+
+    subscription.addons = subscription.addons || [];
+    const actual = subscription.addons.find((a) => a.key === addonKey);
+
+    if (enabled) {
+      const ciclo = billingCycle === 'annual' ? 'annual' : 'monthly';
+      const datos = {
+        key: addonKey,
+        status: 'active',
+        billingCycle: ciclo,
+        price: getAddonPrice(addonKey, ciclo),
+        activatedAt: actual?.activatedAt || new Date(),
+        periodEnd: periodEnd ? new Date(periodEnd) : null,
+        grantedBy: req.user?.id || null,
+        note: String(note || '').slice(0, 300)
+      };
+      if (actual) Object.assign(actual, datos);
+      else subscription.addons.push(datos);
+    } else if (actual) {
+      actual.status = 'cancelled';
+    }
+
+    await subscription.save();
+    await audit(req, 'addon_toggled', { businessId: id, addonKey, enabled: !!enabled });
+    logger.info('Complemento cambiado', { businessId: id, addonKey, enabled: !!enabled });
+    res.json({ addons: subscription.addons });
+  } catch (error) {
+    logger.error('Error cambiando complemento', error);
+    res.status(500).json({ message: 'Error al cambiar el complemento' });
+  }
+});
+
 // Toggle Menú V2 (perfil + historias) para un negocio — admin+
 router.patch('/business/:id/menu-v2', requireRole('admin'), async (req, res) => {
   try {

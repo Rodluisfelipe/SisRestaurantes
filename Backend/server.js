@@ -162,7 +162,18 @@ if (process.env.NODE_ENV !== 'test') {
 
 app.use(compression());
 
-app.use(express.json({ limit: '100kb' }));
+/* El cuerpo crudo se guarda SOLO para el webhook de WhatsApp: la firma de Meta
+   es un HMAC sobre los bytes originales, y el JSON ya parseado y vuelto a
+   serializar da otro resultado. Se limita a esa ruta para no duplicar en
+   memoria el cuerpo de todas las peticiones. */
+app.use(express.json({
+  limit: '100kb',
+  verify: (req, res, buf) => {
+    if (req.originalUrl && req.originalUrl.startsWith('/api/whatsapp-inbox/webhook')) {
+      req.rawBody = buf;
+    }
+  }
+}));
 
 // NoSQL injection sanitization
 app.use(mongoSanitize());
@@ -183,6 +194,7 @@ app.use('/uploads/proofs', proofAuth('subscription'), express.static('uploads/pr
 app.use('/uploads/order-proofs', proofAuth('order'), express.static('uploads/order-proofs'));
 
 // Rutas API original
+app.use("/api/whatsapp-inbox", require("./Routes/whatsappInbox"));
 app.use("/api/products", require("./Routes/products"));
 app.use("/api/supplies", require("./Routes/supplies"));   // insumos y recetas (inventario avanzado)
 app.use("/api/business-config", require("./Routes/businessConfig"));

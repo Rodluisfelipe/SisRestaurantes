@@ -161,6 +161,69 @@ const COMMERCIAL_PLANS = {
   }
 };
 
+/**
+ * Complementos que se venden aparte del plan.
+ *
+ * Un plan es una escalera: para tener `pos` hay que subir a Pro. Un complemento
+ * es ortogonal: cualquier plan puede contratarlo sin cambiar de escalón. Por eso
+ * no son un plan más ni un feature más — viven en su propia lista y se suman a
+ * los features del plan cuando están activos.
+ *
+ * `feature` es la llave que termina viendo el resto del código, así que un
+ * complemento puede activar algo que además exista en un plan superior sin que
+ * nadie tenga que preguntar por ambos.
+ */
+const ADDONS = {
+  whatsapp_inbox: {
+    key: 'whatsapp_inbox',
+    feature: 'whatsappInbox',
+    name: 'WhatsApp del negocio',
+    description: 'Conecta el número propio del negocio y recibe y responde sus chats desde el panel.',
+    pricing: {
+      monthly: 29900,
+      annualMonthly: 24900
+    }
+  }
+};
+
+function getAddonConfig(addonKey) {
+  return ADDONS[String(addonKey || '').trim()] || null;
+}
+
+/** Complementos vigentes hoy, ya normalizados. */
+function getActiveAddonKeys(subscription, now = new Date()) {
+  if (!Array.isArray(subscription?.addons)) return [];
+  return subscription.addons
+    .filter((a) => {
+      if (!getAddonConfig(a?.key)) return false;
+      if (a.status !== 'active') return false;
+      // Sin fecha de fin se entiende vigente (cortesía, canje, prueba).
+      return !a.periodEnd || new Date(a.periodEnd) >= now;
+    })
+    .map((a) => a.key);
+}
+
+/**
+ * Features efectivos = los del plan + los que aportan los complementos activos.
+ * El complemento solo suma; nunca apaga algo que el plan ya daba.
+ */
+function getEffectiveFeatures(planConfig, subscription, now = new Date()) {
+  const features = { ...(planConfig?.features || {}) };
+  for (const key of getActiveAddonKeys(subscription, now)) {
+    features[getAddonConfig(key).feature] = true;
+  }
+  return features;
+}
+
+function getAddonPrice(addonKey, billingCycle) {
+  const addon = getAddonConfig(addonKey);
+  if (!addon) return 0;
+  const cycle = normalizeBillingCycle(billingCycle) || BILLING_CYCLES.MONTHLY;
+  return cycle === BILLING_CYCLES.ANNUAL
+    ? addon.pricing.annualMonthly * 12
+    : addon.pricing.monthly;
+}
+
 const RESOURCE_META = {
   products: { label: 'productos' },
   categories: { label: 'categorías' },
@@ -341,6 +404,11 @@ module.exports = {
   PLAN_IDS,
   BILLING_CYCLES,
   COMMERCIAL_PLANS,
+  ADDONS,
+  getAddonConfig,
+  getActiveAddonKeys,
+  getEffectiveFeatures,
+  getAddonPrice,
   normalizeCommercialPlan,
   normalizeBillingCycle,
   getPlanConfig,

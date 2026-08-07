@@ -24,10 +24,14 @@ const TIPOS = {
 
 const stockMovementSchema = new mongoose.Schema({
   businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'BusinessConfig', required: true },
-  productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+  /* Un movimiento es de un producto O de un insumo. Se guardan por separado
+     y no en un campo generico para poder consultar cada uno por su indice. */
+  productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', default: null },
+  supplyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Supply', default: null },
   // Se guarda el nombre además del id: si el producto se borra, el historial
   // sigue siendo legible en vez de quedar en un id huérfano.
   productName: { type: String, default: '' },
+  unit: { type: String, default: '' },   // unidad del insumo, si aplica
 
   type: { type: String, enum: Object.keys(TIPOS), required: true },
   /* Con signo: negativo sale, positivo entra. Guardarlo así evita tener que
@@ -49,6 +53,7 @@ const stockMovementSchema = new mongoose.Schema({
    primero, que es como se mira. */
 stockMovementSchema.index({ businessId: 1, createdAt: -1 });
 stockMovementSchema.index({ productId: 1, createdAt: -1 });
+stockMovementSchema.index({ supplyId: 1, createdAt: -1 });
 
 stockMovementSchema.statics.TIPOS = TIPOS;
 

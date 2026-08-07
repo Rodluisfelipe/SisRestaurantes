@@ -101,6 +101,21 @@ const subscriptionSchema = new mongoose.Schema({
     type: Number,
     default: null
   },
+  /* Complementos contratados aparte del plan (ver ADDONS en commercialPlans).
+     Van acá y no en el plan porque son ortogonales: cualquier plan puede tener
+     uno sin cambiar de escalón, y cada uno vence por su cuenta. */
+  addons: [{
+    key: { type: String, required: true },
+    status: { type: String, enum: ['active', 'cancelled'], default: 'active' },
+    billingCycle: { type: String, enum: ['monthly', 'annual'], default: 'monthly' },
+    price: { type: Number, default: 0 },
+    activatedAt: { type: Date, default: Date.now },
+    periodEnd: { type: Date, default: null },   // null = vigente sin vencimiento
+    grantedBy: { type: mongoose.Schema.Types.ObjectId, default: null },
+    note: { type: String, default: '' },
+    _id: false
+  }],
+
   // Referral discount applied to this subscription payment
   referralDiscountApplied: {
     type: Number,

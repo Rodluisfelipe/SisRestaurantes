@@ -2253,7 +2253,10 @@ describe('VAL-1 — express.json body limit is set', () => {
     const fs = require('fs');
     const path = require('path');
     const src = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
-    expect(src).toContain("express.json({ limit: '100kb' })");
+    /* Se busca el límite, no la forma de escribirlo: el parser pasó a varias
+       líneas al añadirle el `verify` que guarda el cuerpo crudo del webhook de
+       WhatsApp, y una comparación literal fallaba con el límite intacto. */
+    expect(src).toMatch(/express\.json\(\{[\s\S]{0,200}?limit:\s*'100kb'/);
   });
 });
 

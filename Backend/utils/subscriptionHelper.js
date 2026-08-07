@@ -6,7 +6,9 @@ const {
   resolveSubscriptionBillingCycle,
   isUnlimited,
   isLimitReached,
-  getLimitExceededMessage
+  getLimitExceededMessage,
+  getActiveAddonKeys,
+  getEffectiveFeatures
 } = require('../utils/commercialPlans');
 
 /**
@@ -83,11 +85,17 @@ async function getSubscriptionForBusiness(businessId) {
   const billingCycle = resolveSubscriptionBillingCycle(subscription);
   const planConfig = getPlanConfig(commercialPlan);
 
+  /* `features` ya trae sumados los complementos vigentes, así que quien
+     pregunte por una capacidad no tiene que saber si viene del plan o de un
+     add-on contratado aparte. `planConfig` se deja intacto para no cambiarle el
+     significado a lo que ya lo usaba. */
   return {
     subscription,
     commercialPlan,
     billingCycle,
     planConfig,
+    activeAddons: getActiveAddonKeys(subscription),
+    features: getEffectiveFeatures(planConfig, subscription),
     ...statusInfo
   };
 }
@@ -123,10 +131,29 @@ function isFeatureEnabledForPlan(planConfig, featureKey) {
   return !!planConfig?.features?.[featureKey];
 }
 
+/**
+ * ¿El negocio tiene esta capacidad? Mira el plan y los complementos contratados.
+ *
+ * Es la que hay que usar de ahora en adelante: `isFeatureEnabledForPlan` solo ve
+ * el plan y diría que no a algo comprado como add-on.
+ */
+function isFeatureEnabled(subscriptionInfo, featureKey) {
+  return !!subscriptionInfo?.features?.[featureKey];
+}
+
+/** Atajo cuando solo se tiene el businessId. */
+async function businessHasFeature(businessId, featureKey) {
+  if (!businessId) return false;
+  const info = await getSubscriptionForBusiness(businessId);
+  return isFeatureEnabled(info, featureKey);
+}
+
 module.exports = {
   calculateSubscriptionStatus,
   getSubscriptionForBusiness,
   getPlanLimitStatus,
   isFeatureEnabledForPlan,
+  isFeatureEnabled,
+  businessHasFeature,
   GRACE_DAYS
 };
