@@ -18,10 +18,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 const CLAVE = 'menuby_desktop_nudge_dia';
 
 const VENTAJAS = [
-  'Subir las fotos de tus productos desde el computador',
-  'Armar el menú y las categorías sin pelear con la pantalla',
-  'Dibujar las zonas de domicilio sobre el mapa',
-  'Ver los reportes y descargarlos a Excel',
+  'Sube las fotos de tus productos en segundos',
+  'Arma tu menú y tus categorías con todo el espacio',
+  'Dibuja tus zonas de domicilio sobre el mapa',
+  'Consulta tus reportes completos y bájalos a Excel',
 ];
 
 /* Se guarda el día en que se descartó, no un plazo de horas: así reaparece en
@@ -59,7 +59,7 @@ export default function DesktopNudge() {
   if (!visible) return null;
 
   const url = typeof window !== 'undefined' ? window.location.href.split('?')[0] : '';
-  const mensaje = `Panel de mi negocio en MenuBy — ábrelo en el computador:\n${url}`;
+  const mensaje = `Mi panel de MenuBy — ábrelo en el computador:\n${url}`;
 
   const posponer = () => { silenciarHoy(); setVisible(false); };
 
@@ -95,10 +95,10 @@ export default function DesktopNudge() {
             </div>
             <div className="min-w-0">
               <h3 className="text-[14px] font-bold text-slate-800 leading-tight">
-                Configura tu negocio desde un computador
+                Disfruta la mejor experiencia
               </h3>
               <p className="text-[12px] text-slate-500 leading-snug mt-0.5">
-                Desde el celular puedes ver pedidos y cobrar sin problema. Pero para dejar el menú listo, un computador o portátil te va a ahorrar mucho tiempo.
+                Tu panel está optimizado para computador. Ábrelo en tu portátil y saca todo el provecho a MenuBy.
               </p>
             </div>
           </div>
