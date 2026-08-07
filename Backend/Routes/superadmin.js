@@ -767,7 +767,15 @@ router.get('/stats/overview', async (req, res) => {
       ]),
       Banner.countDocuments({ status: 'pending' }),
       PaymentRequest.countDocuments({ status: 'pending' }),
-      Subscription.countDocuments({ status: 'active' }),
+      /* Vigentes de verdad: el campo `status` se queda en 'active' para
+         siempre porque nada lo cierra al vencer —la app calcula el estado real
+         al leerlo, comparando periodEnd—. Contar por el campo guardado decía
+         26 suscripciones activas cuando 15 estaban vencidas, una desde hacía
+         129 días. */
+      Subscription.countDocuments({
+        status: 'active',
+        $or: [{ periodEnd: null }, { periodEnd: { $gte: now } }],
+      }),
       Subscription.countDocuments({
         status: 'active',
         periodEnd: { $gte: now, $lte: sevenDaysFromNow },
