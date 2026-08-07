@@ -32,6 +32,7 @@ const TAB_TITLES = {
   'bookings':         'Agenda',
   'cash-closings':    'Cierres',
   'monthly-closing':  'Cierre mensual',
+  'inventory':        'Inventario',
   'referrals':        'Referidos',
   'loyalty':          'Fidelidad',
 };

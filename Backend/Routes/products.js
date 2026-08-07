@@ -357,6 +357,127 @@ router.put("/popular/config", tenantAuth, async (req, res) => {
 });
 
 // GET /products/:id (si existe)
+/* ══════════════════════════════════════════════════════════════════
+   INVENTARIO
+
+   El stock vivía dentro del formulario de cada producto, así que para saber
+   qué se estaba agotando había que abrirlos uno por uno. Estas rutas existen
+   para verlo y ajustarlo desde un solo lugar.
+   ══════════════════════════════════════════════════════════════════ */
+
+/**
+ * GET /api/products/inventory — estado del inventario del negocio.
+ *
+ * Va ANTES de /:id: si no, Express leería "inventory" como un id de producto.
+ */
+router.get("/inventory", tenantAuth, async (req, res) => {
+  try {
+    const businessId = req.user?.businessId || req.query.businessId;
+    if (!businessId) return res.status(400).json({ message: "businessId es requerido" });
+
+    const productos = await Product.find({ businessId })
+      .select('name image price stock trackStock lowStockAlert active category')
+      .populate('category', 'name')
+      .lean();
+
+    const conControl = productos.filter(p => p.trackStock);
+    const agotados = conControl.filter(p => (p.stock ?? 0) <= 0);
+    const bajos = conControl.filter(p => {
+      const s = p.stock ?? 0;
+      return s > 0 && s <= (p.lowStockAlert || 5);
+    });
+
+    /* Orden por urgencia: primero lo agotado, luego lo que está por acabarse,
+       después el resto. Es el orden en que hay que actuar. */
+    const peso = (p) => {
+      if (!p.trackStock) return 3;
+      const s = p.stock ?? 0;
+      if (s <= 0) return 0;
+      if (s <= (p.lowStockAlert || 5)) return 1;
+      return 2;
+    };
+    productos.sort((a, b) => peso(a) - peso(b) || (a.name || '').localeCompare(b.name || ''));
+
+    res.json({
+      productos,
+      resumen: {
+        total: productos.length,
+        conControl: conControl.length,
+        sinControl: productos.length - conControl.length,
+        agotados: agotados.length,
+        bajos: bajos.length,
+        // Cuánto dinero hay parado en la bodega, a precio de venta
+        valorInventario: conControl.reduce((s, p) => s + (p.price || 0) * Math.max(0, p.stock ?? 0), 0),
+      },
+    });
+  } catch (error) {
+    logger.error('Error obteniendo inventario', error, req);
+    res.status(500).json({ message: 'Error al obtener el inventario' });
+  }
+});
+
+/**
+ * PATCH /api/products/:id/stock — ajusta el inventario de un producto.
+ *
+ * Endpoint aparte del PUT general a propósito: guardar todo el producto para
+ * cambiar una cantidad arriesga pisar campos que no se están editando.
+ *
+ * body: { stock?, trackStock?, lowStockAlert?, delta? }
+ * `delta` suma o resta sobre lo que haya, para los botones de +/− sin pisar
+ * lo que otra persona haya ajustado mientras tanto.
+ */
+router.patch("/:id/stock", tenantAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const businessId = req.user?.businessId || req.body.businessId;
+    const producto = await Product.findOne({ _id: id, ...(businessId ? { businessId } : {}) });
+    if (!producto) return res.status(404).json({ message: 'Producto no encontrado' });
+
+    const { stock, trackStock, lowStockAlert, delta } = req.body;
+
+    if (trackStock !== undefined) {
+      producto.trackStock = !!trackStock;
+      // Al activar el control sin dar cantidad, se arranca en 0 y no en null:
+      // null significa "ilimitado" y dejaría el control sin efecto.
+      if (producto.trackStock && producto.stock == null) producto.stock = 0;
+    }
+
+    if (delta !== undefined) {
+      const d = parseInt(delta, 10);
+      if (!Number.isInteger(d)) return res.status(400).json({ message: 'delta debe ser un entero' });
+      producto.stock = Math.max(0, (producto.stock ?? 0) + d);
+    } else if (stock !== undefined) {
+      if (stock === null) {
+        producto.stock = null;   // ilimitado
+      } else {
+        const s = parseInt(stock, 10);
+        if (!Number.isInteger(s) || s < 0) return res.status(400).json({ message: 'stock debe ser un entero de 0 o más' });
+        producto.stock = s;
+      }
+    }
+
+    if (lowStockAlert !== undefined) {
+      const a = parseInt(lowStockAlert, 10);
+      if (!Number.isInteger(a) || a < 0) return res.status(400).json({ message: 'El aviso debe ser un entero de 0 o más' });
+      producto.lowStockAlert = a;
+    }
+
+    await producto.save();
+    logger.info('Inventario ajustado', { productId: id, stock: producto.stock, trackStock: producto.trackStock });
+
+    res.json({
+      _id: producto._id,
+      name: producto.name,
+      stock: producto.stock,
+      trackStock: producto.trackStock,
+      lowStockAlert: producto.lowStockAlert,
+    });
+  } catch (error) {
+    logger.error('Error ajustando inventario', error, req);
+    res.status(500).json({ message: 'Error al ajustar el inventario' });
+  }
+});
+
 router.get("/:id", publicProductLimiter, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)

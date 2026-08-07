@@ -11,7 +11,7 @@ import {
   FaPalette, FaMapMarkerAlt, FaLock, FaSignOutAlt, FaChevronDown,
   FaShoppingBag, FaStore, FaTools, FaCog, FaMoneyBillWave, FaStar, FaGift,
   FaQuestionCircle, FaExternalLinkAlt, FaChartBar, FaPrint, FaCashRegister,
-  FaCalendarAlt, FaShareAlt, FaCodeBranch, FaLink, FaCalculator
+  FaCalendarAlt, FaShareAlt, FaCodeBranch, FaLink, FaCalculator, FaBoxOpen
 } from 'react-icons/fa';
 
 const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, subscriptionData, onboarding, userRole }) => {
@@ -62,6 +62,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       label: isService ? 'Servicios' : 'Menú',
       items: [
         { id: 'products', label: isService ? 'Servicios' : 'Productos', Icon: isService ? FaTools : FaHamburger, badge: null },
+        { id: 'inventory', label: 'Inventario', Icon: FaBoxOpen, badge: null },
         { id: 'product-order', label: 'Orden', Icon: FaSortAmountDown, badge: null },
         { id: 'categories', label: 'Categorías', Icon: FaFolderOpen, badge: null },
         { id: 'toppings', label: isService ? 'Opciones' : 'Extras', Icon: isService ? FaCog : FaCheese, badge: null },
