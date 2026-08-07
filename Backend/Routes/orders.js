@@ -119,6 +119,41 @@ const generateCustomerToken = () => {
   return crypto.randomBytes(16).toString('hex');
 };
 
+/**
+ * Mayor número de pedido de un negocio, comparando como NÚMERO.
+ *
+ * orderNumber se guarda como texto, y antes se buscaba el mayor con
+ * .sort({ orderNumber: -1 }), que ordena alfabéticamente: "9" queda por
+ * encima de "4187" porque compara el primer carácter. El contador se
+ * inicializaba entonces en 9 —o en 999— y volvía a repartir números que ya
+ * existían.
+ *
+ * Eso dejó 270 números repetidos solo en el negocio más activo: dos pedidos
+ * distintos con el mismo #, que es un problema serio cuando el cliente
+ * reclama por "el pedido 45" o cuando cocina compara con el ticket.
+ */
+async function mayorNumeroDePedido(businessId, Booking) {
+  const bid = new ObjectId(businessId.toString());
+  const mayorDe = async (Modelo) => {
+    const r = await Modelo.aggregate([
+      { $match: { businessId: bid } },
+      // Los que no son numéricos se descartan; hubo números por timestamp
+      // cuando el contador fallaba, y esos dispararían el contador al futuro.
+      { $project: { n: { $convert: { input: '$orderNumber', to: 'int', onError: 0, onNull: 0 } } } },
+      { $match: { n: { $lt: 1000000 } } },
+      { $group: { _id: null, max: { $max: '$n' } } },
+    ]);
+    return r[0]?.max || 0;
+  };
+
+  const [a, c, b] = await Promise.all([
+    mayorDe(Order),
+    mayorDe(CompletedOrder),
+    mayorDe(Booking),
+  ]);
+  return Math.max(a, c, b);
+}
+
 // Helper function to get order number (shared with bookings) — ATOMIC
 const generateOrderNumber = async (businessId) => {
   try {
@@ -128,16 +163,8 @@ const generateOrderNumber = async (businessId) => {
     const existing = await Counter.findById(counterId);
     if (!existing) {
       const Booking = require('../Models/Booking');
-      const [latestOrder, latestCompleted, latestBooking] = await Promise.all([
-        Order.findOne({ businessId }).sort({ orderNumber: -1 }).limit(1).select('orderNumber').lean(),
-        CompletedOrder.findOne({ businessId }).sort({ orderNumber: -1 }).limit(1).select('orderNumber').lean(),
-        Booking.findOne({ businessId }).sort({ orderNumber: -1 }).limit(1).select('orderNumber').lean()
-      ]);
-      const activeNum = latestOrder ? parseInt(latestOrder.orderNumber, 10) || 0 : 0;
-      const completedNum = latestCompleted ? parseInt(latestCompleted.orderNumber, 10) || 0 : 0;
-      const bookingNum = latestBooking ? parseInt(latestBooking.orderNumber, 10) || 0 : 0;
-      const highest = Math.max(activeNum, completedNum, bookingNum);
-      
+      const highest = await mayorNumeroDePedido(businessId, Booking);
+
       // Seed counter — use $max to avoid overwriting if another request seeded first
       await Counter.findOneAndUpdate(
         { _id: counterId },

@@ -2134,13 +2134,25 @@ describe('BL-3 — Order number generation is atomic', () => {
     expect(src).toContain('$inc: { seq: 1 }');
   });
 
-  test('seeds counter from max of Order, CompletedOrder, and Booking', () => {
+  test('el contador se siembra con el maximo NUMERICO de las tres colecciones', () => {
     const fs = require('fs');
     const path = require('path');
     const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
     expect(src).toContain('Promise.all');
-    expect(src).toContain('Math.max(activeNum, completedNum, bookingNum)');
     expect(src).toContain('$max: { seq: highest }');
+
+    /* orderNumber se guarda como texto. Antes se buscaba el mayor con
+       .sort({ orderNumber: -1 }), que ordena alfabeticamente: "9" queda por
+       encima de "4187". El contador arrancaba en 9 y volvia a repartir
+       numeros ya usados — 270 repetidos solo en el negocio mas activo.
+       Ahora se convierte a entero antes de comparar. */
+    const fn = src.slice(src.indexOf('async function mayorNumeroDePedido'));
+    expect(fn).toContain("to: 'int'");
+    expect(fn).toContain('$max');
+
+    /* Que no vuelva el orden alfabetico. Se busca la consulta encadenada y no
+       el texto suelto, porque el comentario que explica el fallo lo menciona. */
+    expect(src).not.toMatch(/findOne\([^)]*\)\s*\.sort\(\{\s*orderNumber:\s*-1\s*\}\)/);
   });
 
   test('has fallback to timestamp if counter fails', () => {
