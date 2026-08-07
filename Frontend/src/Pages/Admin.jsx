@@ -22,6 +22,7 @@ import MobileBottomNav from "../Components/Admin/MobileBottomNav";
 import ModoOperacion from "../Components/Admin/ModoOperacion";
 import MobileHeader from "../Components/Admin/MobileHeader";
 import { CalculatorLauncher } from "../Components/Admin/Calculator";
+import DesktopNudge from "../Components/Admin/DesktopNudge";
 
 // ── LAZY: cada pestaña carga su código bajo demanda (code-split del Admin) ──
 const BusinessSettings = lazy(() => import("../Components/BusinessSettings"));
@@ -347,6 +348,11 @@ function Admin() {
               setActiveTab={setActiveTab}
               setShowOrderBanner={setShowOrderBanner}
             />
+
+            {/* Invitación a configurar desde un computador. Solo en el inicio
+                y en pantallas chicas: en las demás pestañas ya está trabajando
+                y meterle un aviso ahí es estorbar. */}
+            {activeTab === 'dashboard' && <DesktopNudge />}
 
             {/* Subscription Status — only on dashboard in mobile, all tabs on desktop */}
             {businessConfig && businessConfig._id && (
