@@ -14,6 +14,11 @@ const pointsTransactionSchema = new mongoose.Schema({
   rewardId: { type: mongoose.Schema.Types.ObjectId },
   rewardName: { type: String },
   expiresAt: { type: Date },
+  /* Marca de que estos puntos ya vencieron. Antes se ponía `points` a 0 para
+     que no volvieran a expirar, pero eso borraba cuántos puntos se habían
+     ganado: el historial dejaba de sumar el saldo y no había forma de
+     auditarlo. Con la marca, la línea original se conserva intacta. */
+  expired: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 }, { _id: true });
 

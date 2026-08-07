@@ -28,7 +28,7 @@ async function expirePoints() {
       for (const tx of loyalty.transactions) {
         // Only expire 'earn' transactions that have an expiresAt in the past
         // and haven't already been expired (check by marking them)
-        if (tx.type === 'earn' && tx.expiresAt && tx.expiresAt <= now && tx.points > 0) {
+        if (tx.type === 'earn' && tx.expiresAt && tx.expiresAt <= now && tx.points > 0 && !tx.expired) {
           expiredPoints += tx.points;
           expiredTxIds.push(tx._id);
         }
@@ -36,15 +36,22 @@ async function expirePoints() {
 
       if (expiredPoints <= 0) continue;
 
-      // Zero out the expired earn transactions (set points to 0 so they don't expire again)
+      /* Se MARCA la transacción como vencida en vez de ponerle los puntos en
+         cero. Ponerla en cero borraba cuántos puntos se habían ganado, y como
+         además se añadía una línea de expiración negativa, el mismo descuento
+         quedaba contado dos veces: el historial dejaba de sumar el saldo y no
+         había forma de auditar por qué. */
       for (const txId of expiredTxIds) {
         const tx = loyalty.transactions.id(txId);
-        if (tx) tx.points = 0;
+        if (tx) tx.expired = true;
       }
 
-      // Deduct expired points from balance (floor at 0)
+      /* Solo se descuenta lo que realmente había. Si el saldo era menor que lo
+         vencido —porque ya se había gastado— se descuenta el saldo y la línea
+         de expiración registra esa misma cifra, no la teórica: así el
+         historial sigue sumando el saldo. */
       const actualDeduction = Math.min(expiredPoints, loyalty.points);
-      loyalty.points = Math.max(0, loyalty.points - expiredPoints);
+      loyalty.points = Math.max(0, loyalty.points - actualDeduction);
 
       // Log the expiry transaction
       loyalty.transactions.push({
