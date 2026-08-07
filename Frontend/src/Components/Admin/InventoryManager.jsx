@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useBusinessConfig } from '../../Context/BusinessContext';
 import api from '../../services/api';
+import SuppliesPanel from './SuppliesPanel';
+import RecipeEditor from './RecipeEditor';
 
 /**
  * Inventario.
@@ -69,6 +71,8 @@ export default function InventoryManager() {
   const [valorExacto, setValorExacto] = useState('');
   const [historial, setHistorial] = useState(null);   // { producto, movimientos }
   const [modo, setModo] = useState(businessConfig?.inventory?.mode || 'off');
+  const [pestana, setPestana] = useState('productos');
+  const [recetaDe, setRecetaDe] = useState(null);
 
   const cargar = useCallback(async () => {
     if (!businessId) return;
@@ -202,6 +206,28 @@ export default function InventoryManager() {
         </div>
       )}
 
+      {/* Pestañas: los insumos solo existen en el nivel avanzado */}
+      {modo === 'advanced' && (
+        <div className="flex gap-2">
+          {[['productos', 'Productos'], ['insumos', 'Insumos']].map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => setPestana(id)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+                pestana === id ? 'text-white' : 'bg-white border border-slate-200 text-slate-500 hover:text-slate-800'
+              }`}
+              style={pestana === id ? { backgroundColor: themeColor } : undefined}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {modo === 'advanced' && pestana === 'insumos' ? (
+        <SuppliesPanel businessId={businessId} themeColor={themeColor} onCambio={cargar} />
+      ) : (
+      <>
       {/* Resumen */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Tarjeta label="Agotados" valor={r?.agotados ?? '—'} tono="red" />
@@ -327,6 +353,20 @@ export default function InventoryManager() {
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
                     </button>
 
+                    {modo === 'advanced' && (
+                      <button
+                        onClick={() => setRecetaDe(p)}
+                        title={p.recipe?.length
+                          ? `Receta: ${p.recipe.length} insumo(s)`
+                          : 'Definir la receta'}
+                        className={`ml-1 px-2 h-8 rounded-lg text-[11px] font-bold transition-colors ${
+                          p.recipe?.length ? 'text-white' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                        }`}
+                        style={p.recipe?.length ? { backgroundColor: themeColor } : undefined}
+                      >
+                        Receta{p.recipe?.length ? ` ${p.recipe.length}` : ''}
+                      </button>
+                    )}
                     <button
                       onClick={() => verHistorial(p)}
                       title="Ver el historial de movimientos"
@@ -365,7 +405,26 @@ export default function InventoryManager() {
         Al vender, la cantidad baja sola y nunca queda por debajo de cero. Al cancelar un pedido
         o quitarle productos, vuelve. Cada movimiento queda registrado con su fecha y su motivo,
         así que un conteo que no cuadre siempre se puede reconstruir.
+        {modo === 'advanced' && ' Los productos con receta descuentan sus insumos en vez de un contador propio.'}
       </p>
+      </>
+      )}
+
+      {/* Editor de receta */}
+      {recetaDe && (
+        <RecipeEditor
+          producto={recetaDe}
+          businessId={businessId}
+          themeColor={themeColor}
+          onClose={() => setRecetaDe(null)}
+          onGuardado={(actualizado) => {
+            setDatos((d) => d && ({
+              ...d,
+              productos: d.productos.map((p) => (p._id === actualizado._id ? { ...p, recipe: actualizado.recipe } : p)),
+            }));
+          }}
+        />
+      )}
 
       {/* Historial de un producto */}
       {historial && (
