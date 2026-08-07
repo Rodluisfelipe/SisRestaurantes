@@ -68,6 +68,41 @@ export default function OrderManagement() {
   };
   const closeToast = () => setToastData(prev => ({ ...prev, visible: false }));
 
+  /* Borrar es irreversible y saca el pedido de las ventas, del cierre mensual
+     y del Excel. Por eso pide escribir el número: un "¿estás seguro?" se
+     acepta por reflejo, teclear el número obliga a mirar cuál se está
+     borrando. Cancelar el pedido casi siempre es mejor — conserva la traza y
+     devuelve el inventario. */
+  const deleteOrder = async (orderId, orderNumber) => {
+    const escrito = window.prompt(
+      `Vas a ELIMINAR el pedido #${orderNumber} definitivamente.\n\n` +
+      `Dejará de contar en ventas, en el cierre mensual y en el Excel.\n` +
+      `Si solo quieres anularlo, cámbialo a "cancelado" en vez de borrarlo.\n\n` +
+      `Escribe ${orderNumber} para confirmar:`
+    );
+    if (escrito === null) return;
+    if (String(escrito).trim() !== String(orderNumber)) {
+      showToast('El número no coincide. No se eliminó nada.', 'error');
+      return;
+    }
+
+    setChangingId(orderId);
+    try {
+      const resp = await fetch(`${API_URL}/superadmin/orders/${orderId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (!resp.ok) { const d = await resp.json(); throw new Error(d.message || 'Error'); }
+      const data = await resp.json();
+      showToast(data.message);
+      fetchOrders();
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setChangingId(null);
+    }
+  };
+
   const changeStatus = async (orderId, newStatus, fromCollection) => {
     setChangingId(orderId);
     try {
@@ -385,6 +420,24 @@ export default function OrderManagement() {
                               Al cambiar a un estado activo se moverá a pedidos activos
                             </p>
                           )}
+                        </div>
+
+                        {/* Zona de peligro, separada de los botones de estado
+                            para que no se pulse por inercia al cambiar uno. */}
+                        <div className="pt-3 mt-3 border-t border-slate-100">
+                          <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <p className="text-[10px] text-slate-400 leading-snug max-w-sm">
+                              Eliminar es definitivo: el pedido deja de contar en ventas, en el cierre
+                              mensual y en el Excel. Para anularlo sin perder la traza, cámbialo a cancelado.
+                            </p>
+                            <button
+                              onClick={() => deleteOrder(orderId, order.orderNumber)}
+                              disabled={isChanging}
+                              className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-red-600 border border-red-200 hover:bg-red-50 disabled:opacity-40 transition-colors shrink-0"
+                            >
+                              Eliminar pedido
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </motion.div>

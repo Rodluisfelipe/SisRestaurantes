@@ -9,6 +9,7 @@ const Banner = require('../Models/Banner');
 const PaymentRequest = require('../Models/PaymentRequest');
 const Subscription = require('../Models/Subscription');
 const AuditLog = require('../Models/AuditLog');
+const { audit } = require('../utils/auditLog');
 const { Worker } = require('../Models/Worker');
 const CrewWalletTxn = require('../Models/CrewWalletTxn');
 const CrewWithdrawalRequest = require('../Models/CrewWithdrawalRequest');
@@ -841,6 +842,91 @@ router.get('/stats/overview', async (req, res) => {
 });
 
 // PATCH /api/superadmin/orders/:id/status - Cambiar estado de un pedido — support+
+/**
+ * DELETE /api/superadmin/orders/:id — borra un pedido definitivamente.
+ *
+ * Es irreversible y borra dinero del historial: un pedido eliminado deja de
+ * contar en ventas, en el cierre mensual y en el Excel. Por eso exige rol
+ * 'admin' —no 'support', que sí puede cambiar estados— y queda registrado en
+ * auditoría con una copia del pedido, que es lo único que permitiría
+ * reconstruirlo si el borrado fue un error.
+ *
+ * Para un pedido equivocado casi siempre es mejor cancelarlo: se conserva la
+ * traza y el inventario vuelve solo.
+ */
+router.delete('/orders/:id', requireRole('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: 'ID de pedido inválido' });
+    }
+
+    const objectId = new mongoose.Types.ObjectId(id);
+
+    // Puede estar en activos o en completados
+    let pedido = await Order.findById(objectId).lean();
+    let coleccion = 'orders';
+    if (!pedido) {
+      pedido = await CompletedOrder.findById(objectId).lean();
+      coleccion = 'completedorders';
+    }
+    if (!pedido) return res.status(404).json({ message: 'Pedido no encontrado' });
+
+    const negocio = await BusinessConfig.findById(pedido.businessId).select('businessName').lean();
+
+    /* La copia se guarda ANTES de borrar. Si se registrara después, un fallo
+       entre medias dejaría el pedido borrado y sin rastro de qué contenía. */
+    audit({
+      action: 'delete',
+      resource: 'order',
+      resourceId: objectId,
+      resourceName: `Pedido #${pedido.orderNumber}`,
+      businessId: pedido.businessId,
+      businessName: negocio?.businessName || '',
+      before: {
+        orderNumber: pedido.orderNumber,
+        status: pedido.status,
+        totalAmount: pedido.totalAmount,
+        finalAmount: pedido.finalAmount,
+        deliveryFee: pedido.deliveryFee,
+        customerName: pedido.customerName,
+        phone: pedido.phone,
+        orderChannel: pedido.orderChannel,
+        items: pedido.items,
+        createdAt: pedido.createdAt,
+        completedAt: pedido.completedAt,
+        coleccion,
+      },
+      req,
+    });
+
+    if (coleccion === 'orders') await Order.findByIdAndDelete(objectId);
+    else await CompletedOrder.findByIdAndDelete(objectId);
+
+    logger.warn('SuperAdmin eliminó un pedido', {
+      orderId: id,
+      orderNumber: pedido.orderNumber,
+      businessId: pedido.businessId?.toString(),
+      monto: pedido.finalAmount ?? pedido.totalAmount,
+      coleccion,
+    });
+
+    const io = req.app.get('io');
+    if (io && pedido.businessId) {
+      io.to(pedido.businessId.toString()).emit('order_deleted', { orderId: id });
+    }
+
+    res.json({
+      message: `Pedido #${pedido.orderNumber} eliminado`,
+      orderNumber: pedido.orderNumber,
+      coleccion,
+    });
+  } catch (error) {
+    logger.error('Error eliminando pedido', error);
+    res.status(500).json({ message: 'Error al eliminar el pedido' });
+  }
+});
+
 router.patch('/orders/:id/status', requireRole('support'), async (req, res) => {
   try {
     const { id } = req.params;
