@@ -612,22 +612,15 @@ router.post("/", (req, res, next) => {
     
     const savedOrder = await newOrder.save();
 
-    // Descontar stock de productos con trackStock activado (fire-and-forget, no bloquea la respuesta)
-    try {
-      const Product = require('../Models/Product');
-      await Promise.all(
-        (items || [])
-          .filter(item => item.productId)
-          .map(item =>
-            Product.updateOne(
-              { _id: item.productId, trackStock: true, stock: { $gt: 0 } },
-              [{ $set: { stock: { $max: [0, { $subtract: ['$stock', item.quantity || 1] }] } } }]
-            )
-          )
-      );
-    } catch (stockErr) {
-      logger.warn('Failed to update product stock for order', { error: stockErr.message, orderId: savedOrder._id });
-    }
+    /* La venta descuenta del inventario y queda registrada en el historial.
+       Antes esto se hacía con un updateOne suelto que no dejaba rastro: el
+       stock bajaba y nadie podía saber por qué pedido. */
+    await moverStock(items || [], -1, {
+      type: 'sale',
+      orderId: savedOrder._id,
+      orderNumber,
+      note: 'Venta',
+    });
 
     // POS: Auto-register sale in open cash register (only for POS orders) — atomic $push.
     // Las cuentas abiertas (posOpenTab) NO cobran al crear: se registran al cobrar la mesa (pay-tab).
@@ -1200,7 +1193,13 @@ router.patch("/:id/status", tenantAuth, validateUpdateOrderStatus, async (req, r
        Antes no se devolvía nunca: cada cancelación restaba del inventario
        unidades que en realidad seguían en la nevera. */
     if (status === ORDER_STATUS.CANCELLED) {
-      await moverStock(updatedOrder.items, +1);
+      await moverStock(updatedOrder.items, +1, {
+        type: 'return',
+        orderId: updatedOrder._id,
+        orderNumber: updatedOrder.orderNumber,
+        userId: req.user?.id,
+        note: 'Pedido cancelado',
+      });
     }
 
     // Emit socket event
@@ -1510,7 +1509,13 @@ router.patch("/:id/add-items", tenantAuth, async (req, res) => {
     }
 
     // Lo agregado también sale del inventario: antes solo descontaba al crear
-    await moverStock(newItems, -1);
+    await moverStock(newItems, -1, {
+      type: 'sale',
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      userId: req.user?.id,
+      note: 'Productos agregados al pedido',
+    });
 
     // Push new items and update totals
     order.items.push(...newItems);
@@ -1557,22 +1562,51 @@ router.patch("/:id/add-items", tenantAuth, async (req, res) => {
  * igual se guarda y queda el aviso en el log. Un pedido perdido es peor que
  * un conteo desajustado.
  */
-async function moverStock(items, signo) {
+async function moverStock(items, signo, contexto = {}) {
   if (!Array.isArray(items) || !items.length) return;
   try {
     const Product = require('../Models/Product');
-    await Promise.all(items.map((item) => {
-      if (!item.productId) return null;
+    const StockMovement = require('../Models/StockMovement');
+
+    await Promise.all(items.map(async (item) => {
+      if (!item.productId) return;
       const cantidad = (Number(item.quantity) || 1) * signo;
-      if (!cantidad) return null;
-      return Product.updateOne(
+      if (!cantidad) return;
+
+      /* findOneAndUpdate en vez de updateOne para conocer el saldo anterior:
+         sin eso el historial no podría decir "de 12 pasó a 9", que es lo que
+         hace auditable un movimiento. Es atómico igual. */
+      const antes = await Product.findOneAndUpdate(
         { _id: item.productId, trackStock: true },
         /* $max con 0 para que no quede negativo al descontar. Al devolver,
            puede quedar por encima de lo que había si en su momento se vendió
            más de lo disponible: se prefiere eso a perder unidades, y el conteo
            se corrige a mano desde Inventario. */
-        [{ $set: { stock: { $max: [0, { $add: [{ $ifNull: ['$stock', 0] }, cantidad] }] } } }]
-      );
+        [{ $set: { stock: { $max: [0, { $add: [{ $ifNull: ['$stock', 0] }, cantidad] }] } } }],
+        { new: false }   // devuelve el documento ANTES del cambio
+      ).select('name stock businessId').lean();
+
+      // Sin control de inventario activo no hay nada que registrar
+      if (!antes) return;
+
+      const saldoAntes = antes.stock ?? 0;
+      const saldoDespues = Math.max(0, saldoAntes + cantidad);
+
+      await StockMovement.create({
+        businessId: antes.businessId,
+        productId: item.productId,
+        productName: antes.name || item.name || '',
+        type: contexto.type || (signo < 0 ? 'sale' : 'return'),
+        // Lo realmente movido, que puede ser menos de lo pedido si topó en 0
+        quantity: saldoDespues - saldoAntes,
+        stockBefore: saldoAntes,
+        stockAfter: saldoDespues,
+        orderId: contexto.orderId || null,
+        orderNumber: contexto.orderNumber || '',
+        userId: contexto.userId || null,
+        userName: contexto.userName || '',
+        note: contexto.note || '',
+      }).catch(() => {});   // el historial nunca puede tumbar la venta
     }));
   } catch (err) {
     logger.warn('No se pudo mover el inventario', { error: err.message, signo });
@@ -1667,14 +1701,25 @@ router.patch("/:id/items", tenantAuth, async (req, res) => {
       item.quantity = quantity;
     }
 
+    const nota = quantity === 0
+      ? `Se quitó ${antes.name} (x${antes.quantity})`
+      : `${antes.name}: ${antes.quantity} → ${quantity}`;
+
     /* El inventario sigue al cambio: quitar una línea devuelve todas sus
        unidades, bajar la cantidad devuelve la diferencia, y subirla descuenta.
        Sin esto, editar un pedido dejaba el conteo desviado. */
     const diferencia = antes.quantity - quantity;   // >0 sobran, <0 faltan
     if (diferencia !== 0 && antes.productId) {
       await moverStock(
-        [{ productId: antes.productId, quantity: Math.abs(diferencia) }],
-        diferencia > 0 ? +1 : -1
+        [{ productId: antes.productId, quantity: Math.abs(diferencia), name: antes.name }],
+        diferencia > 0 ? +1 : -1,
+        {
+          type: diferencia > 0 ? 'return' : 'sale',
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          userId: req.user?.id,
+          note: nota,
+        }
       );
     }
 
@@ -1687,9 +1732,6 @@ router.patch("/:id/items", tenantAuth, async (req, res) => {
       + (order.tipAmount || 0);
     order.updatedAt = new Date();
 
-    const nota = quantity === 0
-      ? `Se quitó ${antes.name} (x${antes.quantity})`
-      : `${antes.name}: ${antes.quantity} → ${quantity}`;
     order.statusHistory.push({ status: order.status, timestamp: new Date(), note: nota });
 
     /* No se imprime aquí: si el admin ajusta tres líneas saldrían tres

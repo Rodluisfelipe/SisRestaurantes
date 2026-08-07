@@ -376,7 +376,7 @@ router.get("/inventory", tenantAuth, async (req, res) => {
     if (!businessId) return res.status(400).json({ message: "businessId es requerido" });
 
     const productos = await Product.find({ businessId })
-      .select('name image price stock trackStock lowStockAlert active category')
+      .select('name image price cost stock trackStock lowStockAlert active category')
       .populate('category', 'name')
       .lean();
 
@@ -407,12 +407,44 @@ router.get("/inventory", tenantAuth, async (req, res) => {
         agotados: agotados.length,
         bajos: bajos.length,
         // Cuánto dinero hay parado en la bodega, a precio de venta
-        valorInventario: conControl.reduce((s, p) => s + (p.price || 0) * Math.max(0, p.stock ?? 0), 0),
+        /* Valor a COSTO cuando el producto lo tiene. Antes se calculaba con
+           el precio al publico, que no es lo que el negocio tiene invertido:
+           mostraba una cifra que parecia una valoracion y no lo era. */
+        valorInventario: conControl.reduce((s, p) => s + ((p.cost ?? p.price) || 0) * Math.max(0, p.stock ?? 0), 0),
+        conCosto: conControl.filter(p => p.cost != null).length,
       },
     });
   } catch (error) {
     logger.error('Error obteniendo inventario', error, req);
     res.status(500).json({ message: 'Error al obtener el inventario' });
+  }
+});
+
+/**
+ * GET /api/products/inventory/movements — historial de movimientos.
+ *
+ * Sin esto, cuando un conteo no cuadraba no había forma de saber por qué.
+ * Query: productId (opcional, para el historial de uno solo), limit.
+ */
+router.get("/inventory/movements", tenantAuth, async (req, res) => {
+  try {
+    const businessId = req.user?.businessId || req.query.businessId;
+    if (!businessId) return res.status(400).json({ message: "businessId es requerido" });
+
+    const StockMovement = require('../Models/StockMovement');
+    const filtro = { businessId };
+    if (req.query.productId) filtro.productId = req.query.productId;
+
+    const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+    const movimientos = await StockMovement.find(filtro)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    res.json({ movimientos, tipos: StockMovement.TIPOS });
+  } catch (error) {
+    logger.error('Error obteniendo movimientos de inventario', error, req);
+    res.status(500).json({ message: 'Error al obtener el historial' });
   }
 });
 
@@ -433,7 +465,8 @@ router.patch("/:id/stock", tenantAuth, async (req, res) => {
     const producto = await Product.findOne({ _id: id, ...(businessId ? { businessId } : {}) });
     if (!producto) return res.status(404).json({ message: 'Producto no encontrado' });
 
-    const { stock, trackStock, lowStockAlert, delta } = req.body;
+    const { stock, trackStock, lowStockAlert, delta, cost } = req.body;
+    const stockAntes = producto.stock;
 
     if (trackStock !== undefined) {
       producto.trackStock = !!trackStock;
@@ -456,6 +489,16 @@ router.patch("/:id/stock", tenantAuth, async (req, res) => {
       }
     }
 
+    if (cost !== undefined) {
+      if (cost === null || cost === '') {
+        producto.cost = null;
+      } else {
+        const c = Number(cost);
+        if (!Number.isFinite(c) || c < 0) return res.status(400).json({ message: 'El costo debe ser un numero de 0 o mas' });
+        producto.cost = c;
+      }
+    }
+
     if (lowStockAlert !== undefined) {
       const a = parseInt(lowStockAlert, 10);
       if (!Number.isInteger(a) || a < 0) return res.status(400).json({ message: 'El aviso debe ser un entero de 0 o más' });
@@ -463,12 +506,33 @@ router.patch("/:id/stock", tenantAuth, async (req, res) => {
     }
 
     await producto.save();
+
+    /* Todo ajuste manual queda en el historial. Es la diferencia entre "el
+       conteo no cuadra y nadie sabe por qué" y poder reconstruir qué pasó. */
+    if (producto.stock !== stockAntes) {
+      const StockMovement = require('../Models/StockMovement');
+      await StockMovement.create({
+        businessId: producto.businessId,
+        productId: producto._id,
+        productName: producto.name,
+        type: req.body.motivo === 'waste' ? 'waste'
+          : req.body.motivo === 'purchase' ? 'purchase'
+          : stockAntes === null ? 'initial' : 'adjust',
+        quantity: (producto.stock ?? 0) - (stockAntes ?? 0),
+        stockBefore: stockAntes,
+        stockAfter: producto.stock,
+        userId: req.user?.id || null,
+        note: (req.body.nota || '').slice(0, 200),
+      }).catch((e) => logger.warn('No se pudo registrar el movimiento', { error: e.message }));
+    }
+
     logger.info('Inventario ajustado', { productId: id, stock: producto.stock, trackStock: producto.trackStock });
 
     res.json({
       _id: producto._id,
       name: producto.name,
       stock: producto.stock,
+      cost: producto.cost,
       trackStock: producto.trackStock,
       lowStockAlert: producto.lowStockAlert,
     });

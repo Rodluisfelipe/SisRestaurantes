@@ -361,6 +361,14 @@ mongoose.connect(MONGO_URI, {
       logger.warn('Error iniciando cron de expiración de puntos:', error.message);
     }
 
+    // Aviso diario de existencias bajas
+    try {
+      const { startLowStockCron } = require('./services/lowStockCron');
+      startLowStockCron();
+    } catch (error) {
+      logger.warn('Error iniciando cron de existencias bajas:', error.message);
+    }
+
     // Respaldo diario de la base de datos a Spaces
     try {
       const { startBackupCron } = require('./services/backupCron');

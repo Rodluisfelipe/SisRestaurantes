@@ -453,6 +453,25 @@ const businessConfigSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  /* Nivel de inventario que usa el negocio. Cada uno decide según lo que
+     maneja: una cafetería con gaseosas no necesita lo mismo que una cocina
+     que controla insumos.
+
+       off      — sin control de existencias
+       basic    — contador por producto, historial de movimientos, costo y
+                  aviso cuando algo se agota
+       advanced — además: insumos y recetas, compras, merma y conteo físico
+
+     Se guarda el modo y no una lista de banderas para que la decisión sea una
+     sola y no diez casillas que nadie sabe combinar. */
+  inventory: {
+    mode: {
+      type: String,
+      enum: ['off', 'basic', 'advanced'],
+      default: 'off'
+    }
+  },
+
   /* ¿Se recomienda este negocio a comensales de otros menús?
      Manda a la vez en la tira "Descubre más" y en el catálogo público: son la
      misma pregunta, si el negocio quiere aparecer ante gente que no lo buscaba.

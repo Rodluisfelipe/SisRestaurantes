@@ -70,6 +70,13 @@ const ProductSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  /* Costo de compra. Sin esto, el "valor en bodega" se calculaba con el precio
+     al público, que no es lo que el negocio tiene invertido: mostraba una
+     cifra que parecía una valoración y no lo era. */
+  cost: {
+    type: Number,
+    default: null   // null = no se ha registrado
+  },
   stock: {
     type: Number,
     default: null  // null = ilimitado
