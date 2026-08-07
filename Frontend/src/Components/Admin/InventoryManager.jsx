@@ -73,6 +73,11 @@ export default function InventoryManager() {
   const [modo, setModo] = useState(businessConfig?.inventory?.mode || 'off');
   const [pestana, setPestana] = useState('productos');
   const [recetaDe, setRecetaDe] = useState(null);
+  /* Fila desplegada para editar costo y umbral de aviso. Estos campos existían
+     en el modelo pero no había dónde escribirlos: el costo se guardaba y la
+     valoración lo usaba, pero nadie podía introducirlo. */
+  const [abierto, setAbierto] = useState(null);
+  const [campos, setCampos] = useState({ cost: '', lowStockAlert: '' });
 
   const cargar = useCallback(async () => {
     if (!businessId) return;
@@ -300,7 +305,8 @@ export default function InventoryManager() {
             const e = estadoDe(p);
             const trabajando = ocupado === p._id;
             return (
-              <div key={p._id} className="flex items-center gap-3 p-3">
+              <div key={p._id}>
+              <div className="flex items-center gap-3 p-3">
                 {p.image
                   ? <img src={p.image} alt="" className="w-11 h-11 rounded-xl object-cover shrink-0 bg-slate-100" />
                   : <div className="w-11 h-11 rounded-xl bg-slate-100 shrink-0" />}
@@ -395,6 +401,76 @@ export default function InventoryManager() {
                     {trabajando ? '...' : 'Controlar'}
                   </button>
                 )}
+              </div>
+
+              {/* Costo y umbral de aviso: se abren desde la propia fila para no
+                  tener que entrar a editar el producto entero. */}
+              {p.trackStock && (
+                <div className="px-3 pb-2 -mt-1">
+                  {abierto === p._id ? (
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 p-2.5 flex flex-wrap items-end gap-2">
+                      <div className="flex-1 min-w-[120px]">
+                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+                          Costo por unidad
+                        </label>
+                        <input
+                          type="number" min="0" step="any"
+                          value={campos.cost}
+                          onChange={(ev) => setCampos({ ...campos, cost: ev.target.value })}
+                          placeholder="Lo que te cuesta"
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-[13px] outline-none focus:ring-2 focus:ring-slate-200"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-[120px]">
+                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+                          Avisar cuando queden
+                        </label>
+                        <input
+                          type="number" min="0"
+                          value={campos.lowStockAlert}
+                          onChange={(ev) => setCampos({ ...campos, lowStockAlert: ev.target.value })}
+                          placeholder="5"
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-[13px] outline-none focus:ring-2 focus:ring-slate-200"
+                        />
+                      </div>
+                      <button
+                        onClick={() => {
+                          ajustar(p, {
+                            cost: campos.cost === '' ? null : campos.cost,
+                            lowStockAlert: campos.lowStockAlert === '' ? 5 : campos.lowStockAlert,
+                          });
+                          setAbierto(null);
+                        }}
+                        className="px-3 py-1.5 rounded-lg text-white text-[12px] font-bold"
+                        style={{ backgroundColor: themeColor }}
+                      >
+                        Guardar
+                      </button>
+                      <button
+                        onClick={() => setAbierto(null)}
+                        className="px-2 py-1.5 rounded-lg text-[12px] font-semibold text-slate-400 hover:text-slate-700"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setAbierto(p._id);
+                        setCampos({
+                          cost: p.cost ?? '',
+                          lowStockAlert: p.lowStockAlert ?? '',
+                        });
+                      }}
+                      className="text-[11px] font-semibold text-slate-400 hover:text-slate-700 transition-colors"
+                    >
+                      {p.cost != null
+                        ? `Costo ${money(p.cost)} · avisa en ${p.lowStockAlert ?? 5}`
+                        : 'Sin costo · toca para configurarlo'}
+                    </button>
+                  )}
+                </div>
+              )}
               </div>
             );
           })}

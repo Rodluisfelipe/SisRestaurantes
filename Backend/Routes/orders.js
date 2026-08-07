@@ -616,6 +616,7 @@ router.post("/", (req, res, next) => {
        Antes esto se hacía con un updateOne suelto que no dejaba rastro: el
        stock bajaba y nadie podía saber por qué pedido. */
     await moverStock(items || [], -1, {
+      businessId: businessObjectId,
       type: 'sale',
       orderId: savedOrder._id,
       orderNumber,
@@ -1194,6 +1195,7 @@ router.patch("/:id/status", tenantAuth, validateUpdateOrderStatus, async (req, r
        unidades que en realidad seguían en la nevera. */
     if (status === ORDER_STATUS.CANCELLED) {
       await moverStock(updatedOrder.items, +1, {
+        businessId: updatedOrder.businessId,
         type: 'return',
         orderId: updatedOrder._id,
         orderNumber: updatedOrder.orderNumber,
@@ -1510,6 +1512,7 @@ router.patch("/:id/add-items", tenantAuth, async (req, res) => {
 
     // Lo agregado también sale del inventario: antes solo descontaba al crear
     await moverStock(newItems, -1, {
+      businessId: order.businessId,
       type: 'sale',
       orderId: order._id,
       orderNumber: order.orderNumber,
@@ -1612,24 +1615,51 @@ async function moverInsumos(producto, unidadesVendidas, signo, contexto) {
   return true;
 }
 
+/**
+ * Nivel de inventario del negocio. Se consulta una vez por operación y no por
+ * línea: un pedido de diez productos haría diez lecturas iguales.
+ *
+ * Ante cualquier duda devuelve 'off': es preferible no tocar el inventario que
+ * descontar de un negocio que no lo está usando.
+ */
+async function nivelInventario(businessId) {
+  if (!businessId) return 'off';
+  try {
+    const BusinessConfig = require('../Models/BusinessConfig');
+    const b = await BusinessConfig.findById(businessId).select('inventory').lean();
+    return b?.inventory?.mode || 'off';
+  } catch {
+    return 'off';
+  }
+}
+
 async function moverStock(items, signo, contexto = {}) {
   if (!Array.isArray(items) || !items.length) return;
   try {
     const Product = require('../Models/Product');
     const StockMovement = require('../Models/StockMovement');
 
+    /* El nivel manda. Antes se descontaba siempre que el producto tuviera
+       trackStock, sin mirar el nivel: con el inventario en "Sin control" la
+       pantalla prometía que no se tocaría nada y sí se tocaba, y las recetas
+       se aplicaban aunque el negocio estuviera en Básico. */
+    const nivel = await nivelInventario(contexto.businessId);
+    if (nivel === 'off') return;
+
     await Promise.all(items.map(async (item) => {
       if (!item.productId) return;
       const cantidad = (Number(item.quantity) || 1) * signo;
       if (!cantidad) return;
 
-      /* Si el producto tiene receta, lo que se mueve son sus insumos. El
-         contador del producto se deja quieto: llevar los dos a la vez daría
-         un doble descuento del mismo consumo. */
-      const conReceta = await Product.findById(item.productId).select('name recipe').lean();
-      if (conReceta?.recipe?.length) {
-        await moverInsumos(conReceta, Math.abs(Number(item.quantity) || 1), signo, contexto);
-        return;
+      /* Solo en avanzado: si el producto tiene receta, lo que se mueve son sus
+         insumos y el contador del producto se deja quieto. Llevar los dos a la
+         vez daría un doble descuento del mismo consumo. */
+      if (nivel === 'advanced') {
+        const conReceta = await Product.findById(item.productId).select('name recipe').lean();
+        if (conReceta?.recipe?.length) {
+          await moverInsumos(conReceta, Math.abs(Number(item.quantity) || 1), signo, contexto);
+          return;
+        }
       }
 
       /* findOneAndUpdate en vez de updateOne para conocer el saldo anterior:
@@ -1773,6 +1803,7 @@ router.patch("/:id/items", tenantAuth, async (req, res) => {
         [{ productId: antes.productId, quantity: Math.abs(diferencia), name: antes.name }],
         diferencia > 0 ? +1 : -1,
         {
+          businessId: order.businessId,
           type: diferencia > 0 ? 'return' : 'sale',
           orderId: order._id,
           orderNumber: order.orderNumber,
