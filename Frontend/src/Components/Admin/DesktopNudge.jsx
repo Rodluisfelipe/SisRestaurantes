@@ -10,13 +10,12 @@ import { motion, AnimatePresence } from 'framer-motion';
  * móvil sigue funcionando— pero explica qué gana en el computador y le manda
  * el enlace para no tener que teclearlo.
  *
- * Aparece solo en pantallas chicas y se puede posponer. Vuelve a los 7 días
- * porque el objetivo es cambiar una costumbre, y eso no pasa con un aviso que
- * se descarta una vez.
+ * Aparece solo en pantallas chicas y se puede posponer, pero vuelve cada día:
+ * el objetivo es cambiar una costumbre, y eso no pasa con un aviso que se
+ * descarta una vez.
  */
 
-const CLAVE = 'menuby_desktop_nudge_hasta';
-const DIAS_SILENCIO = 7;
+const CLAVE = 'menuby_desktop_nudge_dia';
 
 const VENTAJAS = [
   'Subir las fotos de tus productos desde el computador',
@@ -25,16 +24,20 @@ const VENTAJAS = [
   'Ver los reportes y descargarlos a Excel',
 ];
 
-function silenciarPor(dias) {
+/* Se guarda el día en que se descartó, no un plazo de horas: así reaparece en
+   la primera entrada de cada día natural. Con un plazo de 24h, quien entra
+   cada mañana a la misma hora se lo perdería día por medio. */
+const hoy = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
+
+function silenciarHoy() {
   try {
-    localStorage.setItem(CLAVE, String(Date.now() + dias * 864e5));
+    localStorage.setItem(CLAVE, hoy());
   } catch { /* modo privado: se mostrará de nuevo, no es grave */ }
 }
 
 function estaSilenciado() {
   try {
-    const hasta = Number(localStorage.getItem(CLAVE) || 0);
-    return Date.now() < hasta;
+    return localStorage.getItem(CLAVE) === hoy();
   } catch {
     return false;
   }
@@ -58,11 +61,11 @@ export default function DesktopNudge() {
   const url = typeof window !== 'undefined' ? window.location.href.split('?')[0] : '';
   const mensaje = `Panel de mi negocio en MenuBy — ábrelo en el computador:\n${url}`;
 
-  const posponer = () => { silenciarPor(DIAS_SILENCIO); setVisible(false); };
+  const posponer = () => { silenciarHoy(); setVisible(false); };
 
   const porWhatsApp = () => {
     window.open(`https://wa.me/?text=${encodeURIComponent(mensaje)}`, '_blank', 'noopener');
-    silenciarPor(DIAS_SILENCIO);
+    silenciarHoy();
     setVisible(false);
   };
 
@@ -144,7 +147,7 @@ export default function DesktopNudge() {
           onClick={posponer}
           className="w-full py-2.5 text-[11px] font-semibold text-slate-400 hover:text-slate-600 border-t border-blue-100 transition-colors"
         >
-          Ahora no, seguir desde el celular
+          Hoy no, seguir desde el celular
         </button>
       </motion.div>
     </AnimatePresence>
