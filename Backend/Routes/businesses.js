@@ -228,7 +228,9 @@ router.get('/', businessesLimiter, async (req, res) => {
 
     // Obtener todos los negocios activos
     const businesses = await BusinessConfig.find({ 
-      isActive: true
+      isActive: true,
+      // El superadmin puede sacar a un negocio del catalogo publico
+      showInMarketplace: { $ne: false }
     }).select('businessName slug logo coverImage description theme isActive isOpen address whatsappNumber socialMedia department city location businessHours reviewStats createdAt updatedAt').lean();
 
     // Si hay ubicación, filtrar por cobertura
@@ -329,7 +331,7 @@ router.get('/featured', businessesLimiter, async (req, res) => {
     const { lat, lon } = req.query;
     const hasLocation = lat && lon && !isNaN(lat) && !isNaN(lon);
 
-    const allBusinesses = await BusinessConfig.find({ isActive: true })
+    const allBusinesses = await BusinessConfig.find({ isActive: true, showInMarketplace: { $ne: false } })
       .select('businessName slug logo coverImage description isOpen businessHours location department city reviewStats createdAt')
       .lean();
 

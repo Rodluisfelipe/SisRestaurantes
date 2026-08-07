@@ -556,7 +556,7 @@ router.get("/discover", async (req, res) => {
     const hasGeo = lat != null && lng != null && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng));
 
     const businesses = await BusinessConfig.find(
-      { isActive: true, menuStatus: { $ne: 'paused' } },
+      { isActive: true, menuStatus: { $ne: 'paused' }, showInMarketplace: { $ne: false } },
       'slug businessName logo coverImage description businessType city department location.coordinates google.rating google.reviewCount businessHours updatedAt'
     ).lean();
 
@@ -585,23 +585,19 @@ router.get("/discover", async (req, res) => {
         };
       });
 
-    /* Con ubicación se filtra por radio y se ordena por cercanía. Los que no
+    /* Con ubicación: solo los que están dentro del radio, ordenados por
+       cercanía. Si no hay ninguno se devuelve vacío y la sección no aparece —
+       recomendar un negocio de otra ciudad no le sirve a nadie. Los que no
        tienen coordenadas quedan fuera: no se puede afirmar que estén cerca. */
     let cercanos = false;
     if (hasGeo) {
       const radio = Math.min(Math.max(parseFloat(req.query.radiusKm) || DISCOVER_RADIUS_KM, 1), 500);
-      const dentro = list.filter(b => b.distanceKm != null && b.distanceKm <= radio);
-      if (dentro.length > 0) {
-        dentro.sort((a, b) => a.distanceKm - b.distanceKm);
-        list = dentro;
-        cercanos = true;
-      }
-    }
-
-    /* Sin ubicación, o sin nadie dentro del radio, se muestran los mejor
-       valorados. El flag `cercanos` le dice al menú qué título poner: llamar
-       "cerca de ti" a algo que no lo está es lo que había que arreglar. */
-    if (!cercanos) {
+      list = list.filter(b => b.distanceKm != null && b.distanceKm <= radio);
+      list.sort((a, b) => a.distanceKm - b.distanceKm);
+      cercanos = true;
+    } else {
+      /* Sin ubicación no hay forma de saber qué está cerca. Se muestran los
+         mejor valorados, sin afirmar cercanía. */
       list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     }
 

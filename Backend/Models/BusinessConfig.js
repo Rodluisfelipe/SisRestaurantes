@@ -453,6 +453,16 @@ const businessConfigSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  /* ¿Se recomienda este negocio a comensales de otros menús?
+     Manda a la vez en la tira "Descubre más" y en el catálogo público: son la
+     misma pregunta, si el negocio quiere aparecer ante gente que no lo buscaba.
+     Por defecto sí; el superadmin lo apaga para demos, pruebas o negocios que
+     prefieren no figurar. No afecta su propio menú, que sigue accesible por su
+     enlace de siempre. */
+  showInMarketplace: {
+    type: Boolean,
+    default: true
+  },
   // Marketplace de proveedores — activado por SuperAdmin
   isSupplier: {
     type: Boolean,

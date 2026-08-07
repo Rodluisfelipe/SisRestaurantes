@@ -53,6 +53,30 @@ router.patch('/business/:id/pos-beta', requireRole('admin'), async (req, res) =>
   }
 });
 
+/* Aparecer o no en las recomendaciones — admin+
+   Manda a la vez en la tira "Descubre más" de otros menús y en el catálogo
+   público: son la misma pregunta. Apagarlo no toca el menú propio del
+   negocio, que sigue accesible por su enlace. */
+router.patch('/business/:id/marketplace', requireRole('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { enabled } = req.body;
+    const negocio = await BusinessConfig.findByIdAndUpdate(
+      id,
+      { showInMarketplace: !!enabled },
+      { new: true }
+    );
+    if (!negocio) return res.status(404).json({ message: 'Negocio no encontrado' });
+    const io = req.app.get('io');
+    if (io) io.emit('businesses-updated');
+    logger.info('Visibilidad en recomendaciones cambiada', { businessId: id, enabled: !!enabled });
+    res.json(negocio);
+  } catch (error) {
+    logger.error('Error toggling marketplace visibility', error);
+    res.status(500).json({ message: 'Error al cambiar la visibilidad' });
+  }
+});
+
 // Toggle Menú V2 (perfil + historias) para un negocio — admin+
 router.patch('/business/:id/menu-v2', requireRole('admin'), async (req, res) => {
   try {

@@ -127,6 +127,17 @@ export const togglePosBeta = async (id, enabled) => {
   }
 };
 
+/* Aparecer en las recomendaciones: manda a la vez en la tira "Descubre más"
+   de otros menús y en el catálogo público. */
+export const toggleMarketplace = async (id, enabled) => {
+  try {
+    const response = await superadminApi.patch(`/business/${id}/marketplace`, { enabled });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Menú V2 (perfil + historias) — beta por negocio
 export const toggleMenuV2 = async (id, enabled) => {
   try {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { fetchBusinesses, activateBusiness, deleteBusiness, togglePosBeta, toggleMenuV2, toggleSupplier, getBusinessCredentials, resetBusinessCredentials } from "../../services/superadminApi";
+import { fetchBusinesses, activateBusiness, deleteBusiness, togglePosBeta, toggleMenuV2, toggleMarketplace, toggleSupplier, getBusinessCredentials, resetBusinessCredentials } from "../../services/superadminApi";
 import { socket } from "../../services/socket";
 import { motion, AnimatePresence } from "framer-motion";
 import { SAToast } from "../../Components/SuperAdmin/ui";
@@ -285,6 +285,19 @@ export default function BusinessTable({ refreshTrigger }) {
     }
   };
 
+  /* Aparecer o no en las recomendaciones. Manda a la vez en la tira
+     "Descubre mas" de otros menus y en el catalogo publico. */
+  const handleToggleMarketplace = async (b) => {
+    const current = b.showInMarketplace !== false;
+    try {
+      await toggleMarketplace(b._id, !current);
+      showMessage(`${b.businessName} ${current ? 'ya no se recomienda' : 'vuelve a recomendarse'}`);
+      loadBusinesses();
+    } catch (err) {
+      showMessage('Error al cambiar la visibilidad', 'error');
+    }
+  };
+
   const handleToggleSupplier = async (b) => {
     const current = b.isSupplier || false;
     try {
@@ -522,6 +535,21 @@ export default function BusinessTable({ refreshTrigger }) {
                       <span className={`w-1.5 h-1.5 rounded-full ${b.features?.menuV2 ? 'bg-sky-400' : 'bg-slate-300'}`} />
                       {b.features?.menuV2 ? 'V2 ✓' : 'V2'}
                     </button>
+                    {/* Recomendarlo en otros menús y en el catálogo público */}
+                    <button
+                      onClick={() => handleToggleMarketplace(b)}
+                      title={b.showInMarketplace !== false
+                        ? 'Dejar de recomendarlo en otros menús y en el catálogo'
+                        : 'Volver a recomendarlo. Su menú propio nunca se ve afectado'}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 ml-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                        b.showInMarketplace !== false
+                          ? 'bg-violet-100 text-violet-600 border border-violet-200 hover:bg-violet-200'
+                          : 'bg-slate-100 text-slate-400 border border-slate-200 hover:text-slate-900'
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${b.showInMarketplace !== false ? 'bg-violet-400' : 'bg-slate-300'}`} />
+                      {b.showInMarketplace !== false ? 'Visible ✓' : 'Oculto'}
+                    </button>
                   </td>
                   <td className="py-3.5 px-4">
                     <button
@@ -678,6 +706,23 @@ export default function BusinessTable({ refreshTrigger }) {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                   </svg>
                   V2
+                </button>
+                <button
+                  onClick={() => handleToggleMarketplace(b)}
+                  className={`flex items-center justify-center gap-1 px-2.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                    b.showInMarketplace !== false
+                      ? 'bg-violet-100 text-violet-600 border border-violet-200'
+                      : 'bg-slate-50 text-slate-400 border border-slate-200'
+                  }`}
+                  title={b.showInMarketplace !== false
+                    ? 'Dejar de recomendarlo en otros menús y en el catálogo'
+                    : 'Volver a recomendarlo. Su menú propio nunca se ve afectado'}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  {b.showInMarketplace !== false ? 'Visible' : 'Oculto'}
                 </button>
                 <button
                   onClick={() => handleToggleSupplier(b)}
