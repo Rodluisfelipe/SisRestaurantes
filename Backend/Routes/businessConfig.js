@@ -529,8 +529,17 @@ router.get("/catalog", async (req, res) => {
   }
 });
 
-// GET /api/business-config/discover — red de descubrimiento MenuBy
-// Params: lat, lng (opcional, para ordenar por cercanía), exclude (slug a omitir), limit
+/* GET /api/business-config/discover — red de descubrimiento MenuBy
+ *
+ * Params: lat, lng (opcional), exclude (slug a omitir), limit, radiusKm
+ *
+ * Con ubicación se muestran SOLO los que están dentro del radio. Antes se
+ * ordenaba por distancia pero no se filtraba, así que bajo el título "cerca de
+ * ti" aparecían negocios a 1.000 km y otros sin coordenadas: para el comensal
+ * era ruido, y para el negocio listado, tráfico que nunca iba a convertir.
+ */
+// Radio por defecto: cubre un área metropolitana sin llegar a la ciudad vecina.
+const DISCOVER_RADIUS_KM = 30;
 const haversineKm = (lat1, lng1, lat2, lng2) => {
   const R = 6371;
   const toRad = (d) => (d * Math.PI) / 180;
@@ -576,19 +585,28 @@ router.get("/discover", async (req, res) => {
         };
       });
 
-    // Orden: por cercanía si hay geo (los sin distancia al final), luego por rating
-    list.sort((a, b) => {
-      if (hasGeo) {
-        if (a.distanceKm == null && b.distanceKm == null) return (b.rating || 0) - (a.rating || 0);
-        if (a.distanceKm == null) return 1;
-        if (b.distanceKm == null) return -1;
-        return a.distanceKm - b.distanceKm;
+    /* Con ubicación se filtra por radio y se ordena por cercanía. Los que no
+       tienen coordenadas quedan fuera: no se puede afirmar que estén cerca. */
+    let cercanos = false;
+    if (hasGeo) {
+      const radio = Math.min(Math.max(parseFloat(req.query.radiusKm) || DISCOVER_RADIUS_KM, 1), 500);
+      const dentro = list.filter(b => b.distanceKm != null && b.distanceKm <= radio);
+      if (dentro.length > 0) {
+        dentro.sort((a, b) => a.distanceKm - b.distanceKm);
+        list = dentro;
+        cercanos = true;
       }
-      return (b.rating || 0) - (a.rating || 0);
-    });
+    }
+
+    /* Sin ubicación, o sin nadie dentro del radio, se muestran los mejor
+       valorados. El flag `cercanos` le dice al menú qué título poner: llamar
+       "cerca de ti" a algo que no lo está es lo que había que arreglar. */
+    if (!cercanos) {
+      list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    }
 
     res.set('Cache-Control', 'public, max-age=300');
-    res.json({ businesses: list.slice(0, limit) });
+    res.json({ businesses: list.slice(0, limit), cercanos });
   } catch (error) {
     logger.error('Error en descubrimiento MenuBy', error, req);
     res.status(500).json({ businesses: [] });

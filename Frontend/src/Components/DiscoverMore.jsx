@@ -27,6 +27,9 @@ const DiscoverMore = () => {
   const slug = businessConfig?.slug;
   const themeColor = businessConfig?.theme?.buttonColor || '#f97316';
   const [items, setItems] = useState([]);
+  // El servidor dice si lo que manda esta de verdad cerca; el titulo depende
+  // de eso, porque llamar 'cerca de ti' a un negocio de otra ciudad no sirve.
+  const [cercanos, setCercanos] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,7 +39,7 @@ const DiscoverMore = () => {
       api.get('/business-config/discover', {
         params: { exclude: slug, limit: 10, ...(coords ? { lat: coords.lat, lng: coords.lng } : {}) },
       })
-        .then(res => { if (!done) setItems(res.data.businesses || []); })
+        .then(res => { if (!done) { setItems(res.data.businesses || []); setCercanos(!!res.data.cercanos); } })
         .catch(() => {})
         .finally(() => { if (!done) setLoading(false); });
     };
@@ -60,7 +63,7 @@ const DiscoverMore = () => {
         <span className="text-lg">🍴</span>
         <div>
           <h2 className="text-[15px] sm:text-base font-bold text-slate-800 leading-tight">Descubre más en MenuBy</h2>
-          <p className="text-[11px] text-slate-400 leading-tight">Otros lugares cerca de ti</p>
+          <p className="text-[11px] text-slate-400 leading-tight">{cercanos ? 'Otros lugares cerca de ti' : 'Otros lugares en MenuBy'}</p>
         </div>
       </div>
 
@@ -91,7 +94,10 @@ const DiscoverMore = () => {
                     {open ? 'Abierto' : 'Cerrado'}
                   </span>
                 )}
-                {b.distanceKm != null && (
+                {/* La distancia solo se muestra si de verdad está cerca: en el
+                    modo de reserva serían cifras de cientos de kilómetros que
+                    no le dicen nada útil al comensal. */}
+                {cercanos && b.distanceKm != null && (
                   <span className="absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/90 text-slate-600">
                     {b.distanceKm < 1 ? `${Math.round(b.distanceKm * 1000)} m` : `${b.distanceKm} km`}
                   </span>
