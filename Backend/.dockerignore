@@ -11,7 +11,8 @@ coverage
 .nyc_output
 .vscode
 .idea
-scripts/
+# scripts/ SI entra en la imagen: ahí viven el respaldo diario y las
+# migraciones, y sin esto un cron no podría ejecutarlos dentro del contenedor.
 test-*.js
 deploy-*.sh
 *.md

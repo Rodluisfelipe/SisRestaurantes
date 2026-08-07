@@ -361,6 +361,14 @@ mongoose.connect(MONGO_URI, {
       logger.warn('Error iniciando cron de expiración de puntos:', error.message);
     }
 
+    // Respaldo diario de la base de datos a Spaces
+    try {
+      const { startBackupCron } = require('./services/backupCron');
+      startBackupCron();
+    } catch (error) {
+      logger.warn('Error iniciando cron de respaldo:', error.message);
+    }
+
     // Sweeper de ofertas de domicilio (Fase C): expira ofertas vencidas y reofrece
     try {
       const { startOfferSweeper } = require('./services/assignmentService');

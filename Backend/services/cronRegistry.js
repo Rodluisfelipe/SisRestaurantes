@@ -13,6 +13,7 @@ const TASKS = {
   loyaltyExpiry:   { label: 'Vencimiento de puntos', schedule: 'Diario', maxAgeHours: 30 },
   bookingReminder: { label: 'Recordatorios de reservas', schedule: 'Cada hora', maxAgeHours: 3 },
   dailyDigest:     { label: 'Resumen diario por correo', schedule: 'Diario 7:00 a. m.', maxAgeHours: 30 },
+  dbBackup:        { label: 'Respaldo de la base', schedule: 'Diario 4:30 a. m.', maxAgeHours: 30 },
 };
 
 /* Ventana en la que una misma tarea no se vuelve a ejecutar. Cubre de sobra
