@@ -2031,17 +2031,53 @@ describe('BL-1 — Order status state machine is complete and correct', () => {
     expect(src).toMatch(/'cancelled':\s*\[\]/);
   });
 
-  test('completed can only transition to delivered', () => {
+  test('completed es terminal', () => {
     const fs = require('fs');
     const path = require('path');
     const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
-    // completed should only allow delivered
+    /* Antes se exigía que 'completed' pudiera pasar a 'delivered', pero
+       completar archiva el pedido a otra colección y el endpoint de cambio de
+       estado busca en la de activos: esa transición devolvía 404. Por eso
+       'delivered' se usó una sola vez en más de 5.000 pedidos.
+       Para los domicilios, 'delivered' sigue alcanzable desde los estados
+       anteriores (pending, confirmed, inProgress, preparing, ready). */
     const match = src.match(/'completed':\s*\[([^\]]*)\]/);
     expect(match).toBeTruthy();
-    expect(match[1]).toContain("'delivered'");
-    // Should not contain other statuses
-    expect(match[1]).not.toContain("'pending'");
-    expect(match[1]).not.toContain("'cancelled'");
+    expect(match[1].trim()).toBe('');
+  });
+
+  test('se puede completar desde los estados iniciales de cada canal', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+    /* El POS y el pedido rápido nacen en 'confirmed' y WhatsApp en 'pending'.
+       Si desde ahí no se puede completar, el botón de completar falla en la
+       cara del cajero — que es como estaba. */
+    for (const estado of ['pending', 'confirmed', 'payment_confirmed']) {
+      const m = src.match(new RegExp(`'${estado}':\\s*\\[([^\\]]*)\\]`));
+      expect(m).toBeTruthy();
+      expect(m[1]).toContain('...FIN');
+    }
+    // FIN debe incluir completar, entregar y cancelar
+    const fin = src.match(/const FIN = \[([^\]]*)\]/);
+    expect(fin).toBeTruthy();
+    expect(fin[1]).toContain("'completed'");
+    expect(fin[1]).toContain("'delivered'");
+    expect(fin[1]).toContain("'cancelled'");
+  });
+
+  test('no se puede completar sin haber confirmado el pago', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+    /* En estos dos estados nadie verificó que el cliente pagó: completar
+       sería dar por cobrado algo que no lo está. */
+    for (const estado of ['pending_payment', 'payment_uploaded']) {
+      const m = src.match(new RegExp(`'${estado}':\\s*\\[([^\\]]*)\\]`));
+      expect(m).toBeTruthy();
+      expect(m[1]).not.toContain('...FIN');
+      expect(m[1]).not.toContain("'completed'");
+    }
   });
 
   test('INVALID_TRANSITION error code is returned for bad transitions', () => {
