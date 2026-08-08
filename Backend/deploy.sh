@@ -106,6 +106,35 @@ if docker ps --format '{{.Names}}' | grep -qx 'backend-backend-1'; then
   HOST_PORT=$PUERTO_ACTUAL docker compose -p backend down 2>/dev/null || true
 fi
 
-docker image prune -af >/dev/null 2>&1 || true
+# Solo capas huérfanas. Antes era `prune -af`, que borra toda imagen sin un
+# contenedor asociado: ahorra unos megas y, si algo dejó al contenedor nuevo
+# fuera de juego un instante, se lleva por delante la única imagen con la que
+# se podía volver atrás. El disco está al 25%; no vale la pena.
+docker image prune -f >/dev/null 2>&1 || true
 
-log "Listo. Atendiendo en :$PUERTO_NUEVO ($COLOR_NUEVO), sin corte de servicio."
+# ── 8. Comprobar de verdad que quedó sirviendo ──────────────────────────────
+# El script llegó a decir "sin corte de servicio" mientras el sitio devolvía
+# 502: daba por bueno el chequeo hecho ANTES de apagar el viejo y de limpiar,
+# sin volver a mirar al final. Ahora se pregunta por el puerto que nginx tiene
+# configurado, que es el camino real de un comensal.
+PUERTO_FINAL=$(grep -oE '127\.0\.0\.1:[0-9]+' "$UPSTREAM" | grep -oE '[0-9]+$')
+for intento in $(seq 1 10); do
+  CODIGO=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${PUERTO_FINAL}/api/health" || echo 000)
+  [ "$CODIGO" = "200" ] && break
+  sleep 3
+done
+
+if [ "$CODIGO" != "200" ]; then
+  log "ALERTA: el despliegue terminó pero :$PUERTO_FINAL no responde (HTTP $CODIGO)."
+  log "Levantando de nuevo $COLOR_NUEVO para no dejar el sitio caído..."
+  HOST_PORT=$PUERTO_NUEVO docker compose -p "$PROY_NUEVO" up -d
+  sleep 10
+  CODIGO=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${PUERTO_FINAL}/api/health" || echo 000)
+  if [ "$CODIGO" != "200" ]; then
+    log "SIGUE CAÍDO (HTTP $CODIGO). Hay que revisar a mano: docker ps -a && docker logs"
+    exit 1
+  fi
+  log "Recuperado."
+fi
+
+log "Listo. Atendiendo en :$PUERTO_NUEVO ($COLOR_NUEVO), comprobado con HTTP $CODIGO."
