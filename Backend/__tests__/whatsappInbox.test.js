@@ -197,6 +197,63 @@ describe('modelos — lo que impide duplicados y filtraciones', () => {
   });
 });
 
+describe('interpretación del mensaje de Meta', () => {
+  /* Esto no estaba cubierto y por eso un fallo trivial —una variable local que
+     tapaba a una función homónima— solo se descubrió mandando un WhatsApp real
+     y leyendo los logs del servidor. */
+  const { interpretarMensaje } = require('../Routes/whatsappInbox');
+
+  it('saca el texto de un mensaje normal', () => {
+    const r = interpretarMensaje({
+      id: 'wamid.ABC', from: '573138178003', type: 'text',
+      text: { body: 'hola, tienen domicilio?' }, timestamp: '1786147931',
+    });
+    expect(r.wamid).toBe('wamid.ABC');
+    expect(r.contactPhone).toBe('573138178003');
+    expect(r.type).toBe('text');
+    expect(r.text).toBe('hola, tienen domicilio?');
+    expect(r.sentAt.getFullYear()).toBeGreaterThan(2020);
+  });
+
+  it('guarda la referencia del medio y el pie de una imagen', () => {
+    const r = interpretarMensaje({
+      id: 'w1', from: '573138178003', type: 'image',
+      image: { id: 'media-123', mime_type: 'image/jpeg', caption: 'el comprobante' },
+    });
+    expect(r.type).toBe('image');
+    expect(r.text).toBe('el comprobante');
+    expect(r.mediaId).toBe('media-123');
+    expect(r.mediaMimeType).toBe('image/jpeg');
+  });
+
+  it('arma una dirección legible con la ubicación', () => {
+    const r = interpretarMensaje({
+      id: 'w2', from: '573138178003', type: 'location',
+      location: { name: 'Casa', address: 'Calle 14 #3-20' },
+    });
+    expect(r.text).toBe('Casa — Calle 14 #3-20');
+  });
+
+  it('no se cae con un tipo que no conocemos', () => {
+    const r = interpretarMensaje({ id: 'w3', from: '573138178003', type: 'contacts' });
+    expect(r.type).toBe('unsupported');
+    expect(r.text).toBe('');
+  });
+
+  it('convierte a texto lo que venga, para que no entre un operador de Mongo', () => {
+    const r = interpretarMensaje({ id: { $ne: null }, from: { $gt: '' }, type: 'text' });
+    expect(typeof r.wamid).toBe('string');
+    expect(typeof r.contactPhone).toBe('string');
+  });
+
+  it('recorta un texto desmedido', () => {
+    const r = interpretarMensaje({
+      id: 'w4', from: '573138178003', type: 'text', text: { body: 'a'.repeat(9000) },
+    });
+    expect(r.text.length).toBe(8000);
+  });
+});
+
 describe('normalización de teléfonos', () => {
   const { normalizePhone } = require('../services/whatsappCloud');
 

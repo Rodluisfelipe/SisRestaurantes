@@ -96,10 +96,10 @@ router.post('/webhook', asyncHandler(async (req, res) => {
    consulta. Esta ruta se salta el saneador de Mongo (ver server.js), así que un
    objeto donde se espera una cadena podría convertirse en un operador y hacer
    que la búsqueda coincida con documentos que no son. */
-const texto = (v) => (v === null || v === undefined ? '' : String(v));
+const aTexto = (v) => (v === null || v === undefined ? '' : String(v));
 
 async function procesarCambio(value) {
-  const phoneNumberId = texto(value?.metadata?.phone_number_id);
+  const phoneNumberId = aTexto(value?.metadata?.phone_number_id);
   if (!phoneNumberId) return;
 
   // El enrutador: de un número de Meta al negocio dueño.
@@ -111,12 +111,12 @@ async function procesarCambio(value) {
 
   const nombres = {};
   for (const c of value.contacts || []) {
-    if (c?.wa_id) nombres[texto(c.wa_id)] = texto(c?.profile?.name);
+    if (c?.wa_id) nombres[aTexto(c.wa_id)] = aTexto(c?.profile?.name);
   }
 
   // ── Mensajes entrantes ──
   for (const msg of value.messages || []) {
-    await guardarEntrante(account, msg, nombres[texto(msg.from)] || '');
+    await guardarEntrante(account, msg, nombres[aTexto(msg.from)] || '');
   }
 
   // ── Acuses de entrega de lo que mandamos ──
@@ -124,7 +124,7 @@ async function procesarCambio(value) {
     const permitidos = ['sent', 'delivered', 'read', 'failed'];
     if (!permitidos.includes(st.status)) continue;
     await WhatsAppMessage.updateOne(
-      { wamid: texto(st.id) },
+      { wamid: aTexto(st.id) },
       {
         $set: {
           status: st.status,
@@ -137,39 +137,52 @@ async function procesarCambio(value) {
 
 const TIPOS_CON_MEDIO = ['image', 'audio', 'video', 'document', 'sticker'];
 
-async function guardarEntrante(account, msg, contactName) {
-  const tipo = WhatsAppMessage.schema.path('type').enumValues.includes(msg.type)
+/**
+ * Traduce un mensaje de Meta a los campos que guardamos.
+ *
+ * Va aparte para poder probarse sin base de datos: cuando estaba embebido, un
+ * error tan tonto como una variable local que tapaba a una función solo se
+ * descubrió mandando un WhatsApp de verdad.
+ */
+function interpretarMensaje(msg) {
+  const tipo = WhatsAppMessage.schema.path('type').enumValues.includes(msg?.type)
     ? msg.type
     : 'unsupported';
 
-  let texto = '';
-  if (msg.type === 'text') texto = msg.text?.body || '';
-  else if (msg.type === 'button') texto = msg.button?.text || '';
-  else if (msg.type === 'interactive') {
-    texto = msg.interactive?.button_reply?.title || msg.interactive?.list_reply?.title || '';
-  } else if (TIPOS_CON_MEDIO.includes(msg.type)) {
-    texto = msg[msg.type]?.caption || '';
-  } else if (msg.type === 'location') {
+  let cuerpo = '';
+  if (msg?.type === 'text') cuerpo = msg.text?.body || '';
+  else if (msg?.type === 'button') cuerpo = msg.button?.text || '';
+  else if (msg?.type === 'interactive') {
+    cuerpo = msg.interactive?.button_reply?.title || msg.interactive?.list_reply?.title || '';
+  } else if (TIPOS_CON_MEDIO.includes(msg?.type)) {
+    cuerpo = msg[msg.type]?.caption || '';
+  } else if (msg?.type === 'location') {
     const l = msg.location || {};
-    texto = [l.name, l.address].filter(Boolean).join(' — ');
+    cuerpo = [l.name, l.address].filter(Boolean).join(' — ');
   }
 
-  const medio = TIPOS_CON_MEDIO.includes(msg.type) ? msg[msg.type] : null;
+  const medio = TIPOS_CON_MEDIO.includes(msg?.type) ? msg[msg.type] : null;
 
+  return {
+    wamid: aTexto(msg?.id),
+    contactPhone: aTexto(msg?.from),
+    type: tipo,
+    text: aTexto(cuerpo).slice(0, 8000),
+    mediaId: medio?.id || null,
+    mediaMimeType: medio?.mime_type || '',
+    sentAt: msg?.timestamp ? new Date(Number(msg.timestamp) * 1000) : new Date()
+  };
+}
+
+async function guardarEntrante(account, msg, contactName) {
   try {
     await WhatsAppMessage.create({
       businessId: account.businessId,
       accountId: account._id,
-      wamid: texto(msg.id),
       direction: 'in',
-      contactPhone: texto(msg.from),
       contactName,
-      type: tipo,
-      text: texto.slice(0, 8000),
-      mediaId: medio?.id || null,
-      mediaMimeType: medio?.mime_type || '',
       status: 'delivered',
-      sentAt: msg.timestamp ? new Date(Number(msg.timestamp) * 1000) : new Date()
+      ...interpretarMensaje(msg)
     });
   } catch (e) {
     /* 11000 = el mismo mensaje ya estaba. Es lo esperado cuando Meta reintenta,
@@ -241,6 +254,23 @@ router.post('/account', authMiddleware, requiereComplemento, asyncHandler(async 
     return res.status(400).json({ message: `Meta rechazó las credenciales: ${e.message}` });
   }
 
+  /* Sin este paso la conexión queda a medias en silencio: la WABA tiene que
+     autorizar a nuestra app o Meta nunca manda los mensajes, por más que el
+     webhook esté verificado y `messages` suscrito. */
+  let avisoSuscripcion = '';
+  try {
+    await whatsappCloud.subscribeAppToWaba({
+      wabaId: String(wabaId || '').trim(),
+      accessToken: String(accessToken).trim()
+    });
+  } catch (e) {
+    avisoSuscripcion = 'El número quedó conectado, pero no se pudo autorizar a MenuBy '
+      + `a recibir los mensajes de esa cuenta (${e.message}). Sin eso no llegarán chats.`;
+    logger.warn('[WhatsApp] No se pudo suscribir la app a la WABA', {
+      businessId: String(req.businessId), wabaId, error: e.message
+    });
+  }
+
   const account = await WhatsAppAccount.findOne({ businessId: req.businessId })
     || new WhatsAppAccount({ businessId: req.businessId });
 
@@ -259,7 +289,7 @@ router.post('/account', authMiddleware, requiereComplemento, asyncHandler(async 
   logger.info('[WhatsApp] Número conectado', {
     businessId: String(req.businessId), phoneNumberId: account.phoneNumberId
   });
-  res.json({ account: account.toPanel() });
+  res.json({ account: account.toPanel(), warning: avisoSuscripcion || undefined });
 }));
 
 /** DELETE /api/whatsapp-inbox/account — desconecta el número. */
@@ -359,3 +389,5 @@ router.post('/chats/:phone', authMiddleware, requiereComplemento, asyncHandler(a
 }));
 
 module.exports = router;
+// Expuesto solo para poder probarlo sin base de datos.
+module.exports.interpretarMensaje = interpretarMensaje;

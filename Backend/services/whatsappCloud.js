@@ -137,6 +137,22 @@ async function verifyCredentials({ phoneNumberId, accessToken }) {
   };
 }
 
+/**
+ * Autoriza a nuestra app a recibir los eventos de esa cuenta de WhatsApp.
+ *
+ * Es el paso invisible que rompe la conexión si falta: se puede tener el webhook
+ * verificado, `messages` suscrito y el token correcto, y aun así no llegar nada,
+ * porque la WABA además tiene que autorizar a la app. En la consola de Meta no
+ * aparece en la pantalla de webhooks, así que descubrirlo a mano es cuestión de
+ * suerte. Lo hace el Embedded Signup por dentro; conectando a mano hay que
+ * pedirlo explícitamente.
+ */
+async function subscribeAppToWaba({ wabaId, accessToken }) {
+  if (!wabaId) return { skipped: true, reason: 'sin wabaId' };
+  await graph(`${wabaId}/subscribed_apps`, { token: accessToken });
+  return { subscribed: true };
+}
+
 /** Marca como leído en el celular del cliente (los dos chulos azules). */
 async function markAsRead({ account, wamid }) {
   try {
@@ -155,6 +171,7 @@ module.exports = {
   isWithinServiceWindow,
   sendText,
   verifyCredentials,
+  subscribeAppToWaba,
   markAsRead,
   SERVICE_WINDOW_MS,
   GRAPH_BASE
