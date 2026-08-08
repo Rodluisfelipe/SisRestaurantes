@@ -15,6 +15,8 @@
  */
 const logger = require('../../utils/logger');
 const Product = require('../../Models/Product');
+// Se importa aunque no se use directo: sin registrarlo, populate('category') falla.
+require('../../Models/Category');
 const WhatsAppAgentSession = require('../../Models/WhatsAppAgentSession');
 const WhatsAppMessage = require('../../Models/WhatsAppMessage');
 const acciones = require('./acciones');
@@ -35,8 +37,13 @@ const pesos = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-CO');
 /* ── Catálogo ── */
 
 async function cargarCatalogo(businessId) {
-  const productos = await Product.find({ businessId })
-    .select('name price stock trackStock description')
+  /* `active: false` es lo que el negocio apagó a propósito. Sin este filtro el
+     agente ofrecía productos retirados de la carta —incluido uno llamado
+     "Prueba"— como si estuvieran a la venta. */
+  const productos = await Product.find({ businessId, active: { $ne: false } })
+    .select('name price stock trackStock category displayOrder')
+    .populate('category', 'name')
+    .sort({ displayOrder: 1 })
     .limit(300)
     .lean();
 
@@ -44,11 +51,57 @@ async function cargarCatalogo(businessId) {
   return productos.filter((p) => !p.trackStock || (Number(p.stock) || 0) > 0);
 }
 
+/** Agrupa por categoría, respetando el orden que puso el negocio. */
+function porCategoria(catalogo) {
+  const grupos = new Map();
+  for (const p of catalogo) {
+    const nombre = p.category?.name || 'Otros';
+    if (!grupos.has(nombre)) grupos.set(nombre, []);
+    grupos.get(nombre).push(p);
+  }
+  return grupos;
+}
+
 function catalogoParaPrompt(catalogo) {
-  return catalogo
-    .slice(0, MAX_PRODUCTOS)
-    .map((p) => `- ${p.name}: ${pesos(p.price)}`)
-    .join('\n');
+  return [...porCategoria(catalogo)]
+    .map(([cat, ps]) => `${cat}: ${ps.slice(0, 20).map((p) => p.name).join(', ')}`)
+    .join('\n')
+    .slice(0, 3000);
+}
+
+/**
+ * La carta que ve el cliente, escrita por el código.
+ *
+ * El modelo la redactaba de memoria y salía un chorizo sin precios ni orden,
+ * mezclando todo en una línea. Escribirla acá permite agruparla, ponerle los
+ * precios de la base y que se vea igual siempre.
+ */
+function cartaParaCliente(catalogo, filtro) {
+  const q = acciones.llano(filtro || '');
+  const grupos = porCategoria(catalogo);
+
+  // Si preguntan por una categoría concreta, se muestra solo esa.
+  if (q) {
+    const coincide = [...grupos].filter(([cat]) => acciones.llano(cat).includes(q) || q.includes(acciones.llano(cat)));
+    if (coincide.length) {
+      return coincide
+        .map(([cat, ps]) => `*${cat}*\n${ps.map((p) => `• ${p.name} — ${pesos(p.price)}`).join('\n')}`)
+        .join('\n\n');
+    }
+  }
+
+  const partes = [];
+  for (const [cat, ps] of grupos) {
+    /* Se muestran unos pocos por categoría: una carta entera por WhatsApp no
+       se lee, y el cliente puede pedir una categoría concreta. */
+    const muestra = ps.slice(0, 6);
+    const resto = ps.length - muestra.length;
+    partes.push(
+      `*${cat}*\n${muestra.map((p) => `• ${p.name} — ${pesos(p.price)}`).join('\n')}`
+      + (resto > 0 ? `\n_y ${resto} más_` : ''),
+    );
+  }
+  return partes.join('\n\n');
 }
 
 /* ── Prompt ── */
@@ -62,7 +115,8 @@ function instrucciones({ negocio, catalogo, sesion, reglas }) {
 
   return `Atiendes el WhatsApp de "${negocio}". Eres breve, cálido y colombiano. Tuteas.
 
-CARTA (lo único que existe; si piden algo que no está acá, dilo con naturalidad):
+CARTA (lo único que existe; si piden algo que no está acá, dilo con naturalidad).
+NO la copies en tus mensajes: para mostrarla usa la acción "mostrar_carta".
 ${catalogoParaPrompt(catalogo)}
 
 PEDIDO ACTUAL: ${carrito}
@@ -73,7 +127,7 @@ FALTA POR SABER: ${falta.length ? falta.join(', ') : 'nada, ya se puede confirma
 
 ${reglas ? `INDICACIONES DEL NEGOCIO:\n${reglas}\n` : ''}
 REGLAS QUE NO PUEDES ROMPER:
-1. NUNCA escribas precios ni totales. El sistema los añade solo.
+1. NUNCA escribas precios ni totales, ni enumeres la carta. El sistema los añade solo. Si el cliente pregunta qué hay, usa "mostrar_carta" y acompáñala con una frase corta ("Mira lo que tenemos:"), sin listar tú los productos.
 2. Si mencionas un producto que el cliente quiere, USA la acción "agregar" en ESE MISMO turno. Nunca digas que agregaste algo sin ejecutar la acción: el cliente se queda creyendo que lo pediste y termina recibiendo otra cosa.
 3. Puedes hacer UNA sola acción por turno. Si el cliente dice varias cosas a la vez, agrega el producto primero y pregunta el resto después.
 4. NUNCA inventes productos, ingredientes ni tiempos de entrega.
@@ -89,6 +143,7 @@ Respondes SOLO con este JSON, sin texto alrededor:
 
 Acciones posibles:
 {"tipo":"ninguna"}                                        conversar sin cambiar el pedido
+{"tipo":"mostrar_carta","categoria":"hamburguesas"}       mostrar la carta (categoria opcional)
 {"tipo":"agregar","producto":"nombre","cantidad":2,"nota":"sin cebolla"}
 {"tipo":"quitar","producto":"nombre"}                     sacar del pedido
 {"tipo":"fijar_tipo","tipo_pedido":"domicilio|recoger|mesa"}
@@ -275,6 +330,13 @@ async function atender({ account, negocio, texto, contactPhone, reglas, crearOrd
         acciones.quitar(sesion, catalogo, { producto: accion.producto });
         break;
 
+      /* La carta la imprime el código. Antes la escribía el modelo de memoria y
+         salía una lista corrida, sin precios y con productos que ya no estaban
+         a la venta. */
+      case 'mostrar_carta':
+        respuesta = `${respuesta ? `${respuesta}\n\n` : ''}${cartaParaCliente(catalogo, accion.categoria)}`;
+        break;
+
       case 'fijar_tipo':
         acciones.fijarTipo(sesion, { tipo: accion.tipo_pedido });
         break;
@@ -341,4 +403,4 @@ async function atender({ account, negocio, texto, contactPhone, reglas, crearOrd
   return respuesta || null;
 }
 
-module.exports = { atender, cargarCatalogo, resumen, pesos };
+module.exports = { atender, cargarCatalogo, cartaParaCliente, resumen, pesos };

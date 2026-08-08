@@ -318,6 +318,52 @@ describe('la frontera entre el modelo y el código', () => {
   });
 });
 
+describe('la carta la imprime el código', () => {
+  /* El modelo la redactaba de memoria y salía un chorizo corrido, sin precios,
+     todo en una línea y mezclando categorías. */
+  const { cartaParaCliente } = require('../services/whatsappAgent');
+  const CARTA = [
+    { _id: '1', name: 'Hamburguesa', price: 30000, category: { name: 'Hamburguesas' } },
+    { _id: '2', name: 'Doble Hamburguesa con Queso', price: 26900, category: { name: 'Hamburguesas' } },
+    { _id: '3', name: 'McFlurry Oreo', price: 19500, category: { name: 'Postres' } },
+    { _id: '4', name: 'Sin categoría', price: 1000 },
+  ];
+
+  it('agrupa por categoría y pone los precios', () => {
+    const texto = cartaParaCliente(CARTA);
+    expect(texto).toContain('*Hamburguesas*');
+    expect(texto).toContain('*Postres*');
+    expect(texto).toContain('$30.000');
+    expect(texto).toContain('$19.500');
+  });
+
+  it('lo que no tiene categoría no se pierde', () => {
+    expect(cartaParaCliente(CARTA)).toContain('*Otros*');
+  });
+
+  it('puede mostrar solo una categoría', () => {
+    const soloPostres = cartaParaCliente(CARTA, 'postres');
+    expect(soloPostres).toContain('McFlurry Oreo');
+    expect(soloPostres).not.toContain('Hamburguesa');
+  });
+
+  it('al modelo se le prohíbe enumerar la carta', () => {
+    const fs2 = require('fs');
+    const path2 = require('path');
+    const src2 = fs2.readFileSync(path2.join(__dirname, '..', 'services', 'whatsappAgent', 'index.js'), 'utf8');
+    expect(src2).toMatch(/ni enumeres la carta/);
+    expect(src2).toMatch(/mostrar_carta/);
+  });
+
+  it('no se ofrecen productos que el negocio desactivó', () => {
+    // El agente llegó a ofrecer un producto llamado "Prueba" que estaba apagado.
+    const fs2 = require('fs');
+    const path2 = require('path');
+    const src2 = fs2.readFileSync(path2.join(__dirname, '..', 'services', 'whatsappAgent', 'index.js'), 'utf8');
+    expect(src2).toMatch(/active: \{ \$ne: false \}/);
+  });
+});
+
 describe('el complemento del agente', () => {
   const { getEffectiveFeatures, getPlanConfig, getAddonConfig } = require('../utils/commercialPlans');
 
