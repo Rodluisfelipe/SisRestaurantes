@@ -52,6 +52,12 @@ const whatsAppAgentSessionSchema = new mongoose.Schema({
      vistazo en qué anda cada chat sin tener que abrirlo y leerlo entero. */
   menuEnviadoAt: { type: Date, default: null },
 
+  /* Para detectar que la conversación se atascó. Si el agente contesta lo
+     mismo una y otra vez sin que nada cambie, está dando vueltas y hay que
+     pasarlo a una persona: el cliente lo nota mucho antes que nosotros. */
+  ultimaRespuesta: { type: String, default: '' },
+  turnosSinAvanzar: { type: Number, default: 0 },
+
   /* Por qué dejó de atender el agente. Sirve para saber dónde falla sin tener
      que leer conversaciones enteras. */
   motivoTraspaso: { type: String, default: '' },

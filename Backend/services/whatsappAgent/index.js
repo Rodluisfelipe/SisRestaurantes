@@ -35,6 +35,20 @@ const ESPERA_HUMANO_MS = 30 * 60 * 1000;
 
 const pesos = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-CO');
 
+/* Cómo se pide cada dato que falta. Decir "me falta un dato" sin decir cuál
+   deja al cliente preguntando "¿cuál?" y a la conversación dando vueltas. */
+const PREGUNTA_POR = {
+  productos: '¿Qué te gustaría pedir?',
+  tipo: '¿Es a domicilio, para recoger, o para comer acá?',
+  direccion: '¿A qué dirección te lo llevamos?',
+  nombre: '¿A nombre de quién lo dejo?',
+};
+
+/* Cuántos turnos seguidos puede pasar sin que la conversación avance antes de
+   pasarla a una persona. Repetirse es señal de estar atascado, y el cliente lo
+   nota mucho antes que nosotros. */
+const MAX_TURNOS_SIN_AVANZAR = 3;
+
 /* ── Catálogo ── */
 
 async function cargarCatalogo(businessId) {
@@ -151,14 +165,15 @@ si ya empezó a dictarlo, o si insiste después de mandarle el menú.
 REGLAS QUE NO PUEDES ROMPER:
 1. NUNCA escribas precios ni totales, ni enumeres la carta, ni escribas el enlace del menú. El sistema los añade solo. Si el cliente pregunta qué hay, usa "mandar_menu"; si pide ver la lista aquí mismo, "mostrar_carta".
 2. Si mencionas un producto que el cliente quiere, USA la acción "agregar" en ESE MISMO turno. Nunca digas que agregaste algo sin ejecutar la acción: el cliente se queda creyendo que lo pediste y termina recibiendo otra cosa.
-3. Puedes hacer UNA sola acción por turno. Si el cliente dice varias cosas a la vez, agrega el producto primero y pregunta el resto después.
-4. NUNCA inventes productos, ingredientes ni tiempos de entrega.
-5. Pregunta UNA cosa a la vez, solo lo que aparece en FALTA POR SABER.
-6. Si el cliente pide algo que no está en la carta, dilo y ofrece lo más parecido.
-7. Si te preguntan algo que no sabes (horarios, promociones, reclamos, un pedido anterior), usa "pasar_a_humano" y dile claramente que alguien del equipo le responde en un momento.
-8. Para domicilios NO prometas el valor del envío: el negocio lo confirma.
-9. Cuando FALTA POR SABER diga que no falta nada, NO confirmes por tu cuenta: el sistema le muestra el pedido y le pregunta. Usa "confirmar_pedido" solo cuando el cliente ya respondió que sí a ese resumen.
-10. Si el cliente da una indicación sobre un plato ("sin cebolla", "bien cocida"), pásala en "nota" al agregarlo.
+3. Si el cliente te da su nombre, su dirección o una indicación, usa "fijar_datos" en ESE turno, antes que cualquier otra cosa. Puedes mandar varios campos juntos: {"tipo":"fijar_datos","nombre":"Felipe","direccion":"Cra 6 # 3 139"}. Si no los guardas, se pierden y le vuelves a preguntar lo mismo.
+4. Puedes hacer UNA sola acción por turno. Si el cliente dice varias cosas a la vez, guarda o agrega primero y pregunta el resto después.
+5. NUNCA inventes productos, ingredientes ni tiempos de entrega.
+6. Pregunta UNA cosa a la vez, solo lo que aparece en FALTA POR SABER.
+7. Si el cliente pide algo que no está en la carta, dilo y ofrece lo más parecido.
+8. Si te preguntan algo que no sabes (horarios, promociones, reclamos, un pedido anterior), usa "pasar_a_humano" y dile claramente que alguien del equipo le responde en un momento.
+9. Para domicilios NO prometas el valor del envío: el negocio lo confirma.
+10. Cuando FALTA POR SABER diga que no falta nada, NO confirmes por tu cuenta: el sistema le muestra el pedido y le pregunta. Usa "confirmar_pedido" solo cuando el cliente ya respondió que sí a ese resumen.
+11. Si el cliente da una indicación sobre un plato ("sin cebolla", "bien cocida"), pásala en "nota" al agregarlo.
 
 Respondes SOLO con este JSON, sin texto alrededor:
 {"mensaje":"lo que le dices al cliente","accion":{"tipo":"...","...":"..."}}
@@ -415,7 +430,11 @@ async function atender({ account, negocio, slug, texto, contactPhone, reglas, cr
               ? ' Ya te confirmamos el valor del domicilio y el tiempo.'
               : ' Te avisamos apenas esté listo.');
         } else if (r.motivo === 'incompleto') {
-          respuesta = 'Antes de confirmar me falta un dato.';
+          /* Se pregunta por lo que falta, con nombre y apellido. Antes decía
+             "me falta un dato" sin decir cuál: el cliente contestaba "¿cuál?",
+             el modelo volvía a confirmar, y la conversación se quedaba dando
+             vueltas sobre el mismo mensaje. */
+          respuesta = PREGUNTA_POR[r.falta[0]] || 'Me falta un dato para poder cerrarlo.';
         } else if (r.motivo === 'sin_stock') {
           respuesta = `Se nos acabó ${r.producto} mientras hablábamos. ¿Lo quito del pedido?`;
         } else {
@@ -455,6 +474,24 @@ async function atender({ account, negocio, slug, texto, contactPhone, reglas, cr
   const yaSeCerro = accion.tipo === 'confirmar_pedido' && sesion.estado === 'cerrada';
   if (sesion.items?.length && !yaSeCerro && sesion.estado !== 'con_humano') {
     respuesta += resumen(sesion);
+  }
+
+  /* ¿La conversación avanzó? Si el agente vuelve a decir exactamente lo mismo,
+     está atascado. Pasó de verdad: al dar nombre y dirección juntos, el modelo
+     intentó confirmar en vez de guardarlos, y repitió el mismo mensaje cuatro
+     veces seguidas mientras el cliente preguntaba "¿cuál?". */
+  const repetida = respuesta && respuesta === sesion.ultimaRespuesta;
+  sesion.turnosSinAvanzar = repetida ? (sesion.turnosSinAvanzar || 0) + 1 : 0;
+  sesion.ultimaRespuesta = respuesta || '';
+
+  if (sesion.turnosSinAvanzar >= MAX_TURNOS_SIN_AVANZAR && sesion.estado === 'activa') {
+    logger.warn('[Agente] Conversación atascada, la toma una persona', {
+      businessId: String(businessId), contactPhone, turnos: sesion.turnosSinAvanzar,
+    });
+    sesion.estado = 'con_humano';
+    sesion.traspasadoEn = new Date();
+    sesion.motivoTraspaso = 'el agente se quedó repitiendo la misma respuesta';
+    respuesta = 'Perdona, me estoy enredando. Ya te ayuda alguien del equipo. 👤';
   }
 
   sesion.ultimaActividad = new Date();

@@ -364,6 +364,51 @@ describe('la carta la imprime el código', () => {
   });
 });
 
+describe('no quedarse dando vueltas', () => {
+  /* Un cliente dio nombre y dirección juntos, el modelo intentó confirmar en
+     vez de guardarlos, y el agente repitió "Antes de confirmar me falta un
+     dato" cuatro veces mientras el cliente preguntaba "¿cuál?". */
+  const src = fs.readFileSync(path.join(__dirname, '..', 'services', 'whatsappAgent', 'index.js'), 'utf8');
+
+  it('cuando falta un dato, se dice cuál', () => {
+    expect(src).toMatch(/const PREGUNTA_POR = \{/);
+    expect(src).toMatch(/respuesta = PREGUNTA_POR\[r\.falta\[0\]\]/);
+    // Y ya no se manda el mensaje que no decía nada.
+    expect(src).not.toContain("'Antes de confirmar me falta un dato.'");
+  });
+
+  it('hay una pregunta concreta para cada dato que puede faltar', () => {
+    const claves = [...src.matchAll(/^\s{2}(\w+): '¿/gm)].map((m) => m[1]);
+    // Los mismos que devuelve queFalta().
+    for (const dato of ['productos', 'tipo', 'direccion', 'nombre']) {
+      expect(claves).toContain(dato);
+    }
+  });
+
+  it('repetir la misma respuesta cuenta como no avanzar', () => {
+    expect(src).toMatch(/const repetida = respuesta && respuesta === sesion\.ultimaRespuesta/);
+    expect(src).toMatch(/sesion\.turnosSinAvanzar = repetida \?/);
+  });
+
+  it('tras varios turnos atascado lo toma una persona', () => {
+    expect(src).toMatch(/turnosSinAvanzar >= MAX_TURNOS_SIN_AVANZAR/);
+    expect(src).toMatch(/me estoy enredando/);
+  });
+
+  it('al modelo se le exige guardar los datos antes de confirmar', () => {
+    expect(src).toMatch(/usa "fijar_datos" en ESE turno/);
+    // Y se le muestra que puede mandar varios campos de una vez.
+    expect(src).toMatch(/"nombre":"Felipe","direccion"/);
+  });
+
+  it('las reglas del prompt no se repiten en numeración', () => {
+    const bloque = src.slice(src.indexOf('REGLAS QUE NO PUEDES ROMPER'), src.indexOf('Respondes SOLO'));
+    const numeros = [...bloque.matchAll(/^(\d+)\./gm)].map((m) => Number(m[1]));
+    expect(numeros).toEqual([...new Set(numeros)]);
+    expect(numeros).toEqual([...numeros].sort((a, b) => a - b));
+  });
+});
+
 describe('llevar al cliente al menú', () => {
   /* Armar el pedido conversando cuesta diez o quince mensajes; mandar el enlace
      cuesta uno. Con el mismo cupo, llevar al menú rinde diez veces más, y el
