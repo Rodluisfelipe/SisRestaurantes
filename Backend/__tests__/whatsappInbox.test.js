@@ -233,6 +233,37 @@ describe('la sección del panel está cableada', () => {
     expect(src).toContain('puedeResponder');
     expect(src).toContain('OUTSIDE_WINDOW');
   });
+
+  /* El backend resuelve el negocio de `req.user.businessId` y, si no viene,
+     responde error. La pantalla se lo tragaba y mostraba el formulario de
+     conectar: al negocio que ya tenía su número puesto le parecía que se había
+     perdido la configuración. */
+  it('toda petición manda el negocio, como el resto del panel', () => {
+    const src = front('Components', 'Admin', 'WhatsAppInbox.jsx');
+    expect(src).toContain('useBusinessConfig');
+
+    const llamadas = src.match(/api\.(get|post)\(`?\/whatsapp-inbox[^)]*\)/g) || [];
+    expect(llamadas.length).toBeGreaterThan(0);
+    const sinNegocio = llamadas.filter((l) => !l.includes('businessId'));
+    expect(sinNegocio).toEqual([]);
+  });
+
+  it('un fallo de carga se muestra en vez de pedir conectar de nuevo', () => {
+    const src = front('Components', 'Admin', 'WhatsAppInbox.jsx');
+    expect(src).toContain('falloCarga');
+    // El corte tiene que ir ANTES de caer en el formulario de conexión.
+    expect(src.indexOf('if (falloCarga)')).toBeLessThan(src.indexOf('<ConectarNumero'));
+  });
+
+  /* Chrome rellenaba el correo del usuario y una contraseña guardada en estos
+     campos porque veía un formulario con un input de tipo password. */
+  it('el navegador no autocompleta credenciales en el formulario', () => {
+    const src = front('Components', 'Admin', 'WhatsAppInbox.jsx');
+    expect(src).toMatch(/<form[^>]*autoComplete="off"/);
+    expect(src).toContain('autoComplete="new-password"');
+    // Nombres que no suenan a credenciales, para no darle pistas al gestor.
+    expect(src).toContain('name="wa-access-token"');
+  });
 });
 
 describe('interpretación del mensaje de Meta', () => {

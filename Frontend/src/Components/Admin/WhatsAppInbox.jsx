@@ -16,6 +16,7 @@ import {
   FaFileAlt, FaMicrophone, FaVideo, FaArrowLeft, FaSyncAlt
 } from 'react-icons/fa';
 import api from '../../services/api';
+import { useBusinessConfig } from '../../Context/BusinessContext';
 
 const ICONO_TIPO = {
   image: FaImage, video: FaVideo, audio: FaMicrophone,
@@ -51,6 +52,13 @@ function EstadoMensaje({ estado }) {
 }
 
 export default function WhatsAppInbox() {
+  /* El negocio se manda explícito, como hace el resto del panel. Confiar solo
+     en `req.user.businessId` dejaba la petición sin negocio, el backend
+     respondía error, y la pantalla caía en el formulario de conectar como si
+     el número no existiera. */
+  const { businessConfig } = useBusinessConfig();
+  const businessId = businessConfig?._id;
+
   const [cargando, setCargando] = useState(true);
   const [sinComplemento, setSinComplemento] = useState(false);
   const [cuenta, setCuenta] = useState(null);
@@ -62,40 +70,48 @@ export default function WhatsAppInbox() {
   const [borrador, setBorrador] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState('');
+  const [falloCarga, setFalloCarga] = useState(false);
   const finRef = useRef(null);
 
   // ── Carga inicial ──
   const cargarCuenta = useCallback(async () => {
     try {
-      const { data } = await api.get('/whatsapp-inbox/account');
+      const { data } = await api.get(`/whatsapp-inbox/account?businessId=${businessId}`);
       setCuenta(data.account);
       setSinComplemento(false);
+      setFalloCarga(false);
       return true;
     } catch (e) {
       if (e?.response?.status === 402) { setSinComplemento(true); return false; }
+      /* Se marca el fallo para NO mostrar el formulario de conectar: pedirle
+         los datos otra vez a alguien que ya conectó su número, solo porque una
+         petición falló, hace pensar que se perdió la configuración. */
+      setFalloCarga(true);
       setError(e?.response?.data?.message || 'No se pudo cargar la configuración');
       return false;
     }
-  }, []);
+  }, [businessId]);
 
   const cargarChats = useCallback(async () => {
     try {
-      const { data } = await api.get('/whatsapp-inbox/chats');
+      const { data } = await api.get(`/whatsapp-inbox/chats?businessId=${businessId}`);
       setChats(data.chats || []);
     } catch (e) {
       if (e?.response?.status !== 402) {
         setError(e?.response?.data?.message || 'No se pudieron cargar los chats');
       }
     }
-  }, []);
+  }, [businessId]);
 
   useEffect(() => {
+    if (!businessId) return;
     (async () => {
+      setCargando(true);
       const ok = await cargarCuenta();
       if (ok) await cargarChats();
       setCargando(false);
     })();
-  }, [cargarCuenta, cargarChats]);
+  }, [businessId, cargarCuenta, cargarChats]);
 
   /* Se refresca solo cada 15 segundos. No es tiempo real por websocket a
      propósito: un chat que llega con 15 segundos de retraso no rompe nada y
@@ -116,7 +132,7 @@ export default function WhatsAppInbox() {
   async function abrirChat(telefono, { silencioso = false } = {}) {
     if (!silencioso) { setCargandoChat(true); setChatActivo(telefono); }
     try {
-      const { data } = await api.get(`/whatsapp-inbox/chats/${telefono}`);
+      const { data } = await api.get(`/whatsapp-inbox/chats/${telefono}?businessId=${businessId}`);
       setMensajes(data.messages || []);
       setPuedeResponder(!!data.canReply);
       if (!silencioso) {
@@ -138,7 +154,7 @@ export default function WhatsAppInbox() {
     setEnviando(true);
     setError('');
     try {
-      const { data } = await api.post(`/whatsapp-inbox/chats/${chatActivo}`, { text: texto });
+      const { data } = await api.post(`/whatsapp-inbox/chats/${chatActivo}`, { text: texto, businessId });
       setMensajes((prev) => [...prev, data.message]);
       setBorrador('');
       cargarChats();
@@ -155,7 +171,7 @@ export default function WhatsAppInbox() {
   // ── Complemento no contratado ──
   if (sinComplemento) return <OfertaComplemento />;
 
-  if (cargando) {
+  if (cargando || !businessId) {
     return (
       <div className="flex items-center justify-center py-24 text-slate-400">
         <FaSpinner className="animate-spin mr-2" /> Cargando…
@@ -163,9 +179,26 @@ export default function WhatsAppInbox() {
     );
   }
 
+  // ── No se pudo consultar: se dice, en vez de fingir que no hay número ──
+  if (falloCarga) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200/70 p-8 max-w-md mx-auto text-center">
+        <FaExclamationTriangle className="mx-auto text-2xl text-amber-500 mb-3" />
+        <p className="text-sm font-semibold text-slate-700">No pudimos consultar tu WhatsApp</p>
+        <p className="text-xs text-slate-500 mt-1">{error}</p>
+        <button
+          onClick={async () => { setCargando(true); const ok = await cargarCuenta(); if (ok) await cargarChats(); setCargando(false); }}
+          className="mt-5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition-colors"
+        >
+          Reintentar
+        </button>
+      </div>
+    );
+  }
+
   // ── Número aún sin conectar ──
   if (!cuenta || cuenta.status !== 'active') {
-    return <ConectarNumero cuenta={cuenta} onConectado={async () => {
+    return <ConectarNumero businessId={businessId} cuenta={cuenta} onConectado={async () => {
       await cargarCuenta(); await cargarChats();
     }} />;
   }
@@ -375,7 +408,7 @@ function OfertaComplemento() {
 }
 
 /* ── Conectar el número ── */
-function ConectarNumero({ cuenta, onConectado }) {
+function ConectarNumero({ businessId, cuenta, onConectado }) {
   const [phoneNumberId, setPhoneNumberId] = useState(cuenta?.phoneNumberId || '');
   const [wabaId, setWabaId] = useState(cuenta?.wabaId || '');
   const [token, setToken] = useState('');
@@ -389,6 +422,7 @@ function ConectarNumero({ cuenta, onConectado }) {
     setGuardando(true); setError(''); setAviso('');
     try {
       const { data } = await api.post('/whatsapp-inbox/account', {
+        businessId,
         phoneNumberId: phoneNumberId.trim(),
         wabaId: wabaId.trim(),
         accessToken: token.trim(),
@@ -417,10 +451,16 @@ function ConectarNumero({ cuenta, onConectado }) {
       {error && <p className="mb-4 text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
       {aviso && <p className="mb-4 text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">{aviso}</p>}
 
-      <form onSubmit={guardar} className="space-y-4">
+      {/* `autoComplete="off"` en el formulario y nombres que no suenan a
+          credenciales: Chrome estaba rellenando el correo del usuario y una
+          contraseña guardada en estos campos, porque veía un formulario con un
+          input de tipo password. */}
+      <form onSubmit={guardar} className="space-y-4" autoComplete="off">
         <Campo
           label="Identificador del número"
           hint="Meta lo llama Phone number ID"
+          name="wa-phone-number-id"
+          inputMode="numeric"
           value={phoneNumberId}
           onChange={setPhoneNumberId}
           required
@@ -428,6 +468,8 @@ function ConectarNumero({ cuenta, onConectado }) {
         <Campo
           label="Identificador de la cuenta"
           hint="WhatsApp Business Account ID — hace falta para autorizarnos a recibir tus mensajes"
+          name="wa-account-id"
+          inputMode="numeric"
           value={wabaId}
           onChange={setWabaId}
         />
@@ -435,7 +477,14 @@ function ConectarNumero({ cuenta, onConectado }) {
           <label className="block text-xs font-semibold text-slate-600 mb-1">Token de acceso</label>
           <div className="relative">
             <input
+              /* `new-password` es lo único que Chrome respeta de verdad para no
+                 ofrecer contraseñas guardadas en un campo enmascarado. */
               type={verToken ? 'text' : 'password'}
+              name="wa-access-token"
+              autoComplete="new-password"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               value={token}
               onChange={(e) => setToken(e.target.value)}
               required
@@ -467,11 +516,17 @@ function ConectarNumero({ cuenta, onConectado }) {
   );
 }
 
-function Campo({ label, hint, value, onChange, required }) {
+function Campo({ label, hint, name, inputMode, value, onChange, required }) {
   return (
     <div>
       <label className="block text-xs font-semibold text-slate-600 mb-1">{label}</label>
       <input
+        name={name}
+        inputMode={inputMode}
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
