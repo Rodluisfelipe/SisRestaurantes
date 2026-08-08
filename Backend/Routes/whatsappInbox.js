@@ -116,7 +116,10 @@ async function procesarCambio(value) {
 
   // ── Mensajes entrantes ──
   for (const msg of value.messages || []) {
-    await guardarEntrante(account, msg, nombres[aTexto(msg.from)] || '');
+    const guardado = await guardarEntrante(account, msg, nombres[aTexto(msg.from)] || '');
+    // Solo se contesta lo que se acaba de guardar: si era un reintento de Meta,
+    // guardarEntrante devuelve null y el agente no responde dos veces.
+    if (guardado) await quizaContesteElAgente(account, guardado);
   }
 
   // ── Acuses de entrega de lo que mandamos ──
@@ -175,8 +178,9 @@ function interpretarMensaje(msg) {
 }
 
 async function guardarEntrante(account, msg, contactName) {
+  let guardado;
   try {
-    await WhatsAppMessage.create({
+    guardado = await WhatsAppMessage.create({
       businessId: account.businessId,
       accountId: account._id,
       direction: 'in',
@@ -186,12 +190,76 @@ async function guardarEntrante(account, msg, contactName) {
     });
   } catch (e) {
     /* 11000 = el mismo mensaje ya estaba. Es lo esperado cuando Meta reintenta,
-       no un error: se ignora en silencio. */
+       no un error: se ignora en silencio. Se devuelve null para que el agente
+       no vuelva a contestar el mismo mensaje. */
     if (e.code !== 11000) throw e;
-    return;
+    return null;
   }
 
   await WhatsAppAccount.updateOne({ _id: account._id }, { $set: { lastInboundAt: new Date() } });
+  return guardado;
+}
+
+/**
+ * Deja que el agente conteste, si el negocio lo tiene contratado y encendido.
+ *
+ * El pedido se crea llamando a nuestra propia API en vez de escribir en la
+ * colección: ahí viven la numeración, el descuento de stock, el alta del
+ * cliente y los avisos por socket. Duplicar todo eso es como aparecen las
+ * diferencias entre canales que ya arreglamos.
+ */
+async function quizaContesteElAgente(account, mensaje) {
+  try {
+    if (!account.agente?.activo) return;
+    if (!(await businessHasFeature(account.businessId, 'whatsappAgent'))) return;
+    if (!mensaje.text) return;   // por ahora no interpreta audios ni fotos
+
+    const BusinessConfig = require('../Models/BusinessConfig');
+    const negocio = await BusinessConfig.findById(account.businessId).select('name businessName').lean();
+
+    const agente = require('../services/whatsappAgent');
+    const respuesta = await agente.atender({
+      account,
+      negocio: negocio?.name || negocio?.businessName || 'nuestro restaurante',
+      texto: mensaje.text,
+      contactPhone: mensaje.contactPhone,
+      reglas: account.agente?.reglas || '',
+      crearOrden: (datos) => crearPedidoPorLaApi(account.businessId, datos),
+    });
+
+    if (respuesta) {
+      await whatsappCloud.sendText({ account, to: mensaje.contactPhone, text: respuesta });
+    }
+  } catch (e) {
+    /* Que el agente falle no puede tumbar la recepción del mensaje: ya quedó
+       guardado y visible en la bandeja para que lo atienda una persona. */
+    logger.error('[Agente] No se pudo atender el mensaje', {
+      businessId: String(account.businessId), error: e.message,
+    });
+  }
+}
+
+async function crearPedidoPorLaApi(businessId, datos) {
+  const jwtLib = require('jsonwebtoken');
+  /* Token propio y de un minuto: es nuestro servidor llamándose a sí mismo,
+     firmado con nuestro secreto. Sirve para no caer en los límites pensados
+     para comensales sin abrir ninguna puerta trasera. */
+  const token = jwtLib.sign(
+    { id: String(businessId), role: 'system', businessId: String(businessId) },
+    process.env.JWT_SECRET,
+    { expiresIn: '1m' },
+  );
+
+  const puerto = process.env.PORT || 5000;
+  const res = await fetch(`http://127.0.0.1:${puerto}/api/orders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(datos),
+  });
+
+  const cuerpo = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(cuerpo?.message || `La API rechazó el pedido (${res.status})`);
+  return cuerpo;
 }
 
 /* ─────────────────────────────────────────────
@@ -290,6 +358,60 @@ router.post('/account', authMiddleware, requiereComplemento, asyncHandler(async 
     businessId: String(req.businessId), phoneNumberId: account.phoneNumberId
   });
   res.json({ account: account.toPanel(), warning: avisoSuscripcion || undefined });
+}));
+
+/** PATCH /api/whatsapp-inbox/agente — enciende el agente y fija sus reglas. */
+router.patch('/agente', authMiddleware, requiereComplemento, asyncHandler(async (req, res) => {
+  const account = await WhatsAppAccount.findOne({ businessId: req.businessId });
+  if (!account) return res.status(400).json({ message: 'Primero conecta tu número de WhatsApp.' });
+
+  const { activo, reglas, soloEnHorario } = req.body || {};
+
+  /* Encenderlo exige tenerlo contratado; apagarlo siempre se puede, para que
+     nadie quede atrapado con un agente contestando que no puede detener. */
+  if (activo && !(await businessHasFeature(req.businessId, 'whatsappAgent'))) {
+    return res.status(402).json({
+      message: 'El agente de IA es un complemento aparte que tu negocio aún no tiene activo.',
+      code: 'ADDON_REQUIRED',
+      addon: 'whatsapp_agent'
+    });
+  }
+
+  account.agente = account.agente || {};
+  if (activo !== undefined) account.agente.activo = !!activo;
+  if (reglas !== undefined) account.agente.reglas = String(reglas).slice(0, 2000);
+  if (soloEnHorario !== undefined) account.agente.soloEnHorario = !!soloEnHorario;
+  await account.save();
+
+  logger.info('[WhatsApp] Agente configurado', {
+    businessId: String(req.businessId), activo: account.agente.activo,
+  });
+  res.json({ account: account.toPanel() });
+}));
+
+/**
+ * POST /api/whatsapp-inbox/chats/:phone/retomar — que vuelva a atender una persona.
+ *
+ * Cuando alguien del negocio contesta a mano, el agente debe callarse: dos
+ * voces respondiendo la misma conversación confunden al cliente.
+ */
+router.post('/chats/:phone/retomar', authMiddleware, requiereComplemento, asyncHandler(async (req, res) => {
+  const telefono = whatsappCloud.normalizePhone(req.params.phone);
+  if (!telefono) return res.status(400).json({ message: 'Número inválido' });
+
+  const WhatsAppAgentSession = require('../Models/WhatsAppAgentSession');
+  await WhatsAppAgentSession.updateOne(
+    { businessId: req.businessId, contactPhone: telefono },
+    {
+      $set: {
+        estado: req.body?.devolverAlAgente ? 'activa' : 'con_humano',
+        motivoTraspaso: req.body?.devolverAlAgente ? '' : 'lo tomó una persona del negocio',
+        ultimaActividad: new Date(),
+      },
+    },
+    { upsert: true },
+  );
+  res.json({ success: true });
 }));
 
 /** DELETE /api/whatsapp-inbox/account — desconecta el número. */
@@ -436,6 +558,23 @@ router.post('/chats/:phone', authMiddleware, requiereComplemento, asyncHandler(a
       sentBy: req.user?.id
     });
     await WhatsAppAccount.updateOne({ _id: account._id }, { $set: { lastOutboundAt: new Date() } });
+
+    /* Si una persona contesta, el agente se calla. Dos voces respondiendo la
+       misma conversación confunden al cliente, y el negocio no tendría cómo
+       saber cuál de las dos prometió qué. */
+    const WhatsAppAgentSession = require('../Models/WhatsAppAgentSession');
+    await WhatsAppAgentSession.updateOne(
+      { businessId: req.businessId, contactPhone: mensaje.contactPhone },
+      {
+        $set: {
+          estado: 'con_humano',
+          motivoTraspaso: 'contestó una persona del negocio',
+          ultimaActividad: new Date(),
+        },
+      },
+      { upsert: true },
+    ).catch(() => {});
+
     res.status(201).json({ message: mensaje });
   } catch (e) {
     if (e.code === 'OUTSIDE_WINDOW') {

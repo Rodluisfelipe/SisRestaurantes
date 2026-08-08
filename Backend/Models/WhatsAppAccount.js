@@ -53,7 +53,18 @@ const whatsAppAccountSchema = new mongoose.Schema({
     default: 'manual'
   },
   connectedBy: { type: mongoose.Schema.Types.ObjectId, default: null },
-  connectedAt: { type: Date, default: null }
+  connectedAt: { type: Date, default: null },
+
+  /* Agente de IA. Apagado por defecto a propósito: que un modelo conteste en
+     nombre del negocio es una decisión del negocio, no algo que se active solo
+     al conectar el número. */
+  agente: {
+    activo: { type: Boolean, default: false },
+    // Indicaciones propias del negocio: tono, qué no ofrecer, cuándo escalar.
+    reglas: { type: String, default: '', maxlength: 2000 },
+    // Horario en que puede contestar; vacío = siempre.
+    soloEnHorario: { type: Boolean, default: false }
+  }
 }, { timestamps: true });
 
 /* Un phone_number_id pertenece a un solo negocio. Sin esta restricción, dos
@@ -88,7 +99,12 @@ whatsAppAccountSchema.methods.toPanel = function () {
     lastOutboundAt: this.lastOutboundAt,
     connectedVia: this.connectedVia,
     connectedAt: this.connectedAt,
-    tokenHint: this.tokenHint
+    tokenHint: this.tokenHint,
+    agente: {
+      activo: !!this.agente?.activo,
+      reglas: this.agente?.reglas || '',
+      soloEnHorario: !!this.agente?.soloEnHorario
+    }
   };
 };
 

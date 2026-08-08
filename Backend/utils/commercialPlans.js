@@ -183,6 +183,18 @@ const ADDONS = {
       monthly: 29900,
       annualMonthly: 24900
     }
+  },
+  whatsapp_agent: {
+    key: 'whatsapp_agent',
+    feature: 'whatsappAgent',
+    name: 'Agente de IA en WhatsApp',
+    description: 'Atiende los chats y arma el pedido solo; pasa a una persona cuando no sabe.',
+    // Requiere la bandeja: sin número conectado no hay a quién atender.
+    requiere: 'whatsapp_inbox',
+    pricing: {
+      monthly: 49900,
+      annualMonthly: 41900
+    }
   }
 };
 
@@ -209,8 +221,15 @@ function getActiveAddonKeys(subscription, now = new Date()) {
  */
 function getEffectiveFeatures(planConfig, subscription, now = new Date()) {
   const features = { ...(planConfig?.features || {}) };
-  for (const key of getActiveAddonKeys(subscription, now)) {
-    features[getAddonConfig(key).feature] = true;
+  const activos = getActiveAddonKeys(subscription, now);
+
+  for (const key of activos) {
+    const addon = getAddonConfig(key);
+    /* Un complemento que depende de otro no sirve suelto: el agente de IA sin
+       la bandeja no tiene número al que contestar, y darlo por activo haría
+       que la pantalla ofrezca algo que no puede funcionar. */
+    if (addon.requiere && !activos.includes(addon.requiere)) continue;
+    features[addon.feature] = true;
   }
   return features;
 }
