@@ -977,12 +977,31 @@ describe('A2 — Phone+businessId rate limiter', () => {
     expect(routeChain).toContain('orderPhoneLimiter');
   });
 
-  test('POS orders skip phone rate limiter', () => {
-    // Both rate limiter middlewares check for POS channel
+  /* Antes esta prueba exigía que los límites se saltaran mirando
+     `orderChannel === 'pos'`. Eso es un dato que escribe quien llama, y este
+     endpoint es público: bastaba mandar `orderChannel: 'admin'` para crear
+     pedidos sin ningún tope. Ahora el salto depende de la firma del token, que
+     no se puede inventar, y la garantía que se comprueba es más fuerte: el
+     personal sigue sin límites y nadie más puede reclamarlo. */
+  test('el salto de los límites depende del token, no del cuerpo de la petición', () => {
     const postRoute = ordersSource.indexOf('router.post("/",');
     const routeChain = ordersSource.substring(postRoute, postRoute + 400);
-    const posSkips = (routeChain.match(/orderChannel.*===.*'pos'/g) || []).length;
-    expect(posSkips).toBeGreaterThanOrEqual(2); // Both limiters skip POS
+
+    const saltosPorToken = (routeChain.match(/esPersonalDelNegocio\(req\)/g) || []).length;
+    expect(saltosPorToken).toBeGreaterThanOrEqual(2); // uno por cada limitador
+
+    // Ningún limitador puede volver a confiar en un campo del cuerpo.
+    expect(routeChain).not.toMatch(/orderChannel.*===.*'pos'/);
+    expect(routeChain).not.toMatch(/orderChannel.*===.*'admin'/);
+  });
+
+  test('el reconocimiento del personal verifica la firma del token', () => {
+    const fn = ordersSource.slice(ordersSource.indexOf('function esPersonalDelNegocio'));
+    const cuerpo = fn.slice(0, fn.indexOf('\n}\n'));
+    expect(cuerpo).toContain('jwt.verify');
+    expect(cuerpo).toContain('JWT_SECRET');
+    // Un token inválido no puede colarse: el catch devuelve false.
+    expect(cuerpo).toMatch(/catch[\s\S]*return false/);
   });
 });
 

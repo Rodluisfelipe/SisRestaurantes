@@ -323,6 +323,102 @@ describe('interpretación del mensaje de Meta', () => {
   });
 });
 
+describe('tomar el pedido desde el chat', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const front = (...p) => fs.readFileSync(path.join(__dirname, '..', '..', 'Frontend', 'src', ...p), 'utf8');
+  const srcOrders = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+
+  /* El salto de los límites dependía de `orderChannel` del cuerpo, un dato que
+     escribe quien llama, y POST /orders es público: bastaba mandar
+     `orderChannel: 'admin'` para crear pedidos sin tope. */
+  it('el salto de límites depende del token, no de un campo del cuerpo', () => {
+    expect(srcOrders).toContain('function esPersonalDelNegocio');
+    expect(srcOrders).toMatch(/if \(esPersonalDelNegocio\(req\)\) return next\(\);[\s\S]{0,80}createOrderLimiter/);
+    expect(srcOrders).toMatch(/if \(esPersonalDelNegocio\(req\)\) return next\(\);[\s\S]{0,80}orderPhoneLimiter/);
+  });
+
+  it('ya no se puede saltar el límite diciendo que eres el panel', () => {
+    const bloque = srcOrders.slice(
+      srcOrders.indexOf('router.post("/"'),
+      srcOrders.indexOf('validateCreateOrder, async'),
+    );
+    expect(bloque).not.toContain("orderChannel === 'admin'");
+    expect(bloque).not.toContain("orderChannel === 'pos'");
+  });
+
+  it('el pedido rápido acepta datos prellenados y canal', () => {
+    const src = front('Components', 'QuickOrderModal.jsx');
+    expect(src).toMatch(/function QuickOrderModal\(\{[^}]*prefill/);
+    expect(src).toMatch(/channel = 'admin'/);
+    expect(src).toContain('orderChannel: channel');
+  });
+
+  it('la bandeja abre el pedido rápido con el cliente del chat', () => {
+    const src = front('Components', 'Admin', 'WhatsAppInbox.jsx');
+    expect(src).toContain('QuickOrderModal');
+    expect(src).toContain('channel="whatsapp"');
+    expect(src).toMatch(/prefill=\{\{[\s\S]{0,300}phone: chatActivo/);
+  });
+
+  it('reutiliza el pedido rápido en vez de recalcular precios aparte', () => {
+    // Duplicar el calculo de totales es como aparecieron las diferencias de precio.
+    const src = front('Components', 'Admin', 'WhatsAppInbox.jsx');
+    expect(src).toMatch(/import QuickOrderModal from/);
+    expect(src).not.toMatch(/deliveryFee\s*=\s*calcul/i);
+  });
+});
+
+describe('un mismo teléfono escrito de varias formas', () => {
+  /* En producción conviven tres formatos: customers guarda "(310) 645-3205" y
+     también "3105657653", los pedidos guardan 10 dígitos planos, y WhatsApp
+     manda "573138178003". Si no se reconocen todos, la ficha del cliente dice
+     "nuevo" para alguien con treinta pedidos, y el fallo es mudo. */
+  const { variantesDeTelefono, nacional, telefonoLegible, mismoTelefono } = require('../utils/phoneVariants');
+
+  it('reduce cualquier formato al número nacional', () => {
+    for (const entrada of ['573138178003', '+57 313 817 8003', '(313) 817-8003', '3138178003', '03138178003']) {
+      expect(nacional(entrada)).toBe('3138178003');
+    }
+  });
+
+  it('genera las formas que existen hoy en la base', () => {
+    const v = variantesDeTelefono('573138178003');
+    expect(v).toContain('3138178003');        // orders y completedorders
+    expect(v).toContain('(313) 817-8003');    // customers con formato
+    expect(v).toContain('573138178003');      // como llega de WhatsApp
+    expect(v).toContain('+573138178003');
+  });
+
+  it('el número de WhatsApp encuentra al cliente guardado con paréntesis', () => {
+    // El caso exacto que rompía el enlace entre chat y pedidos.
+    expect(variantesDeTelefono('573106453205')).toContain('(310) 645-3205');
+  });
+
+  it('no devuelve repetidos', () => {
+    const v = variantesDeTelefono('3138178003');
+    expect(v.length).toBe(new Set(v).size);
+  });
+
+  it('con un valor irreconocible busca al menos lo que llegó', () => {
+    expect(variantesDeTelefono('00000000')).toEqual(['00000000']);
+    expect(variantesDeTelefono('')).toEqual([]);
+    expect(variantesDeTelefono(null)).toEqual([]);
+  });
+
+  it('compara dos números sin importar cómo estén escritos', () => {
+    expect(mismoTelefono('573138178003', '(313) 817-8003')).toBe(true);
+    expect(mismoTelefono('3138178003', '+57 313 817 8003')).toBe(true);
+    expect(mismoTelefono('3138178003', '3138178004')).toBe(false);
+    expect(mismoTelefono('', '')).toBe(false);
+  });
+
+  it('lo muestra legible', () => {
+    expect(telefonoLegible('573138178003')).toBe('313 817 8003');
+    expect(telefonoLegible('(313) 817-8003')).toBe('313 817 8003');
+  });
+});
+
 describe('normalización de teléfonos', () => {
   const { normalizePhone } = require('../services/whatsappCloud');
 

@@ -356,6 +356,71 @@ router.get('/chats/:phone', authMiddleware, requiereComplemento, asyncHandler(as
   });
 }));
 
+/**
+ * GET /api/whatsapp-inbox/chats/:phone/context — quién es quien está escribiendo.
+ *
+ * Es lo que separa esta bandeja de tener WhatsApp abierto en otra pestaña: al
+ * responder se ve si es un cliente de siempre, cuánto ha gastado, qué pidió la
+ * última vez y si tiene un pedido en curso ahora mismo.
+ */
+router.get('/chats/:phone/context', authMiddleware, requiereComplemento, asyncHandler(async (req, res) => {
+  const telefono = whatsappCloud.normalizePhone(req.params.phone);
+  if (!telefono) return res.status(400).json({ message: 'Número inválido' });
+
+  const Customer = require('../Models/Customer');
+  const Order = require('../Models/Order');
+  const CompletedOrder = require('../Models/CompletedOrder');
+  const CustomerLoyalty = require('../Models/CustomerLoyalty');
+  const { variantesDeTelefono } = require('../utils/phoneVariants');
+
+  /* El mismo número está escrito de varias formas según la colección, así que
+     se buscan todas. Ver utils/phoneVariants. */
+  const posibles = variantesDeTelefono(telefono);
+  const deEsteNegocio = { businessId: req.businessId, phone: { $in: posibles } };
+
+  const [cliente, enCurso, completados, fidelidad] = await Promise.all([
+    Customer.findOne(deEsteNegocio).lean(),
+    Order.find(deEsteNegocio).sort({ createdAt: -1 }).limit(5)
+      .select('orderNumber status orderType totalAmount deliveryFee createdAt items').lean(),
+    CompletedOrder.find(deEsteNegocio).sort({ completedAt: -1 }).limit(5)
+      .select('orderNumber status orderType totalAmount deliveryFee completedAt createdAt items').lean(),
+    CustomerLoyalty.findOne(deEsteNegocio).select('points totalEarned currentTier').lean(),
+  ]);
+
+  const resumen = (o) => ({
+    _id: o._id,
+    orderNumber: o.orderNumber,
+    status: o.status,
+    orderType: o.orderType,
+    total: (Number(o.totalAmount) || 0) + (Number(o.deliveryFee) || 0),
+    fecha: o.completedAt || o.createdAt,
+    items: (o.items || []).slice(0, 4).map((i) => `${i.quantity || 1}× ${i.name}`),
+    masItems: Math.max(0, (o.items || []).length - 4),
+  });
+
+  /* El gasto total sale de la ficha del cliente si existe; si no, se suma lo
+     que se encuentre, avisando que es parcial para no dar una cifra como si
+     fuera el histórico completo. */
+  const historico = [...enCurso, ...completados]
+    .sort((a, b) => new Date(b.completedAt || b.createdAt) - new Date(a.completedAt || a.createdAt));
+
+  res.json({
+    contactPhone: telefono,
+    esConocido: !!cliente || historico.length > 0,
+    cliente: cliente ? {
+      name: cliente.name,
+      address: cliente.address,
+      totalOrders: cliente.totalOrders,
+      totalSpent: cliente.totalSpent,
+      lastOrderDate: cliente.lastOrderDate,
+    } : null,
+    fidelidad: fidelidad || null,
+    pedidosEnCurso: enCurso.map(resumen),
+    ultimosPedidos: historico.slice(0, 5).map(resumen),
+    totalMostrado: historico.length,
+  });
+}));
+
 /** POST /api/whatsapp-inbox/chats/:phone — responder. */
 router.post('/chats/:phone', authMiddleware, requiereComplemento, asyncHandler(async (req, res) => {
   const account = await WhatsAppAccount.findOne({ businessId: req.businessId, status: 'active' });

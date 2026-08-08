@@ -19,7 +19,16 @@ const PAYMENT_METHODS = [
   { value: 'other', label: 'Otro' },
 ];
 
-function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
+/**
+ * @param prefill  Datos del cliente con los que abrir el formulario ya lleno:
+ *                 { name, phone, address, orderType }. Lo usa la bandeja de
+ *                 WhatsApp para tomar el pedido de quien está escribiendo sin
+ *                 tener que volver a teclear sus datos.
+ * @param channel  De dónde viene el pedido. Por defecto 'admin'; la bandeja
+ *                 manda 'whatsapp' para que las estadísticas no digan que el
+ *                 pedido lo originó el panel.
+ */
+function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = 'admin' }) {
   const { businessId, businessConfig } = useBusinessConfig();
 
   // Steps: 'customer' -> 'products' -> 'review'
@@ -65,15 +74,18 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
   // Reset everything on open
   useEffect(() => {
     if (isOpen) {
-      setStep('customer');
+      /* Con datos prellenados se arranca directo en los productos: quien viene
+         de un chat ya sabe quién es el cliente y volver a pedir el nombre solo
+         estorba. */
+      setStep(prefill?.name ? 'products' : 'customer');
       setCustomerSearch('');
       setCustomerResults([]);
       setSelectedCustomer(null);
-      setCustomerName('');
-      setCustomerPhone('');
-      setOrderType('inSite');
+      setCustomerName(prefill?.name || '');
+      setCustomerPhone(prefill?.phone || '');
+      setOrderType(prefill?.orderType || 'inSite');
       setTableNumber('');
-      setAddress('');
+      setAddress(prefill?.address || '');
       setPaymentMethod('cash');
       setCustomerNotes('');
       setCart([]);
@@ -84,7 +96,8 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
       setSelectedCategory('all');
       setError('');
     }
-  }, [isOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, prefill?.name, prefill?.phone, prefill?.address, prefill?.orderType]);
 
   // Load products once
   useEffect(() => {
@@ -223,7 +236,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
         address: orderType === 'delivery' ? address : undefined,
         paymentMethod,
         customerNotes: customerNotes.trim() || undefined,
-        orderChannel: 'admin',
+        orderChannel: channel,
         items: cart.map(item => ({
           productId: item.productId,
           name: item.name,

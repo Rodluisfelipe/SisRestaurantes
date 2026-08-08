@@ -13,10 +13,12 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   FaWhatsapp, FaPaperPlane, FaSpinner, FaLock, FaPlug, FaEye, FaEyeSlash,
   FaCheck, FaCheckDouble, FaExclamationTriangle, FaImage, FaMapMarkerAlt,
-  FaFileAlt, FaMicrophone, FaVideo, FaArrowLeft, FaSyncAlt
+  FaFileAlt, FaMicrophone, FaVideo, FaArrowLeft, FaSyncAlt,
+  FaUser, FaShoppingBag, FaGift, FaHome, FaClock, FaUserPlus
 } from 'react-icons/fa';
 import api from '../../services/api';
 import { useBusinessConfig } from '../../Context/BusinessContext';
+import QuickOrderModal from '../QuickOrderModal';
 
 const ICONO_TIPO = {
   image: FaImage, video: FaVideo, audio: FaMicrophone,
@@ -32,6 +34,15 @@ function tiempoRelativo(fecha) {
   const d = Math.floor(h / 24);
   return d < 7 ? `${d} d` : new Date(fecha).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
 }
+
+const pesos = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-CO');
+
+const ESTADO_PEDIDO = {
+  pending: 'Pendiente', pending_payment: 'Esperando pago', payment_uploaded: 'Por cobrar',
+  payment_confirmed: 'Pago confirmado', confirmed: 'Confirmado', preparing: 'En preparación',
+  inProgress: 'En preparación', ready: 'Listo', completed: 'Completado',
+  delivered: 'Entregado', cancelled: 'Cancelado',
+};
 
 function telefonoLegible(p) {
   const s = String(p || '');
@@ -71,6 +82,9 @@ export default function WhatsAppInbox() {
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState('');
   const [falloCarga, setFalloCarga] = useState(false);
+  const [ficha, setFicha] = useState(null);
+  const [cargandoFicha, setCargandoFicha] = useState(false);
+  const [tomandoPedido, setTomandoPedido] = useState(false);
   const finRef = useRef(null);
 
   // ── Carga inicial ──
@@ -130,7 +144,12 @@ export default function WhatsAppInbox() {
   }, [mensajes]);
 
   async function abrirChat(telefono, { silencioso = false } = {}) {
-    if (!silencioso) { setCargandoChat(true); setChatActivo(telefono); }
+    if (!silencioso) {
+      setCargandoChat(true);
+      setChatActivo(telefono);
+      setFicha(null);
+      cargarFicha(telefono);
+    }
     try {
       const { data } = await api.get(`/whatsapp-inbox/chats/${telefono}?businessId=${businessId}`);
       setMensajes(data.messages || []);
@@ -143,6 +162,21 @@ export default function WhatsAppInbox() {
       setError(e?.response?.data?.message || 'No se pudo abrir la conversación');
     } finally {
       setCargandoChat(false);
+    }
+  }
+
+  /* La ficha va en su propia petición y no bloquea el chat: si tarda o falla,
+     los mensajes se leen igual. Saber quién escribe es útil, pero poder
+     contestar es lo indispensable. */
+  async function cargarFicha(telefono) {
+    setCargandoFicha(true);
+    try {
+      const { data } = await api.get(`/whatsapp-inbox/chats/${telefono}/context?businessId=${businessId}`);
+      setFicha(data);
+    } catch {
+      setFicha(null);
+    } finally {
+      setCargandoFicha(false);
     }
   }
 
@@ -304,6 +338,12 @@ export default function WhatsAppInbox() {
                 </p>
               </div>
 
+              <FichaCliente
+                ficha={ficha}
+                cargando={cargandoFicha}
+                onTomarPedido={() => setTomandoPedido(true)}
+              />
+
               <div className="flex-1 p-4 space-y-2 overflow-y-auto max-h-[400px] bg-slate-50/40">
                 {cargandoChat ? (
                   <div className="grid place-items-center py-12 text-slate-300"><FaSpinner className="animate-spin" /></div>
@@ -373,6 +413,147 @@ export default function WhatsAppInbox() {
           )}
         </div>
       </div>
+
+      {/* Tomar el pedido sin salir del chat, con los datos ya puestos.
+          Se reutiliza el pedido rápido a propósito: los precios, las zonas de
+          envío y los extras ya están resueltos ahí, y duplicar ese cálculo es
+          justo como aparecen las diferencias de totales. */}
+      <QuickOrderModal
+        isOpen={tomandoPedido}
+        onClose={() => setTomandoPedido(false)}
+        channel="whatsapp"
+        prefill={{
+          name: ficha?.cliente?.name || chatSeleccionado?.contactName || '',
+          phone: chatActivo || '',
+          address: ficha?.cliente?.address || '',
+          orderType: ficha?.cliente?.address ? 'delivery' : 'inSite',
+        }}
+        onOrderCreated={(pedido) => {
+          setTomandoPedido(false);
+          // La ficha se recarga para que el pedido nuevo salga como "en curso".
+          if (chatActivo) cargarFicha(chatActivo);
+          setBorrador(
+            `Listo, tu pedido quedó registrado con el número #${pedido?.orderNumber}. `
+            + 'Te avisamos apenas esté en camino.'
+          );
+        }}
+      />
+    </div>
+  );
+}
+
+/**
+ * Quién es el que está escribiendo.
+ *
+ * Es lo que separa esta bandeja de tener WhatsApp abierto en otra pestaña: al
+ * responder se ve si es un cliente de siempre o alguien nuevo, qué pidió antes
+ * y si tiene algo en curso ahora mismo.
+ */
+function FichaCliente({ ficha, cargando, onTomarPedido }) {
+  if (cargando) {
+    return (
+      <div className="p-4 border-b border-slate-100 bg-slate-50/60 text-center text-slate-300">
+        <FaSpinner className="animate-spin mx-auto" />
+      </div>
+    );
+  }
+  if (!ficha) return null;
+
+  const { cliente, fidelidad, pedidosEnCurso = [], ultimosPedidos = [], esConocido } = ficha;
+
+  const BotonPedido = () => (
+    <button
+      onClick={onTomarPedido}
+      className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors active:scale-[0.97] shrink-0"
+    >
+      <FaShoppingBag className="text-[10px]" /> Tomar pedido
+    </button>
+  );
+
+  // Cliente nuevo: se dice, porque cambia cómo se le contesta.
+  if (!esConocido) {
+    return (
+      <div className="px-4 py-2.5 border-b border-slate-100 bg-sky-50/70 flex items-center gap-3">
+        <FaUserPlus className="text-sky-500 shrink-0 text-xs" />
+        <p className="text-xs text-sky-700 flex-1">
+          <strong>Cliente nuevo.</strong> No tiene pedidos anteriores en tu negocio.
+        </p>
+        <BotonPedido />
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-b border-slate-100 bg-slate-50/60">
+      {/* Resumen */}
+      <div className="px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-1.5">
+        {cliente?.name && (
+          <span className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold">
+            <FaUser className="text-slate-400 text-[10px]" /> {cliente.name}
+          </span>
+        )}
+        {cliente?.totalOrders > 0 && (
+          <span className="flex items-center gap-1.5 text-xs text-slate-500">
+            <FaShoppingBag className="text-slate-400 text-[10px]" />
+            {cliente.totalOrders} pedido{cliente.totalOrders === 1 ? '' : 's'}
+            {cliente.totalSpent > 0 && <strong className="text-slate-700">· {pesos(cliente.totalSpent)}</strong>}
+          </span>
+        )}
+        {fidelidad?.points > 0 && (
+          <span className="flex items-center gap-1.5 text-xs text-amber-600">
+            <FaGift className="text-[10px]" /> {fidelidad.points} pts
+            {fidelidad.currentTier && ` · ${fidelidad.currentTier}`}
+          </span>
+        )}
+        {cliente?.address && (
+          <span className="flex items-center gap-1.5 text-xs text-slate-500 min-w-0">
+            <FaHome className="text-slate-400 text-[10px] shrink-0" />
+            <span className="truncate max-w-[220px]" title={cliente.address}>{cliente.address}</span>
+          </span>
+        )}
+        <div className="ml-auto"><BotonPedido /></div>
+      </div>
+
+      {/* Un pedido en curso es lo primero que hay que saber al contestar */}
+      {pedidosEnCurso.length > 0 && (
+        <div className="px-4 pb-3 space-y-1.5">
+          {pedidosEnCurso.map((p) => (
+            <div key={p._id} className="flex items-center gap-2 bg-amber-50 border border-amber-200/70 rounded-lg px-3 py-2">
+              <FaClock className="text-amber-500 text-[10px] shrink-0" />
+              <span className="text-xs text-amber-800 font-semibold">#{p.orderNumber}</span>
+              <span className="text-xs text-amber-700">{ESTADO_PEDIDO[p.status] || p.status}</span>
+              <span className="text-xs text-amber-600 ml-auto font-semibold">{pesos(p.total)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Lo último que pidió — para no tener que preguntárselo */}
+      {ultimosPedidos.length > 0 && (
+        <details className="px-4 pb-3 group">
+          <summary className="text-[11px] text-slate-400 cursor-pointer hover:text-slate-600 select-none">
+            Ver últimos pedidos ({ultimosPedidos.length})
+          </summary>
+          <ul className="mt-2 space-y-1.5">
+            {ultimosPedidos.map((p) => (
+              <li key={p._id} className="text-xs bg-white border border-slate-200/70 rounded-lg px-3 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-slate-700">#{p.orderNumber}</span>
+                  <span className="text-slate-400 text-[10px]">
+                    {new Date(p.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}
+                  </span>
+                  <span className="font-semibold text-slate-600 ml-auto">{pesos(p.total)}</span>
+                </div>
+                {p.items?.length > 0 && (
+                  <p className="text-slate-400 text-[11px] mt-0.5 truncate">
+                    {p.items.join(', ')}{p.masItems > 0 ? ` y ${p.masItems} más` : ''}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   );
 }

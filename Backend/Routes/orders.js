@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
+const jwt = require("jsonwebtoken");
 const Order = require("../Models/Order");
 const CompletedOrder = require("../Models/CompletedOrder");
 const Customer = require("../Models/Customer");
@@ -220,12 +221,36 @@ router.get("/", tenantAuth, async (req, res) => {
   }
 });
 
-// Create a new order (POS and admin orders skip rate limiter)
+/**
+ * ¿Quien pide viene con un token válido del negocio?
+ *
+ * Antes el salto de los límites dependía de `orderChannel` del cuerpo, o sea de
+ * un dato que escribe quien llama: bastaba mandar `orderChannel: 'admin'` para
+ * saltarse los límites pensados para comensales, y este endpoint es público.
+ * Ahora depende de la firma del token, que no se puede inventar.
+ *
+ * De paso arregla lo contrario: el personal que toma un pedido desde un chat de
+ * WhatsApp manda `orderChannel: 'whatsapp'` —que es de donde viene de verdad— y
+ * antes eso lo habría metido en la cola de límites de los comensales.
+ */
+function esPersonalDelNegocio(req) {
+  const cabecera = req.headers.authorization || '';
+  if (!cabecera.startsWith('Bearer ')) return false;
+  try {
+    const decoded = jwt.verify(cabecera.slice(7), process.env.JWT_SECRET);
+    // Cualquier token nuestro válido: admin, staff o superadmin.
+    return !!decoded?.id;
+  } catch {
+    return false;
+  }
+}
+
+// Create a new order — el personal autenticado no pasa por los límites del comensal
 router.post("/", (req, res, next) => {
-  if (req.body.orderChannel === 'pos' || req.body.orderChannel === 'admin') return next();
+  if (esPersonalDelNegocio(req)) return next();
   return createOrderLimiter(req, res, next);
 }, (req, res, next) => {
-  if (req.body.orderChannel === 'pos' || req.body.orderChannel === 'admin') return next();
+  if (esPersonalDelNegocio(req)) return next();
   return orderPhoneLimiter(req, res, next);
 }, validateCreateOrder, async (req, res) => {
   try {
