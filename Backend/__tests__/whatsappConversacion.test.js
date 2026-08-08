@@ -169,14 +169,45 @@ describe('cerrar el pedido', () => {
 describe('cuándo se sale de la conversación', () => {
   it('una pregunta que no es de pedir la toma una persona', async () => {
     const s = nuevaSesion();
-    const r = await turno(s, { otraPregunta: '¿a qué hora cierran?' });
+    const r = await turno(s, { otraPregunta: '¿a qué hora cierran?' }, { texto: '¿A qué hora cierran?' });
     expect(r.traspasar).toContain('a qué hora cierran');
     expect(r.respuesta).toContain('alguien del equipo');
   });
 
   it('si pide una persona, se le pasa', async () => {
-    const r = await turno(nuevaSesion(), { quiereHumano: true });
+    const r = await turno(nuevaSesion(), { quiereHumano: true },
+      { texto: 'quiero hablar con una persona' });
     expect(r.traspasar).toBeTruthy();
+  });
+
+  /* Un "Hola" se leyó como "quiero hablar con una persona" y la conversación
+     quedó bloqueada media hora: el cliente escribió cuatro veces más sin
+     recibir nada. Sacar al agente es la decisión más cara que puede tomar, así
+     que tiene que estar respaldada por el texto. */
+  it('un saludo NUNCA saca al agente de la conversación', async () => {
+    for (const saludo of ['Hola', 'Buenas tardes', 'Hey', 'Buenas', 'Holaa']) {
+      const r = await turno(nuevaSesion(), { quiereHumano: true, otraPregunta: 'saludó' },
+        { texto: saludo });
+      expect(r.traspasar).toBeFalsy();
+    }
+  });
+
+  it('decir que quiere pedir tampoco', async () => {
+    const r = await turno(nuevaSesion(), { quiereHumano: true }, { texto: 'Quiero pedir algo' });
+    expect(r.traspasar).toBeFalsy();
+  });
+
+  it('el traspaso necesita que el texto lo respalde', async () => {
+    // El modelo dice que quiere un humano, pero el mensaje no lo dice.
+    const r = await turno(nuevaSesion(), { quiereHumano: true }, { texto: 'una hamburguesa' });
+    expect(r.traspasar).toBeFalsy();
+  });
+
+  it('reconoce las formas de pedir una persona', async () => {
+    for (const t of ['con un asesor por favor', 'quiero hablar con alguien', 'pásame al encargado']) {
+      const r = await turno(nuevaSesion(), { quiereHumano: true }, { texto: t });
+      expect(r.traspasar).toBeTruthy();
+    }
   });
 
   it('preguntar por un pedido no toca el carrito', async () => {

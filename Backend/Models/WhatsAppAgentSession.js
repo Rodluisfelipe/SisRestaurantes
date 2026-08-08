@@ -57,6 +57,9 @@ const whatsAppAgentSessionSchema = new mongoose.Schema({
      pasarlo a una persona: el cliente lo nota mucho antes que nosotros. */
   ultimaRespuesta: { type: String, default: '' },
   turnosSinAvanzar: { type: Number, default: 0 },
+  /* Ya se le dijo al cliente que está esperando a una persona. Una sola vez:
+     repetirlo en cada mensaje molesta tanto como el silencio. */
+  avisadoEnEspera: { type: Boolean, default: false },
 
   /* Por qué dejó de atender el agente. Sirve para saber dónde falla sin tener
      que leer conversaciones enteras. */

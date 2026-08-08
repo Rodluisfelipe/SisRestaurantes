@@ -50,6 +50,15 @@ function resumen(sesion) {
    mensaje y lo dice— mientras que pasarse le cobra comida que no pidió. */
 const PIDE_MAS = /\b(otra?|otro|mas|más|tambien|también|agrega|agregame|agrégame|añade|anade|suma|sumale|adicional|adiciona)\b/i;
 
+/* Con qué se pide de verdad hablar con alguien. Sin una de estas palabras, que
+   el modelo diga que el cliente quiere un humano no basta. */
+/* Sin `\b` al final: las raíces cortas ("encargad") tienen que poder casar con
+   la palabra entera ("encargado"), y un límite de palabra ahí lo impide. */
+const PIDE_PERSONA = /\b(persona|humano|asesor|agente|encargad|due[ñn]|alguien|operador|atiend|hablar con|con un[ao]? )/i;
+
+/* Saludos. No son una consulta ni una petición: son el principio. */
+const SALUDO = /^\s*(hola+|holi|buenas?|buen[oa]s? (dias|días|tardes|noches)|hey|ola|q hubo|quiubo|qué más|que mas|saludos)\s*[!.¡]*\s*$/i;
+
 /**
  * ¿El cliente está pidiendo esto de nuevo, o solo lo está mencionando?
  *
@@ -110,11 +119,23 @@ async function aplicar(sesion, catalogo, dicho, textoDelCliente) {
  * @returns {Promise<{respuesta: string|null, traspasar?: string, crear?: boolean}>}
  */
 async function resolver({ sesion, catalogo, dicho, enlace, negocio, estadoPedido, texto }) {
-  // ── Cosas que sacan al agente de la conversación ──
-  if (dicho.quiereHumano) {
+  const mensaje = String(texto || '');
+
+  /* ── Se comprueba lo que el modelo afirma ──
+     Un "Hola" se leyó como "quiero hablar con una persona" y la conversación
+     quedó bloqueada media hora: el cliente escribió cuatro veces más sin
+     recibir nada. Sacar al agente de la conversación es la decisión más cara
+     que puede tomar, así que tiene que estar respaldada por el texto. */
+  const pidePersona = PIDE_PERSONA.test(mensaje);
+  const pareceConsulta = /\?|\bcuant|\bcuál|\bcual|\bcomo|\bcómo|\bdonde|\bdónde|\bcuando|\bcuándo|\bpor qu|\bqué hora|\bque hora|\bhorario|\bqueja|\breclamo/i.test(mensaje);
+  const soloSaludo = SALUDO.test(mensaje.trim()) && mensaje.trim().length <= 25;
+
+  if (dicho.quiereHumano && pidePersona) {
     return { respuesta: 'Claro, ya te ayuda alguien del equipo. 👤', traspasar: 'lo pidió el cliente' };
   }
-  if (dicho.otraPregunta) {
+  /* Una consulta que el agente no puede resolver sí se pasa, pero solo si el
+     mensaje de verdad parece una pregunta y no un saludo. */
+  if (dicho.otraPregunta && pareceConsulta && !soloSaludo) {
     return {
       respuesta: 'Déjame consultarlo con alguien del equipo, te responden en un momento. 👤',
       traspasar: `preguntó: ${dicho.otraPregunta}`.slice(0, 200),

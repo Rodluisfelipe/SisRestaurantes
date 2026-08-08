@@ -298,7 +298,17 @@ describe('la frontera entre el modelo y el código', () => {
 
   it('el traspaso a una persona caduca si nadie lo atiende', () => {
     expect(srcIndex).toContain('ESPERA_HUMANO_MS');
-    expect(srcIndex).toMatch(/if \(respondioAlguien \|\| !vencido\) return null/);
+    // Si alguien ya contestó, el agente no se mete...
+    expect(srcIndex).toMatch(/if \(respondioAlguien\) return null/);
+    // ...y si nadie contestó y pasó el plazo, retoma en vez de dejar el silencio.
+    expect(srcIndex).toMatch(/sesion\.estado = 'activa'/);
+  });
+
+  it('al cliente en espera se le avisa una vez, no en cada mensaje', () => {
+    // Cuatro mensajes seguidos sin respuesta es como se pierde a alguien;
+    // repetir el aviso en cada uno molesta tanto como el silencio.
+    expect(srcIndex).toMatch(/if \(!sesion\.avisadoEnEspera\)/);
+    expect(srcIndex).toMatch(/Ya le avisé al equipo/);
   });
 
   it('repetirse sigue siendo alarma, aunque ya no deba pasar', () => {

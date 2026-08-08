@@ -154,7 +154,19 @@ async function atender({ account, negocio, slug, texto, contactPhone, reglas, cr
     });
     const vencido = Date.now() - new Date(desde).getTime() > ESPERA_HUMANO_MS;
 
-    if (respondioAlguien || !vencido) return null;
+    if (respondioAlguien) return null;
+
+    if (!vencido) {
+      /* Todavía es el turno de la persona, pero el cliente sigue escribiendo.
+         Se le contesta UNA vez para que sepa que no está hablando solo: cuatro
+         mensajes seguidos sin respuesta es como se pierde a alguien. */
+      if (!sesion.avisadoEnEspera) {
+        sesion.avisadoEnEspera = true;
+        await sesion.save();
+        return 'Ya le avisé al equipo, en un momento te responden. 👤';
+      }
+      return null;
+    }
 
     logger.info('[Agente] Nadie atendió el traspaso, el agente retoma', {
       businessId: String(businessId), contactPhone, motivo: sesion.motivoTraspaso,
@@ -162,6 +174,7 @@ async function atender({ account, negocio, slug, texto, contactPhone, reglas, cr
     sesion.estado = 'activa';
     sesion.motivoTraspaso = '';
     sesion.traspasadoEn = null;
+    sesion.avisadoEnEspera = false;
   }
 
   /* Tras cerrar un pedido, si el cliente vuelve a escribir se empieza de cero:
@@ -182,6 +195,7 @@ async function atender({ account, negocio, slug, texto, contactPhone, reglas, cr
   if (!catalogo.length) {
     sesion.estado = 'con_humano';
     sesion.traspasadoEn = new Date();
+      sesion.avisadoEnEspera = false;
     sesion.motivoTraspaso = 'el negocio no tiene productos disponibles';
     await sesion.save();
     return null;
@@ -210,6 +224,7 @@ async function atender({ account, negocio, slug, texto, contactPhone, reglas, cr
     // Sin entender el mensaje no se improvisa: lo toma una persona.
     sesion.estado = 'con_humano';
     sesion.traspasadoEn = new Date();
+      sesion.avisadoEnEspera = false;
     sesion.motivoTraspaso = 'no se pudo interpretar el mensaje';
     await sesion.save();
     return null;
@@ -239,6 +254,7 @@ async function atender({ account, negocio, slug, texto, contactPhone, reglas, cr
     if (paso.traspasar) {
       sesion.estado = 'con_humano';
       sesion.traspasadoEn = new Date();
+      sesion.avisadoEnEspera = false;
       sesion.motivoTraspaso = paso.traspasar;
     }
 
@@ -256,6 +272,7 @@ async function atender({ account, negocio, slug, texto, contactPhone, reglas, cr
       } else {
         sesion.estado = 'con_humano';
         sesion.traspasadoEn = new Date();
+      sesion.avisadoEnEspera = false;
         sesion.motivoTraspaso = `no se pudo crear el pedido: ${r.motivo}`;
         respuesta = 'Se me complicó cerrar el pedido. Ya te ayuda alguien del equipo. 👤';
       }
@@ -266,6 +283,7 @@ async function atender({ account, negocio, slug, texto, contactPhone, reglas, cr
     logger.error('[Agente] Falló el turno', { error: e.message });
     sesion.estado = 'con_humano';
     sesion.traspasadoEn = new Date();
+      sesion.avisadoEnEspera = false;
     sesion.motivoTraspaso = `error: ${e.message}`;
     respuesta = 'Dame un segundo que te ayuda alguien del equipo. 👤';
   }
@@ -283,6 +301,7 @@ async function atender({ account, negocio, slug, texto, contactPhone, reglas, cr
     });
     sesion.estado = 'con_humano';
     sesion.traspasadoEn = new Date();
+      sesion.avisadoEnEspera = false;
     sesion.motivoTraspaso = 'el agente se quedó repitiendo la misma respuesta';
     respuesta = 'Perdona, me estoy enredando. Ya te ayuda alguien del equipo. 👤';
   }
