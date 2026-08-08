@@ -51,6 +51,19 @@ const completedOrderSchema = new mongoose.Schema({
     enum: ['whatsapp', 'inapp', 'pos', 'admin'],
     default: 'whatsapp'
   },
+  /* De donde llego el cliente: el valor de ?source= del enlace con el que
+     entro al menu. `orderChannel` dice COMO se tomo el pedido; esto dice de
+     que campana o canal vino, que es lo que permite saber si el link de
+     Instagram o el QR de la mesa estan sirviendo de algo. Texto libre porque
+     cada negocio inventa sus campanas. */
+  source: {
+    type: String,
+    trim: true,
+    maxlength: 40,
+    default: null,
+    index: true
+  },
+
   paymentMethod: {
     type: String,
     enum: ['cash', 'efectivo', 'nequi', 'daviplata', 'transfer', 'transferencia', 'other'],

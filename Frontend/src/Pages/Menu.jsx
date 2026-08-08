@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 const ReviewModal = lazy(() => import("../Components/ReviewModal"));
 const ReviewsSheet = lazy(() => import("../Components/ReviewsSheet"));
 import ProductCard from "../Components/Productcard";
+import { registrarOrigen, origenActual } from "../utils/origenVisita";
 import BusinessHeader from "../Components/BusinessHeader";
 // Import directo (no lazy): es el primer render del menú, un chunk aparte
 // castigaría el LCP y haría parpadear la cabecera.
@@ -136,6 +137,13 @@ export default function Menu() {
   const [waReviewName, setWaReviewName] = useState(null);
   const [waReviewPhone, setWaReviewPhone] = useState(null);
   
+  /* De qué enlace llegó el cliente. Se guarda apenas entra porque el parámetro
+     se pierde en cuanto navega por categorías, y el pedido se crea mucho
+     después. */
+  useEffect(() => {
+    registrarOrigen();
+  }, []);
+
   // WhatsApp deeplink review: ?review=orderId opens ReviewModal automatically
   useEffect(() => {
     if (!businessId) return;
@@ -1180,6 +1188,9 @@ export default function Menu() {
         ...(isInAppMode && {
           orderChannel: 'inapp',
         }),
+        /* De qué enlace llegó el cliente (?source=). `orderChannel` dice cómo
+           se tomó el pedido; esto dice qué canal lo trajo. */
+        source: origenActual(),
         // Información del cupón si está aplicado
         ...(appliedCoupon && {
           couponCode: appliedCoupon.coupon.code,
@@ -1223,6 +1234,7 @@ export default function Menu() {
         ...(orderDetails.staffId && { staffId: orderDetails.staffId }),
         ...(orderDetails.staffName && { staffName: orderDetails.staffName }),
         ...(isInAppMode && { orderChannel: 'inapp', customerNotes: orderDetails.customerNotes || '' }),
+        source: origenActual(),
         ...(appliedCoupon && {
           couponCode: appliedCoupon.coupon.code,
           discountAmount: appliedCoupon.discountAmount,

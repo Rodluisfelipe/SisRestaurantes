@@ -239,9 +239,55 @@ async function crearPedido(sesion, businessId, { crearOrden }) {
   return { ok: true, pedido, total: totalAmount };
 }
 
+/* Cómo se le explica al cliente en qué va su pedido. El agente no inventa
+   tiempos: dice el estado y ya. */
+const COMO_VA = {
+  pending: '📝 Lo tenemos anotado, ya lo confirmamos.',
+  pending_payment: '⏳ Estamos esperando el pago para empezarlo.',
+  payment_uploaded: '🔎 Estamos verificando tu pago.',
+  payment_confirmed: '✅ Pago confirmado, ya entra a cocina.',
+  confirmed: '✅ Confirmado, ya entra a cocina.',
+  preparing: '👨‍🍳 Lo estamos preparando.',
+  inProgress: '👨‍🍳 Lo estamos preparando.',
+  ready: '🛍️ ¡Ya está listo!',
+  completed: '✅ Este pedido ya se entregó.',
+  delivered: '✅ Este pedido ya se entregó.',
+  cancelled: '❌ Este pedido fue cancelado.',
+};
+
+/**
+ * En qué va el último pedido de quien escribe.
+ *
+ * Es de lo que más preguntan, y hasta ahora el agente no tenía cómo saberlo:
+ * o lo pasaba a una persona o se lo inventaba. Busca por teléfono en todos los
+ * formatos en que puede estar guardado (ver utils/phoneVariants).
+ */
+async function estadoDelPedido({ businessId, contactPhone, Order, CompletedOrder, variantes }) {
+  const filtro = { businessId, phone: { $in: variantes(contactPhone) } };
+
+  const [activo, terminado] = await Promise.all([
+    Order.findOne(filtro).sort({ createdAt: -1 }).select('orderNumber status createdAt').lean(),
+    CompletedOrder.findOne(filtro).sort({ completedAt: -1 }).select('orderNumber status completedAt').lean(),
+  ]);
+
+  // El que esté en curso manda: es por el que están preguntando.
+  const pedido = activo || terminado;
+  if (!pedido) return { ok: false, motivo: 'sin_pedidos' };
+
+  return {
+    ok: true,
+    orderNumber: pedido.orderNumber,
+    status: pedido.status,
+    enCurso: !!activo,
+    texto: COMO_VA[pedido.status] || 'Lo estamos gestionando.',
+  };
+}
+
 module.exports = {
   llano,
   buscarProducto,
+  estadoDelPedido,
+  COMO_VA,
   hayExistencias,
   agregar,
   quitar,

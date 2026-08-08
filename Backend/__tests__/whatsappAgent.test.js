@@ -364,6 +364,117 @@ describe('la carta la imprime el código', () => {
   });
 });
 
+describe('llevar al cliente al menú', () => {
+  /* Armar el pedido conversando cuesta diez o quince mensajes; mandar el enlace
+     cuesta uno. Con el mismo cupo, llevar al menú rinde diez veces más, y el
+     pedido entra mejor porque el cliente ve fotos, tamaños y extras. */
+  const { enlaceMenu } = require('../services/whatsappAgent');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'services', 'whatsappAgent', 'index.js'), 'utf8');
+
+  it('el enlace lleva la marca de por dónde vino', () => {
+    expect(enlaceMenu('doggitos')).toContain('/doggitos?source=whatsapp');
+  });
+
+  it('sin slug no se inventa un enlace', () => {
+    // Mandar a una página que no existe es peor que seguir por chat.
+    expect(enlaceMenu(null)).toBeNull();
+    expect(enlaceMenu('')).toBeNull();
+  });
+
+  it('el enlace lo escribe el código, no el modelo', () => {
+    expect(src).toMatch(/ni escribas el enlace del menú/);
+    expect(src).toMatch(/case 'mandar_menu'/);
+  });
+
+  it('mandar el menú es lo preferido en las instrucciones', () => {
+    expect(src).toMatch(/LO PRIMERO QUE HAY QUE HACER/);
+    expect(src).toMatch(/lo PREFERIDO/);
+  });
+
+  it('si no hay enlace, el agente sigue por chat', () => {
+    // No se le dan instrucciones de derivar si no hay a dónde derivar.
+    expect(src).toMatch(/\$\{enlace \? `LO PRIMERO/);
+  });
+});
+
+describe('en qué va mi pedido', () => {
+  it('traduce cada estado a algo que el cliente entienda', () => {
+    // Y no promete tiempos, que es lo que el agente no puede saber.
+    expect(acciones.COMO_VA.preparing).toMatch(/prepar/i);
+    expect(acciones.COMO_VA.ready).toMatch(/listo/i);
+    expect(acciones.COMO_VA.cancelled).toMatch(/cancel/i);
+    for (const texto of Object.values(acciones.COMO_VA)) {
+      expect(texto).not.toMatch(/\d+\s*(minutos|horas)/i);
+    }
+  });
+
+  it('cubre todos los estados en que puede estar un pedido', () => {
+    const orders = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+    const bloque = orders.slice(orders.indexOf('const VALID_TRANSITIONS = {'));
+    const estados = [...bloque.slice(0, 900).matchAll(/^\s*'([a-z_A-Z]+)':/gm)].map((m) => m[1]);
+    expect(estados.length).toBeGreaterThan(5);
+    const sinTexto = estados.filter((e) => !acciones.COMO_VA[e]);
+    expect(sinTexto).toEqual([]);
+  });
+
+  it('el pedido en curso manda sobre el ya entregado', async () => {
+    const enCurso = { orderNumber: '99', status: 'preparing' };
+    const viejo = { orderNumber: '10', status: 'completed' };
+    const r = await acciones.estadoDelPedido({
+      businessId: 'b1', contactPhone: '573138178003',
+      Order: { findOne: () => ({ sort: () => ({ select: () => ({ lean: async () => enCurso }) }) }) },
+      CompletedOrder: { findOne: () => ({ sort: () => ({ select: () => ({ lean: async () => viejo }) }) }) },
+      variantes: (p) => [p],
+    });
+    expect(r.orderNumber).toBe('99');
+    expect(r.enCurso).toBe(true);
+  });
+
+  it('sin pedidos lo dice en vez de inventarse uno', async () => {
+    const vacio = { findOne: () => ({ sort: () => ({ select: () => ({ lean: async () => null }) }) }) };
+    const r = await acciones.estadoDelPedido({
+      businessId: 'b1', contactPhone: '573138178003',
+      Order: vacio, CompletedOrder: vacio, variantes: (p) => [p],
+    });
+    expect(r.ok).toBe(false);
+    expect(r.motivo).toBe('sin_pedidos');
+  });
+});
+
+describe('de qué enlace vino el cliente', () => {
+  const modelo = fs.readFileSync(path.join(__dirname, '..', 'Models', 'Order.js'), 'utf8');
+  const ruta = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+
+  it('el pedido guarda el origen aparte del canal', () => {
+    // orderChannel dice CÓMO se tomó; source dice qué enlace lo trajo.
+    expect(modelo).toMatch(/source: \{[\s\S]{0,160}maxlength: 40/);
+    expect(modelo).toMatch(/orderChannel: \{/);
+  });
+
+  it('lo que llega de la URL se limpia antes de guardarlo', () => {
+    expect(ruta).toMatch(/source \? String\(source\)[\s\S]{0,80}replace\(/);
+  });
+
+  it('el frontend recuerda el origen mientras el cliente navega', () => {
+    const util = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'Frontend', 'src', 'utils', 'origenVisita.js'), 'utf8',
+    );
+    // El parámetro se pierde al navegar por categorías; el pedido se crea después.
+    expect(util).toContain('sessionStorage');
+    expect(util).toMatch(/params\.get\('source'\)/);
+    // Y no puede romper el menú si el navegador bloquea el almacenamiento.
+    expect(util).toMatch(/catch \{/);
+  });
+
+  it('el menú manda el origen al crear el pedido', () => {
+    const menu = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'Frontend', 'src', 'Pages', 'Menu.jsx'), 'utf8',
+    );
+    expect(menu).toMatch(/registrarOrigen\(\)/);
+    expect(menu).toMatch(/source: origenActual\(\)/);
+  });
+});
+
 describe('el cupo de conversaciones', () => {
   /* El complemento se cobra fijo pero atender cuesta por mensaje: sin tope, un
      solo negocio con mucho tráfico se lleva el margen de todos los demás. */

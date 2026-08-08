@@ -276,6 +276,7 @@ router.post("/", (req, res, next) => {
       deliveryNeedsConfirmation,
       // In-app ordering fields
       orderChannel,
+      source,
       paymentMethod,
       customerNotes,
       // POS payment details (for ticket reprinting)
@@ -596,6 +597,9 @@ router.post("/", (req, res, next) => {
       finalAmount,
       // In-app ordering fields
       orderChannel: orderChannel || 'whatsapp',
+      /* De qué enlace vino el cliente. Se recorta y se limpia porque llega de
+         la URL, que la escribe cualquiera. */
+      source: source ? String(source).trim().slice(0, 40).replace(/[^\w.-]/g, '') || null : null,
       paymentMethod: paymentMethod || null,
       customerToken,
       customerNotes: stripHtml(customerNotes || ''),

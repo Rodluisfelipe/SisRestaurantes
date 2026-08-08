@@ -107,7 +107,21 @@ function cartaParaCliente(catalogo, filtro) {
 
 /* ── Prompt ── */
 
-function instrucciones({ negocio, catalogo, sesion, reglas }) {
+/**
+ * El enlace al menú del negocio, marcado como venido de WhatsApp.
+ *
+ * Es la pieza central del flujo: mandar el link cuesta un mensaje, mientras que
+ * armar el pedido conversando cuesta diez o quince. Con el mismo cupo, llevar
+ * al cliente al menú rinde diez veces más, y además el pedido entra mejor
+ * estructurado porque el cliente ve fotos, extras y tamaños.
+ */
+function enlaceMenu(slug) {
+  if (!slug) return null;
+  const base = process.env.FRONTEND_URL || 'https://menuby.tech';
+  return `${base.replace(/\/$/, '')}/${slug}?source=whatsapp`;
+}
+
+function instrucciones({ negocio, catalogo, sesion, reglas, enlace }) {
   const carrito = sesion.items?.length
     ? sesion.items.map((i) => `${i.quantity}x ${i.name} (${pesos(i.price * i.quantity)})`).join(', ')
     : 'vacío';
@@ -127,8 +141,15 @@ DIRECCIÓN: ${sesion.address || 'sin definir'}
 FALTA POR SABER: ${falta.length ? falta.join(', ') : 'nada, ya se puede confirmar'}
 
 ${reglas ? `INDICACIONES DEL NEGOCIO:\n${reglas}\n` : ''}
+${enlace ? `LO PRIMERO QUE HAY QUE HACER:
+Si el cliente quiere pedir, o pregunta qué hay, o no se sabe bien qué quiere,
+usa "mandar_menu". Desde el menú ve fotos, tamaños y extras, elige con calma y
+el pedido entra completo. Es más cómodo para él y más rápido para todos.
+Solo arma el pedido por chat si el cliente dice que prefiere hacerlo por acá,
+si ya empezó a dictarlo, o si insiste después de mandarle el menú.
+` : ''}
 REGLAS QUE NO PUEDES ROMPER:
-1. NUNCA escribas precios ni totales, ni enumeres la carta. El sistema los añade solo. Si el cliente pregunta qué hay, usa "mostrar_carta" y acompáñala con una frase corta ("Mira lo que tenemos:"), sin listar tú los productos.
+1. NUNCA escribas precios ni totales, ni enumeres la carta, ni escribas el enlace del menú. El sistema los añade solo. Si el cliente pregunta qué hay, usa "mandar_menu"; si pide ver la lista aquí mismo, "mostrar_carta".
 2. Si mencionas un producto que el cliente quiere, USA la acción "agregar" en ESE MISMO turno. Nunca digas que agregaste algo sin ejecutar la acción: el cliente se queda creyendo que lo pediste y termina recibiendo otra cosa.
 3. Puedes hacer UNA sola acción por turno. Si el cliente dice varias cosas a la vez, agrega el producto primero y pregunta el resto después.
 4. NUNCA inventes productos, ingredientes ni tiempos de entrega.
@@ -144,7 +165,9 @@ Respondes SOLO con este JSON, sin texto alrededor:
 
 Acciones posibles:
 {"tipo":"ninguna"}                                        conversar sin cambiar el pedido
-{"tipo":"mostrar_carta","categoria":"hamburguesas"}       mostrar la carta (categoria opcional)
+{"tipo":"mandar_menu"}                                    enviar el enlace del menu (lo PREFERIDO)
+{"tipo":"mostrar_carta","categoria":"hamburguesas"}       listar la carta aqui mismo
+{"tipo":"estado_pedido"}                                  decirle en que va su pedido
 {"tipo":"agregar","producto":"nombre","cantidad":2,"nota":"sin cebolla"}
 {"tipo":"quitar","producto":"nombre"}                     sacar del pedido
 {"tipo":"fijar_tipo","tipo_pedido":"domicilio|recoger|mesa"}
@@ -217,7 +240,8 @@ function resumen(sesion) {
  * Procesa un mensaje entrante y devuelve el texto a responder.
  * Devuelve null si el agente no debe contestar (conversación con una persona).
  */
-async function atender({ account, negocio, texto, contactPhone, reglas, crearOrden }) {
+async function atender({ account, negocio, slug, texto, contactPhone, reglas, crearOrden }) {
+  const enlace = enlaceMenu(slug);
   const businessId = account.businessId;
 
   let sesion = await WhatsAppAgentSession.findOne({ businessId, contactPhone });
@@ -289,7 +313,7 @@ async function atender({ account, negocio, texto, contactPhone, reglas, crearOrd
     .lean();
 
   const mensajes = [
-    { role: 'system', content: instrucciones({ negocio, catalogo, sesion, reglas }) },
+    { role: 'system', content: instrucciones({ negocio, catalogo, sesion, reglas, enlace }) },
     ...historial.reverse()
       .filter((m) => m.text)
       .map((m) => ({ role: m.direction === 'in' ? 'user' : 'assistant', content: m.text })),
@@ -347,6 +371,30 @@ async function atender({ account, negocio, texto, contactPhone, reglas, crearOrd
       case 'mostrar_carta':
         respuesta = `${respuesta ? `${respuesta}\n\n` : ''}${cartaParaCliente(catalogo, accion.categoria)}`;
         break;
+
+      /* El enlace lo pone el código, no el modelo: un modelo escribiendo URLs
+         de memoria acaba mandando al cliente a una página que no existe. */
+      case 'mandar_menu':
+        if (enlace) {
+          respuesta = `${respuesta || 'Mira nuestro menú y arma tu pedido acá:'}\n\n🍔 ${enlace}`;
+        } else {
+          // Sin enlace no se puede derivar; se sigue por chat.
+          respuesta = respuesta || '¿Qué te gustaría pedir?';
+        }
+        break;
+
+      case 'estado_pedido': {
+        const Order = require('../../Models/Order');
+        const CompletedOrder = require('../../Models/CompletedOrder');
+        const { variantesDeTelefono } = require('../../utils/phoneVariants');
+        const r = await acciones.estadoDelPedido({
+          businessId, contactPhone, Order, CompletedOrder, variantes: variantesDeTelefono,
+        });
+        respuesta = r.ok
+          ? `Tu pedido *#${r.orderNumber}*: ${r.texto}`
+          : 'No encuentro pedidos a tu nombre. ¿Lo hiciste con otro número?';
+        break;
+      }
 
       case 'fijar_tipo':
         acciones.fijarTipo(sesion, { tipo: accion.tipo_pedido });
@@ -421,4 +469,4 @@ async function atender({ account, negocio, texto, contactPhone, reglas, crearOrd
   return respuesta || null;
 }
 
-module.exports = { atender, cargarCatalogo, cartaParaCliente, resumen, pesos };
+module.exports = { atender, cargarCatalogo, cartaParaCliente, enlaceMenu, resumen, pesos };

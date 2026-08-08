@@ -215,12 +215,15 @@ async function quizaContesteElAgente(account, mensaje) {
     if (!mensaje.text) return;   // por ahora no interpreta audios ni fotos
 
     const BusinessConfig = require('../Models/BusinessConfig');
-    const negocio = await BusinessConfig.findById(account.businessId).select('name businessName').lean();
+    const negocio = await BusinessConfig.findById(account.businessId)
+      .select('name businessName slug').lean();
 
     const agente = require('../services/whatsappAgent');
     const respuesta = await agente.atender({
       account,
       negocio: negocio?.name || negocio?.businessName || 'nuestro restaurante',
+      // Con el slug el agente puede mandar al menú en vez de teclear el pedido.
+      slug: negocio?.slug,
       texto: mensaje.text,
       contactPhone: mensaje.contactPhone,
       reglas: account.agente?.reglas || '',
