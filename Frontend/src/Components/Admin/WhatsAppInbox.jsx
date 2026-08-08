@@ -85,6 +85,7 @@ export default function WhatsAppInbox() {
   const [ficha, setFicha] = useState(null);
   const [cargandoFicha, setCargandoFicha] = useState(false);
   const [tomandoPedido, setTomandoPedido] = useState(false);
+  const [reconectando, setReconectando] = useState(false);
   const finRef = useRef(null);
 
   // ── Carga inicial ──
@@ -230,9 +231,13 @@ export default function WhatsAppInbox() {
     );
   }
 
-  // ── Número aún sin conectar ──
-  if (!cuenta || cuenta.status !== 'active') {
+  /* Número sin conectar, o el negocio pidió reconectar.
+     Un número en estado 'error' —token vencido, típicamente— NO cae acá: los
+     mensajes siguen entrando y se pueden leer, así que se muestra la bandeja
+     con el aviso arriba en vez de esconderla detrás de un formulario. */
+  if (!cuenta || cuenta.status === 'pending' || reconectando) {
     return <ConectarNumero businessId={businessId} cuenta={cuenta} onConectado={async () => {
+      setReconectando(false);
       await cargarCuenta(); await cargarChats();
     }} />;
   }
@@ -263,6 +268,28 @@ export default function WhatsAppInbox() {
           <FaSyncAlt className="text-xs" />
         </button>
       </div>
+
+      {/* Si Meta rechazó las credenciales, se dice arriba de todo: el negocio
+          puede seguir viendo los chats que entran pero no responder ninguno, y
+          sin este aviso la única señal sería que nadie contesta. */}
+      {cuenta.lastError && (
+        <div className="px-4 py-3 bg-red-50 border-b border-red-100 flex items-start gap-2">
+          <FaExclamationTriangle className="text-red-500 mt-0.5 shrink-0 text-xs" />
+          <div className="text-xs text-red-700">
+            <p className="font-bold">No podemos enviar mensajes.</p>
+            <p className="mt-0.5">{cuenta.lastError}</p>
+            <p className="mt-1 text-red-500">
+              Suele ser el token vencido. Genera uno nuevo en Meta y vuelve a conectar el número.
+            </p>
+            <button
+              onClick={() => setReconectando(true)}
+              className="mt-2 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold transition-colors"
+            >
+              Reconectar número
+            </button>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="px-4 py-2.5 bg-red-50 border-b border-red-100 text-xs text-red-600 flex items-start gap-2">

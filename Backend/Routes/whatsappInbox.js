@@ -236,6 +236,17 @@ async function quizaContesteElAgente(account, mensaje) {
     logger.error('[Agente] No se pudo atender el mensaje', {
       businessId: String(account.businessId), error: e.message,
     });
+
+    /* Si Meta rechaza las credenciales, el negocio tiene que enterarse: el
+       agente piensa la respuesta pero no puede enviarla, y sin esto la única
+       señal sería que nadie contesta. Un token vencido dejaría la bandeja muda
+       durante días sin que nada lo dijera. */
+    if (e.status === 401 || /token|expired|OAuth/i.test(e.message || '')) {
+      await WhatsAppAccount.updateOne(
+        { _id: account._id },
+        { $set: { status: 'error', lastError: `No se pudo responder: ${e.message}` } },
+      ).catch(() => {});
+    }
   }
 }
 
