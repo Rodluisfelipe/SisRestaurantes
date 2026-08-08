@@ -70,7 +70,27 @@ exports.crearNegocio = async (req, res) => {
 exports.listarNegocios = async (req, res) => {
   try {
     const negocios = await BusinessConfig.find({}).lean();
-    res.json({ businesses: negocios });
+
+    /* Los complementos vienen de la suscripción, no del negocio, pero la tabla
+       los muestra junto a todo lo demás. Se traen de una sola consulta en vez
+       de una por fila. */
+    const Subscription = require('../Models/Subscription');
+    const { getActiveAddonKeys } = require('../utils/commercialPlans');
+    const subs = await Subscription.find({ businessId: { $in: negocios.map((n) => n._id) } })
+      .select('businessId addons commercialPlan').lean();
+    const porNegocio = new Map(subs.map((s) => [String(s.businessId), s]));
+
+    res.json({
+      businesses: negocios.map((n) => {
+        const sub = porNegocio.get(String(n._id));
+        return {
+          ...n,
+          commercialPlan: sub?.commercialPlan || null,
+          activeAddons: sub ? getActiveAddonKeys(sub) : [],
+          tieneSuscripcion: !!sub,
+        };
+      }),
+    });
   } catch (error) {
     res.status(500).json({ message: 'Error al listar negocios' });
   }

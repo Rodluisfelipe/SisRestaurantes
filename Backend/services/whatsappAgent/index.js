@@ -20,6 +20,7 @@ require('../../Models/Category');
 const WhatsAppAgentSession = require('../../Models/WhatsAppAgentSession');
 const WhatsAppMessage = require('../../Models/WhatsAppMessage');
 const acciones = require('./acciones');
+const cupo = require('./cupo');
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const MODELOS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
@@ -220,8 +221,18 @@ async function atender({ account, negocio, texto, contactPhone, reglas, crearOrd
   const businessId = account.businessId;
 
   let sesion = await WhatsAppAgentSession.findOne({ businessId, contactPhone });
+  const esConversacionNueva = !sesion;
   if (!sesion) {
     sesion = new WhatsAppAgentSession({ businessId, contactPhone, items: [] });
+  }
+
+  /* El cupo se mira ANTES de gastar nada. Una conversación ya empezada se
+     termina aunque el cupo se acabe en mitad: cortarle a alguien a media frase
+     es peor que atender una de más. Solo se frenan las nuevas. */
+  if (esConversacionNueva && !cupo.tieneCupo(account)) {
+    const e = new Error('Se agotó el cupo de conversaciones del agente');
+    e.code = 'SIN_CUPO';
+    throw e;
   }
 
   /* Si hay una persona atendiendo, el agente no se mete. Pero el traspaso
@@ -399,6 +410,13 @@ async function atender({ account, negocio, texto, contactPhone, reglas, crearOrd
 
   sesion.ultimaActividad = new Date();
   await sesion.save();
+
+  /* Se cuenta después de atender, no antes: si el modelo falló y no se
+     respondió nada, no se le descuenta al negocio una conversación que nunca
+     ocurrió. */
+  if (esConversacionNueva) cupo.contarConversacion(account);
+  cupo.contarMensaje(account);
+  await account.save();
 
   return respuesta || null;
 }

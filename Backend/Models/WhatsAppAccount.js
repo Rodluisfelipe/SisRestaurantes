@@ -63,7 +63,23 @@ const whatsAppAccountSchema = new mongoose.Schema({
     // Indicaciones propias del negocio: tono, qué no ofrecer, cuándo escalar.
     reglas: { type: String, default: '', maxlength: 2000 },
     // Horario en que puede contestar; vacío = siempre.
-    soloEnHorario: { type: Boolean, default: false }
+    soloEnHorario: { type: Boolean, default: false },
+
+    /* Consumo del mes en curso. El complemento se cobra fijo pero atender
+       cuesta por mensaje, así que hay que saber cuánto se lleva gastado.
+       `periodo` es 'AAAA-MM': cuando cambia el mes, los contadores arrancan
+       de cero sin necesidad de una tarea programada. */
+    consumo: {
+      periodo: { type: String, default: '' },
+      conversaciones: { type: Number, default: 0 },
+      mensajes: { type: Number, default: 0 },
+      // Se avisó al negocio de que se quedó sin cupo (una vez por periodo).
+      avisadoSinCupo: { type: Boolean, default: false }
+    },
+
+    /* Cupo propio, si se le vendió un paquete distinto al del complemento.
+       null = el que trae el complemento. */
+    cupoConversaciones: { type: Number, default: null }
   }
 }, { timestamps: true });
 
@@ -103,7 +119,9 @@ whatsAppAccountSchema.methods.toPanel = function () {
     agente: {
       activo: !!this.agente?.activo,
       reglas: this.agente?.reglas || '',
-      soloEnHorario: !!this.agente?.soloEnHorario
+      soloEnHorario: !!this.agente?.soloEnHorario,
+      // El consumo del mes, para que el negocio vea cuánto le queda.
+      cupo: require('../services/whatsappAgent/cupo').estado(this)
     }
   };
 };

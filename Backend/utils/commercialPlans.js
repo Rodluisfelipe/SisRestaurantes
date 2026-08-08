@@ -194,6 +194,13 @@ const ADDONS = {
     pricing: {
       monthly: 49900,
       annualMonthly: 41900
+    },
+    /* Cuánto trae incluido. El precio es fijo pero atender cuesta por mensaje,
+       así que sin tope un solo negocio con mucho tráfico se come el margen del
+       complemento. Al agotarse, el agente se apaga y avisa; no se corta la
+       bandeja, que el negocio sigue pudiendo responder a mano. */
+    incluye: {
+      conversaciones: 500
     }
   }
 };

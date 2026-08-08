@@ -14,7 +14,7 @@ import {
   FaCalendarAlt, FaShareAlt, FaCodeBranch, FaLink, FaCalculator, FaBoxOpen
 } from 'react-icons/fa';
 
-const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, subscriptionData, onboarding, userRole }) => {
+const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, whatsappSinLeer, subscriptionData, onboarding, userRole }) => {
   const isStaff = userRole === 'staff';
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const isHotel = businessConfig?.businessType === 'hotel';
@@ -76,7 +76,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
         /* Se muestra aunque el negocio no lo tenga contratado: la pantalla
            explica de qué se trata en vez de fallar, y así el complemento se
            descubre solo en lugar de quedar escondido. */
-        { id: 'whatsapp-inbox', label: 'Chats WhatsApp', Icon: FaWhatsapp, badge: null },
+        { id: 'whatsapp-inbox', label: 'Chats WhatsApp', Icon: FaWhatsapp, badge: whatsappSinLeer || null },
         { id: 'coupons', label: 'Cupones', Icon: FaTicketAlt, badge: null },
         { id: 'loyalty', label: 'Fidelidad', Icon: FaGift, badge: null, beta: true },
         { id: 'reviews', label: 'Reseñas', Icon: FaStar, badge: null },

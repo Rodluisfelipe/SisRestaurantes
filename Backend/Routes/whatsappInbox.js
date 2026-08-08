@@ -231,6 +231,23 @@ async function quizaContesteElAgente(account, mensaje) {
       await whatsappCloud.sendText({ account, to: mensaje.contactPhone, text: respuesta });
     }
   } catch (e) {
+    /* Sin cupo no es un error: es el tope que se le vendió. El mensaje ya está
+       en la bandeja y el negocio puede responder a mano. Se deja constancia una
+       sola vez por periodo para que se entere sin llenarle el registro. */
+    if (e.code === 'SIN_CUPO') {
+      const cupo = require('../services/whatsappAgent/cupo');
+      const estado = cupo.estado(account);
+      if (!account.agente.consumo.avisadoSinCupo) {
+        account.agente.consumo.avisadoSinCupo = true;
+        account.markModified('agente.consumo');
+        await account.save().catch(() => {});
+        logger.warn('[Agente] Cupo de conversaciones agotado', {
+          businessId: String(account.businessId), ...estado,
+        });
+      }
+      return;
+    }
+
     /* Que el agente falle no puede tumbar la recepción del mensaje: ya quedó
        guardado y visible en la bandeja para que lo atienda una persona. */
     logger.error('[Agente] No se pudo atender el mensaje', {
@@ -429,6 +446,21 @@ router.post('/chats/:phone/retomar', authMiddleware, requiereComplemento, asyncH
 router.delete('/account', authMiddleware, requiereComplemento, asyncHandler(async (req, res) => {
   await WhatsAppAccount.deleteOne({ businessId: req.businessId });
   res.json({ success: true });
+}));
+
+/**
+ * GET /api/whatsapp-inbox/sin-leer — cuántos mensajes esperan respuesta.
+ *
+ * Es lo que hace que la bandeja sirva de algo: sin un aviso en el menú, el
+ * negocio no se entera de que llegó un mensaje y sigue mirando el celular.
+ * Se deja aparte y devolviendo solo un número porque el panel lo consulta cada
+ * medio minuto.
+ */
+router.get('/sin-leer', authMiddleware, requiereComplemento, asyncHandler(async (req, res) => {
+  const sinLeer = await WhatsAppMessage.countDocuments({
+    businessId: req.businessId, direction: 'in', readByStaffAt: null,
+  });
+  res.json({ sinLeer });
 }));
 
 /** GET /api/whatsapp-inbox/chats — un renglón por contacto, el más reciente arriba. */

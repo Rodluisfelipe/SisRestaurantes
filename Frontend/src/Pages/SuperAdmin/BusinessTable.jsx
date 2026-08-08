@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { fetchBusinesses, activateBusiness, deleteBusiness, togglePosBeta, toggleMenuV2, toggleMarketplace, toggleSupplier, getBusinessCredentials, resetBusinessCredentials } from "../../services/superadminApi";
+import { fetchBusinesses, activateBusiness, deleteBusiness, togglePosBeta, toggleMenuV2, toggleMarketplace, toggleSupplier, getBusinessCredentials, resetBusinessCredentials, toggleAddon } from "../../services/superadminApi";
 import { socket } from "../../services/socket";
 import { motion, AnimatePresence } from "framer-motion";
 import { SAToast } from "../../Components/SuperAdmin/ui";
@@ -285,6 +285,53 @@ export default function BusinessTable({ refreshTrigger }) {
     }
   };
 
+  /* Complementos: se venden aparte del plan, asi que se activan por negocio
+     sin moverlo de escalon. El agente de IA exige la bandeja, porque sin
+     numero conectado no tiene a quien contestar. */
+  /* Las clases van completas y no armadas con plantillas: Tailwind elimina en
+     compilación lo que no encuentra escrito tal cual, así que un
+     `bg-${color}-100` se queda sin estilo. */
+  const COMPLEMENTOS = [
+    {
+      key: 'whatsapp_inbox',
+      etiqueta: 'WA',
+      titulo: 'Bandeja de WhatsApp',
+      claseActiva: 'bg-emerald-100 text-emerald-600 border border-emerald-200 hover:bg-emerald-200',
+      clasePunto: 'bg-emerald-400',
+    },
+    {
+      key: 'whatsapp_agent',
+      etiqueta: 'IA',
+      titulo: 'Agente de IA en WhatsApp',
+      claseActiva: 'bg-sky-100 text-sky-600 border border-sky-200 hover:bg-sky-200',
+      clasePunto: 'bg-sky-400',
+      requiere: 'whatsapp_inbox',
+    },
+  ];
+
+  const handleToggleAddon = async (b, addon) => {
+    const activos = b.activeAddons || [];
+    const actual = activos.includes(addon.key);
+
+    if (!b.tieneSuscripcion) {
+      showMessage(`${b.businessName} no tiene suscripcion; primero creale una`, 'error');
+      return;
+    }
+    if (!actual && addon.requiere && !activos.includes(addon.requiere)) {
+      const previo = COMPLEMENTOS.find((c) => c.key === addon.requiere);
+      showMessage(`Primero activa "${previo?.titulo || addon.requiere}"`, 'error');
+      return;
+    }
+
+    try {
+      await toggleAddon(b._id, addon.key, !actual);
+      showMessage(`${addon.titulo} ${actual ? 'desactivado' : 'activado'} para ${b.businessName}`);
+      loadBusinesses();
+    } catch (err) {
+      showMessage(err?.response?.data?.message || 'Error al cambiar el complemento', 'error');
+    }
+  };
+
   /* Aparecer o no en las recomendaciones. Manda a la vez en la tira
      "Descubre mas" de otros menus y en el catalogo publico. */
   const handleToggleMarketplace = async (b) => {
@@ -535,6 +582,31 @@ export default function BusinessTable({ refreshTrigger }) {
                       <span className={`w-1.5 h-1.5 rounded-full ${b.features?.menuV2 ? 'bg-sky-400' : 'bg-slate-300'}`} />
                       {b.features?.menuV2 ? 'V2 ✓' : 'V2'}
                     </button>
+                    {/* Complementos vendidos aparte del plan */}
+                    {COMPLEMENTOS.map((addon) => {
+                      const activo = (b.activeAddons || []).includes(addon.key);
+                      const bloqueado = !activo && addon.requiere
+                        && !(b.activeAddons || []).includes(addon.requiere);
+                      return (
+                        <button
+                          key={addon.key}
+                          onClick={() => handleToggleAddon(b, addon)}
+                          title={bloqueado
+                            ? `Requiere activar antes la bandeja de WhatsApp`
+                            : `${activo ? 'Desactivar' : 'Activar'} ${addon.titulo}`}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 ml-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                            activo
+                              ? addon.claseActiva
+                              : bloqueado
+                                ? 'bg-slate-50 text-slate-300 border border-slate-200 cursor-not-allowed'
+                                : 'bg-slate-100 text-slate-400 border border-slate-200 hover:text-slate-900'
+                          }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${activo ? addon.clasePunto : 'bg-slate-300'}`} />
+                          {activo ? `${addon.etiqueta} ✓` : addon.etiqueta}
+                        </button>
+                      );
+                    })}
                     {/* Recomendarlo en otros menús y en el catálogo público */}
                     <button
                       onClick={() => handleToggleMarketplace(b)}

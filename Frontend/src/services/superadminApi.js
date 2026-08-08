@@ -127,6 +127,21 @@ export const togglePosBeta = async (id, enabled) => {
   }
 };
 
+/* Complementos que se venden aparte del plan (bandeja de WhatsApp, agente de
+   IA). Son ortogonales al plan: cualquier negocio puede tenerlos sin cambiar
+   de escalón. */
+export const listarComplementos = async () => {
+  const response = await superadminApi.get('/addons');
+  return response.data;
+};
+
+export const toggleAddon = async (id, addonKey, enabled, opciones = {}) => {
+  const response = await superadminApi.patch(`/business/${id}/addons/${addonKey}`, {
+    enabled, ...opciones,
+  });
+  return response.data;
+};
+
 /* Aparecer en las recomendaciones: manda a la vez en la tira "Descubre más"
    de otros menús y en el catálogo público. */
 export const toggleMarketplace = async (id, enabled) => {

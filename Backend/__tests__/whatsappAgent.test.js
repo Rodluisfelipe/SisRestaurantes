@@ -364,6 +364,67 @@ describe('la carta la imprime el código', () => {
   });
 });
 
+describe('el cupo de conversaciones', () => {
+  /* El complemento se cobra fijo pero atender cuesta por mensaje: sin tope, un
+     solo negocio con mucho tráfico se lleva el margen de todos los demás. */
+  const cupo = require('../services/whatsappAgent/cupo');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'services', 'whatsappAgent', 'index.js'), 'utf8');
+  const cuentaNueva = () => ({ agente: {} });
+
+  it('trae el cupo del complemento', () => {
+    expect(cupo.cupoDe(cuentaNueva())).toBe(500);
+  });
+
+  it('se puede vender un paquete distinto', () => {
+    expect(cupo.cupoDe({ agente: { cupoConversaciones: 2000 } })).toBe(2000);
+  });
+
+  it('cuenta conversaciones y avisa cuando se agota', () => {
+    const c = cuentaNueva();
+    expect(cupo.tieneCupo(c)).toBe(true);
+    for (let i = 0; i < 500; i++) cupo.contarConversacion(c);
+    expect(cupo.estado(c).restantes).toBe(0);
+    expect(cupo.estado(c).agotado).toBe(true);
+    expect(cupo.tieneCupo(c)).toBe(false);
+  });
+
+  it('arranca de cero al cambiar el mes, sin tarea programada', () => {
+    const c = cuentaNueva();
+    for (let i = 0; i < 400; i++) cupo.contarConversacion(c);
+    c.agente.consumo.periodo = '2020-01';        // como si fuera de otro mes
+    expect(cupo.estado(c).usadas).toBe(0);
+    expect(cupo.estado(c).periodo).toBe(cupo.periodoActual());
+  });
+
+  it('los mensajes se cuentan aparte, para ver el costo real', () => {
+    const c = cuentaNueva();
+    cupo.contarConversacion(c);
+    cupo.contarMensaje(c);
+    cupo.contarMensaje(c);
+    expect(cupo.estado(c)).toMatchObject({ usadas: 1, mensajes: 2 });
+  });
+
+  it('una conversación ya empezada no se corta a media frase', () => {
+    // Solo se frenan las NUEVAS: cortarle a alguien a mitad es peor que
+    // atender una de más.
+    expect(src).toMatch(/esConversacionNueva && !cupo\.tieneCupo\(account\)/);
+  });
+
+  it('sin cupo no se corta la bandeja, solo el agente', () => {
+    const ruta = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'whatsappInbox.js'), 'utf8');
+    expect(ruta).toMatch(/e\.code === 'SIN_CUPO'/);
+    // El mensaje ya quedó guardado antes de que el agente entrara en juego.
+    expect(ruta).toMatch(/if \(guardado\) await quizaContesteElAgente/);
+  });
+
+  it('se cuenta después de atender, no antes', () => {
+    // Si el modelo falla y no se responde nada, no se descuenta nada.
+    const i = src.indexOf('await sesion.save()');
+    const j = src.indexOf('cupo.contarConversacion(account)');
+    expect(j).toBeGreaterThan(i);
+  });
+});
+
 describe('el complemento del agente', () => {
   const { getEffectiveFeatures, getPlanConfig, getAddonConfig } = require('../utils/commercialPlans');
 

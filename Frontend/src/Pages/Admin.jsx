@@ -71,6 +71,7 @@ import useAdminAuth from "../hooks/useAdminAuth";
 import useAdminData from "../hooks/useAdminData";
 import useProductHandlers from "../hooks/useProductHandlers";
 import useSubscriptionData from "../hooks/useSubscriptionData";
+import useWhatsAppUnread from "../hooks/useWhatsAppUnread";
 import useOnboarding from "../hooks/useOnboarding";
 
 function Admin() {
@@ -83,6 +84,9 @@ function Admin() {
 
   // --- Subscription (una sola instancia, se pasa a sidebar + dashboard) ---
   const subscriptionData = useSubscriptionData(businessConfig?._id);
+  /* Mensajes de WhatsApp esperando respuesta. Sin este aviso el negocio no se
+     entera de que llego uno y sigue atendiendo desde el celular. */
+  const whatsappSinLeer = useWhatsAppUnread(businessConfig?._id);
 
   // --- Onboarding (progressive unlock + guide system) ---
   const onboardingHook = useOnboarding();
@@ -318,6 +322,7 @@ function Admin() {
           businessConfig={businessConfig}
           handleLogout={logout}
           pendingOrdersCount={pendingOrdersCount}
+          whatsappSinLeer={whatsappSinLeer}
           subscriptionData={subscriptionData}
           onboarding={onboardingData}
           userRole={user?.role}
@@ -387,6 +392,7 @@ function Admin() {
                   <AdminDashboard
                     setActiveTab={setActiveTab}
                     pendingOrdersCount={pendingOrdersCount}
+          whatsappSinLeer={whatsappSinLeer}
                     onboarding={onboardingData}
                     onOpenModoOp={() => setModoOpOpen(true)}
                     products={products}
@@ -712,6 +718,7 @@ function Admin() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         pendingOrdersCount={pendingOrdersCount}
+          whatsappSinLeer={whatsappSinLeer}
         businessConfig={businessConfig}
         handleLogout={logout}
         userRole={user?.role}
