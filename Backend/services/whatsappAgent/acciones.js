@@ -34,22 +34,43 @@ function buscarProducto(catalogo, texto) {
   const exacto = catalogo.filter((p) => llano(p.name) === q);
   if (exacto.length === 1) return { producto: exacto[0] };
 
-  const contiene = catalogo.filter((p) => llano(p.name).includes(q) || q.includes(llano(p.name)));
-  if (contiene.length === 1) return { producto: contiene[0] };
-  if (contiene.length > 1) return { opciones: contiene.slice(0, 6) };
+  /* Se puntúa cada producto y gana el que coincida en MÁS palabras.
+     Antes bastaba con que la consulta contuviera el nombre, y eso hacía que un
+     nombre corto se tragara consultas más específicas: pedir "hamburguesa
+     doble" devolvía "Hamburguesa" en vez de "Doble Hamburguesa con Queso", y el
+     cliente recibía otro plato. */
+  /* Se conservan las cifras: en "nuggets de 6" el 6 es lo que distingue una
+     porción de otra. Las palabras cortas ("de", "la") no aportan nada. */
+  const partir = (s) => s.split(/\s+/).filter((w) => w.length > 2 || /^\d+$/.test(w));
+  const palabrasQ = partir(q);
 
-  // Por palabras: "hamburguesa doble" encuentra "Hamburguesa Doble Queso"
-  const palabras = q.split(/\s+/).filter((w) => w.length > 2);
-  if (palabras.length) {
-    const porPalabras = catalogo
-      .map((p) => ({ p, aciertos: palabras.filter((w) => llano(p.name).includes(w)).length }))
-      .filter((x) => x.aciertos > 0)
-      .sort((a, b) => b.aciertos - a.aciertos);
-    if (porPalabras.length === 1) return { producto: porPalabras[0].p };
-    if (porPalabras.length > 1) return { opciones: porPalabras.slice(0, 6).map((x) => x.p) };
+  const puntuados = catalogo
+    .map((p) => {
+      const n = llano(p.name);
+      const palabrasN = partir(n);
+      /* Se compara por trozo y no por palabra entera: el cliente dice
+         "nuggets" y el producto se llama "McNuggets". */
+      const aciertos = palabrasQ.filter((w) => n.includes(w)).length;
+      // Qué parte del nombre del producto quedó explicada por lo que dijo.
+      const especificidad = palabrasN.length ? aciertos / palabrasN.length : 0;
+      const contiene = n.includes(q) || q.includes(n) ? 1 : 0;
+      return { p, aciertos, contiene, puntaje: aciertos * 3 + especificidad + contiene };
+    })
+    .filter((x) => x.aciertos > 0 || x.contiene)
+    .sort((a, b) => b.puntaje - a.puntaje);
+
+  if (!puntuados.length) return { ninguno: true };
+
+  /* Solo se elige solo cuando gana con claridad. Si dos productos quedan
+     parejos —"hamburguesa" con dos hamburguesas en la carta— se pregunta, en
+     vez de venderle al cliente algo que no pidió. */
+  const [mejor, segundo] = puntuados;
+  if (!segundo || mejor.puntaje - segundo.puntaje >= 0.5) {
+    return { producto: mejor.p };
   }
 
-  return { ninguno: true };
+  const parejos = puntuados.filter((x) => mejor.puntaje - x.puntaje < 0.5);
+  return { opciones: parejos.slice(0, 6).map((x) => x.p) };
 }
 
 /** ¿Se puede vender? El stock manda, no lo que crea el modelo. */
@@ -63,7 +84,7 @@ function hayExistencias(producto, cantidad) {
 /**
  * Agrega al carrito leyendo el precio de la base, nunca del mensaje.
  */
-async function agregar(sesion, catalogo, { producto: nombre, cantidad = 1 }) {
+async function agregar(sesion, catalogo, { producto: nombre, cantidad = 1, nota = '' }) {
   const cant = Math.max(1, Math.min(50, Number(cantidad) || 1));
   const hallazgo = buscarProducto(catalogo, nombre);
 
@@ -83,18 +104,27 @@ async function agregar(sesion, catalogo, { producto: nombre, cantidad = 1 }) {
     return { ok: false, motivo: 'sin_stock', producto: p.name, disponible: stock.disponible };
   }
 
+  /* La nota del cliente ("sin salsas", "bien cocida") se guarda en la línea.
+     Antes se perdía: el agente la repetía de vuelta como si la hubiera tomado
+     pero no quedaba en ninguna parte, así que a la cocina no le llegaba. */
+  const limpiaNota = String(nota || '').slice(0, 120).trim();
+
   if (yaTiene) {
     yaTiene.quantity = cantidadFinal;
+    if (limpiaNota) {
+      yaTiene.note = yaTiene.note ? `${yaTiene.note}; ${limpiaNota}` : limpiaNota;
+    }
   } else {
     sesion.items.push({
       productId: p._id,
       name: p.name,
       price: Number(p.price) || 0,   // el precio sale de la base
       quantity: cant,
+      note: limpiaNota,
     });
   }
 
-  return { ok: true, producto: p.name, cantidad: cant, precio: Number(p.price) || 0 };
+  return { ok: true, producto: p.name, cantidad: cant, precio: Number(p.price) || 0, nota: limpiaNota };
 }
 
 function quitar(sesion, catalogo, { producto: nombre }) {
@@ -178,13 +208,20 @@ async function crearPedido(sesion, businessId, { crearOrden }) {
 
   const totalAmount = items.reduce((s, i) => s + i.price * i.quantity, 0);
 
+  /* Las notas por producto se suman a las del pedido. La cocina lee una sola
+     nota, así que "sin salsas" tiene que decir a qué plato se refiere. */
+  const notasPorProducto = sesion.items
+    .filter((i) => i.note)
+    .map((i) => `${i.name}: ${i.note}`);
+  const notas = [sesion.notes, ...notasPorProducto].filter(Boolean).join(' · ');
+
   const pedido = await crearOrden({
     businessId,
     customerName: sesion.customerName,
     phone: sesion.contactPhone,
     orderType: sesion.orderType,
     address: sesion.orderType === 'delivery' ? sesion.address : undefined,
-    customerNotes: sesion.notes || undefined,
+    customerNotes: notas || undefined,
     orderChannel: 'whatsapp',
     items,
     totalAmount,

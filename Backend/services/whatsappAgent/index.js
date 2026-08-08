@@ -68,23 +68,27 @@ FALTA POR SABER: ${falta.length ? falta.join(', ') : 'nada, ya se puede confirma
 
 ${reglas ? `INDICACIONES DEL NEGOCIO:\n${reglas}\n` : ''}
 REGLAS QUE NO PUEDES ROMPER:
-1. NUNCA escribas precios ni totales. El sistema los añade solo. Si hablas de plata, di "te confirmo el total" y nada más.
-2. NUNCA inventes productos, ingredientes ni tiempos de entrega.
-3. Pregunta UNA cosa a la vez, solo lo que falta.
-4. Si el cliente pide algo que no está en la carta, dilo y ofrece lo más parecido.
-5. Si te preguntan algo que no sabes (horarios, promociones, reclamos, un pedido anterior), usa "pasar_a_humano".
-6. Para domicilios NO prometas el valor del envío: el negocio lo confirma.
+1. NUNCA escribas precios ni totales. El sistema los añade solo.
+2. Si mencionas un producto que el cliente quiere, USA la acción "agregar" en ESE MISMO turno. Nunca digas que agregaste algo sin ejecutar la acción: el cliente se queda creyendo que lo pediste y termina recibiendo otra cosa.
+3. Puedes hacer UNA sola acción por turno. Si el cliente dice varias cosas a la vez, agrega el producto primero y pregunta el resto después.
+4. NUNCA inventes productos, ingredientes ni tiempos de entrega.
+5. Pregunta UNA cosa a la vez, solo lo que aparece en FALTA POR SABER.
+6. Si el cliente pide algo que no está en la carta, dilo y ofrece lo más parecido.
+7. Si te preguntan algo que no sabes (horarios, promociones, reclamos, un pedido anterior), usa "pasar_a_humano" y dile claramente que alguien del equipo le responde en un momento.
+8. Para domicilios NO prometas el valor del envío: el negocio lo confirma.
+9. Cuando FALTA POR SABER diga que no falta nada, NO confirmes por tu cuenta: el sistema le muestra el pedido y le pregunta. Usa "confirmar_pedido" solo cuando el cliente ya respondió que sí a ese resumen.
+10. Si el cliente da una indicación sobre un plato ("sin cebolla", "bien cocida"), pásala en "nota" al agregarlo.
 
 Respondes SOLO con este JSON, sin texto alrededor:
 {"mensaje":"lo que le dices al cliente","accion":{"tipo":"...","...":"..."}}
 
 Acciones posibles:
 {"tipo":"ninguna"}                                        conversar sin cambiar el pedido
-{"tipo":"agregar","producto":"nombre","cantidad":2}       añadir al pedido
+{"tipo":"agregar","producto":"nombre","cantidad":2,"nota":"sin cebolla"}
 {"tipo":"quitar","producto":"nombre"}                     sacar del pedido
 {"tipo":"fijar_tipo","tipo_pedido":"domicilio|recoger|mesa"}
 {"tipo":"fijar_datos","nombre":"...","direccion":"...","notas":"..."}
-{"tipo":"confirmar_pedido"}                               SOLO si el cliente ya dijo que sí a todo
+{"tipo":"confirmar_pedido"}                               SOLO si el cliente ya dijo que sí al resumen
 {"tipo":"pasar_a_humano","motivo":"por qué"}`;
 }
 
@@ -130,12 +134,20 @@ async function pensar(mensajes) {
 function resumen(sesion) {
   if (!sesion.items?.length) return '';
   const lineas = sesion.items
-    .map((i) => `• ${i.quantity}x ${i.name} — ${pesos(i.price * i.quantity)}`)
+    .map((i) => `• ${i.quantity}x ${i.name}${i.note ? ` (${i.note})` : ''} — ${pesos(i.price * i.quantity)}`)
     .join('\n');
   const envio = sesion.orderType === 'delivery'
     ? '\n_El domicilio te lo confirmamos aparte._'
     : '';
-  return `\n\n${lineas}\n*Total: ${pesos(sesion.total())}*${envio}`;
+
+  /* Cuando ya no falta nada, se pregunta explícitamente. Antes el modelo decía
+     "te confirmo el total" sin mostrarlo y el cliente contestaba "sí" a una
+     cifra que nunca vio. */
+  const listo = !acciones.queFalta(sesion).length
+    ? '\n\n¿Confirmo el pedido? Responde *sí* para cerrarlo.'
+    : '';
+
+  return `\n\n${lineas}\n*Total: ${pesos(sesion.total())}*${envio}${listo}`;
 }
 
 /* ── Turno completo ── */
@@ -204,27 +216,35 @@ async function atender({ account, negocio, texto, contactPhone, reglas, crearOrd
 
   let respuesta = String(decision?.mensaje || '').trim();
   const accion = decision?.accion || { tipo: 'ninguna' };
-  let cambioElPedido = false;
 
   try {
     switch (accion.tipo) {
       case 'agregar': {
         const r = await acciones.agregar(sesion, catalogo, {
-          producto: accion.producto, cantidad: accion.cantidad,
+          producto: accion.producto,
+          cantidad: accion.cantidad,
+          nota: accion.nota,
         });
-        if (r.ok) cambioElPedido = true;
-        else if (r.motivo === 'no_existe') respuesta = `No tenemos "${r.pedido}". ¿Quieres ver qué sí tenemos?`;
-        else if (r.motivo === 'ambiguo') respuesta = `¿Cuál de estos? ${r.opciones.join(', ')}`;
-        else if (r.motivo === 'sin_stock') {
-          respuesta = r.disponible > 0
-            ? `De ${r.producto} solo me quedan ${r.disponible}. ¿Te sirven?`
-            : `Se nos acabó ${r.producto}. ¿Te ofrezco otra cosa?`;
+        /* Cuando no se pudo agregar, manda el texto del código y no el del
+           modelo: el modelo ya escribió su mensaje creyendo que sí se agregó, y
+           dejarlo pasar es como el cliente terminó con una hamburguesa
+           sencilla habiendo pedido una doble. */
+        if (!r.ok) {
+          if (r.motivo === 'no_existe') {
+            respuesta = `No tenemos "${r.pedido}". ¿Quieres ver qué sí tenemos?`;
+          } else if (r.motivo === 'ambiguo') {
+            respuesta = `¿Cuál de estos querías? ${r.opciones.join(', ')}`;
+          } else if (r.motivo === 'sin_stock') {
+            respuesta = r.disponible > 0
+              ? `De ${r.producto} solo me quedan ${r.disponible}. ¿Te sirven?`
+              : `Se nos acabó ${r.producto}. ¿Te ofrezco otra cosa?`;
+          }
         }
         break;
       }
 
       case 'quitar':
-        if (acciones.quitar(sesion, catalogo, { producto: accion.producto }).ok) cambioElPedido = true;
+        acciones.quitar(sesion, catalogo, { producto: accion.producto });
         break;
 
       case 'fijar_tipo':
@@ -273,10 +293,16 @@ async function atender({ account, negocio, texto, contactPhone, reglas, crearOrd
     respuesta = 'Dame un segundo que te ayuda alguien del equipo.';
   }
 
-  /* El resumen SIEMPRE lo escribe el código. Si el modelo se inventó una cifra
-     en su texto, la que queda de última —y la que el cliente lee como buena—
-     es esta. */
-  if (cambioElPedido) respuesta += resumen(sesion);
+  /* El resumen SIEMPRE lo escribe el código, y ahora se muestra en CADA turno
+     mientras haya pedido, no solo cuando cambia.
+     El motivo: el modelo llegó a decir "te agrego una doble hamburguesa" sin
+     ejecutar la acción, y como no se mostraba nada, el cliente siguió la
+     conversación creyendo que estaba pedida. Con el pedido siempre a la vista,
+     una promesa que no se cumplió se nota en el mismo mensaje. */
+  const yaSeCerro = accion.tipo === 'confirmar_pedido' && sesion.estado === 'cerrada';
+  if (sesion.items?.length && !yaSeCerro && sesion.estado !== 'con_humano') {
+    respuesta += resumen(sesion);
+  }
 
   sesion.ultimaActividad = new Date();
   await sesion.save();
