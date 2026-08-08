@@ -466,6 +466,72 @@ router.get('/sin-leer', authMiddleware, requiereComplemento, asyncHandler(async 
   res.json({ sinLeer });
 }));
 
+/**
+ * GET /api/whatsapp-inbox/origen — de qué enlace vinieron los pedidos.
+ *
+ * Es lo que convierte el precio en una conversación distinta: en vez de
+ * discutir cuánto cuesta MenuBy, se ve cuánto trajo cada canal. Sin esto el
+ * dato se guarda pero nadie lo mira.
+ *
+ * Va en esta ruta y no en la de pedidos porque es la pantalla de WhatsApp la
+ * que le da sentido, pero mide TODOS los canales, no solo WhatsApp.
+ */
+router.get('/origen', authMiddleware, requiereComplemento, asyncHandler(async (req, res) => {
+  const { Types } = require('mongoose');
+  const CompletedOrder = require('../Models/CompletedOrder');
+  const Order = require('../Models/Order');
+  const { SALES, DELIVERY } = require('../utils/revenue');
+
+  const dias = Math.min(Math.max(Number(req.query.dias) || 30, 1), 365);
+  const desde = new Date(Date.now() - dias * 24 * 60 * 60 * 1000);
+  const negocio = new Types.ObjectId(String(req.businessId));
+
+  /* Los pedidos viven en dos colecciones —activos y completados—, así que se
+     consultan las dos y se suman. Mirar solo una da la mitad del cuadro. */
+  const agrupar = [
+    { $group: {
+      _id: { $ifNull: ['$source', 'sin-marcar'] },
+      pedidos: { $sum: 1 },
+      ventas: { $sum: SALES },
+      envios: { $sum: DELIVERY },
+    } },
+  ];
+
+  const [completados, activos] = await Promise.all([
+    CompletedOrder.aggregate([
+      { $match: { businessId: negocio, completedAt: { $gte: desde } } }, ...agrupar,
+    ]),
+    Order.aggregate([
+      { $match: { businessId: negocio, createdAt: { $gte: desde }, status: { $ne: 'cancelled' } } }, ...agrupar,
+    ]),
+  ]);
+
+  const total = new Map();
+  for (const fila of [...completados, ...activos]) {
+    const previo = total.get(fila._id) || { pedidos: 0, ventas: 0, envios: 0 };
+    total.set(fila._id, {
+      pedidos: previo.pedidos + fila.pedidos,
+      ventas: previo.ventas + fila.ventas,
+      envios: previo.envios + fila.envios,
+    });
+  }
+
+  const origenes = [...total]
+    .map(([origen, v]) => ({ origen, ...v, ticketPromedio: v.pedidos ? Math.round(v.ventas / v.pedidos) : 0 }))
+    .sort((a, b) => b.ventas - a.ventas);
+
+  res.json({
+    dias,
+    desde,
+    origenes,
+    totales: origenes.reduce((s, o) => ({
+      pedidos: s.pedidos + o.pedidos,
+      ventas: s.ventas + o.ventas,
+      envios: s.envios + o.envios,
+    }), { pedidos: 0, ventas: 0, envios: 0 }),
+  });
+}));
+
 /** GET /api/whatsapp-inbox/chats — un renglón por contacto, el más reciente arriba. */
 router.get('/chats', authMiddleware, requiereComplemento, asyncHandler(async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 100);
@@ -496,7 +562,34 @@ router.get('/chats', authMiddleware, requiereComplemento, asyncHandler(async (re
     { $limit: limit }
   ]);
 
-  res.json({ chats: chats.map((c) => ({ ...c, contactPhone: c._id })) });
+  /* Se le pega a cada chat lo que pasó en él, para que el negocio vea de un
+     vistazo cuál está atendido, a cuál se le mandó el menú y cuál terminó en
+     pedido, sin abrirlos uno por uno. */
+  const telefonos = chats.map((c) => c._id);
+  const WhatsAppAgentSession = require('../Models/WhatsAppAgentSession');
+  const sesiones = await WhatsAppAgentSession
+    .find({ businessId: req.businessId, contactPhone: { $in: telefonos } })
+    .select('contactPhone estado menuEnviadoAt orderNumber motivoTraspaso')
+    .lean();
+  const porTelefono = new Map(sesiones.map((s) => [s.contactPhone, s]));
+
+  res.json({
+    chats: chats.map((c) => {
+      const s = porTelefono.get(c._id);
+      return {
+        ...c,
+        contactPhone: c._id,
+        // Lo último lo dijo el cliente y nadie ha respondido.
+        esperandoRespuesta: c.lastDirection === 'in',
+        agente: s ? {
+          estado: s.estado,
+          menuEnviado: !!s.menuEnviadoAt,
+          orderNumber: s.orderNumber || null,
+          motivoTraspaso: s.motivoTraspaso || '',
+        } : null,
+      };
+    }),
+  });
 }));
 
 /** GET /api/whatsapp-inbox/chats/:phone — la conversación. */

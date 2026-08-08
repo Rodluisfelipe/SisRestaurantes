@@ -48,6 +48,10 @@ const whatsAppAgentSessionSchema = new mongoose.Schema({
   orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', default: null },
   orderNumber: { type: String, default: '' },
 
+  /* Qué se le ha hecho a esta conversación. Sirve para que el negocio vea de un
+     vistazo en qué anda cada chat sin tener que abrirlo y leerlo entero. */
+  menuEnviadoAt: { type: Date, default: null },
+
   /* Por qué dejó de atender el agente. Sirve para saber dónde falla sin tener
      que leer conversaciones enteras. */
   motivoTraspaso: { type: String, default: '' },

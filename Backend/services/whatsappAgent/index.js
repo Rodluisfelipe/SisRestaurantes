@@ -377,6 +377,7 @@ async function atender({ account, negocio, slug, texto, contactPhone, reglas, cr
       case 'mandar_menu':
         if (enlace) {
           respuesta = `${respuesta || 'Mira nuestro menú y arma tu pedido acá:'}\n\n🍔 ${enlace}`;
+          sesion.menuEnviadoAt = new Date();
         } else {
           // Sin enlace no se puede derivar; se sigue por chat.
           respuesta = respuesta || '¿Qué te gustaría pedir?';

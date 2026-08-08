@@ -466,6 +466,43 @@ describe('de qué enlace vino el cliente', () => {
     expect(util).toMatch(/catch \{/);
   });
 
+  it('la atribución mide las dos colecciones de pedidos', () => {
+    // Los pedidos viven en activos y completados; mirar una sola da la mitad.
+    const inbox = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'whatsappInbox.js'), 'utf8');
+    const fn = inbox.slice(inbox.indexOf("router.get('/origen'"));
+    expect(fn).toContain('CompletedOrder.aggregate');
+    expect(fn).toContain('Order.aggregate');
+    // Y los cancelados no cuentan como venta.
+    expect(fn).toMatch(/status: \{ \$ne: 'cancelled' \}/);
+  });
+
+  it('los pedidos sin marcar no se esconden', () => {
+    // Si se filtraran, el total no cuadraría con las ventas reales.
+    const inbox = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'whatsappInbox.js'), 'utf8');
+    expect(inbox).toMatch(/\$ifNull: \['\$source', 'sin-marcar'\]/);
+  });
+
+  it('la pantalla muestra de dónde vienen los pedidos', () => {
+    const inbox = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'Frontend', 'src', 'Components', 'Admin', 'WhatsAppInbox.jsx'), 'utf8',
+    );
+    expect(inbox).toContain('OrigenPedidos');
+    expect(inbox).toMatch(/whatsapp-inbox\/origen/);
+  });
+
+  it('cada chat muestra en qué anda sin tener que abrirlo', () => {
+    const inbox = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'Frontend', 'src', 'Components', 'Admin', 'WhatsAppInbox.jsx'), 'utf8',
+    );
+    for (const marca of ['Sin responder', 'Contestado', 'Menú enviado', 'Lo tomó alguien', 'Atiende el bot']) {
+      expect(inbox).toContain(marca);
+    }
+    // Y el backend le pasa los datos que esas marcas necesitan.
+    const ruta = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'whatsappInbox.js'), 'utf8');
+    expect(ruta).toMatch(/esperandoRespuesta: c\.lastDirection === 'in'/);
+    expect(ruta).toMatch(/menuEnviado: !!s\.menuEnviadoAt/);
+  });
+
   it('el menú manda el origen al crear el pedido', () => {
     const menu = fs.readFileSync(
       path.join(__dirname, '..', '..', 'Frontend', 'src', 'Pages', 'Menu.jsx'), 'utf8',

@@ -337,6 +337,7 @@ export default function WhatsAppInbox() {
                           </span>
                         )}
                       </div>
+                      <Marcas chat={c} />
                     </button>
                   </li>
                 );
@@ -348,12 +349,10 @@ export default function WhatsAppInbox() {
         {/* Conversación */}
         <div className={`flex flex-col ${chatActivo ? '' : 'hidden lg:flex'}`}>
           {!chatActivo ? (
-            <div className="flex-1 grid place-items-center text-slate-300 p-8">
-              <div className="text-center">
-                <FaWhatsapp className="mx-auto text-4xl mb-2 opacity-30" />
-                <p className="text-sm">Elige una conversación</p>
-              </div>
-            </div>
+            /* Con ningún chat abierto, el espacio se aprovecha para lo que el
+               negocio no va a ir a buscar por su cuenta: qué canal le está
+               trayendo pedidos. */
+            <OrigenPedidos businessId={businessId} />
           ) : (
             <>
               <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-100 lg:hidden">
@@ -580,6 +579,144 @@ function FichaCliente({ ficha, cargando, onTomarPedido }) {
             ))}
           </ul>
         </details>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Qué pasó en esta conversación, de un vistazo.
+ *
+ * Sin esto hay que abrir cada chat y leerlo entero para saber si ya lo
+ * atendieron, si se le mandó el menú o si terminó en pedido. Con veinte chats
+ * abiertos eso no lo hace nadie.
+ */
+function Marcas({ chat }) {
+  const a = chat.agente;
+  const marcas = [];
+
+  if (chat.esperandoRespuesta) {
+    marcas.push({ txt: 'Sin responder', clase: 'bg-amber-100 text-amber-700' });
+  } else {
+    marcas.push({ txt: 'Contestado', clase: 'bg-slate-100 text-slate-500' });
+  }
+
+  if (a?.orderNumber) {
+    marcas.push({ txt: `Pedido #${a.orderNumber}`, clase: 'bg-emerald-100 text-emerald-700' });
+  }
+  if (a?.menuEnviado) {
+    marcas.push({ txt: 'Menú enviado', clase: 'bg-sky-100 text-sky-700' });
+  }
+  if (a?.estado === 'con_humano') {
+    marcas.push({ txt: 'Lo tomó alguien', clase: 'bg-violet-100 text-violet-700' });
+  } else if (a?.estado === 'activa') {
+    marcas.push({ txt: 'Atiende el bot', clase: 'bg-slate-100 text-slate-500' });
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1 mt-1.5">
+      {marcas.map((m) => (
+        <span key={m.txt} className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${m.clase}`}>
+          {m.txt}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * De qué enlace vinieron los pedidos.
+ *
+ * Es lo que cambia la conversación del precio: en vez de discutir cuánto cuesta
+ * MenuBy, se ve cuánto trajo cada canal.
+ */
+function OrigenPedidos({ businessId }) {
+  const [datos, setDatos] = useState(null);
+  const [dias, setDias] = useState(30);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    let vivo = true;
+    setCargando(true);
+    api.get(`/whatsapp-inbox/origen?businessId=${businessId}&dias=${dias}`)
+      .then(({ data }) => { if (vivo) setDatos(data); })
+      .catch(() => { if (vivo) setDatos(null); })
+      .finally(() => { if (vivo) setCargando(false); });
+    return () => { vivo = false; };
+  }, [businessId, dias]);
+
+  const ETIQUETAS = {
+    whatsapp: 'WhatsApp', instagram: 'Instagram', facebook: 'Facebook',
+    qr: 'Código QR', google: 'Google', 'sin-marcar': 'Sin marcar',
+  };
+
+  if (cargando) {
+    return <div className="p-6 text-center text-slate-300"><FaSpinner className="animate-spin mx-auto" /></div>;
+  }
+  if (!datos?.origenes?.length) {
+    return (
+      <div className="p-6 text-center">
+        <p className="text-sm text-slate-500 font-medium">Todavía no hay pedidos que medir</p>
+        <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+          Comparte tu menú con un enlace marcado —por ejemplo <code className="text-slate-500">?source=instagram</code>—
+          y acá verás cuántos pedidos trajo cada canal.
+        </p>
+      </div>
+    );
+  }
+
+  const { origenes, totales } = datos;
+  const mayor = Math.max(...origenes.map((o) => o.ventas), 1);
+
+  return (
+    <div className="p-4">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div>
+          <p className="text-sm font-bold text-slate-800">De dónde vienen tus pedidos</p>
+          <p className="text-[11px] text-slate-400">
+            {totales.pedidos} pedidos · {pesos(totales.ventas)} en ventas
+          </p>
+        </div>
+        <select
+          value={dias}
+          onChange={(e) => setDias(Number(e.target.value))}
+          className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-600"
+        >
+          <option value={7}>7 días</option>
+          <option value={30}>30 días</option>
+          <option value={90}>90 días</option>
+        </select>
+      </div>
+
+      <ul className="space-y-2.5">
+        {origenes.map((o) => (
+          <li key={o.origen}>
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <span className="font-semibold text-slate-700">
+                {ETIQUETAS[o.origen] || o.origen}
+              </span>
+              <span className="text-slate-500">
+                {o.pedidos} pedido{o.pedidos === 1 ? '' : 's'} · <strong className="text-slate-700">{pesos(o.ventas)}</strong>
+              </span>
+            </div>
+            <div className="h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+              <div
+                className={`h-full rounded-full ${o.origen === 'sin-marcar' ? 'bg-slate-300' : 'bg-emerald-500'}`}
+                style={{ width: `${Math.max(2, (o.ventas / mayor) * 100)}%` }}
+              />
+            </div>
+            <p className="text-[10px] text-slate-400 mt-0.5">
+              Ticket promedio {pesos(o.ticketPromedio)}
+            </p>
+          </li>
+        ))}
+      </ul>
+
+      {origenes.some((o) => o.origen === 'sin-marcar') && (
+        <p className="text-[11px] text-slate-400 mt-4 leading-relaxed">
+          <strong className="text-slate-500">Sin marcar</strong> son los pedidos que entraron por un enlace
+          sin identificar. Para medirlos, comparte el menú añadiéndole <code>?source=</code> y el nombre del canal.
+        </p>
       )}
     </div>
   );
