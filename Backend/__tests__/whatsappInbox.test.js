@@ -197,6 +197,44 @@ describe('modelos — lo que impide duplicados y filtraciones', () => {
   });
 });
 
+describe('la sección del panel está cableada', () => {
+  /* Una entrada de menú que no renderiza nada deja la pantalla en blanco sin
+     ningún error: el `activeTab` simplemente no coincide con ningún bloque. */
+  const fs = require('fs');
+  const path = require('path');
+  const front = (...p) => fs.readFileSync(path.join(__dirname, '..', '..', 'Frontend', 'src', ...p), 'utf8');
+
+  const ID = 'whatsapp-inbox';
+
+  it('el menú lateral ofrece la sección', () => {
+    expect(front('Components', 'ModernAdminSidebar.jsx')).toContain(`id: '${ID}'`);
+  });
+
+  it('Admin.jsx renderiza algo para ese id', () => {
+    const src = front('Pages', 'Admin.jsx');
+    expect(src).toContain(`activeTab === '${ID}'`);
+    expect(src).toContain('<WhatsAppInbox />');
+    expect(src).toMatch(/const WhatsAppInbox = lazy\(/);
+  });
+
+  it('la cabecera móvil sabe cómo se llama', () => {
+    expect(front('Components', 'Admin', 'MobileHeader.jsx')).toContain(`'${ID}'`);
+  });
+
+  it('la pantalla contempla no tener el complemento contratado', () => {
+    // Sin esto, un negocio sin el add-on veria un error crudo en vez de la oferta.
+    const src = front('Components', 'Admin', 'WhatsAppInbox.jsx');
+    expect(src).toMatch(/status === 402|status \? \.402/);
+    expect(src).toContain('OfertaComplemento');
+  });
+
+  it('la pantalla bloquea el envío fuera de la ventana de 24 horas', () => {
+    const src = front('Components', 'Admin', 'WhatsAppInbox.jsx');
+    expect(src).toContain('puedeResponder');
+    expect(src).toContain('OUTSIDE_WINDOW');
+  });
+});
+
 describe('interpretación del mensaje de Meta', () => {
   /* Esto no estaba cubierto y por eso un fallo trivial —una variable local que
      tapaba a una función homónima— solo se descubrió mandando un WhatsApp real

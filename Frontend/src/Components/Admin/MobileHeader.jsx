@@ -33,6 +33,7 @@ const TAB_TITLES = {
   'cash-closings':    'Cierres',
   'monthly-closing':  'Cierre mensual',
   'inventory':        'Inventario',
+  'whatsapp-inbox':   'Chats WhatsApp',
   'referrals':        'Referidos',
   'loyalty':          'Fidelidad',
 };

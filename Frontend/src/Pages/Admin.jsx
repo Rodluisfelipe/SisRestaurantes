@@ -47,6 +47,7 @@ const PrintAgentConfig = lazy(() => import("../Components/Admin/PrintAgentConfig
 const DomiStats = lazy(() => import("../Components/Delivery/DomiStats"));
 const ProductManager = lazy(() => import("../Components/Admin/ProductManager"));
 const InventoryManager = lazy(() => import("../Components/Admin/InventoryManager"));
+const WhatsAppInbox = lazy(() => import("../Components/Admin/WhatsAppInbox"));
 const FeaturedProductsManager = lazy(() => import("../Components/Admin/FeaturedProductsManager"));
 const SubscriptionPayment = lazy(() => import("./SubscriptionPayment"));
 const AdminReviews = lazy(() => import("../Components/Admin/AdminReviews"));
@@ -466,6 +467,13 @@ function Admin() {
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Inventario" onGoBack={() => setActiveTab('dashboard')}>
                       <InventoryManager />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'whatsapp-inbox' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Chats WhatsApp" onGoBack={() => setActiveTab('dashboard')}>
+                      <WhatsAppInbox />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}

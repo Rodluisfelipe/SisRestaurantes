@@ -73,6 +73,10 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       label: 'Clientes y Servicio',
       items: [
         { id: 'customers', label: 'Clientes', Icon: FaUsers, badge: null },
+        /* Se muestra aunque el negocio no lo tenga contratado: la pantalla
+           explica de qué se trata en vez de fallar, y así el complemento se
+           descubre solo en lugar de quedar escondido. */
+        { id: 'whatsapp-inbox', label: 'Chats WhatsApp', Icon: FaWhatsapp, badge: null },
         { id: 'coupons', label: 'Cupones', Icon: FaTicketAlt, badge: null },
         { id: 'loyalty', label: 'Fidelidad', Icon: FaGift, badge: null, beta: true },
         { id: 'reviews', label: 'Reseñas', Icon: FaStar, badge: null },
@@ -87,7 +91,9 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       items: [
         { id: 'catalog', label: 'Catálogo', Icon: FaBullhorn, badge: null },
         { id: 'popups', label: 'Anuncios', Icon: FaBullhorn, badge: null },
-        { id: 'whatsapp', label: 'WhatsApp', Icon: FaWhatsapp, badge: null },
+        /* Este personaliza el mensaje del enlace wa.me del menú; no confundir
+           con "Chats WhatsApp", que es la bandeja del número propio. */
+        { id: 'whatsapp', label: 'Mensaje del menú', Icon: FaWhatsapp, badge: null },
         { id: 'wa-campaign', label: 'Campaña WA', Icon: FaWhatsapp, badge: null },
         { id: 'payment-config', label: 'Pagos', Icon: FaMoneyBillWave, badge: null },
         { id: 'referrals', label: 'Referidos', Icon: FaShareAlt, badge: null },
