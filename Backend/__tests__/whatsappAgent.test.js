@@ -282,10 +282,34 @@ describe('la frontera entre el modelo y el código', () => {
     expect(modelo).toMatch(/activo: \{ type: Boolean, default: false \}/);
   });
 
+  /* Una conversación pasada a un humano se quedaba muda para siempre: si nadie
+     del negocio contestaba, el cliente esperaba indefinidamente sin respuesta
+     ni explicación. Pasó de verdad al preguntar por los horarios. */
+  it('el traspaso a una persona caduca si nadie lo atiende', () => {
+    expect(src).toContain('ESPERA_HUMANO_MS');
+    expect(src).toMatch(/if \(respondioAlguien \|\| !vencido\) return null/);
+    expect(src).toMatch(/sesion\.estado = 'activa'/);
+  });
+
+  it('se considera atendido solo si el negocio escribió después del traspaso', () => {
+    // El plazo por sí solo no basta: si alguien ya contestó, el agente no vuelve.
+    expect(src).toMatch(/direction: 'out', sentAt: \{ \$gt: desde \}/);
+  });
+
+  it('cada traspaso deja constancia de cuándo fue', () => {
+    const traspasos = (src.match(/sesion\.estado = 'con_humano';/g) || []).length;
+    const marcas = (src.match(/sesion\.traspasadoEn = new Date\(\);/g) || []).length;
+    expect(traspasos).toBeGreaterThan(0);
+    expect(marcas).toBe(traspasos);
+  });
+
   it('si contesta una persona, el agente se calla', () => {
+    // Responder desde el panel marca la conversación como atendida...
     const ruta = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'whatsappInbox.js'), 'utf8');
     expect(ruta).toMatch(/contestó una persona del negocio/);
-    expect(src).toMatch(/if \(sesion\.estado === 'con_humano'\) return null/);
+    // ...y el agente comprueba ese estado antes de decir nada.
+    expect(src).toMatch(/if \(sesion\.estado === 'con_humano'\) \{/);
+    expect(src).toMatch(/respondioAlguien/);
   });
 
   it('un reintento de Meta no hace que conteste dos veces', () => {

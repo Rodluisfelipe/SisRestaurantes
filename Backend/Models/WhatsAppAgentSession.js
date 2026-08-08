@@ -51,6 +51,10 @@ const whatsAppAgentSessionSchema = new mongoose.Schema({
   /* Por qué dejó de atender el agente. Sirve para saber dónde falla sin tener
      que leer conversaciones enteras. */
   motivoTraspaso: { type: String, default: '' },
+  /* Cuándo se paso a una persona. Sirve para saber si alguien lo atendió: si
+     pasa el tiempo y nadie contesta, el agente retoma en vez de dejar al
+     cliente esperando indefinidamente. */
+  traspasadoEn: { type: Date, default: null },
 
   ultimaActividad: { type: Date, default: Date.now },
 }, { timestamps: true });

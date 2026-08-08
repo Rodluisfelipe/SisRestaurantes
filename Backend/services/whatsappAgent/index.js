@@ -25,6 +25,11 @@ const MODELOS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
 const MAX_HISTORIAL = 12;      // mensajes de contexto
 const MAX_PRODUCTOS = 60;      // tope de catálogo en el prompt
 
+/* Cuánto se le da al negocio para atender un traspaso antes de que el agente
+   retome. Media hora: suficiente para que alguien vea el chat, y poco para que
+   un cliente no se quede toda la tarde sin respuesta. */
+const ESPERA_HUMANO_MS = 30 * 60 * 1000;
+
 const pesos = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-CO');
 
 /* ── Catálogo ── */
@@ -164,8 +169,29 @@ async function atender({ account, negocio, texto, contactPhone, reglas, crearOrd
     sesion = new WhatsAppAgentSession({ businessId, contactPhone, items: [] });
   }
 
-  // Una vez que hay una persona atendiendo, el agente no vuelve a meterse.
-  if (sesion.estado === 'con_humano') return null;
+  /* Si hay una persona atendiendo, el agente no se mete. Pero el traspaso
+     caduca: antes, una vez pasada a un humano la conversación quedaba muda
+     para siempre, así que si nadie del negocio contestaba el cliente se
+     quedaba esperando sin respuesta ni explicación.
+     Se considera que alguien la tomó de verdad solo si el negocio escribió
+     DESPUÉS del traspaso. Si no escribió nadie y pasó el plazo, el agente
+     retoma: contestar algo es mejor que el silencio. */
+  if (sesion.estado === 'con_humano') {
+    const desde = sesion.traspasadoEn || sesion.ultimaActividad;
+    const respondioAlguien = await WhatsAppMessage.exists({
+      businessId, contactPhone, direction: 'out', sentAt: { $gt: desde },
+    });
+    const vencido = Date.now() - new Date(desde).getTime() > ESPERA_HUMANO_MS;
+
+    if (respondioAlguien || !vencido) return null;
+
+    logger.info('[Agente] Nadie atendió el traspaso, el agente retoma', {
+      businessId: String(businessId), contactPhone, motivo: sesion.motivoTraspaso,
+    });
+    sesion.estado = 'activa';
+    sesion.motivoTraspaso = '';
+    sesion.traspasadoEn = null;
+  }
 
   /* Tras cerrar un pedido, si el cliente vuelve a escribir se empieza de cero:
      seguir con el carrito viejo haría que "quiero otra" agregara sobre un
@@ -183,6 +209,7 @@ async function atender({ account, negocio, texto, contactPhone, reglas, crearOrd
   const catalogo = await cargarCatalogo(businessId);
   if (!catalogo.length) {
     sesion.estado = 'con_humano';
+    sesion.traspasadoEn = new Date();
     sesion.motivoTraspaso = 'el negocio no tiene productos disponibles';
     await sesion.save();
     return null;
@@ -209,6 +236,7 @@ async function atender({ account, negocio, texto, contactPhone, reglas, crearOrd
   } catch (e) {
     logger.error('[Agente] No se pudo consultar el modelo', { error: e.message });
     sesion.estado = 'con_humano';
+    sesion.traspasadoEn = new Date();
     sesion.motivoTraspaso = `fallo del modelo: ${e.message}`;
     await sesion.save();
     return null;   // mejor no responder que responder cualquier cosa
@@ -272,6 +300,7 @@ async function atender({ account, negocio, texto, contactPhone, reglas, crearOrd
           /* Si no se pudo crear por algo que no sabemos manejar, no se le
              inventa una explicación al cliente: lo toma una persona. */
           sesion.estado = 'con_humano';
+          sesion.traspasadoEn = new Date();
           sesion.motivoTraspaso = `no se pudo crear el pedido: ${r.motivo}`;
         }
         break;
@@ -279,6 +308,7 @@ async function atender({ account, negocio, texto, contactPhone, reglas, crearOrd
 
       case 'pasar_a_humano':
         sesion.estado = 'con_humano';
+        sesion.traspasadoEn = new Date();
         sesion.motivoTraspaso = String(accion.motivo || 'el agente no supo resolver').slice(0, 200);
         if (!respuesta) respuesta = 'Dame un segundo que te ayuda alguien del equipo.';
         break;
@@ -289,6 +319,7 @@ async function atender({ account, negocio, texto, contactPhone, reglas, crearOrd
   } catch (e) {
     logger.error('[Agente] Falló la acción', { tipo: accion.tipo, error: e.message });
     sesion.estado = 'con_humano';
+    sesion.traspasadoEn = new Date();
     sesion.motivoTraspaso = `error ejecutando ${accion.tipo}: ${e.message}`;
     respuesta = 'Dame un segundo que te ayuda alguien del equipo.';
   }
