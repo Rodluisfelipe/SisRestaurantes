@@ -42,6 +42,15 @@ log "Construyendo imagen..."
 HOST_PORT=$PUERTO_NUEVO docker compose -p "$PROY_NUEVO" build
 
 # ── 3. Levantar el nuevo, sin tocar el viejo ────────────────────────────────
+# Primero se retira cualquier resto del color que toca. Si un despliegue previo
+# se interrumpió a medias, queda un contenedor con ese nombre y `up` falla con
+# "container name is already in use": el despliegue se caía dejando los dos
+# colores corriendo a la vez, que en un servidor de 2 GB es memoria de sobra.
+# Esto no toca el color que está atendiendo, solo el que vamos a reemplazar.
+log "Retirando restos de $COLOR_NUEVO, si los hay..."
+HOST_PORT=$PUERTO_NUEVO docker compose -p "$PROY_NUEVO" down --remove-orphans 2>/dev/null || true
+docker rm -f "${PROY_NUEVO}-backend-1" 2>/dev/null || true
+
 log "Levantando $COLOR_NUEVO en :$PUERTO_NUEVO..."
 HOST_PORT=$PUERTO_NUEVO docker compose -p "$PROY_NUEVO" up -d --force-recreate
 
@@ -136,5 +145,18 @@ if [ "$CODIGO" != "200" ]; then
   fi
   log "Recuperado."
 fi
+
+# Ya con el servicio confirmado, que no queden los dos colores encendidos: en
+# 2 GB de RAM, dos backends a la vez dejan al servidor sin margen. Va acá al
+# final y no antes, para no apagar el respaldo mientras aún no se sabe si el
+# nuevo responde.
+for COLOR in blue green; do
+  NOMBRE="${PROYECTO_BASE}-${COLOR}-backend-1"
+  if [ "$COLOR" = "blue" ]; then PUERTO_DE_ESE=$AZUL; else PUERTO_DE_ESE=$VERDE; fi
+  if [ "$PUERTO_DE_ESE" != "$PUERTO_FINAL" ] && docker ps --format '{{.Names}}' | grep -qx "$NOMBRE"; then
+    log "Apagando $COLOR, que quedó encendido sin estar atendiendo..."
+    HOST_PORT=$PUERTO_DE_ESE docker compose -p "${PROYECTO_BASE}-${COLOR}" down 2>/dev/null || true
+  fi
+done
 
 log "Listo. Atendiendo en :$PUERTO_NUEVO ($COLOR_NUEVO), comprobado con HTTP $CODIGO."
