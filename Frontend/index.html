@@ -2,6 +2,11 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
+    <!-- Verificación del dominio ante Meta, necesaria para conectar el WhatsApp
+         de cada negocio. Va acá, en el HTML estático: Meta no ejecuta
+         JavaScript al comprobarlo, así que una etiqueta inyectada por React
+         nunca la vería. -->
+    <meta name="facebook-domain-verification" content="8jy1dd584k8q3xk0eotletfa6wej7u" />
     <!-- Favicons — PNG/ICO cuadrados para que Google Search y los navegadores
          los tomen de forma fiable (el logo.jpeg progresivo daba problemas). -->
     <link rel="icon" href="/favicon.ico" sizes="any" />
