@@ -216,42 +216,45 @@ describe('qué falta para poder cerrar el pedido', () => {
 });
 
 describe('la frontera entre el modelo y el código', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'services', 'whatsappAgent', 'index.js'), 'utf8');
+  /* La primera versión dejaba que el modelo decidiera el flujo y redactara las
+     respuestas, y se defendía con reglas de prompt. Cada regla nueva rompía
+     otra cosa: pedidos con el producto equivocado, totales que el cliente nunca
+     vio, bucles, y menús mandados a quien ya estaba dictando su pedido.
+
+     Ahora la garantía es estructural en vez de pedida por favor: el modelo solo
+     traduce el mensaje a datos y no tiene forma de escribirle al cliente. */
+  const srcInterpretar = fs.readFileSync(path.join(__dirname, '..', 'services', 'whatsappAgent', 'interpretar.js'), 'utf8');
+  const srcConversacion = fs.readFileSync(path.join(__dirname, '..', 'services', 'whatsappAgent', 'conversacion.js'), 'utf8');
+  const srcIndex = fs.readFileSync(path.join(__dirname, '..', 'services', 'whatsappAgent', 'index.js'), 'utf8');
   const srcAcc = fs.readFileSync(path.join(__dirname, '..', 'services', 'whatsappAgent', 'acciones.js'), 'utf8');
 
-  it('al modelo se le prohíbe escribir precios', () => {
-    expect(src).toMatch(/NUNCA escribas precios/i);
+  it('el modelo no puede escribir lo que lee el cliente', () => {
+    // Su salida son datos: no hay ningún campo con texto para el cliente.
+    const { normalizar } = require('../services/whatsappAgent/interpretar');
+    const campos = Object.keys(normalizar({}));
+    expect(campos).not.toContain('mensaje');
+    expect(campos).not.toContain('respuesta');
+    expect(campos).not.toContain('texto');
+    expect(srcInterpretar).toMatch(/NO respondes al cliente\. NO decides qué hacer/);
   });
 
-  it('el resumen del pedido lo escribe el código', () => {
-    // Si el modelo se inventa una cifra, la que el cliente lee de última es la nuestra.
-    expect(src).toMatch(/function resumen\(sesion\)/);
-    expect(src).toMatch(/respuesta \+= resumen\(sesion\)/);
+  it('quien decide el flujo no llama al modelo', () => {
+    // conversacion.js se puede probar entero sin red, y por eso hay 24 pruebas
+    // de conversaciones completas que antes no se podían escribir.
+    expect(srcConversacion).not.toMatch(/fetch\(/);
+    expect(srcConversacion).not.toMatch(/GROQ/);
   });
 
-  /* El modelo llegó a decir "te agrego una doble hamburguesa" sin ejecutar la
-     acción. Como el resumen solo salía cuando el pedido cambiaba, no se mostró
-     nada y el cliente siguió creyendo que estaba pedida. */
-  it('el pedido se muestra en cada turno, no solo cuando cambia', () => {
-    expect(src).toMatch(/if \(sesion\.items\?\.length && !yaSeCerro/);
-  });
-
-  it('se pregunta por la confirmación mostrando el total', () => {
-    // Antes decía "te confirmo el total" sin mostrarlo y el cliente decía "sí".
-    expect(src).toMatch(/¿Confirmo el pedido\?/);
-  });
-
-  it('al modelo se le exige ejecutar la acción, no solo anunciarla', () => {
-    expect(src).toMatch(/Nunca digas que agregaste algo sin ejecutar la acción/);
-  });
-
-  it('el precio nunca viene de los argumentos del modelo', () => {
-    /* Se comprueba la garantía, no la firma exacta: lo que agregar() recibe del
-       modelo no puede incluir un precio, y el que guarda sale del catálogo. */
+  it('el precio nunca viene del modelo', () => {
     const firma = srcAcc.match(/async function agregar\(sesion, catalogo, \{([^}]*)\}\)/);
     expect(firma).not.toBeNull();
     expect(firma[1]).not.toMatch(/precio|price|valor|total/i);
     expect(srcAcc).toContain('price: Number(p.price) || 0');
+  });
+
+  it('el total y la carta los escribe el código', () => {
+    expect(srcConversacion).toMatch(/function resumen\(sesion\)/);
+    expect(srcIndex).toMatch(/function cartaParaCliente/);
   });
 
   it('los precios se releen de la base antes de crear el pedido', () => {
@@ -273,8 +276,7 @@ describe('la frontera entre el modelo y el código', () => {
   });
 
   it('si el modelo falla, el agente calla en vez de improvisar', () => {
-    expect(src).toMatch(/catch[\s\S]{0,400}con_humano/);
-    expect(src).toMatch(/mejor no responder que responder cualquier cosa/);
+    expect(srcIndex).toMatch(/if \(!dicho\) \{[\s\S]{0,300}con_humano/);
   });
 
   it('el agente viene apagado de fábrica', () => {
@@ -282,45 +284,43 @@ describe('la frontera entre el modelo y el código', () => {
     expect(modelo).toMatch(/activo: \{ type: Boolean, default: false \}/);
   });
 
-  /* Una conversación pasada a un humano se quedaba muda para siempre: si nadie
-     del negocio contestaba, el cliente esperaba indefinidamente sin respuesta
-     ni explicación. Pasó de verdad al preguntar por los horarios. */
-  it('el traspaso a una persona caduca si nadie lo atiende', () => {
-    expect(src).toContain('ESPERA_HUMANO_MS');
-    expect(src).toMatch(/if \(respondioAlguien \|\| !vencido\) return null/);
-    expect(src).toMatch(/sesion\.estado = 'activa'/);
-  });
-
-  it('se considera atendido solo si el negocio escribió después del traspaso', () => {
-    // El plazo por sí solo no basta: si alguien ya contestó, el agente no vuelve.
-    expect(src).toMatch(/direction: 'out', sentAt: \{ \$gt: desde \}/);
-  });
-
-  it('cada traspaso deja constancia de cuándo fue', () => {
-    const traspasos = (src.match(/sesion\.estado = 'con_humano';/g) || []).length;
-    const marcas = (src.match(/sesion\.traspasadoEn = new Date\(\);/g) || []).length;
-    expect(traspasos).toBeGreaterThan(0);
-    expect(marcas).toBe(traspasos);
-  });
-
   it('si contesta una persona, el agente se calla', () => {
-    // Responder desde el panel marca la conversación como atendida...
     const ruta = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'whatsappInbox.js'), 'utf8');
     expect(ruta).toMatch(/contestó una persona del negocio/);
-    // ...y el agente comprueba ese estado antes de decir nada.
-    expect(src).toMatch(/if \(sesion\.estado === 'con_humano'\) \{/);
-    expect(src).toMatch(/respondioAlguien/);
+    expect(srcIndex).toMatch(/if \(sesion\.estado === 'con_humano'\) \{/);
+    expect(srcIndex).toMatch(/respondioAlguien/);
   });
 
   it('un reintento de Meta no hace que conteste dos veces', () => {
     const ruta = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'whatsappInbox.js'), 'utf8');
     expect(ruta).toMatch(/if \(guardado\) await quizaContesteElAgente/);
   });
+
+  it('el traspaso a una persona caduca si nadie lo atiende', () => {
+    expect(srcIndex).toContain('ESPERA_HUMANO_MS');
+    expect(srcIndex).toMatch(/if \(respondioAlguien \|\| !vencido\) return null/);
+  });
+
+  it('repetirse sigue siendo alarma, aunque ya no deba pasar', () => {
+    expect(srcIndex).toMatch(/turnosSinAvanzar >= MAX_TURNOS_SIN_AVANZAR/);
+    expect(srcIndex).toMatch(/me estoy enredando/);
+  });
+
+  it('el enlace del menú lo arma el código', () => {
+    const { enlaceMenu } = require('../services/whatsappAgent');
+    expect(enlaceMenu('doggitos')).toContain('/doggitos?source=whatsapp');
+    // Sin slug no se inventa: mandar a una página que no existe es peor.
+    expect(enlaceMenu(null)).toBeNull();
+  });
+
+  it('no se ofrecen productos que el negocio desactivó', () => {
+    expect(srcIndex).toMatch(/active: \{ \$ne: false \}/);
+  });
 });
 
 describe('la carta la imprime el código', () => {
   /* El modelo la redactaba de memoria y salía un chorizo corrido, sin precios,
-     todo en una línea y mezclando categorías. */
+     todo en una línea y ofreciendo productos ya retirados de la carta. */
   const { cartaParaCliente } = require('../services/whatsappAgent');
   const CARTA = [
     { _id: '1', name: 'Hamburguesa', price: 30000, category: { name: 'Hamburguesas' } },
@@ -345,100 +345,6 @@ describe('la carta la imprime el código', () => {
     const soloPostres = cartaParaCliente(CARTA, 'postres');
     expect(soloPostres).toContain('McFlurry Oreo');
     expect(soloPostres).not.toContain('Hamburguesa');
-  });
-
-  it('al modelo se le prohíbe enumerar la carta', () => {
-    const fs2 = require('fs');
-    const path2 = require('path');
-    const src2 = fs2.readFileSync(path2.join(__dirname, '..', 'services', 'whatsappAgent', 'index.js'), 'utf8');
-    expect(src2).toMatch(/ni enumeres la carta/);
-    expect(src2).toMatch(/mostrar_carta/);
-  });
-
-  it('no se ofrecen productos que el negocio desactivó', () => {
-    // El agente llegó a ofrecer un producto llamado "Prueba" que estaba apagado.
-    const fs2 = require('fs');
-    const path2 = require('path');
-    const src2 = fs2.readFileSync(path2.join(__dirname, '..', 'services', 'whatsappAgent', 'index.js'), 'utf8');
-    expect(src2).toMatch(/active: \{ \$ne: false \}/);
-  });
-});
-
-describe('no quedarse dando vueltas', () => {
-  /* Un cliente dio nombre y dirección juntos, el modelo intentó confirmar en
-     vez de guardarlos, y el agente repitió "Antes de confirmar me falta un
-     dato" cuatro veces mientras el cliente preguntaba "¿cuál?". */
-  const src = fs.readFileSync(path.join(__dirname, '..', 'services', 'whatsappAgent', 'index.js'), 'utf8');
-
-  it('cuando falta un dato, se dice cuál', () => {
-    expect(src).toMatch(/const PREGUNTA_POR = \{/);
-    expect(src).toMatch(/respuesta = PREGUNTA_POR\[r\.falta\[0\]\]/);
-    // Y ya no se manda el mensaje que no decía nada.
-    expect(src).not.toContain("'Antes de confirmar me falta un dato.'");
-  });
-
-  it('hay una pregunta concreta para cada dato que puede faltar', () => {
-    const claves = [...src.matchAll(/^\s{2}(\w+): '¿/gm)].map((m) => m[1]);
-    // Los mismos que devuelve queFalta().
-    for (const dato of ['productos', 'tipo', 'direccion', 'nombre']) {
-      expect(claves).toContain(dato);
-    }
-  });
-
-  it('repetir la misma respuesta cuenta como no avanzar', () => {
-    expect(src).toMatch(/const repetida = respuesta && respuesta === sesion\.ultimaRespuesta/);
-    expect(src).toMatch(/sesion\.turnosSinAvanzar = repetida \?/);
-  });
-
-  it('tras varios turnos atascado lo toma una persona', () => {
-    expect(src).toMatch(/turnosSinAvanzar >= MAX_TURNOS_SIN_AVANZAR/);
-    expect(src).toMatch(/me estoy enredando/);
-  });
-
-  it('al modelo se le exige guardar los datos antes de confirmar', () => {
-    expect(src).toMatch(/usa "fijar_datos" en ESE turno/);
-    // Y se le muestra que puede mandar varios campos de una vez.
-    expect(src).toMatch(/"nombre":"Felipe","direccion"/);
-  });
-
-  it('las reglas del prompt no se repiten en numeración', () => {
-    const bloque = src.slice(src.indexOf('REGLAS QUE NO PUEDES ROMPER'), src.indexOf('Respondes SOLO'));
-    const numeros = [...bloque.matchAll(/^(\d+)\./gm)].map((m) => Number(m[1]));
-    expect(numeros).toEqual([...new Set(numeros)]);
-    expect(numeros).toEqual([...numeros].sort((a, b) => a - b));
-  });
-});
-
-describe('llevar al cliente al menú', () => {
-  /* Armar el pedido conversando cuesta diez o quince mensajes; mandar el enlace
-     cuesta uno. Con el mismo cupo, llevar al menú rinde diez veces más, y el
-     pedido entra mejor porque el cliente ve fotos, tamaños y extras. */
-  const { enlaceMenu } = require('../services/whatsappAgent');
-  const src = fs.readFileSync(path.join(__dirname, '..', 'services', 'whatsappAgent', 'index.js'), 'utf8');
-
-  it('el enlace lleva la marca de por dónde vino', () => {
-    expect(enlaceMenu('doggitos')).toContain('/doggitos?source=whatsapp');
-  });
-
-  it('sin slug no se inventa un enlace', () => {
-    // Mandar a una página que no existe es peor que seguir por chat.
-    expect(enlaceMenu(null)).toBeNull();
-    expect(enlaceMenu('')).toBeNull();
-  });
-
-  it('el enlace lo escribe el código, no el modelo', () => {
-    expect(src).toMatch(/ni escribas el enlace del menú/);
-    expect(src).toMatch(/case 'mandar_menu'/);
-  });
-
-  it('mandar el menú es lo preferido en las instrucciones', () => {
-    expect(src).toMatch(/LO PRIMERO QUE HAY QUE HACER/);
-    expect(src).toMatch(/lo PREFERIDO/);
-  });
-
-  it('si no hay enlace, el agente sigue por chat', () => {
-    // No se le dan instrucciones de derivar si no hay a dónde derivar.
-    expect(src).toMatch(/\$\{enlace \? `LO PRIMERO/);
   });
 });
 
