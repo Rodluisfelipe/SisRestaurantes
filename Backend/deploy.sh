@@ -52,7 +52,16 @@ HOST_PORT=$PUERTO_NUEVO docker compose -p "$PROY_NUEVO" down --remove-orphans 2>
 docker rm -f "${PROY_NUEVO}-backend-1" 2>/dev/null || true
 
 log "Levantando $COLOR_NUEVO en :$PUERTO_NUEVO..."
-HOST_PORT=$PUERTO_NUEVO docker compose -p "$PROY_NUEVO" up -d --force-recreate
+# Docker devuelve error por conflicto de nombre aunque acto seguido levante el
+# contenedor igual. Con `set -e` eso abortaba el despliegue a mitad, dejando el
+# nuevo arriba pero sin apagar el viejo. Se reintenta una vez tras limpiar, y
+# quien decide si salió bien es el chequeo de salud, no el código de salida.
+if ! HOST_PORT=$PUERTO_NUEVO docker compose -p "$PROY_NUEVO" up -d --force-recreate; then
+  log "El arranque devolvió error; se limpia y se reintenta una vez..."
+  docker rm -f "${PROY_NUEVO}-backend-1" 2>/dev/null || true
+  docker network rm "${PROY_NUEVO}_default" 2>/dev/null || true
+  HOST_PORT=$PUERTO_NUEVO docker compose -p "$PROY_NUEVO" up -d --force-recreate || true
+fi
 
 # ── 4. Esperar a que responda sano ──────────────────────────────────────────
 log "Esperando a que :$PUERTO_NUEVO responda..."
