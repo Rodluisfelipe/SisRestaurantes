@@ -27,8 +27,14 @@ const NADA = {
 };
 
 function instrucciones(nombresDeProductos) {
-  return `Tu único trabajo es entender qué dijo el cliente de un restaurante y devolverlo como datos.
+  return `Tu único trabajo es entender EL ÚLTIMO MENSAJE del cliente de un restaurante y devolverlo como datos.
 NO respondes al cliente. NO decides qué hacer. Solo extraes.
+
+LO MÁS IMPORTANTE: extraes ÚNICAMENTE de "MENSAJE A INTERPRETAR".
+Lo demás es contexto para entender a qué se refiere ("sí", "esa", "la otra"), NO es algo que pedir otra vez.
+Si el mensaje a interpretar no nombra ningún producto, "productos" va VACÍO — aunque el cliente haya pedido algo antes.
+Un cliente que responde "a domicilio" o dice su dirección NO está pidiendo comida.
+Solo pon algo en "productos" si en ESE mensaje está pidiendo algo NUEVO o MÁS de algo.
 
 PRODUCTOS QUE EXISTEN (usa el nombre tal cual aparece acá, o el más parecido):
 ${nombresDeProductos.join('\n')}
@@ -98,15 +104,32 @@ function normalizar(bruto) {
 /**
  * @returns {Promise<object>} lo entendido, o null si el modelo no respondió.
  */
-async function interpretar({ texto, historial, catalogo }) {
+async function interpretar({ texto, historial, catalogo, pedidoActual }) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error('Falta GROQ_API_KEY');
 
   const nombres = catalogo.slice(0, 80).map((p) => `- ${p.name}`);
+
+  /* Todo va en UN mensaje, con el texto a interpretar marcado aparte.
+     Antes se mandaba como una conversación normal y el modelo extraía de todo
+     el hilo: el cliente decía "a domicilio" y volvía a reportar la hamburguesa
+     que había pedido tres mensajes atrás, así que el pedido se multiplicaba
+     solo. También se le muestra lo que YA está en el pedido, para que sepa que
+     no hace falta volver a pedirlo. */
+  const contexto = (historial || [])
+    .map((m) => `${m.role === 'user' ? 'cliente' : 'negocio'}: ${m.content}`)
+    .join('\n')
+    .slice(-1500);
+
+  const entrada = [
+    contexto ? `CONVERSACIÓN PREVIA (solo contexto, NO extraigas de acá):\n${contexto}` : '',
+    pedidoActual ? `YA ESTÁ EN EL PEDIDO (no lo repitas):\n${pedidoActual}` : '',
+    `MENSAJE A INTERPRETAR (extrae SOLO de acá):\n"${texto}"`,
+  ].filter(Boolean).join('\n\n');
+
   const mensajes = [
     { role: 'system', content: instrucciones(nombres) },
-    ...historial,
-    { role: 'user', content: texto },
+    { role: 'user', content: entrada },
   ];
 
   let ultimoError;

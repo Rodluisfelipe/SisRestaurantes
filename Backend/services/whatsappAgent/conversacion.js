@@ -43,14 +43,42 @@ function resumen(sesion) {
   return `${lineas}\n*Total: ${pesos(sesion.total())}*${envio}`;
 }
 
+/* Palabras con las que un cliente pide algo MÁS. Sin alguna de estas, repetir
+   un producto que ya está en el pedido es hablar de él, no pedir otro.
+   Las cifras sueltas NO cuentan: "Cra 6 # 3 139" es una dirección, no tres
+   hamburguesas. Quedarse corto es recuperable —el cliente ve su pedido en cada
+   mensaje y lo dice— mientras que pasarse le cobra comida que no pidió. */
+const PIDE_MAS = /\b(otra?|otro|mas|más|tambien|también|agrega|agregame|agrégame|añade|anade|suma|sumale|adicional|adiciona)\b/i;
+
+/**
+ * ¿El cliente está pidiendo esto de nuevo, o solo lo está mencionando?
+ *
+ * El modelo llegó a reportar la hamburguesa pedida tres mensajes atrás cada vez
+ * que el cliente contestaba otra cosa —"a domicilio", su dirección—, y el
+ * pedido se multiplicaba solo: 1, 2, 3 hamburguesas sin que nadie las pidiera.
+ *
+ * Esta comprobación no depende de que el modelo obedezca: si el producto YA
+ * está en el pedido y el mensaje no trae ninguna palabra de "quiero más", se
+ * ignora.
+ */
+function esRepeticion(sesion, producto, textoDelCliente) {
+  const yaEsta = (sesion.items || []).some(
+    (i) => acciones.llano(i.name) === acciones.llano(producto.nombre)
+      || acciones.llano(i.name).includes(acciones.llano(producto.nombre)),
+  );
+  if (!yaEsta) return false;
+  return !PIDE_MAS.test(String(textoDelCliente || ''));
+}
+
 /**
  * Aplica al pedido todo lo que el cliente dijo en este mensaje.
  * Devuelve los avisos que haya que darle (lo que no se pudo hacer y por qué).
  */
-async function aplicar(sesion, catalogo, dicho) {
+async function aplicar(sesion, catalogo, dicho, textoDelCliente) {
   const avisos = [];
 
   for (const p of dicho.productos) {
+    if (esRepeticion(sesion, p, textoDelCliente)) continue;
     const r = await acciones.agregar(sesion, catalogo, {
       producto: p.nombre, cantidad: p.cantidad, nota: p.nota,
     });
@@ -81,7 +109,7 @@ async function aplicar(sesion, catalogo, dicho) {
  *
  * @returns {Promise<{respuesta: string|null, traspasar?: string, crear?: boolean}>}
  */
-async function resolver({ sesion, catalogo, dicho, enlace, negocio, estadoPedido }) {
+async function resolver({ sesion, catalogo, dicho, enlace, negocio, estadoPedido, texto }) {
   // ── Cosas que sacan al agente de la conversación ──
   if (dicho.quiereHumano) {
     return { respuesta: 'Claro, ya te ayuda alguien del equipo. 👤', traspasar: 'lo pidió el cliente' };
@@ -103,7 +131,7 @@ async function resolver({ sesion, catalogo, dicho, enlace, negocio, estadoPedido
     };
   }
 
-  const avisos = await aplicar(sesion, catalogo, dicho);
+  const avisos = await aplicar(sesion, catalogo, dicho, texto);
   const falta = acciones.queFalta(sesion);
   const tienePedido = !!sesion.items?.length;
 

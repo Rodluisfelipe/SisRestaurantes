@@ -111,7 +111,11 @@ async function agregar(sesion, catalogo, { producto: nombre, cantidad = 1, nota 
 
   if (yaTiene) {
     yaTiene.quantity = cantidadFinal;
-    if (limpiaNota) {
+    /* La misma indicación no se apunta dos veces. Cuando el pedido se
+       multiplicaba solo, la nota quedaba "sin salsas; sin salsas; sin salsas" y
+       eso es lo que iba a llegarle a la cocina. */
+    const yaDicha = llano(yaTiene.note || '').split(';').map((s) => s.trim());
+    if (limpiaNota && !yaDicha.includes(llano(limpiaNota))) {
       yaTiene.note = yaTiene.note ? `${yaTiene.note}; ${limpiaNota}` : limpiaNota;
     }
   } else {

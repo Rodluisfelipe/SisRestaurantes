@@ -28,8 +28,11 @@ const nuevaSesion = () => ({
 /** Lo que el modelo entendería de un mensaje. */
 const dice = (campos) => normalizar({ ...NADA, ...campos });
 
+/** `texto` es lo que el cliente escribió de verdad; sirve para distinguir
+    "pide otra" de "está hablando de la que ya pidió". */
 const turno = (sesion, campos, extra = {}) => resolver({
   sesion, catalogo: CARTA, dicho: dice(campos), enlace: ENLACE, negocio: 'MacDonalds',
+  texto: extra.texto || '',
   estadoPedido: async () => ({ ok: false }),
   ...extra,
 });
@@ -184,6 +187,63 @@ describe('cuándo se sale de la conversación', () => {
     });
     expect(r.respuesta).toContain('#62');
     expect(s.items).toHaveLength(1);
+  });
+});
+
+describe('el pedido no se multiplica solo', () => {
+  /* Pasó de verdad: el cliente pidió una hamburguesa y terminó con tres. Al
+     contestar "Domicilio" y dar su dirección, el modelo volvía a reportar la
+     hamburguesa de tres mensajes atrás y el código la sumaba otra vez. */
+  it('contestar "a domicilio" no agrega otra hamburguesa', async () => {
+    const s = nuevaSesion();
+    await turno(s, { productos: [{ nombre: 'Hamburguesa', cantidad: 1, nota: 'sin salsas' }] },
+      { texto: 'Quiero una hamburguesa sencilla sin salsas' });
+    expect(s.items[0].quantity).toBe(1);
+
+    // El modelo vuelve a reportarla, pero el mensaje no pide nada más.
+    await turno(s, { tipo: 'domicilio', productos: [{ nombre: 'Hamburguesa', cantidad: 1, nota: 'sin salsas' }] },
+      { texto: 'Domicilio' });
+    expect(s.items[0].quantity).toBe(1);
+  });
+
+  it('dar la dirección tampoco', async () => {
+    const s = nuevaSesion();
+    await turno(s, { productos: [{ nombre: 'Hamburguesa', cantidad: 1 }] }, { texto: 'una hamburguesa' });
+    await turno(s, { direccion: 'Cra 6 # 3 139', productos: [{ nombre: 'Hamburguesa', cantidad: 1 }] },
+      { texto: 'Cra 6 #3 139' });
+    expect(s.items[0].quantity).toBe(1);
+  });
+
+  it('la indicación no se apunta dos veces', async () => {
+    // Llegó a quedar "sin salsas; sin salsas; sin salsas" para la cocina.
+    const s = nuevaSesion();
+    await turno(s, { productos: [{ nombre: 'Hamburguesa', cantidad: 1, nota: 'sin salsas' }] },
+      { texto: 'una hamburguesa sin salsas' });
+    await turno(s, { productos: [{ nombre: 'Hamburguesa', cantidad: 1, nota: 'sin salsas' }] },
+      { texto: 'otra igual' });
+    expect(s.items[0].note).toBe('sin salsas');
+    expect(s.items[0].quantity).toBe(2);   // esta sí es una más
+  });
+
+  it('pero si de verdad pide otra, se agrega', async () => {
+    const s = nuevaSesion();
+    await turno(s, { productos: [{ nombre: 'Hamburguesa', cantidad: 1 }] }, { texto: 'una hamburguesa' });
+    await turno(s, { productos: [{ nombre: 'Hamburguesa', cantidad: 1 }] }, { texto: 'dame otra hamburguesa' });
+    expect(s.items[0].quantity).toBe(2);
+  });
+
+  it('y si pide dos más, también', async () => {
+    const s = nuevaSesion();
+    await turno(s, { productos: [{ nombre: 'Hamburguesa', cantidad: 1 }] }, { texto: 'una hamburguesa' });
+    await turno(s, { productos: [{ nombre: 'Hamburguesa', cantidad: 2 }] }, { texto: '2 hamburguesas más' });
+    expect(s.items[0].quantity).toBe(3);
+  });
+
+  it('un producto distinto siempre entra', async () => {
+    const s = nuevaSesion();
+    await turno(s, { productos: [{ nombre: 'Hamburguesa', cantidad: 1 }] }, { texto: 'una hamburguesa' });
+    await turno(s, { productos: [{ nombre: 'Papas Francesas', cantidad: 1 }] }, { texto: 'papas' });
+    expect(s.items).toHaveLength(2);
   });
 });
 

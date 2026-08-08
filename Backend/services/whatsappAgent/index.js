@@ -199,7 +199,13 @@ async function atender({ account, negocio, slug, texto, contactPhone, reglas, cr
     .map((m) => ({ role: m.direction === 'in' ? 'user' : 'assistant', content: m.text }));
 
   // ── Paso 1: el modelo entiende. Nada más. ──
-  const dicho = await interpretar({ texto, historial: contexto, catalogo });
+  /* Se le muestra lo que ya está en el pedido para que no lo vuelva a reportar
+     como si el cliente lo estuviera pidiendo otra vez. */
+  const pedidoActual = sesion.items?.length
+    ? sesion.items.map((i) => `${i.quantity}x ${i.name}${i.note ? ` (${i.note})` : ''}`).join(', ')
+    : '';
+
+  const dicho = await interpretar({ texto, historial: contexto, catalogo, pedidoActual });
   if (!dicho) {
     // Sin entender el mensaje no se improvisa: lo toma una persona.
     sesion.estado = 'con_humano';
@@ -219,6 +225,8 @@ async function atender({ account, negocio, slug, texto, contactPhone, reglas, cr
       enlace,
       negocio,
       reglas,
+      // El texto crudo: con él se distingue "pide otra" de "está hablando de la que ya pidió".
+      texto,
       estadoPedido: () => acciones.estadoDelPedido({
         businessId,
         contactPhone,
