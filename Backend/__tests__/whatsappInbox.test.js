@@ -128,6 +128,25 @@ describe('firma del webhook', () => {
     expect(firmar(original)).not.toBe(firmar(alterado));
   });
 
+  /* Meta verifica el webhook con parámetros que llevan punto. El saneador de
+     Mongo borra toda clave que contenga uno, así que el token llegaba vacío y
+     la verificación devolvía 403 aunque estuviera bien configurada. No se ve
+     leyendo la ruta: hay que mirar el orden de los middleware. */
+  it('el saneador de Mongo no se come los parámetros de verificación de Meta', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+    expect(src).toMatch(/whatsapp-inbox\/webhook[\s\S]{0,80}return next\(\)/);
+  });
+
+  it('el saneador sí protege al resto de las rutas', () => {
+    const mongoSanitize = require('express-mongo-sanitize');
+    const req = { query: { 'hub.verify_token': 'x', 'campo.malo': 'y' }, body: {}, params: {} };
+    mongoSanitize()(req, {}, () => {});
+    // Confirma el comportamiento que nos mordió: borra las claves con punto.
+    expect(req.query['hub.verify_token']).toBeUndefined();
+  });
+
   it('server.js guarda el cuerpo crudo solo para el webhook', () => {
     const fs = require('fs');
     const path = require('path');

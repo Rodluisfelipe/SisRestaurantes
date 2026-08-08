@@ -175,8 +175,18 @@ app.use(express.json({
   }
 }));
 
-// NoSQL injection sanitization
-app.use(mongoSanitize());
+/* NoSQL injection sanitization.
+   Se salta el webhook de WhatsApp porque Meta manda los parámetros de
+   verificación con punto (`hub.mode`, `hub.verify_token`, `hub.challenge`) y el
+   saneador borra toda clave que contenga uno, por considerarla notación de
+   Mongo: el token llegaba vacío y la verificación fallaba siempre.
+   La ruta no queda desprotegida — su puerta es la firma HMAC del cuerpo, y los
+   valores que salen del payload se convierten a String antes de consultar. */
+const sanitizeMongo = mongoSanitize();
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/whatsapp-inbox/webhook')) return next();
+  return sanitizeMongo(req, res, next);
+});
 
 // Servir archivos estáticos — solo banners/announcements públicamente
 // Proofs y order-proofs requieren auth (servidos por endpoints dedicados)

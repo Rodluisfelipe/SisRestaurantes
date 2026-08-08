@@ -92,8 +92,14 @@ router.post('/webhook', asyncHandler(async (req, res) => {
   }
 }));
 
+/* Todo lo que venga del payload se convierte a texto antes de usarlo en una
+   consulta. Esta ruta se salta el saneador de Mongo (ver server.js), así que un
+   objeto donde se espera una cadena podría convertirse en un operador y hacer
+   que la búsqueda coincida con documentos que no son. */
+const texto = (v) => (v === null || v === undefined ? '' : String(v));
+
 async function procesarCambio(value) {
-  const phoneNumberId = value?.metadata?.phone_number_id;
+  const phoneNumberId = texto(value?.metadata?.phone_number_id);
   if (!phoneNumberId) return;
 
   // El enrutador: de un número de Meta al negocio dueño.
@@ -105,12 +111,12 @@ async function procesarCambio(value) {
 
   const nombres = {};
   for (const c of value.contacts || []) {
-    if (c?.wa_id) nombres[c.wa_id] = c?.profile?.name || '';
+    if (c?.wa_id) nombres[texto(c.wa_id)] = texto(c?.profile?.name);
   }
 
   // ── Mensajes entrantes ──
   for (const msg of value.messages || []) {
-    await guardarEntrante(account, msg, nombres[msg.from] || '');
+    await guardarEntrante(account, msg, nombres[texto(msg.from)] || '');
   }
 
   // ── Acuses de entrega de lo que mandamos ──
@@ -118,7 +124,7 @@ async function procesarCambio(value) {
     const permitidos = ['sent', 'delivered', 'read', 'failed'];
     if (!permitidos.includes(st.status)) continue;
     await WhatsAppMessage.updateOne(
-      { wamid: st.id },
+      { wamid: texto(st.id) },
       {
         $set: {
           status: st.status,
@@ -154,9 +160,9 @@ async function guardarEntrante(account, msg, contactName) {
     await WhatsAppMessage.create({
       businessId: account.businessId,
       accountId: account._id,
-      wamid: msg.id,
+      wamid: texto(msg.id),
       direction: 'in',
-      contactPhone: msg.from,
+      contactPhone: texto(msg.from),
       contactName,
       type: tipo,
       text: texto.slice(0, 8000),
