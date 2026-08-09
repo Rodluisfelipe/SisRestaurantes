@@ -1,8 +1,44 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
 import useLandingSEO from '../../hooks/useLandingSEO';
+import api from '../../services/api';
+
+/**
+ * Cifras reales de la plataforma, traídas en vivo.
+ *
+ * Estaban escritas a mano y decían "500+ restaurantes activos" con 28
+ * registrados, y "40% aumento en ventas" sin nada que lo sustente. Una cifra
+ * fija envejece hasta volverse mentira sin que nadie lo note; una que se
+ * consulta siempre dice la verdad.
+ */
+function useCifrasReales() {
+  const [stats, setStats] = useState(null);
+  useEffect(() => {
+    let vivo = true;
+    api.get('/stats/public')
+      .then((r) => { if (vivo && r.data) setStats(r.data); })
+      .catch(() => {});
+    return () => { vivo = false; };
+  }, []);
+  return stats;
+}
+
+/** "$155M", "$1.2K M" — corto, para que quepa en la tarjeta. */
+function millones(v) {
+  const n = Number(v) || 0;
+  if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(1)}MM`;
+  return `$${Math.round(n / 1_000_000)}M`;
+}
+
+function redondeaAbajo(v) {
+  const n = Number(v) || 0;
+  if (n < 100) return String(n);
+  // Se redondea HACIA ABAJO: prometer de menos y cumplir de más.
+  const paso = n >= 10000 ? 1000 : n >= 1000 ? 500 : 100;
+  return `+${(Math.floor(n / paso) * paso).toLocaleString('es-CO')}`;
+}
 
 const FEATURES = [
   {
@@ -78,6 +114,8 @@ const Section = ({ children, className = '' }) => {
 };
 
 const Features = () => {
+  const cifras = useCifrasReales();
+
   useLandingSEO({
     title: 'Funcionalidades del Menú Digital para Restaurantes | Menuby',
     description: 'Menú QR, pedidos a domicilio, pantalla de cocina en tiempo real, múltiples métodos de pago, WhatsApp integrado y más. Todas las herramientas que tu restaurante necesita en una sola plataforma.',
@@ -141,8 +179,14 @@ const Features = () => {
       <section className="py-12 sm:py-16" style={{ background: 'linear-gradient(135deg, #E31E24 0%, #b81a1f 100%)' }}>
         <div className="max-w-5xl mx-auto px-5 sm:px-6 grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 text-center">
           {[
-            { v: '500+', l: 'Restaurantes activos' },
-            { v: '40%', l: 'Aumento en ventas' },
+            /* Las dos primeras vienen de la base. Si aún no cargaron, se
+               muestra lo que no depende de cifras, en vez de un hueco. */
+            ...(cifras?.ordersTotal
+              ? [{ v: redondeaAbajo(cifras.ordersTotal), l: 'Pedidos procesados' }]
+              : [{ v: '24/7', l: 'Tu menú disponible' }]),
+            ...(cifras?.salesTotal
+              ? [{ v: millones(cifras.salesTotal), l: 'En ventas gestionadas' }]
+              : [{ v: 'QR', l: 'Sin descargar nada' }]),
             { v: '5 min', l: 'Tiempo de registro' },
             { v: '0%', l: 'Comisiones' },
           ].map((s, i) => (

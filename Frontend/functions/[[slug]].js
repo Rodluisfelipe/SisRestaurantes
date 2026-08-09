@@ -65,7 +65,10 @@ const SKIP_PATHS = [
 const LANDING_PAGES = {
   '/': {
     title: 'Crear Menú Digital para Restaurantes Gratis | Menuby Colombia',
-    description: 'Crea tu menú digital con código QR en 5 minutos. Recibe pedidos online por WhatsApp, gestiona cocina en tiempo real. Sin comisiones. 500+ restaurantes en Colombia.',
+    /* Cifra verificable. Decía "500+ restaurantes en Colombia" con 28
+       registrados; lo que Google promete tiene que aguantar que alguien
+       pregunte. */
+    description: 'Crea tu menú digital con código QR en 5 minutos. Recibe pedidos online por WhatsApp, gestiona cocina en tiempo real. Sin comisiones. Más de 6.000 pedidos gestionados en Colombia.',
     keywords: 'crear menú digital, menú digital restaurante, menú QR gratis, carta digital restaurante, pedidos online restaurante',
   },
   '/features': {
@@ -74,8 +77,12 @@ const LANDING_PAGES = {
     keywords: 'funcionalidades menú digital, pedidos domicilio restaurante, pantalla cocina tiempo real, menú QR restaurante',
   },
   '/pricing': {
-    title: 'Precios Menú Digital - $30.000/mes Todo Incluido | Menuby Colombia',
-    description: 'Menú digital profesional desde $30.000 COP al mes. Sin comisiones, sin contratos. 7 días gratis.',
+    /* El precio del resultado de Google tiene que ser el de la página. Decía
+       $30.000 y el plan más barato cobra $39.900: quien llega sintiéndose
+       engañado en los primeros diez segundos no se queda, y Google penaliza
+       que el resultado prometa algo distinto de lo que hay. */
+    title: 'Precios Menú Digital - Desde $39.900/mes | Menuby Colombia',
+    description: 'Menú digital profesional desde $39.900 COP al mes. Plan gratis para empezar. Sin comisiones, sin contratos.',
     keywords: 'precio menú digital, menú digital barato, menú digital sin comisiones, menú QR precio',
   },
   '/demo': {

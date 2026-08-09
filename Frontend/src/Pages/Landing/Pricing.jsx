@@ -98,10 +98,12 @@ const PLAN_TONE = {
   },
 };
 
+/* Decía "+500 negocios activos" con 28 registrados. Se deja lo que sí se
+   sostiene: quien pregunte por cualquiera de estas cifras se queda tranquilo. */
 const TRUST_STATS = [
-  { label: 'Negocios activos', value: '+500' },
   { label: 'Comision por pedido', value: '0%' },
   { label: 'Tiempo de setup', value: '5 min' },
+  { label: 'Permanencia minima', value: 'Ninguna' },
   { label: 'Soporte', value: 'WhatsApp' },
 ];
 
@@ -121,9 +123,11 @@ const COMPARISON_ROWS = [
 ];
 
 const BENEFITS = [
-  { metric: '+40%', title: 'Aumento en ventas', desc: 'Los menus digitales elevan el ticket promedio con menos friccion.' },
+  /* Decia "+40% aumento en ventas" y "ROI en 1 mes": nadie lo ha medido. Se
+     cambian por lo que el producto hace de verdad y se puede comprobar. */
+  { metric: '0%', title: 'Sin comision', desc: 'Lo que vendes es tuyo. No cobramos por pedido ni por venta.' },
   { metric: '5 min', title: 'Setup real', desc: 'Registro, carga de menu y QR listos el mismo dia.' },
-  { metric: '1 mes', title: 'ROI temprano', desc: 'La inversion se recupera rapido con pedidos directos.' },
+  { metric: '24/7', title: 'Siempre abierto', desc: 'Tu menu y tus pedidos disponibles aunque el local este cerrado.' },
   { metric: '0%', title: 'Sin comisiones', desc: 'Tarifa fija mensual, sin castigo por crecer.' },
 ];
 

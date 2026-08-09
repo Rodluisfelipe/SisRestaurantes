@@ -1223,7 +1223,13 @@ export default function Home() {
           <div className="rounded-[32px] px-6 py-12 sm:py-14" style={{ background: `linear-gradient(135deg, ${C.accent}, ${C.accentDeep})`, boxShadow: '0 24px 60px rgba(232,0,45,0.24)' }}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
               {[
-                { end: 500, suffix: '+', label: 'Restaurantes activos' },
+                /* Decía "500+ restaurantes activos" con 28 registrados. Se usa
+                   el total de pedidos, que sale del endpoint y siempre es
+                   cierto; si aún no cargó, se muestra algo que no depende de
+                   cifras en vez de una inventada. */
+                stats && stats.ordersTotal > 0
+                  ? { end: stats.ordersTotal, suffix: '+', label: 'Pedidos procesados' }
+                  : { end: 24, suffix: '/7', label: 'Tu menú disponible' },
                 { end: 0, suffix: '%', label: 'Comisión por pedido' },
                 // Cifras reales de la plataforma cuando el endpoint responde
                 stats && stats.ordersThisMonth > 0
@@ -1538,7 +1544,9 @@ export default function Home() {
                 </a>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-9 text-[12px] font-medium" style={{ color: C.muted }}>
-                {[{ icon: ShieldCheck, text: 'Datos protegidos SSL' }, { icon: CreditCard, text: '0% comisiones' }, { icon: Clock, text: 'Soporte en horario laboral' }, { icon: Users, text: '+500 restaurantes' }].map((t) => (
+                {/* "+500 restaurantes" con 28 registrados. Se cambia por una
+                    cifra que sí se puede sostener si alguien pregunta. */}
+                {[{ icon: ShieldCheck, text: 'Datos protegidos SSL' }, { icon: CreditCard, text: '0% comisiones' }, { icon: Clock, text: 'Soporte en horario laboral' }, { icon: Users, text: '+6.000 pedidos procesados' }].map((t) => (
                   <span key={t.text} className="inline-flex items-center gap-1.5"><t.icon size={14} style={{ color: C.accent }} />{t.text}</span>
                 ))}
               </div>
