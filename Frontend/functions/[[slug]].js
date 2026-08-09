@@ -17,6 +17,19 @@ const API_BASE = (typeof process !== 'undefined' && process.env?.API_BASE_URL) |
 const API_ORIGIN = API_BASE.replace(/\/api\/?$/, '');
 const SITE_ORIGIN = 'https://menuby.tech';
 
+/**
+ * Verificación del dominio ante Meta.
+ *
+ * Va acá y no solo en index.html porque esta función genera el HTML desde cero
+ * para los rastreadores, y `facebookexternalhit` —justo el que Meta usa para
+ * verificar— es uno de ellos. Sin esto, la etiqueta se veía en el navegador
+ * pero no en lo que recibía Meta, y la verificación fallaba sin decir por qué.
+ *
+ * Se declara una sola vez y se inserta en las cuatro plantillas: si mañana se
+ * añade una quinta y se olvida, vuelve a pasar lo mismo.
+ */
+const META_DOMAIN_VERIFICATION = '<meta name="facebook-domain-verification" content="8jy1dd584k8q3xk0eotletfa6wej7u" />';
+
 // Pre-render ligero del menú para USUARIOS (no solo bots): inyecta un splash con
 // la marca del negocio en el HTML inicial para que pinte al instante; el SPA lo
 // reemplaza al montar. Poner en false para desactivarlo por completo.
@@ -186,6 +199,7 @@ function buildLandingPageHtml(page, pathname) {
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
+  ${META_DOMAIN_VERIFICATION}
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${escapeHtml(page.title)}</title>
   <meta name="description" content="${escapeHtml(page.description)}" />
@@ -389,6 +403,7 @@ function buildBlogPostHtml(article, slug) {
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
+  ${META_DOMAIN_VERIFICATION}
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${escapeHtml(article.title)} | Blog Menuby</title>
   <meta name="description" content="${escapeHtml(article.description)}" />
@@ -438,6 +453,7 @@ function buildBlogIndexHtml() {
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
+  ${META_DOMAIN_VERIFICATION}
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Blog de Menú Digital para Restaurantes | Menuby Colombia</title>
   <meta name="description" content="Guías, tendencias y consejos sobre menú digital, código QR, pedidos online y tecnología para restaurantes en Colombia." />
@@ -547,6 +563,7 @@ function buildMetaHtml(business, slug, products, categories) {
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
+  ${META_DOMAIN_VERIFICATION}
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <!-- Primary Meta Tags -->
