@@ -13,7 +13,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   FaWhatsapp, FaPaperPlane, FaSpinner, FaLock, FaPlug, FaEye, FaEyeSlash,
   FaCheck, FaCheckDouble, FaExclamationTriangle, FaImage, FaMapMarkerAlt,
-  FaFileAlt, FaMicrophone, FaVideo, FaArrowLeft, FaSyncAlt,
+  FaFileAlt, FaMicrophone, FaVideo, FaArrowLeft, FaArrowDown, FaSyncAlt,
   FaUser, FaShoppingBag, FaGift, FaHome, FaClock, FaUserPlus
 } from 'react-icons/fa';
 import api from '../../services/api';
@@ -62,6 +62,79 @@ function EstadoMensaje({ estado }) {
   return <FaSpinner className="text-slate-300 text-[10px] animate-spin" title="Enviando" />;
 }
 
+/* ── Los mensajes ── */
+
+function cambioDeDia(anterior, actual) {
+  if (!anterior) return true;
+  return new Date(anterior.sentAt).toDateString() !== new Date(actual.sentAt).toDateString();
+}
+
+function SeparadorDia({ fecha }) {
+  const d = new Date(fecha);
+  const hoy = new Date();
+  const ayer = new Date(hoy);
+  ayer.setDate(hoy.getDate() - 1);
+
+  let texto;
+  if (d.toDateString() === hoy.toDateString()) texto = 'Hoy';
+  else if (d.toDateString() === ayer.toDateString()) texto = 'Ayer';
+  else texto = d.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
+
+  return (
+    <div className="flex justify-center py-2">
+      <span className="px-2.5 py-1 rounded-full bg-white border border-slate-200/80 text-[10px] font-semibold text-slate-400 capitalize">
+        {texto}
+      </span>
+    </div>
+  );
+}
+
+/* Un mensaje muy largo —a alguien le pasa: pega un documento entero— dejaba la
+   conversación imposible de recorrer. Se corta y se abre si de verdad se quiere
+   leer. */
+const LARGO_MAXIMO = 600;
+
+function Burbuja({ mensaje: m }) {
+  const [abierto, setAbierto] = useState(false);
+  const mio = m.direction === 'out';
+  const Icono = ICONO_TIPO[m.type];
+  const largo = (m.text || '').length > LARGO_MAXIMO;
+  const texto = largo && !abierto ? `${m.text.slice(0, LARGO_MAXIMO)}…` : m.text;
+
+  return (
+    <div className={`flex ${mio ? 'justify-end' : 'justify-start'}`}>
+      <div
+        className={`max-w-[80%] rounded-2xl px-3.5 py-2 shadow-sm ${
+          mio
+            ? 'bg-emerald-500 text-white rounded-br-md'
+            : 'bg-white border border-slate-200/80 text-slate-700 rounded-bl-md'
+        }`}
+      >
+        {Icono && (
+          <p className={`text-[11px] mb-1 flex items-center gap-1.5 ${mio ? 'text-emerald-100' : 'text-slate-400'}`}>
+            <Icono /> {m.type === 'location' ? 'Ubicación' : 'Archivo adjunto'}
+          </p>
+        )}
+        {texto && <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{texto}</p>}
+        {largo && (
+          <button
+            onClick={() => setAbierto((v) => !v)}
+            className={`text-[11px] font-bold mt-1 ${mio ? 'text-emerald-100 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            {abierto ? 'Ver menos' : 'Ver mensaje completo'}
+          </button>
+        )}
+        <div className={`flex items-center gap-1 justify-end mt-0.5 ${mio ? 'text-emerald-100' : 'text-slate-300'}`}>
+          <span className="text-[10px]">
+            {new Date(m.sentAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+          {mio && <EstadoMensaje estado={m.status} />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function WhatsAppInbox() {
   /* El negocio se manda explícito, como hace el resto del panel. Confiar solo
      en `req.user.businessId` dejaba la petición sin negocio, el backend
@@ -78,7 +151,10 @@ export default function WhatsAppInbox() {
   const [mensajes, setMensajes] = useState([]);
   const [puedeResponder, setPuedeResponder] = useState(false);
   const [cargandoChat, setCargandoChat] = useState(false);
-  const [borrador, setBorrador] = useState('');
+  /* Un borrador por chat, no uno solo. Con uno compartido, lo que se escribía
+     para un cliente quedaba en el cuadro al abrir otro: un mensaje enviado a
+     quien no era. */
+  const [borradores, setBorradores] = useState({});
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState('');
   const [falloCarga, setFalloCarga] = useState(false);
@@ -87,7 +163,17 @@ export default function WhatsAppInbox() {
   const [tomandoPedido, setTomandoPedido] = useState(false);
   const [reconectando, setReconectando] = useState(false);
   const [vista, setVista] = useState('chats');
-  const finRef = useRef(null);
+  const scrollRef = useRef(null);
+  const areaRef = useRef(null);
+  const pegadoAbajo = useRef(true);
+  const ultimoVisto = useRef(null);
+  const [lejosDelFinal, setLejosDelFinal] = useState(false);
+
+  const borrador = borradores[chatActivo] || '';
+  const setBorrador = (texto) => {
+    if (!chatActivo) return;
+    setBorradores((prev) => ({ ...prev, [chatActivo]: texto }));
+  };
 
   // ── Carga inicial ──
   const cargarCuenta = useCallback(async () => {
@@ -141,15 +227,65 @@ export default function WhatsAppInbox() {
     return () => clearInterval(t);
   }, [sinComplemento, cuenta, chatActivo, cargarChats]);
 
+  /* Bajar al final, pero solo cuando corresponde.
+     Antes esto era un `scrollIntoView` sobre cada cambio de `mensajes`. Dos
+     problemas: `scrollIntoView` arrastra a TODOS los contenedores con scroll,
+     así que movía la página entera del panel; y el refresco de cada 15 segundos
+     reemplaza el arreglo aunque no haya mensajes nuevos, así que el tirón se
+     repetía solo, incluso mientras alguien estaba escribiendo. Ahora se mueve
+     únicamente el contenedor de los mensajes, y solo si de verdad llegó algo
+     nuevo y quien atiende ya estaba mirando el final. */
   useEffect(() => {
-    finRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const cont = scrollRef.current;
+    if (!cont) return;
+    const ultimo = mensajes[mensajes.length - 1];
+    const id = ultimo ? (ultimo._id || ultimo.wamid) : null;
+    if (id === ultimoVisto.current) return;
+
+    const abriendo = ultimoVisto.current === null;
+    ultimoVisto.current = id;
+
+    if (abriendo || pegadoAbajo.current) {
+      cont.scrollTo({ top: cont.scrollHeight, behavior: abriendo ? 'auto' : 'smooth' });
+    } else {
+      // Llegó algo y estaba leyendo más arriba: se avisa, no se le mueve la vista.
+      setLejosDelFinal(true);
+    }
   }, [mensajes]);
+
+  /* El cuadro crece con lo que se escribe. Con `rows={1}` fijo, un mensaje de
+     tres líneas se leía por una rendija con scroll propio. */
+  useEffect(() => {
+    const el = areaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+  }, [borrador, chatActivo]);
+
+  function alDesplazar(e) {
+    const el = e.currentTarget;
+    const cerca = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    pegadoAbajo.current = cerca;
+    if (cerca) setLejosDelFinal(false);
+  }
+
+  function bajarAlFinal() {
+    const cont = scrollRef.current;
+    if (!cont) return;
+    cont.scrollTo({ top: cont.scrollHeight, behavior: 'smooth' });
+    pegadoAbajo.current = true;
+    setLejosDelFinal(false);
+  }
 
   async function abrirChat(telefono, { silencioso = false } = {}) {
     if (!silencioso) {
       setCargandoChat(true);
       setChatActivo(telefono);
       setFicha(null);
+      // Chat nuevo: la posición del anterior no sirve, hay que caer al final.
+      ultimoVisto.current = null;
+      pegadoAbajo.current = true;
+      setLejosDelFinal(false);
       cargarFicha(telefono);
     }
     try {
@@ -191,6 +327,8 @@ export default function WhatsAppInbox() {
     setError('');
     try {
       const { data } = await api.post(`/whatsapp-inbox/chats/${chatActivo}`, { text: texto, businessId });
+      // Lo propio siempre baja: acaba de escribirlo, quiere verlo salir.
+      pegadoAbajo.current = true;
       setMensajes((prev) => [...prev, data.message]);
       setBorrador('');
       cargarChats();
@@ -323,9 +461,13 @@ export default function WhatsAppInbox() {
 
       {vista === 'plantillas' && <Plantillas businessId={businessId} />}
 
-      <div className={`grid lg:grid-cols-[300px_1fr] min-h-[520px] ${vista === 'plantillas' ? 'hidden' : ''}`}>
+      {/* Altura fija a propósito. Con la altura suelta, el cuadro de escribir se
+          movía solo: la ficha del cliente llega en su propia petición y, al
+          aparecer, empujaba todo hacia abajo justo cuando ya estabas
+          escribiendo. Anclado abajo, lo que cambie arriba no lo mueve. */}
+      <div className={`grid lg:grid-cols-[320px_1fr] h-[600px] max-h-[calc(100vh-230px)] min-h-[460px] ${vista === 'plantillas' ? 'hidden' : ''}`}>
         {/* Lista de chats */}
-        <div className={`border-r border-slate-100 ${chatActivo ? 'hidden lg:block' : ''}`}>
+        <div className={`border-r border-slate-100 min-h-0 overflow-hidden ${chatActivo ? 'hidden lg:block' : ''}`}>
           {chats.length === 0 ? (
             <div className="p-8 text-center text-slate-400">
               <FaWhatsapp className="mx-auto text-3xl mb-3 opacity-40" />
@@ -333,7 +475,7 @@ export default function WhatsAppInbox() {
               <p className="text-xs mt-1">Cuando un cliente le escriba a tu número, aparecerá acá.</p>
             </div>
           ) : (
-            <ul className="divide-y divide-slate-50 max-h-[520px] overflow-y-auto">
+            <ul className="divide-y divide-slate-50 h-full overflow-y-auto">
               {chats.map((c) => {
                 const activo = c.contactPhone === chatActivo;
                 const Icono = ICONO_TIPO[c.lastType];
@@ -341,27 +483,36 @@ export default function WhatsAppInbox() {
                   <li key={c.contactPhone}>
                     <button
                       onClick={() => abrirChat(c.contactPhone)}
-                      className={`w-full text-left px-4 py-3 transition-colors ${activo ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}
+                      className={`w-full text-left px-3 py-3 flex gap-3 border-l-[3px] transition-colors ${
+                        activo
+                          ? 'bg-emerald-50/70 border-emerald-500'
+                          : 'border-transparent hover:bg-slate-50'
+                      }`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-slate-800 truncate">
-                          {c.contactName || telefonoLegible(c.contactPhone)}
-                        </p>
-                        <span className="text-[10px] text-slate-400 shrink-0">{tiempoRelativo(c.lastAt)}</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-2 mt-0.5">
-                        <p className="text-xs text-slate-500 truncate flex items-center gap-1">
-                          {c.lastDirection === 'out' && <span className="text-slate-300">Tú:</span>}
-                          {Icono && <Icono className="text-[10px] shrink-0" />}
-                          {c.lastText || (Icono ? 'Archivo adjunto' : '—')}
-                        </p>
-                        {c.sinLeer > 0 && (
-                          <span className="shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-500 text-white text-[10px] font-bold grid place-items-center">
-                            {c.sinLeer}
+                      <Avatar nombre={c.contactName} telefono={c.contactPhone} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-slate-800 truncate">
+                            {c.contactName || telefonoLegible(c.contactPhone)}
+                          </p>
+                          <span className={`text-[10px] shrink-0 ${c.sinLeer > 0 ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>
+                            {tiempoRelativo(c.lastAt)}
                           </span>
-                        )}
+                        </div>
+                        <div className="flex items-center justify-between gap-2 mt-0.5">
+                          <p className={`text-xs truncate flex items-center gap-1 ${c.sinLeer > 0 ? 'text-slate-700 font-medium' : 'text-slate-500'}`}>
+                            {c.lastDirection === 'out' && <span className="text-slate-300">Tú:</span>}
+                            {Icono && <Icono className="text-[10px] shrink-0" />}
+                            {c.lastText || (Icono ? 'Archivo adjunto' : '—')}
+                          </p>
+                          {c.sinLeer > 0 && (
+                            <span className="shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-500 text-white text-[10px] font-bold grid place-items-center">
+                              {c.sinLeer}
+                            </span>
+                          )}
+                        </div>
+                        <Marcas chat={c} />
                       </div>
-                      <Marcas chat={c} />
                     </button>
                   </li>
                 );
@@ -371,81 +522,110 @@ export default function WhatsAppInbox() {
         </div>
 
         {/* Conversación */}
-        <div className={`flex flex-col ${chatActivo ? '' : 'hidden lg:flex'}`}>
+        <div className={`flex flex-col min-h-0 ${chatActivo ? '' : 'hidden lg:flex'}`}>
           {!chatActivo ? (
             /* Con ningún chat abierto, el espacio se aprovecha para lo que el
                negocio no va a ir a buscar por su cuenta: qué canal le está
                trayendo pedidos. */
-            <OrigenPedidos businessId={businessId} />
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <OrigenPedidos businessId={businessId} />
+            </div>
           ) : (
             <>
-              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-100 lg:hidden">
-                <button onClick={() => setChatActivo(null)} className="p-1.5 text-slate-500 hover:text-slate-700">
+              {/* Con quién se está hablando, también en pantalla grande. Antes
+                  esto solo salía en el celular: en el computador, si el cliente
+                  era nuevo, no aparecía su número por ningún lado. */}
+              <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-slate-100">
+                <button
+                  onClick={() => setChatActivo(null)}
+                  className="p-1.5 -ml-1.5 text-slate-500 hover:text-slate-700 lg:hidden"
+                >
                   <FaArrowLeft className="text-sm" />
                 </button>
-                <p className="text-sm font-semibold text-slate-800 truncate">
-                  {chatSeleccionado?.contactName || telefonoLegible(chatActivo)}
-                </p>
+                <Avatar nombre={chatSeleccionado?.contactName} telefono={chatActivo} />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 truncate leading-tight">
+                    {chatSeleccionado?.contactName || telefonoLegible(chatActivo)}
+                  </p>
+                  {chatSeleccionado?.contactName && (
+                    <p className="text-[11px] text-slate-400 truncate">{telefonoLegible(chatActivo)}</p>
+                  )}
+                </div>
               </div>
 
-              <FichaCliente
-                ficha={ficha}
-                cargando={cargandoFicha}
-                onTomarPedido={() => setTomandoPedido(true)}
-              />
+              {/* Acotada: al desplegar "últimos pedidos" se comía la mitad de la
+                  conversación. Crece hasta donde puede y ahí hace su scroll. */}
+              <div className="shrink-0 max-h-[45%] overflow-y-auto">
+                <FichaCliente
+                  ficha={ficha}
+                  cargando={cargandoFicha}
+                  onTomarPedido={() => setTomandoPedido(true)}
+                />
+              </div>
 
-              <div className="flex-1 p-4 space-y-2 overflow-y-auto max-h-[400px] bg-slate-50/40">
-                {cargandoChat ? (
-                  <div className="grid place-items-center py-12 text-slate-300"><FaSpinner className="animate-spin" /></div>
-                ) : (
-                  mensajes.map((m) => {
-                    const mio = m.direction === 'out';
-                    const Icono = ICONO_TIPO[m.type];
-                    return (
-                      <div key={m._id || m.wamid} className={`flex ${mio ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[78%] rounded-2xl px-3.5 py-2 ${
-                          mio ? 'bg-emerald-500 text-white rounded-br-sm' : 'bg-white border border-slate-200 text-slate-700 rounded-bl-sm'
-                        }`}>
-                          {Icono && (
-                            <p className={`text-[11px] mb-1 flex items-center gap-1.5 ${mio ? 'text-emerald-100' : 'text-slate-400'}`}>
-                              <Icono /> {m.type === 'location' ? 'Ubicación' : 'Archivo adjunto'}
-                            </p>
-                          )}
-                          {m.text && <p className="text-sm whitespace-pre-wrap break-words">{m.text}</p>}
-                          <div className={`flex items-center gap-1 justify-end mt-0.5 ${mio ? 'text-emerald-100' : 'text-slate-300'}`}>
-                            <span className="text-[10px]">
-                              {new Date(m.sentAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            {mio && <EstadoMensaje estado={m.status} />}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
+              <div className="relative flex-1 min-h-0">
+                <div
+                  ref={scrollRef}
+                  onScroll={alDesplazar}
+                  className="h-full overflow-y-auto px-4 py-4 space-y-1.5 bg-slate-50/50"
+                >
+                  {cargandoChat ? (
+                    <div className="grid place-items-center py-12 text-slate-300"><FaSpinner className="animate-spin" /></div>
+                  ) : (
+                    mensajes.map((m, i) => (
+                      <React.Fragment key={m._id || m.wamid}>
+                        {/* Sin esto, un mensaje de ayer a las 6 y uno de hoy a
+                            las 10 se leen seguidos y parecen la misma charla. */}
+                        {cambioDeDia(mensajes[i - 1], m) && <SeparadorDia fecha={m.sentAt} />}
+                        <Burbuja mensaje={m} />
+                      </React.Fragment>
+                    ))
+                  )}
+                </div>
+
+                {/* Llegó algo mientras leía más arriba. Se avisa acá en vez de
+                    tirarle la vista al final, que es lo que hacía perder el
+                    renglón que estaba leyendo. */}
+                {lejosDelFinal && (
+                  <button
+                    onClick={bajarAlFinal}
+                    className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800/90 hover:bg-slate-900 text-white text-[11px] font-bold shadow-lg backdrop-blur transition-colors"
+                  >
+                    <FaArrowDown className="text-[9px]" /> Mensajes nuevos
+                  </button>
                 )}
-                <div ref={finRef} />
               </div>
 
               {/* Responder — o la razón por la que no se puede */}
               {puedeResponder ? (
-                <form onSubmit={enviar} className="flex items-end gap-2 p-3 border-t border-slate-100">
-                  <textarea
-                    value={borrador}
-                    onChange={(e) => setBorrador(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(e); }
-                    }}
-                    rows={1}
-                    placeholder="Escribe tu respuesta…"
-                    className="flex-1 resize-none rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40 focus:border-emerald-400 max-h-32"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!borrador.trim() || enviando}
-                    className="w-10 h-10 shrink-0 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-200 disabled:cursor-not-allowed text-white grid place-items-center transition-colors"
-                  >
-                    {enviando ? <FaSpinner className="animate-spin text-sm" /> : <FaPaperPlane className="text-sm" />}
-                  </button>
+                <form onSubmit={enviar} className="border-t border-slate-100 bg-white px-3 py-2.5">
+                  <div className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-2 py-1.5 transition-colors focus-within:border-emerald-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-400/25">
+                    <textarea
+                      ref={areaRef}
+                      value={borrador}
+                      onChange={(e) => setBorrador(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(e); }
+                      }}
+                      rows={1}
+                      placeholder="Escribe tu respuesta…"
+                      className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm leading-relaxed text-slate-700 placeholder:text-slate-400 focus:outline-none"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!borrador.trim() || enviando}
+                      title="Enviar"
+                      className="w-9 h-9 mb-0.5 shrink-0 rounded-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-200 disabled:cursor-not-allowed text-white grid place-items-center transition-all active:scale-90"
+                    >
+                      {enviando ? <FaSpinner className="animate-spin text-xs" /> : <FaPaperPlane className="text-xs" />}
+                    </button>
+                  </div>
+                  {/* Enter envía. Quien no lo sabe manda el mensaje a medias al
+                      intentar bajar de renglón, y eso le llega al cliente. */}
+                  <p className="text-[10.5px] text-slate-300 mt-1.5 px-1.5">
+                    <kbd className="font-sans font-semibold text-slate-400">Enter</kbd> envía ·{' '}
+                    <kbd className="font-sans font-semibold text-slate-400">Shift+Enter</kbd> salta de línea
+                  </p>
                 </form>
               ) : (
                 <div className="p-3 border-t border-slate-100 bg-amber-50/60">
@@ -619,10 +799,11 @@ function Marcas({ chat }) {
   const a = chat.agente;
   const marcas = [];
 
+  /* "Contestado" ya no se pinta: era una etiqueta gris en casi todas las filas
+     —o sea, ruido en veinte chats— y no decía nada que no dijera la ausencia de
+     "Sin responder". */
   if (chat.esperandoRespuesta) {
     marcas.push({ txt: 'Sin responder', clase: 'bg-amber-100 text-amber-700' });
-  } else {
-    marcas.push({ txt: 'Contestado', clase: 'bg-slate-100 text-slate-500' });
   }
 
   if (a?.orderNumber) {
@@ -637,6 +818,8 @@ function Marcas({ chat }) {
     marcas.push({ txt: 'Atiende el bot', clase: 'bg-slate-100 text-slate-500' });
   }
 
+  if (marcas.length === 0) return null;
+
   return (
     <div className="flex flex-wrap gap-1 mt-1.5">
       {marcas.map((m) => (
@@ -645,6 +828,28 @@ function Marcas({ chat }) {
         </span>
       ))}
     </div>
+  );
+}
+
+/* La inicial en un círculo. Con solo texto, veinte filas de nombres se leen
+   como un párrafo; el círculo da dónde apoyar la vista al recorrer la lista. */
+const COLORES_AVATAR = [
+  'bg-emerald-100 text-emerald-700', 'bg-sky-100 text-sky-700',
+  'bg-violet-100 text-violet-700', 'bg-amber-100 text-amber-700',
+  'bg-rose-100 text-rose-700', 'bg-teal-100 text-teal-700',
+];
+
+function Avatar({ nombre, telefono }) {
+  const base = (nombre || '').trim();
+  const inicial = base ? base[0].toUpperCase() : '#';
+  // El color sale del teléfono: el mismo contacto se ve igual siempre.
+  const suma = String(telefono || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  const color = COLORES_AVATAR[suma % COLORES_AVATAR.length];
+
+  return (
+    <span className={`w-9 h-9 shrink-0 rounded-full grid place-items-center text-sm font-bold ${color}`}>
+      {inicial}
+    </span>
   );
 }
 
