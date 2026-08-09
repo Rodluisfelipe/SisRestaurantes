@@ -130,13 +130,30 @@
     
     <title>Crear Menú Digital para Restaurantes | Menuby Colombia - Sin Comisiones</title>
     
-    <!-- Geist Font (SuperAdmin panel) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <!-- Fuentes: Geist para el cuerpo, Bricolage Grotesque para los títulos.
 
-    <!-- Bricolage Grotesque (Landing display face) — preloaded here to avoid FOUT. Body uses Geist (above). -->
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&display=swap" rel="stylesheet" />
+         Iban en DOS hojas separadas y ambas bloqueaban el pintado: el navegador
+         no dibujaba nada hasta resolver dos peticiones a un dominio ajeno. Con
+         datos móviles eso son dos viajes de ida y vuelta antes de ver la
+         página. Ahora es UNA sola petición que no bloquea: se pide como si
+         fuera para imprimir y se activa al terminar de cargar.
+
+         De Bricolage se pedían cuatro pesos (500, 600, 700 y 800) y solo se usa
+         el 800: los títulos van en `font-extrabold`. Los otros tres se
+         descargaban para nada. -->
+    <!-- Los preconnect a Google Fonts ya están arriba, junto a los del API. -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Bricolage+Grotesque:opsz,wght@12..96,800&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Bricolage+Grotesque:opsz,wght@12..96,800&display=swap"
+      />
+    </noscript>
 
     <!-- FAQ Structured Data -->
     <script type="application/ld+json">

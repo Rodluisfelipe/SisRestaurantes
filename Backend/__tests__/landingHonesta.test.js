@@ -118,3 +118,40 @@ describe('el paso que trae el primer pedido', () => {
     expect(wizard).toMatch(/if \(!slug\) return null/);
   });
 });
+
+describe('la landing carga rápido', () => {
+  /* Las fuentes iban en DOS hojas separadas y ambas bloqueaban el pintado: el
+     navegador no dibujaba nada hasta resolver dos peticiones a un dominio
+     ajeno. Con datos móviles eso son dos viajes antes de ver la página. */
+  const fs2 = require('fs');
+  const html = fs2.readFileSync(
+    path.join(raiz, 'Frontend', 'index.html'), 'utf8',
+  );
+
+  it('las fuentes no bloquean el pintado', () => {
+    const hojas = [...html.matchAll(/<link[^>]*fonts\.googleapis\.com\/css2[^>]*>/g)].map((m) => m[0]);
+    const bloqueantes = hojas.filter((h) => !h.includes('media="print"') && !h.includes('rel="preconnect"'));
+    // La única que puede quedar sin el truco es la de <noscript>.
+    const fuera = bloqueantes.filter((h) => !html.slice(0, html.indexOf(h)).endsWith('<noscript>\n      '));
+    expect(fuera.length).toBeLessThanOrEqual(1);
+    expect(html).toContain('onload="this.media=\'all\'"');
+  });
+
+  it('hay quien las vea sin JavaScript', () => {
+    // El truco de media="print" depende de JS; sin respaldo se quedan sin fuente.
+    expect(html).toMatch(/<noscript>[\s\S]{0,400}fonts\.googleapis\.com/);
+  });
+
+  it('no se piden pesos de fuente que no se usan', () => {
+    /* De Bricolage se pedían 500, 600, 700 y 800; los títulos van todos en
+       extrabold, así que tres se descargaban para nada. */
+    const bricolage = html.match(/family=Bricolage\+Grotesque:opsz,wght@([^&"]+)/)?.[1];
+    expect(bricolage).toBeTruthy();
+    expect(bricolage.split(';').length).toBe(1);
+  });
+
+  it('no se repite el preconnect al mismo dominio', () => {
+    const n = (html.match(/preconnect[^>]*fonts\.googleapis\.com/g) || []).length;
+    expect(n).toBe(1);
+  });
+});
