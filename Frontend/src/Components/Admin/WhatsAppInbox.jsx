@@ -14,7 +14,8 @@ import {
   FaWhatsapp, FaPaperPlane, FaSpinner, FaLock, FaPlug, FaEye, FaEyeSlash,
   FaCheck, FaCheckDouble, FaExclamationTriangle, FaImage, FaMapMarkerAlt,
   FaFileAlt, FaMicrophone, FaVideo, FaArrowLeft, FaArrowDown, FaSyncAlt,
-  FaUser, FaShoppingBag, FaGift, FaHome, FaClock, FaUserPlus
+  FaUser, FaShoppingBag, FaGift, FaHome, FaClock, FaUserPlus, FaSearch,
+  FaUtensils, FaMotorcycle, FaRegSmile
 } from 'react-icons/fa';
 import api from '../../services/api';
 import { useBusinessConfig } from '../../Context/BusinessContext';
@@ -62,6 +63,46 @@ function EstadoMensaje({ estado }) {
   return <FaSpinner className="text-slate-300 text-[10px] animate-spin" title="Enviando" />;
 }
 
+/* ── Buscar y filtrar la lista ── */
+
+/* Lo que de verdad se busca en una bandeja de restaurante: a quién le falta
+   respuesta, quién ya tiene un pedido andando, y a quién dejó colgado el bot. */
+const COINCIDE = {
+  todos: () => true,
+  sin_responder: (c) => !!c.esperandoRespuesta,
+  con_pedido: (c) => !!c.agente?.orderNumber,
+  humano: (c) => c.agente?.estado === 'con_humano',
+};
+
+const FILTROS = [
+  { id: 'todos', txt: 'Todos' },
+  { id: 'sin_responder', txt: 'Sin responder' },
+  { id: 'con_pedido', txt: 'Con pedido' },
+  { id: 'humano', txt: 'Lo tomó alguien' },
+];
+
+/* Sin tildes y en minúscula: nadie escribe "Andrés" con tilde en un buscador. */
+const plano = (s) => String(s || '')
+  .toLowerCase()
+  .normalize('NFD')
+  .replace(/[̀-ͯ]/g, '');
+
+function filtrarChats(chats, busqueda, filtro) {
+  const q = plano(busqueda).trim();
+  const pasaFiltro = COINCIDE[filtro] || COINCIDE.todos;
+  return chats.filter((c) => {
+    if (!pasaFiltro(c)) return false;
+    if (!q) return true;
+    // El teléfono se busca solo por dígitos: da igual cómo esté formateado.
+    const soloDigitos = String(c.contactPhone || '').replace(/\D/g, '');
+    return (
+      plano(c.contactName).includes(q)
+      || soloDigitos.includes(q.replace(/\D/g, ''))
+      || plano(c.lastText).includes(q)
+    );
+  });
+}
+
 /* ── Los mensajes ── */
 
 function cambioDeDia(anterior, actual) {
@@ -80,9 +121,11 @@ function SeparadorDia({ fecha }) {
   else if (d.toDateString() === ayer.toDateString()) texto = 'Ayer';
   else texto = d.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
 
+  /* Pegado arriba: al recorrer un chat largo siempre se ve en qué día se está,
+     sin tener que volver a subir hasta el separador. */
   return (
-    <div className="flex justify-center py-2">
-      <span className="px-2.5 py-1 rounded-full bg-white border border-slate-200/80 text-[10px] font-semibold text-slate-400 capitalize">
+    <div className="sticky top-0 z-10 flex justify-center py-2 pointer-events-none">
+      <span className="px-3 py-1 rounded-full bg-white/95 backdrop-blur border border-slate-200/80 text-[11px] font-bold text-slate-500 capitalize shadow-sm">
         {texto}
       </span>
     </div>
@@ -94,38 +137,44 @@ function SeparadorDia({ fecha }) {
    leer. */
 const LARGO_MAXIMO = 600;
 
-function Burbuja({ mensaje: m }) {
+function Burbuja({ mensaje: m, pegado }) {
   const [abierto, setAbierto] = useState(false);
   const mio = m.direction === 'out';
   const Icono = ICONO_TIPO[m.type];
   const largo = (m.text || '').length > LARGO_MAXIMO;
   const texto = largo && !abierto ? `${m.text.slice(0, LARGO_MAXIMO)}…` : m.text;
 
+  /* La esquina en punta solo la lleva el primero del grupo: es lo que hace que
+     varios mensajes seguidos se lean como un bloque y no como una escalera. */
+  const esquina = pegado
+    ? 'rounded-2xl'
+    : mio ? 'rounded-2xl rounded-br-md' : 'rounded-2xl rounded-bl-md';
+
   return (
-    <div className={`flex ${mio ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex ${mio ? 'justify-end' : 'justify-start'} ${pegado ? 'mt-0.5' : 'mt-2.5'}`}>
       <div
-        className={`max-w-[80%] rounded-2xl px-3.5 py-2 shadow-sm ${
+        className={`max-w-[85%] sm:max-w-[75%] px-3.5 py-2 shadow-sm ${esquina} ${
           mio
-            ? 'bg-emerald-500 text-white rounded-br-md'
-            : 'bg-white border border-slate-200/80 text-slate-700 rounded-bl-md'
+            ? 'bg-[#d9fdd3] text-slate-800'
+            : 'bg-white border border-slate-200/70 text-slate-700'
         }`}
       >
         {Icono && (
-          <p className={`text-[11px] mb-1 flex items-center gap-1.5 ${mio ? 'text-emerald-100' : 'text-slate-400'}`}>
+          <p className={`text-[11.5px] mb-1 flex items-center gap-1.5 font-semibold ${mio ? 'text-emerald-700' : 'text-slate-400'}`}>
             <Icono /> {m.type === 'location' ? 'Ubicación' : 'Archivo adjunto'}
           </p>
         )}
-        {texto && <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{texto}</p>}
+        {texto && <p className="text-[14.5px] leading-[1.45] whitespace-pre-wrap break-words">{texto}</p>}
         {largo && (
           <button
             onClick={() => setAbierto((v) => !v)}
-            className={`text-[11px] font-bold mt-1 ${mio ? 'text-emerald-100 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`text-[11.5px] font-bold mt-1 ${mio ? 'text-emerald-700 hover:text-emerald-800' : 'text-slate-400 hover:text-slate-600'}`}
           >
             {abierto ? 'Ver menos' : 'Ver mensaje completo'}
           </button>
         )}
-        <div className={`flex items-center gap-1 justify-end mt-0.5 ${mio ? 'text-emerald-100' : 'text-slate-300'}`}>
-          <span className="text-[10px]">
+        <div className={`flex items-center gap-1 justify-end -mb-0.5 mt-0.5 ${mio ? 'text-emerald-800/50' : 'text-slate-400/70'}`}>
+          <span className="text-[10.5px]">
             {new Date(m.sentAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
           </span>
           {mio && <EstadoMensaje estado={m.status} />}
@@ -163,6 +212,8 @@ export default function WhatsAppInbox() {
   const [tomandoPedido, setTomandoPedido] = useState(false);
   const [reconectando, setReconectando] = useState(false);
   const [vista, setVista] = useState('chats');
+  const [busqueda, setBusqueda] = useState('');
+  const [filtro, setFiltro] = useState('todos');
   const scrollRef = useRef(null);
   const areaRef = useRef(null);
   const pegadoAbajo = useRef(true);
@@ -382,49 +433,70 @@ export default function WhatsAppInbox() {
   }
 
   const chatSeleccionado = chats.find((c) => c.contactPhone === chatActivo);
+  const sinLeerTotal = chats.reduce((n, c) => n + (c.sinLeer || 0), 0);
+  const chatsVisibles = filtrarChats(chats, busqueda, filtro);
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/70 overflow-hidden">
+    /* Alto de pantalla, como un cliente de correo. Antes era una caja de 600px
+       suelta en medio del panel: quedaba una conversación diminuta con el resto
+       de la página vacía alrededor. */
+    /* Los descuentos salen del armazón del panel: cabecera móvil + relleno +
+       la barra inferior de navegación en celular; en escritorio, la cabecera
+       fija y el relleno de 1.5rem. `min-h` evita que en una pantalla corta
+       quede una rendija. */
+    <div className="flex flex-col h-[calc(100dvh-12.5rem)] md:h-[calc(100dvh-14rem)] lg:h-[calc(100dvh-9rem)] min-h-[520px] bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
       {/* Cabecera */}
-      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-100 bg-slate-50/60">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="w-8 h-8 rounded-lg bg-emerald-500 text-white grid place-items-center shrink-0">
+      <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-50/80 to-white shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="w-10 h-10 rounded-xl bg-emerald-500 text-white grid place-items-center shrink-0 shadow-sm shadow-emerald-500/30 text-lg">
             <FaWhatsapp />
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-bold text-slate-800 truncate">WhatsApp del negocio</p>
-            <p className="text-[11px] text-slate-400 truncate">
+            <p className="text-[15px] font-bold text-slate-800 truncate leading-tight">
+              WhatsApp del negocio
+            </p>
+            <p className="text-xs text-slate-500 truncate flex items-center gap-1.5">
+              {/* El punto verde dice, sin leerlo, que el número está vivo. */}
+              <span className={`w-1.5 h-1.5 rounded-full ${cuenta.lastError ? 'bg-red-500' : 'bg-emerald-500'}`} />
               {cuenta.displayNumber || cuenta.phoneNumberId}
               {cuenta.verifiedName ? ` · ${cuenta.verifiedName}` : ''}
             </p>
           </div>
         </div>
-        <button
-          onClick={() => { cargarChats(); if (chatActivo) abrirChat(chatActivo, { silencioso: true }); }}
-          className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
-          title="Actualizar"
-        >
-          <FaSyncAlt className="text-xs" />
-        </button>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {sinLeerTotal > 0 && (
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500 text-white text-[11px] font-bold">
+              {sinLeerTotal} sin leer
+            </span>
+          )}
+          <button
+            onClick={() => { cargarChats(); if (chatActivo) abrirChat(chatActivo, { silencioso: true }); }}
+            className="p-2.5 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+            title="Actualizar"
+          >
+            <FaSyncAlt className="text-sm" />
+          </button>
+        </div>
       </div>
 
       {/* Las plantillas viven acá y no en otra sección del menú: son parte de
           atender WhatsApp, y separarlas obliga a buscarlas cuando hacen falta. */}
-      <div className="flex border-b border-slate-100 px-2">
+      <div className="flex gap-1 border-b border-slate-100 px-3 shrink-0">
         {[
-          { id: 'chats', txt: 'Conversaciones' },
-          { id: 'plantillas', txt: 'Plantillas' },
+          { id: 'chats', txt: 'Conversaciones', icono: FaWhatsapp },
+          { id: 'plantillas', txt: 'Plantillas', icono: FaFileAlt },
         ].map((t) => (
           <button
             key={t.id}
             onClick={() => setVista(t.id)}
-            className={`px-3.5 py-2.5 text-xs font-bold border-b-2 -mb-px transition-colors ${
+            className={`flex items-center gap-2 px-3.5 py-3 text-[13px] font-bold border-b-2 -mb-px transition-colors ${
               vista === t.id
-                ? 'border-emerald-500 text-slate-800'
+                ? 'border-emerald-500 text-emerald-700'
                 : 'border-transparent text-slate-400 hover:text-slate-600'
             }`}
           >
-            {t.txt}
+            <t.icono className="text-xs" /> {t.txt}
           </button>
         ))}
       </div>
@@ -459,54 +531,114 @@ export default function WhatsAppInbox() {
         </div>
       )}
 
-      {vista === 'plantillas' && <Plantillas businessId={businessId} />}
+      {vista === 'plantillas' && (
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <Plantillas businessId={businessId} />
+        </div>
+      )}
 
-      {/* Altura fija a propósito. Con la altura suelta, el cuadro de escribir se
-          movía solo: la ficha del cliente llega en su propia petición y, al
-          aparecer, empujaba todo hacia abajo justo cuando ya estabas
-          escribiendo. Anclado abajo, lo que cambie arriba no lo mueve. */}
-      <div className={`grid lg:grid-cols-[320px_1fr] h-[600px] max-h-[calc(100vh-230px)] min-h-[460px] ${vista === 'plantillas' ? 'hidden' : ''}`}>
+      {/* Tres columnas en pantalla ancha: lista, conversación y la ficha del
+          cliente a la derecha. La ficha era una tira horizontal encima de los
+          mensajes, y con dos pedidos en curso empujaba la conversación fuera de
+          la vista. */}
+      <div className={`grid lg:grid-cols-[336px_1fr] xl:grid-cols-[336px_1fr_312px] flex-1 min-h-0 ${vista === 'plantillas' ? 'hidden' : ''}`}>
         {/* Lista de chats */}
-        <div className={`border-r border-slate-100 min-h-0 overflow-hidden ${chatActivo ? 'hidden lg:block' : ''}`}>
+        <div className={`border-r border-slate-100 min-h-0 flex flex-col bg-slate-50/40 ${chatActivo ? 'hidden lg:flex' : 'flex'}`}>
+          {/* Buscar y filtrar. Con veinte conversaciones, encontrar la de un
+              cliente que llamó hace un rato era ir bajando y leyendo nombres. */}
+          <div className="p-3 border-b border-slate-100 bg-white shrink-0 space-y-2.5">
+            <div className="relative">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-xs" />
+              <input
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar por nombre o número…"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-8 py-2.5 text-[13px] focus:outline-none focus:bg-white focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/25 transition-colors"
+              />
+              {busqueda && (
+                <button
+                  onClick={() => setBusqueda('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 font-bold"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+              {FILTROS.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setFiltro(f.id)}
+                  className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors ${
+                    filtro === f.id
+                      ? 'bg-slate-800 border-slate-800 text-white'
+                      : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                  }`}
+                >
+                  {f.txt}
+                  {f.id !== 'todos' && (
+                    <span className={filtro === f.id ? 'text-slate-300' : 'text-slate-400'}>
+                      {' '}{chats.filter((c) => COINCIDE[f.id](c)).length}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {chats.length === 0 ? (
             <div className="p-8 text-center text-slate-400">
-              <FaWhatsapp className="mx-auto text-3xl mb-3 opacity-40" />
-              <p className="text-sm font-medium text-slate-500">Todavía no hay chats</p>
-              <p className="text-xs mt-1">Cuando un cliente le escriba a tu número, aparecerá acá.</p>
+              <FaWhatsapp className="mx-auto text-4xl mb-3 opacity-30" />
+              <p className="text-sm font-semibold text-slate-500">Todavía no hay chats</p>
+              <p className="text-xs mt-1 leading-relaxed">Cuando un cliente le escriba a tu número, aparecerá acá.</p>
+            </div>
+          ) : chatsVisibles.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="text-sm font-semibold text-slate-500">Nada coincide</p>
+              <p className="text-xs text-slate-400 mt-1">
+                {busqueda ? `No hay chats con "${busqueda}".` : 'Ningún chat en este filtro.'}
+              </p>
+              <button
+                onClick={() => { setBusqueda(''); setFiltro('todos'); }}
+                className="mt-3 text-xs font-bold text-emerald-600 hover:text-emerald-700"
+              >
+                Ver todos
+              </button>
             </div>
           ) : (
-            <ul className="divide-y divide-slate-50 h-full overflow-y-auto">
-              {chats.map((c) => {
+            <ul className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1">
+              {chatsVisibles.map((c) => {
                 const activo = c.contactPhone === chatActivo;
                 const Icono = ICONO_TIPO[c.lastType];
+                const sinLeer = c.sinLeer > 0;
                 return (
                   <li key={c.contactPhone}>
                     <button
                       onClick={() => abrirChat(c.contactPhone)}
-                      className={`w-full text-left px-3 py-3 flex gap-3 border-l-[3px] transition-colors ${
+                      className={`w-full text-left p-2.5 rounded-xl flex gap-3 transition-all ${
                         activo
-                          ? 'bg-emerald-50/70 border-emerald-500'
-                          : 'border-transparent hover:bg-slate-50'
+                          ? 'bg-white shadow-sm ring-1 ring-emerald-500/30'
+                          : 'hover:bg-white hover:shadow-sm'
                       }`}
                     >
-                      <Avatar nombre={c.contactName} telefono={c.contactPhone} />
+                      <Avatar nombre={c.contactName} telefono={c.contactPhone} punto={sinLeer} />
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-semibold text-slate-800 truncate">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <p className={`text-[14px] truncate ${sinLeer ? 'font-bold text-slate-900' : 'font-semibold text-slate-700'}`}>
                             {c.contactName || telefonoLegible(c.contactPhone)}
                           </p>
-                          <span className={`text-[10px] shrink-0 ${c.sinLeer > 0 ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>
+                          <span className={`text-[10.5px] shrink-0 ${sinLeer ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>
                             {tiempoRelativo(c.lastAt)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between gap-2 mt-0.5">
-                          <p className={`text-xs truncate flex items-center gap-1 ${c.sinLeer > 0 ? 'text-slate-700 font-medium' : 'text-slate-500'}`}>
-                            {c.lastDirection === 'out' && <span className="text-slate-300">Tú:</span>}
+                          <p className={`text-[12.5px] truncate flex items-center gap-1 ${sinLeer ? 'text-slate-700 font-medium' : 'text-slate-400'}`}>
+                            {c.lastDirection === 'out' && <span className="text-slate-300 shrink-0">Tú:</span>}
                             {Icono && <Icono className="text-[10px] shrink-0" />}
                             {c.lastText || (Icono ? 'Archivo adjunto' : '—')}
                           </p>
-                          {c.sinLeer > 0 && (
-                            <span className="shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-500 text-white text-[10px] font-bold grid place-items-center">
+                          {sinLeer && (
+                            <span className="shrink-0 min-w-[19px] h-[19px] px-1.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold grid place-items-center">
                               {c.sinLeer}
                             </span>
                           )}
@@ -527,59 +659,99 @@ export default function WhatsAppInbox() {
             /* Con ningún chat abierto, el espacio se aprovecha para lo que el
                negocio no va a ir a buscar por su cuenta: qué canal le está
                trayendo pedidos. */
-            <div className="flex-1 min-h-0 overflow-y-auto">
-              <OrigenPedidos businessId={businessId} />
+            <div className="flex-1 min-h-0 overflow-y-auto bg-slate-50/40">
+              <div className="px-5 pt-6 pb-2 text-center">
+                <span className="w-12 h-12 rounded-2xl bg-white border border-slate-200 grid place-items-center mx-auto mb-3 text-slate-300 text-xl shadow-sm">
+                  <FaWhatsapp />
+                </span>
+                <p className="text-[15px] font-bold text-slate-600">Elige una conversación</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Mientras tanto, mira qué canal te está trayendo pedidos.
+                </p>
+              </div>
+              <div className="max-w-xl mx-auto w-full">
+                <OrigenPedidos businessId={businessId} />
+              </div>
             </div>
           ) : (
             <>
               {/* Con quién se está hablando, también en pantalla grande. Antes
                   esto solo salía en el celular: en el computador, si el cliente
                   era nuevo, no aparecía su número por ningún lado. */}
-              <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-slate-100">
+              <div className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-100 bg-white shrink-0">
                 <button
                   onClick={() => setChatActivo(null)}
                   className="p-1.5 -ml-1.5 text-slate-500 hover:text-slate-700 lg:hidden"
                 >
                   <FaArrowLeft className="text-sm" />
                 </button>
-                <Avatar nombre={chatSeleccionado?.contactName} telefono={chatActivo} />
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-800 truncate leading-tight">
+                <Avatar nombre={chatSeleccionado?.contactName} telefono={chatActivo} grande />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[15px] font-bold text-slate-800 truncate leading-tight">
                     {chatSeleccionado?.contactName || telefonoLegible(chatActivo)}
                   </p>
-                  {chatSeleccionado?.contactName && (
-                    <p className="text-[11px] text-slate-400 truncate">{telefonoLegible(chatActivo)}</p>
-                  )}
+                  <p className="text-[11.5px] text-slate-400 truncate">
+                    {telefonoLegible(chatActivo)}
+                    {puedeResponder && <span className="text-emerald-600 font-semibold"> · ventana abierta</span>}
+                  </p>
                 </div>
+                {/* En pantalla ancha este botón vive en la ficha de la derecha;
+                    acá se repite porque esa columna no existe. */}
+                <button
+                  onClick={() => setTomandoPedido(true)}
+                  className="xl:hidden flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors active:scale-95 shrink-0"
+                >
+                  <FaShoppingBag className="text-[10px]" /> Tomar pedido
+                </button>
               </div>
 
-              {/* Acotada: al desplegar "últimos pedidos" se comía la mitad de la
-                  conversación. Crece hasta donde puede y ahí hace su scroll. */}
-              <div className="shrink-0 max-h-[45%] overflow-y-auto">
-                <FichaCliente
-                  ficha={ficha}
-                  cargando={cargandoFicha}
-                  onTomarPedido={() => setTomandoPedido(true)}
-                />
+              {/* Debajo de la cabecera solo en pantallas donde no cabe la
+                  columna de la derecha. */}
+              <div className="xl:hidden shrink-0 max-h-[38%] overflow-y-auto">
+                <FichaCliente ficha={ficha} cargando={cargandoFicha} />
               </div>
 
               <div className="relative flex-1 min-h-0">
                 <div
                   ref={scrollRef}
                   onScroll={alDesplazar}
-                  className="h-full overflow-y-auto px-4 py-4 space-y-1.5 bg-slate-50/50"
+                  className="h-full overflow-y-auto px-4 sm:px-6 py-4 bg-[#f2f0ea]"
+                  /* El papel tramado de WhatsApp, dibujado con un degradado en
+                     vez de una imagen: no suma una petición ni un archivo al
+                     bundle, y sobre blanco liso las burbujas blancas no se
+                     distinguían del fondo. */
+                  style={{
+                    backgroundImage:
+                      'radial-gradient(circle at 1px 1px, rgba(15,23,42,0.045) 1px, transparent 0)',
+                    backgroundSize: '22px 22px',
+                  }}
                 >
                   {cargandoChat ? (
-                    <div className="grid place-items-center py-12 text-slate-300"><FaSpinner className="animate-spin" /></div>
+                    <div className="grid place-items-center py-12 text-slate-300"><FaSpinner className="animate-spin text-xl" /></div>
+                  ) : mensajes.length === 0 ? (
+                    <div className="grid place-items-center h-full text-center px-6">
+                      <div>
+                        <FaWhatsapp className="mx-auto text-4xl text-slate-300 mb-3" />
+                        <p className="text-sm font-semibold text-slate-500">Esta conversación está vacía</p>
+                        <p className="text-xs text-slate-400 mt-1">Escribe abajo para empezar.</p>
+                      </div>
+                    </div>
                   ) : (
-                    mensajes.map((m, i) => (
-                      <React.Fragment key={m._id || m.wamid}>
-                        {/* Sin esto, un mensaje de ayer a las 6 y uno de hoy a
-                            las 10 se leen seguidos y parecen la misma charla. */}
-                        {cambioDeDia(mensajes[i - 1], m) && <SeparadorDia fecha={m.sentAt} />}
-                        <Burbuja mensaje={m} />
-                      </React.Fragment>
-                    ))
+                    mensajes.map((m, i) => {
+                      const previo = mensajes[i - 1];
+                      const dia = cambioDeDia(previo, m);
+                      // Mensajes seguidos del mismo lado se agrupan: menos aire
+                      // muerto y se lee como un bloque, igual que en WhatsApp.
+                      const pegado = !dia && previo && previo.direction === m.direction;
+                      return (
+                        <React.Fragment key={m._id || m.wamid}>
+                          {/* Sin esto, un mensaje de ayer a las 6 y uno de hoy a
+                              las 10 se leen seguidos y parecen la misma charla. */}
+                          {dia && <SeparadorDia fecha={m.sentAt} />}
+                          <Burbuja mensaje={m} pegado={pegado} />
+                        </React.Fragment>
+                      );
+                    })
                   )}
                 </div>
 
@@ -598,50 +770,89 @@ export default function WhatsAppInbox() {
 
               {/* Responder — o la razón por la que no se puede */}
               {puedeResponder ? (
-                <form onSubmit={enviar} className="border-t border-slate-100 bg-white px-3 py-2.5">
-                  <div className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-2 py-1.5 transition-colors focus-within:border-emerald-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-400/25">
-                    <textarea
-                      ref={areaRef}
-                      value={borrador}
-                      onChange={(e) => setBorrador(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(e); }
-                      }}
-                      rows={1}
-                      placeholder="Escribe tu respuesta…"
-                      className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm leading-relaxed text-slate-700 placeholder:text-slate-400 focus:outline-none"
-                    />
-                    <button
-                      type="submit"
-                      disabled={!borrador.trim() || enviando}
-                      title="Enviar"
-                      className="w-9 h-9 mb-0.5 shrink-0 rounded-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-200 disabled:cursor-not-allowed text-white grid place-items-center transition-all active:scale-90"
-                    >
-                      {enviando ? <FaSpinner className="animate-spin text-xs" /> : <FaPaperPlane className="text-xs" />}
-                    </button>
-                  </div>
-                  {/* Enter envía. Quien no lo sabe manda el mensaje a medias al
-                      intentar bajar de renglón, y eso le llega al cliente. */}
-                  <p className="text-[10.5px] text-slate-300 mt-1.5 px-1.5">
-                    <kbd className="font-sans font-semibold text-slate-400">Enter</kbd> envía ·{' '}
-                    <kbd className="font-sans font-semibold text-slate-400">Shift+Enter</kbd> salta de línea
-                  </p>
-                </form>
+                <div className="border-t border-slate-100 bg-white shrink-0">
+                  {/* Lo que más se escribe en un restaurante, en un toque. Se
+                      pone en el cuadro en vez de enviarse solo: casi siempre hay
+                      que rematarlo con la hora o el valor del domicilio. */}
+                  <RespuestasRapidas
+                    slug={businessConfig?.slug}
+                    nombre={ficha?.cliente?.name || chatSeleccionado?.contactName}
+                    onElegir={(t) => { setBorrador(t); areaRef.current?.focus(); }}
+                  />
+
+                  <form onSubmit={enviar} className="px-3 pb-2.5">
+                    <div className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-2 py-1.5 transition-colors focus-within:border-emerald-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-400/25">
+                      <textarea
+                        ref={areaRef}
+                        value={borrador}
+                        onChange={(e) => setBorrador(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(e); }
+                        }}
+                        rows={1}
+                        placeholder="Escribe tu respuesta…"
+                        className="flex-1 resize-none bg-transparent px-2 py-2 text-[15px] leading-relaxed text-slate-700 placeholder:text-slate-400 focus:outline-none"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!borrador.trim() || enviando}
+                        title="Enviar"
+                        className="w-10 h-10 mb-0.5 shrink-0 rounded-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-200 disabled:cursor-not-allowed text-white grid place-items-center transition-all active:scale-90 shadow-sm shadow-emerald-500/30 disabled:shadow-none"
+                      >
+                        {enviando ? <FaSpinner className="animate-spin text-sm" /> : <FaPaperPlane className="text-sm" />}
+                      </button>
+                    </div>
+                    {/* Enter envía. Quien no lo sabe manda el mensaje a medias al
+                        intentar bajar de renglón, y eso le llega al cliente. */}
+                    <p className="text-[10.5px] text-slate-300 mt-1.5 px-1.5 hidden sm:block">
+                      <kbd className="font-sans font-semibold text-slate-400">Enter</kbd> envía ·{' '}
+                      <kbd className="font-sans font-semibold text-slate-400">Shift+Enter</kbd> salta de línea
+                    </p>
+                  </form>
+                </div>
               ) : (
-                <div className="p-3 border-t border-slate-100 bg-amber-50/60">
-                  <p className="text-xs text-amber-700 flex items-start gap-2">
-                    <FaLock className="mt-0.5 shrink-0" />
-                    <span>
+                <div className="p-4 border-t border-slate-100 bg-amber-50/70 shrink-0">
+                  <p className="text-[13px] text-amber-800 flex items-start gap-2.5 max-w-2xl">
+                    <FaLock className="mt-0.5 shrink-0 text-amber-500" />
+                    <span className="leading-relaxed">
                       <strong>Pasaron más de 24 horas</strong> desde el último mensaje de este cliente.
                       WhatsApp solo permite retomar la conversación con una plantilla aprobada por Meta.
                       Si el cliente vuelve a escribir, se abre otra vez por 24 horas.
                     </span>
                   </p>
+                  <button
+                    onClick={() => setVista('plantillas')}
+                    className="mt-2.5 ml-6 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-colors"
+                  >
+                    Ver mis plantillas
+                  </button>
                 </div>
               )}
             </>
           )}
         </div>
+
+        {/* Ficha del cliente — columna propia en pantalla ancha */}
+        <aside className="hidden xl:flex flex-col min-h-0 border-l border-slate-100 bg-slate-50/50">
+          {chatActivo ? (
+            <FichaRail
+              ficha={ficha}
+              cargando={cargandoFicha}
+              telefono={chatActivo}
+              nombreChat={chatSeleccionado?.contactName}
+              onTomarPedido={() => setTomandoPedido(true)}
+            />
+          ) : (
+            <div className="p-6 text-center text-slate-400 grid place-items-center h-full">
+              <div>
+                <FaUser className="mx-auto text-2xl mb-2 opacity-30" />
+                <p className="text-xs leading-relaxed">
+                  Abre una conversación y acá verás quién es, qué ha pedido y si tiene algo en curso.
+                </p>
+              </div>
+            </div>
+          )}
+        </aside>
       </div>
 
       {/* Tomar el pedido sin salir del chat, con los datos ya puestos.
@@ -673,13 +884,186 @@ export default function WhatsAppInbox() {
 }
 
 /**
+ * Lo que un restaurante escribe veinte veces al día.
+ *
+ * No se envían solas: se ponen en el cuadro. Casi siempre hay que rematarlas
+ * con la hora, el valor del domicilio o el nombre, y un botón que dispara el
+ * mensaje tal cual termina mandando "tu pedido va en camino" a quien todavía
+ * no ha pedido nada.
+ */
+function RespuestasRapidas({ slug, nombre, onElegir }) {
+  const [abierto, setAbierto] = useState(false);
+  const quien = (nombre || '').trim().split(' ')[0];
+  const hola = quien ? `Hola ${quien}` : 'Hola';
+
+  const opciones = [
+    { icono: FaRegSmile, txt: 'Saludo', mensaje: `${hola}, ¡gracias por escribirnos! ¿En qué te ayudamos?` },
+    slug && {
+      icono: FaUtensils,
+      txt: 'Enviar menú',
+      mensaje: `${hola}, este es nuestro menú 🍔\nhttps://www.menuby.tech/${slug}?source=whatsapp`,
+    },
+    { icono: FaClock, txt: 'Ya lo preparamos', mensaje: 'Tu pedido ya está en preparación. Te avisamos apenas salga.' },
+    { icono: FaMotorcycle, txt: 'Va en camino', mensaje: 'Tu pedido ya va en camino 🛵' },
+    { icono: FaHome, txt: 'Pedir dirección', mensaje: '¿Me confirmas la dirección de entrega y un punto de referencia?' },
+  ].filter(Boolean);
+
+  return (
+    <div className="px-3 pt-2.5">
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={() => setAbierto((v) => !v)}
+          className="shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+        >
+          {abierto ? '× Ocultar' : '⚡ Respuestas rápidas'}
+        </button>
+        {abierto && (
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+            {opciones.map((o) => (
+              <button
+                key={o.txt}
+                onClick={() => { onElegir(o.mensaje); setAbierto(false); }}
+                className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-[11.5px] font-semibold text-slate-600 hover:text-emerald-700 transition-colors"
+              >
+                <o.icono className="text-[10px]" /> {o.txt}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * La ficha del cliente como columna propia, en pantalla ancha.
+ *
+ * Es la misma información que la tira de arriba, pero vertical: acá cabe entera
+ * sin robarle alto a la conversación, que era el problema de tenerla encima de
+ * los mensajes.
+ */
+function FichaRail({ ficha, cargando, telefono, nombreChat, onTomarPedido }) {
+  if (cargando) {
+    return <div className="p-6 text-center text-slate-300"><FaSpinner className="animate-spin mx-auto" /></div>;
+  }
+
+  const { cliente, fidelidad, pedidosEnCurso = [], ultimosPedidos = [], esConocido } = ficha || {};
+  const nombre = cliente?.name || nombreChat;
+
+  return (
+    <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="p-5 text-center border-b border-slate-100">
+        <div className="flex justify-center mb-3">
+          <Avatar nombre={nombre} telefono={telefono} enorme />
+        </div>
+        <p className="text-[15px] font-bold text-slate-800 truncate">
+          {nombre || telefonoLegible(telefono)}
+        </p>
+        <p className="text-xs text-slate-400 mt-0.5">{telefonoLegible(telefono)}</p>
+
+        {ficha && !esConocido && (
+          <span className="inline-flex items-center gap-1.5 mt-3 px-2.5 py-1 rounded-full bg-sky-100 text-sky-700 text-[11px] font-bold">
+            <FaUserPlus className="text-[9px]" /> Cliente nuevo
+          </span>
+        )}
+
+        <button
+          onClick={onTomarPedido}
+          className="w-full mt-4 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-3 py-2.5 rounded-xl text-[13px] font-bold transition-colors active:scale-[0.98]"
+        >
+          <FaShoppingBag className="text-[11px]" /> Tomar pedido
+        </button>
+      </div>
+
+      {ficha && esConocido && (
+        <>
+          <div className="grid grid-cols-2 gap-px bg-slate-100 border-b border-slate-100">
+            <Dato valor={cliente?.totalOrders || 0} etiqueta="pedidos" />
+            <Dato valor={pesos(cliente?.totalSpent || 0)} etiqueta="gastado" />
+            {fidelidad?.points > 0 && (
+              <Dato valor={fidelidad.points} etiqueta="puntos" resalta />
+            )}
+            {fidelidad?.currentTier && (
+              <Dato valor={fidelidad.currentTier} etiqueta="nivel" resalta />
+            )}
+          </div>
+
+          {cliente?.address && (
+            <div className="px-5 py-3.5 border-b border-slate-100">
+              <p className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wide mb-1">Dirección</p>
+              <p className="text-[13px] text-slate-600 leading-relaxed flex items-start gap-2">
+                <FaHome className="text-slate-300 mt-0.5 shrink-0 text-[11px]" />
+                {cliente.address}
+              </p>
+            </div>
+          )}
+
+          {/* Un pedido en curso es lo primero que hay que saber al contestar */}
+          {pedidosEnCurso.length > 0 && (
+            <div className="px-5 py-3.5 border-b border-slate-100">
+              <p className="text-[10.5px] font-bold text-amber-600 uppercase tracking-wide mb-2">En curso</p>
+              <div className="space-y-1.5">
+                {pedidosEnCurso.map((p) => (
+                  <div key={p._id} className="bg-amber-50 border border-amber-200/70 rounded-xl px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[13px] font-bold text-amber-800">#{p.orderNumber}</span>
+                      <span className="text-[13px] font-bold text-amber-700">{pesos(p.total)}</span>
+                    </div>
+                    <p className="text-[11.5px] text-amber-600 mt-0.5">{ESTADO_PEDIDO[p.status] || p.status}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {ultimosPedidos.length > 0 && (
+            <div className="px-5 py-3.5">
+              <p className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wide mb-2">
+                Últimos pedidos
+              </p>
+              <ul className="space-y-1.5">
+                {ultimosPedidos.map((p) => (
+                  <li key={p._id} className="bg-white border border-slate-200/70 rounded-xl px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[12.5px] font-bold text-slate-600">#{p.orderNumber}</span>
+                      <span className="text-[10.5px] text-slate-400">
+                        {new Date(p.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}
+                      </span>
+                      <span className="text-[12.5px] font-bold text-slate-600 ml-auto">{pesos(p.total)}</span>
+                    </div>
+                    {p.items?.length > 0 && (
+                      <p className="text-slate-400 text-[11.5px] mt-1 leading-snug">
+                        {p.items.join(', ')}{p.masItems > 0 ? ` y ${p.masItems} más` : ''}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function Dato({ valor, etiqueta, resalta }) {
+  return (
+    <div className="bg-slate-50/60 px-3 py-3 text-center">
+      <p className={`text-[15px] font-bold truncate ${resalta ? 'text-amber-600' : 'text-slate-700'}`}>{valor}</p>
+      <p className="text-[10.5px] text-slate-400 uppercase tracking-wide mt-0.5">{etiqueta}</p>
+    </div>
+  );
+}
+
+/**
  * Quién es el que está escribiendo.
  *
  * Es lo que separa esta bandeja de tener WhatsApp abierto en otra pestaña: al
  * responder se ve si es un cliente de siempre o alguien nuevo, qué pidió antes
  * y si tiene algo en curso ahora mismo.
  */
-function FichaCliente({ ficha, cargando, onTomarPedido }) {
+function FichaCliente({ ficha, cargando }) {
   if (cargando) {
     return (
       <div className="p-4 border-b border-slate-100 bg-slate-50/60 text-center text-slate-300">
@@ -691,24 +1075,17 @@ function FichaCliente({ ficha, cargando, onTomarPedido }) {
 
   const { cliente, fidelidad, pedidosEnCurso = [], ultimosPedidos = [], esConocido } = ficha;
 
-  const BotonPedido = () => (
-    <button
-      onClick={onTomarPedido}
-      className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors active:scale-[0.97] shrink-0"
-    >
-      <FaShoppingBag className="text-[10px]" /> Tomar pedido
-    </button>
-  );
+  /* El botón de tomar pedido vive en la cabecera del chat, no acá: tenerlo en
+     los dos sitios dejaba dos botones idénticos a dos centímetros. */
 
   // Cliente nuevo: se dice, porque cambia cómo se le contesta.
   if (!esConocido) {
     return (
-      <div className="px-4 py-2.5 border-b border-slate-100 bg-sky-50/70 flex items-center gap-3">
+      <div className="px-4 py-2.5 border-b border-slate-100 bg-sky-50/70 flex items-center gap-2.5">
         <FaUserPlus className="text-sky-500 shrink-0 text-xs" />
-        <p className="text-xs text-sky-700 flex-1">
+        <p className="text-[12.5px] text-sky-700 flex-1">
           <strong>Cliente nuevo.</strong> No tiene pedidos anteriores en tu negocio.
         </p>
-        <BotonPedido />
       </div>
     );
   }
@@ -741,7 +1118,6 @@ function FichaCliente({ ficha, cargando, onTomarPedido }) {
             <span className="truncate max-w-[220px]" title={cliente.address}>{cliente.address}</span>
           </span>
         )}
-        <div className="ml-auto"><BotonPedido /></div>
       </div>
 
       {/* Un pedido en curso es lo primero que hay que saber al contestar */}
@@ -839,16 +1215,22 @@ const COLORES_AVATAR = [
   'bg-rose-100 text-rose-700', 'bg-teal-100 text-teal-700',
 ];
 
-function Avatar({ nombre, telefono }) {
+function Avatar({ nombre, telefono, grande, enorme, punto }) {
   const base = (nombre || '').trim();
   const inicial = base ? base[0].toUpperCase() : '#';
   // El color sale del teléfono: el mismo contacto se ve igual siempre.
   const suma = String(telefono || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
   const color = COLORES_AVATAR[suma % COLORES_AVATAR.length];
+  const tam = enorme ? 'w-16 h-16 text-2xl' : grande ? 'w-10 h-10 text-base' : 'w-11 h-11 text-[15px]';
 
   return (
-    <span className={`w-9 h-9 shrink-0 rounded-full grid place-items-center text-sm font-bold ${color}`}>
-      {inicial}
+    <span className="relative shrink-0">
+      <span className={`${tam} rounded-full grid place-items-center font-bold ${color}`}>
+        {inicial}
+      </span>
+      {punto && (
+        <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white" />
+      )}
     </span>
   );
 }
