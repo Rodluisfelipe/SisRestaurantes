@@ -36,6 +36,7 @@ const LandingContact = lazy(() => import("./Pages/Landing/Contact"));
 const LandingPricing = lazy(() => import("./Pages/Landing/Pricing"));
 const LegalPrivacy = lazy(() => import("./Pages/Landing/Privacy"));
 const LegalTerms = lazy(() => import("./Pages/Landing/Terms"));
+const WhatsAppConectado = lazy(() => import("./Pages/Landing/WhatsAppConectado"));
 const BlogIndex = lazy(() => import("./Pages/Blog/BlogIndex"));
 const BlogPost = lazy(() => import("./Pages/Blog/BlogPost"));
 const NichePage = lazy(() => import("./Pages/Landing/NichePage"));
@@ -145,7 +146,11 @@ const RESERVED_PATHS = ['login', 'register', 'features', 'demo', 'contact', 'pri
   'menu-digital-restaurante', 'menu-digital-bar', 'menu-digital-cafeteria', 'menu-digital-pizzeria',
   'menu-digital-hamburgueseria', 'menu-digital-hotel', 'menu-digital-food-truck', 'menu-digital-panaderia',
   'menu-digital-comida-rapida', 'menu-digital-sushi', 'menu-digital-asadero', 'menu-digital-heladeria',
-  'restaurantes', 'health', 'superadmin', 'app-login', 'forgot-password', 'recuperar', 'mesero'
+  'restaurantes', 'health', 'superadmin', 'app-login', 'forgot-password', 'recuperar', 'mesero',
+  /* Las legales y el retorno del registro de WhatsApp. Las rutas explícitas ya
+     ganan por especificidad, pero esta lista se consulta en otros sitios y un
+     negocio llamado "privacidad" no debería poder existir. */
+  'privacy', 'privacidad', 'terminos', 'whatsapp-conectado'
 ];
 
 function App() {
@@ -192,6 +197,8 @@ function App() {
           {/* Legales. Se declaran en español y en inglés porque los enlaces del
               registro y de Meta apuntan a /terms y /privacy, y antes /terms
               mostraba la página de inicio y /privacy no existía. */}
+          {/* A donde vuelve el negocio tras conectar su WhatsApp en Meta. */}
+          <Route path="/whatsapp-conectado" element={<WhatsAppConectado />} />
           <Route path="/privacidad" element={<LegalPrivacy />} />
           <Route path="/privacy" element={<LegalPrivacy />} />
           <Route path="/terminos" element={<LegalTerms />} />

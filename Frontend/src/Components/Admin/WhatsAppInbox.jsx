@@ -996,6 +996,25 @@ function ConectarNumero({ businessId, cuenta, onConectado }) {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
+  /* Lo manual queda plegado a propósito: pedirle a un dueño de restaurante tres
+     identificadores de Meta es cómo se pierde una conexión. El camino de un
+     toque va primero y este queda para cuando algo falle. */
+  const [verManual, setVerManual] = useState(false);
+  const [pidiendoEnlace, setPidiendoEnlace] = useState(false);
+
+  async function conectarConMeta() {
+    setPidiendoEnlace(true);
+    setError('');
+    try {
+      const { data } = await api.get(`/whatsapp-inbox/oauth/enlace?businessId=${businessId}`);
+      // Se sale del panel: Meta pide la sesión de Facebook del dueño.
+      window.location.href = data.enlace;
+    } catch (e) {
+      setError(e?.response?.data?.message || 'No se pudo abrir la conexión con Meta');
+      setPidiendoEnlace(false);
+      setVerManual(true);   // si falla, al menos queda el camino manual a la vista
+    }
+  }
 
   async function guardar(e) {
     e.preventDefault();
@@ -1023,19 +1042,46 @@ function ConectarNumero({ businessId, cuenta, onConectado }) {
           <FaPlug />
         </span>
         <div>
-          <h2 className="text-base font-bold text-slate-800">Conecta tu número</h2>
-          <p className="text-xs text-slate-400">Estos datos salen de tu cuenta de WhatsApp Business en Meta.</p>
+          <h2 className="text-base font-bold text-slate-800">Conecta tu WhatsApp</h2>
+          <p className="text-xs text-slate-400">Tus clientes te escriben a tu número de siempre y tú respondes desde acá.</p>
         </div>
       </div>
 
       {error && <p className="mb-4 text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
       {aviso && <p className="mb-4 text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">{aviso}</p>}
 
+      {/* El camino de un toque. Antes solo estaba el manual, que pide tres
+          identificadores de la consola de Meta: eso no lo hace un dueño de
+          restaurante, lo termina haciendo el equipo por cada cliente. */}
+      <button
+        onClick={conectarConMeta}
+        disabled={pidiendoEnlace}
+        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-[#1877F2] hover:bg-[#166fe0] disabled:bg-slate-200 text-white font-bold text-sm transition-colors active:scale-[0.98]"
+      >
+        {pidiendoEnlace ? <><FaSpinner className="animate-spin" /> Abriendo…</> : 'Conectar con Facebook'}
+      </button>
+      <p className="text-[11.5px] text-slate-400 mt-2 leading-relaxed">
+        Te lleva a Meta para que autorices tu número. Vuelves acá conectado, sin
+        copiar ni pegar nada.
+      </p>
+
+      {!verManual && (
+        <button
+          onClick={() => setVerManual(true)}
+          className="w-full mt-4 pt-3 border-t border-slate-100 text-[11.5px] text-slate-400 hover:text-slate-600 transition-colors"
+        >
+          ¿Ya tienes los datos de Meta? Conectar a mano
+        </button>
+      )}
+
       {/* `autoComplete="off"` en el formulario y nombres que no suenan a
           credenciales: Chrome estaba rellenando el correo del usuario y una
           contraseña guardada en estos campos, porque veía un formulario con un
           input de tipo password. */}
-      <form onSubmit={guardar} className="space-y-4" autoComplete="off">
+      <form onSubmit={guardar} className={`space-y-4 ${verManual ? 'mt-5 pt-5 border-t border-slate-100' : 'hidden'}`} autoComplete="off">
+        <p className="text-[11.5px] text-slate-400 -mb-1">
+          Estos tres datos salen de tu cuenta de WhatsApp Business en Meta.
+        </p>
         <Campo
           label="Identificador del número"
           hint="Meta lo llama Phone number ID"

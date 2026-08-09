@@ -586,3 +586,42 @@ describe('registro integrado', () => {
     expect(ruta).toMatch(/return volver\('cancelado'\)/);
   });
 });
+
+describe('la pantalla de conexión ofrece el camino de un toque', () => {
+  const fs4 = require('fs');
+  const path4 = require('path');
+  const ui = fs4.readFileSync(
+    path4.join(__dirname, '..', '..', 'Frontend', 'src', 'Components', 'Admin', 'WhatsAppInbox.jsx'), 'utf8',
+  );
+  const app = fs4.readFileSync(path4.join(__dirname, '..', '..', 'Frontend', 'src', 'App.jsx'), 'utf8');
+
+  it('el botón de Meta va primero y lo manual queda plegado', () => {
+    // Pedirle tres identificadores de la consola de Meta a un dueño de
+    // restaurante es cómo se pierde una conexión.
+    expect(ui).toContain('Conectar con Facebook');
+    expect(ui).toMatch(/oauth\/enlace/);
+    expect(ui).toMatch(/verManual \? .* : 'hidden'/);
+  });
+
+  it('si falla el enlace, lo manual aparece solo', () => {
+    // Quedarse sin ningún camino es peor que uno incómodo.
+    expect(ui).toMatch(/setVerManual\(true\);\s*\/\/ si falla/);
+  });
+
+  it('hay una página de vuelta, no un JSON del servidor', () => {
+    expect(app).toContain('whatsapp-conectado');
+    const pagina = fs4.readFileSync(
+      path4.join(__dirname, '..', '..', 'Frontend', 'src', 'Pages', 'Landing', 'WhatsAppConectado.jsx'), 'utf8',
+    );
+    for (const estado of ['ok', 'cancelado', 'error']) {
+      expect(pagina).toMatch(new RegExp(`${estado}:`));
+    }
+  });
+
+  it('el motivo del fallo se le muestra al negocio', () => {
+    const pagina = fs4.readFileSync(
+      path4.join(__dirname, '..', '..', 'Frontend', 'src', 'Pages', 'Landing', 'WhatsAppConectado.jsx'), 'utf8',
+    );
+    expect(pagina).toMatch(/\{motivo\}/);
+  });
+});
