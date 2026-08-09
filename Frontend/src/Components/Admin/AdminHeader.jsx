@@ -3,6 +3,7 @@
  * Elimina los 18+ líneas repetidas de {activeTab === 'x' && 'Title'}.
  */
 import { useBusinessConfig } from '../../Context/BusinessContext';
+import PanelesRapidos from './PanelesRapidos';
 
 const TAB_CONFIG = {
   'dashboard':        { title: 'Panel Principal',         desc: 'Acceso rápido a todas las funciones' },
@@ -43,7 +44,7 @@ const SERVICE_OVERRIDES = {
   'toppings':         { title: 'Gestión de Opciones',     desc: 'Configura variantes y opciones' },
 };
 
-export default function AdminHeader({ activeTab }) {
+export default function AdminHeader({ activeTab, onAbrirPanel, whatsappSinLeer = 0, posDisponible = true }) {
   const { businessConfig } = useBusinessConfig();
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const isHotel = businessConfig?.businessType === 'hotel';
@@ -53,11 +54,22 @@ export default function AdminHeader({ activeTab }) {
 
   return (
     <div className="hidden md:block bg-white border-b border-slate-200 sticky top-0 z-40">
-      <div className="px-4 md:px-6 py-2 mt-12 lg:mt-0 flex items-center justify-between">
-        <h1 className="text-sm font-semibold text-slate-700 truncate">
+      <div className="px-4 md:px-6 py-2 mt-12 lg:mt-0 flex items-center justify-between gap-4">
+        <h1 className="text-sm font-semibold text-slate-700 truncate min-w-0">
           {config.title}
-          <span className="ml-2 text-xs font-normal text-slate-400">{config.desc}</span>
+          <span className="ml-2 text-xs font-normal text-slate-400 hidden xl:inline">{config.desc}</span>
         </h1>
+
+        {/* Los tres paneles del día a día, siempre en el mismo sitio. Llegar a
+            cualquiera era abrir el lateral, buscar la sección y entrar; y luego
+            repetirlo para cambiar al otro. */}
+        {onAbrirPanel && (
+          <PanelesRapidos
+            onIr={onAbrirPanel}
+            whatsappSinLeer={whatsappSinLeer}
+            posDisponible={posDisponible}
+          />
+        )}
       </div>
     </div>
   );

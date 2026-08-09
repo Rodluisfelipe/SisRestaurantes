@@ -184,7 +184,7 @@ function Burbuja({ mensaje: m, pegado }) {
   );
 }
 
-export default function WhatsAppInbox() {
+export default function WhatsAppInbox({ pleno = false }) {
   /* El negocio se manda explícito, como hace el resto del panel. Confiar solo
      en `req.user.businessId` dejaba la petición sin negocio, el backend
      respondía error, y la pantalla caía en el formulario de conectar como si
@@ -440,11 +440,16 @@ export default function WhatsAppInbox() {
     /* Alto de pantalla, como un cliente de correo. Antes era una caja de 600px
        suelta en medio del panel: quedaba una conversación diminuta con el resto
        de la página vacía alrededor. */
-    /* Los descuentos salen del armazón del panel: cabecera móvil + relleno +
-       la barra inferior de navegación en celular; en escritorio, la cabecera
-       fija y el relleno de 1.5rem. `min-h` evita que en una pantalla corta
-       quede una rendija. */
-    <div className="flex flex-col h-[calc(100dvh-12.5rem)] md:h-[calc(100dvh-14rem)] lg:h-[calc(100dvh-9rem)] min-h-[520px] bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+    /* En pantalla completa el contenedor ya trae el alto: se toma entero.
+       Fuera de ahí hay que descontar el armazón del panel — cabecera móvil,
+       relleno y la barra inferior en celular; en escritorio, la cabecera fija
+       y el relleno de 1.5rem. `min-h` evita que en una pantalla corta quede
+       una rendija. */
+    <div className={`flex flex-col bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden ${
+      pleno
+        ? 'h-full min-h-0'
+        : 'h-[calc(100dvh-12.5rem)] md:h-[calc(100dvh-14rem)] lg:h-[calc(100dvh-9rem)] min-h-[520px]'
+    }`}>
       {/* Cabecera */}
       <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-emerald-50/80 to-white shrink-0">
         <div className="flex items-center gap-3 min-w-0">
