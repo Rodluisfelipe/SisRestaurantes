@@ -23,6 +23,26 @@ PROYECTO_BASE=backend
 
 log() { echo "[$(date +%H:%M:%S)] $*"; }
 
+# ── 0. Un despliegue a la vez ───────────────────────────────────────────────
+# Sin esto, dos despliegues simultáneos leen el MISMO puerto en nginx, deciden
+# desplegar el MISMO color, y se pisan entre ellos: uno hace `down` de lo que el
+# otro acaba de levantar, uno borra la red que el otro está usando, y la limpieza
+# de imágenes corre justo cuando no hay contenedor vivo.
+#
+# Eso explica los tres sustos: contenedores que desaparecieron, "network not
+# found", y conflictos de nombre. No era Docker portándose raro: eran dos
+# despliegues corriendo encima del otro.
+#
+# El candado se libera solo al terminar el script, incluso si falla.
+CANDADO=/var/lock/menuby-deploy.lock
+exec 9>"$CANDADO"
+if ! flock -n 9; then
+  log "Ya hay un despliegue en curso. Este se detiene para no pisarlo."
+  log "Si sabes que el otro murió a medias: rm -f $CANDADO"
+  exit 1
+fi
+log "Candado tomado (PID $$)"
+
 # ── 1. Qué color está atendiendo ahora ──────────────────────────────────────
 PUERTO_ACTUAL=$(grep -oE '127\.0\.0\.1:[0-9]+' "$UPSTREAM" | grep -oE '[0-9]+$' || echo "$AZUL")
 if [ "$PUERTO_ACTUAL" = "$AZUL" ]; then
