@@ -11,10 +11,11 @@ import {
   FaPalette, FaMapMarkerAlt, FaLock, FaSignOutAlt, FaChevronDown,
   FaShoppingBag, FaStore, FaTools, FaCog, FaMoneyBillWave, FaStar, FaGift,
   FaQuestionCircle, FaExternalLinkAlt, FaChartBar, FaPrint, FaCashRegister,
-  FaCalendarAlt, FaShareAlt, FaCodeBranch, FaLink, FaCalculator, FaBoxOpen
+  FaCalendarAlt, FaShareAlt, FaCodeBranch, FaLink, FaCalculator, FaBoxOpen,
+  FaChevronLeft
 } from 'react-icons/fa';
 
-const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, whatsappSinLeer, subscriptionData, onboarding, userRole }) => {
+const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, whatsappSinLeer, subscriptionData, onboarding, userRole, colapsado = false, onAlternar }) => {
   const isStaff = userRole === 'staff';
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const isHotel = businessConfig?.businessType === 'hotel';
@@ -464,15 +465,38 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <motion.div 
+      {/* Desktop Sidebar.
+          Plegable: secciones como los chats o el POS se trabajan mucho mejor a
+          ancho completo, y el menú son 256px que ahí no hacen falta. El ancho
+          se anima en CSS y no con framer porque el contenido principal es
+          `flex-1`: así crece a la par, sin dar un salto al terminar. */}
+      <motion.div
         initial={{ x: -300 }}
         animate={{ x: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="hidden lg:block w-64 bg-white min-h-screen border-r border-slate-200 sticky top-0 shadow-sm"
+        className={`hidden lg:block bg-white min-h-screen sticky top-0 shadow-sm overflow-hidden transition-[width] duration-300 ease-out ${
+          colapsado ? 'w-0 border-r-0' : 'w-64 border-r border-slate-200'
+        }`}
+        aria-hidden={colapsado}
       >
         {sidebarContent}
       </motion.div>
+
+      {/* La pestaña para plegarlo y desplegarlo. Va pegada al borde del menú y
+          se mueve con él, así que al plegarlo queda en el filo de la pantalla:
+          es la única forma de volver a abrirlo, y tiene que verse. */}
+      {onAlternar && (
+        <button
+          onClick={onAlternar}
+          title={colapsado ? 'Mostrar el menú' : 'Ocultar el menú'}
+          aria-label={colapsado ? 'Mostrar el menú' : 'Ocultar el menú'}
+          className={`hidden lg:flex fixed top-1/2 -translate-y-1/2 z-50 items-center justify-center w-5 h-20 rounded-r-xl bg-white border border-l-0 border-slate-200 shadow-md text-slate-400 hover:text-slate-800 hover:w-6 transition-all duration-300 ease-out ${
+            colapsado ? 'left-0' : 'left-64'
+          }`}
+        >
+          <FaChevronLeft className={`text-[11px] transition-transform duration-300 ${colapsado ? 'rotate-180' : ''}`} />
+        </button>
+      )}
 
       {/* Guide Overlay */}
       <GuideOverlay

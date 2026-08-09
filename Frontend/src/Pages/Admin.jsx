@@ -152,6 +152,19 @@ function Admin() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [modoOpOpen, setModoOpOpen] = useState(false);
 
+  /* Menú lateral plegado. Se recuerda entre sesiones: quien lo pliega para
+     trabajar los chats a pantalla ancha no quiere volver a plegarlo cada vez
+     que entra. */
+  const [sidebarColapsado, setSidebarColapsado] = useState(
+    () => localStorage.getItem('menuby.sidebarColapsado') === '1'
+  );
+  const alternarSidebar = useCallback(() => {
+    setSidebarColapsado((v) => {
+      localStorage.setItem('menuby.sidebarColapsado', v ? '0' : '1');
+      return !v;
+    });
+  }, []);
+
   // Limpiar params de URL después de leerlos (no mostrar ?tab=... en la barra)
   useEffect(() => {
     if (searchParams.has('tab')) {
@@ -326,6 +339,8 @@ function Admin() {
           subscriptionData={subscriptionData}
           onboarding={onboardingData}
           userRole={user?.role}
+          colapsado={sidebarColapsado}
+          onAlternar={alternarSidebar}
         />
 
         {/* Main Content */}
