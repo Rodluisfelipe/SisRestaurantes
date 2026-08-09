@@ -86,6 +86,7 @@ export default function WhatsAppInbox() {
   const [cargandoFicha, setCargandoFicha] = useState(false);
   const [tomandoPedido, setTomandoPedido] = useState(false);
   const [reconectando, setReconectando] = useState(false);
+  const [vista, setVista] = useState('chats');
   const finRef = useRef(null);
 
   // ── Carga inicial ──
@@ -269,6 +270,27 @@ export default function WhatsAppInbox() {
         </button>
       </div>
 
+      {/* Las plantillas viven acá y no en otra sección del menú: son parte de
+          atender WhatsApp, y separarlas obliga a buscarlas cuando hacen falta. */}
+      <div className="flex border-b border-slate-100 px-2">
+        {[
+          { id: 'chats', txt: 'Conversaciones' },
+          { id: 'plantillas', txt: 'Plantillas' },
+        ].map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setVista(t.id)}
+            className={`px-3.5 py-2.5 text-xs font-bold border-b-2 -mb-px transition-colors ${
+              vista === t.id
+                ? 'border-emerald-500 text-slate-800'
+                : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            {t.txt}
+          </button>
+        ))}
+      </div>
+
       {/* Si Meta rechazó las credenciales, se dice arriba de todo: el negocio
           puede seguir viendo los chats que entran pero no responder ninguno, y
           sin este aviso la única señal sería que nadie contesta. */}
@@ -299,7 +321,9 @@ export default function WhatsAppInbox() {
         </div>
       )}
 
-      <div className="grid lg:grid-cols-[300px_1fr] min-h-[520px]">
+      {vista === 'plantillas' && <Plantillas businessId={businessId} />}
+
+      <div className={`grid lg:grid-cols-[300px_1fr] min-h-[520px] ${vista === 'plantillas' ? 'hidden' : ''}`}>
         {/* Lista de chats */}
         <div className={`border-r border-slate-100 ${chatActivo ? 'hidden lg:block' : ''}`}>
           {chats.length === 0 ? (
@@ -717,6 +741,217 @@ function OrigenPedidos({ businessId }) {
           <strong className="text-slate-500">Sin marcar</strong> son los pedidos que entraron por un enlace
           sin identificar. Para medirlos, comparte el menú añadiéndole <code>?source=</code> y el nombre del canal.
         </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Plantillas de Meta.
+ *
+ * Son la única forma de escribirle a un cliente fuera de las 24 horas: "tu
+ * pedido salió", "dejaste tu carrito". Meta las revisa una por una, y rechaza
+ * sin explicar cosas que el negocio no tiene por qué saber —el nombre solo
+ * admite minúsculas y guion bajo, las variables necesitan un ejemplo—, así que
+ * la pantalla se encarga de eso en vez de dejarlo adivinar.
+ */
+const ESTADO_PLANTILLA = {
+  APPROVED: { texto: 'Aprobada', clase: 'bg-emerald-100 text-emerald-700' },
+  PENDING: { texto: 'En revisión', clase: 'bg-amber-100 text-amber-700' },
+  REJECTED: { texto: 'Rechazada', clase: 'bg-red-100 text-red-700' },
+};
+
+function Plantillas({ businessId }) {
+  const [plantillas, setPlantillas] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState('');
+  const [creando, setCreando] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [aviso, setAviso] = useState('');
+
+  const [nombre, setNombre] = useState('');
+  const [cuerpo, setCuerpo] = useState('');
+  const [categoria, setCategoria] = useState('UTILITY');
+
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    try {
+      const { data } = await api.get(`/whatsapp-inbox/plantillas?businessId=${businessId}`);
+      setPlantillas(data.plantillas || []);
+      setError('');
+    } catch (e) {
+      setError(e?.response?.data?.message || 'No se pudieron cargar las plantillas');
+    } finally {
+      setCargando(false);
+    }
+  }, [businessId]);
+
+  useEffect(() => { cargar(); }, [cargar]);
+
+  /* Las variables van como {{1}}, {{2}}… y Meta exige un ejemplo de cada una.
+     Se cuentan solas para no pedirle al negocio que entienda el formato. */
+  const variables = [...new Set((cuerpo.match(/\{\{(\d+)\}\}/g) || []))];
+
+  async function crear(e) {
+    e.preventDefault();
+    setGuardando(true);
+    setError('');
+    setAviso('');
+    try {
+      const { data } = await api.post('/whatsapp-inbox/plantillas', {
+        businessId,
+        nombre,
+        cuerpo,
+        categoria,
+        idioma: 'es',
+        // Un ejemplo por variable: sin esto Meta la rechaza sin decir por qué.
+        ejemplos: variables.map((_, i) => `ejemplo ${i + 1}`),
+      });
+      setAviso(data.aviso || 'Enviada a revisión.');
+      setNombre(''); setCuerpo(''); setCreando(false);
+      cargar();
+    } catch (e) {
+      setError(e?.response?.data?.message || 'No se pudo crear');
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  async function borrar(p) {
+    if (!window.confirm(`¿Borrar la plantilla "${p.name}"?`)) return;
+    try {
+      await api.delete(`/whatsapp-inbox/plantillas/${encodeURIComponent(p.name)}?businessId=${businessId}`);
+      cargar();
+    } catch (e) {
+      setError(e?.response?.data?.message || 'No se pudo borrar');
+    }
+  }
+
+  return (
+    <div className="p-4">
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div>
+          <p className="text-sm font-bold text-slate-800">Plantillas</p>
+          <p className="text-[11.5px] text-slate-400 leading-relaxed max-w-md mt-0.5">
+            WhatsApp solo deja escribirle a un cliente dentro de las 24 horas siguientes a su
+            último mensaje. Pasado ese tiempo, una plantilla aprobada es la única forma de
+            avisarle que su pedido salió.
+          </p>
+        </div>
+        {!creando && (
+          <button
+            onClick={() => { setCreando(true); setAviso(''); }}
+            className="shrink-0 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition-colors"
+          >
+            Nueva plantilla
+          </button>
+        )}
+      </div>
+
+      {error && (
+        <p className="mb-3 text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>
+      )}
+      {aviso && (
+        <p className="mb-3 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">{aviso}</p>
+      )}
+
+      {creando && (
+        <form onSubmit={crear} className="mb-5 p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Nombre</label>
+            <input
+              value={nombre}
+              /* Meta solo acepta minúsculas, números y guion bajo, y cuando no
+                 se cumple devuelve un error que no lo dice. Se corrige mientras
+                 escribe en vez de rechazarlo después. */
+              onChange={(e) => setNombre(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
+              placeholder="pedido_en_camino"
+              required
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Mensaje</label>
+            <textarea
+              value={cuerpo}
+              onChange={(e) => setCuerpo(e.target.value)}
+              rows={3}
+              placeholder="Hola {{1}}, tu pedido {{2}} ya va en camino."
+              required
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
+            />
+            <p className="text-[11px] text-slate-400 mt-1">
+              Usa <code>{'{{1}}'}</code>, <code>{'{{2}}'}</code>… para lo que cambia en cada envío.
+              {variables.length > 0 && ` Detectamos ${variables.length}.`}
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Tipo</label>
+            <select
+              value={categoria}
+              onChange={(e) => setCategoria(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            >
+              <option value="UTILITY">Aviso sobre un pedido</option>
+              <option value="MARKETING">Promoción</option>
+            </select>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Meta aprueba más rápido los avisos sobre pedidos que las promociones.
+            </p>
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button
+              type="submit"
+              disabled={guardando}
+              className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-200 text-white text-xs font-bold transition-colors"
+            >
+              {guardando ? 'Enviando…' : 'Enviar a revisión'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setCreando(false); setError(''); }}
+              className="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-bold"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      )}
+
+      {cargando ? (
+        <div className="py-10 text-center text-slate-300"><FaSpinner className="animate-spin mx-auto" /></div>
+      ) : plantillas.length === 0 ? (
+        <p className="py-8 text-center text-sm text-slate-400">
+          Todavía no tienes plantillas.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {plantillas.map((p) => {
+            const e = ESTADO_PLANTILLA[p.status] || { texto: p.status, clase: 'bg-slate-100 text-slate-500' };
+            return (
+              <li key={p.id || p.name} className="border border-slate-200 rounded-xl px-3.5 py-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-slate-700 truncate">{p.name}</span>
+                  <span className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-bold ${e.clase}`}>{e.texto}</span>
+                </div>
+                {p.cuerpo && <p className="text-xs text-slate-500 mt-1 whitespace-pre-wrap">{p.cuerpo}</p>}
+                {/* El motivo de Meta se muestra tal cual: es la única pista para corregirla. */}
+                {p.motivoRechazo && (
+                  <p className="text-[11px] text-red-600 mt-1.5">Motivo: {p.motivoRechazo}</p>
+                )}
+                <button
+                  onClick={() => borrar(p)}
+                  className="text-[11px] text-slate-400 hover:text-red-500 mt-2 font-medium transition-colors"
+                >
+                  Borrar
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );

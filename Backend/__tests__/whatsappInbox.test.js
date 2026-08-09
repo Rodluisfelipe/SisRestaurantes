@@ -477,3 +477,40 @@ describe('plantillas de Meta', () => {
     expect(fn).toMatch(/WhatsAppMessage\.create/);
   });
 });
+
+describe('la pantalla de plantillas', () => {
+  /* Se hace pantalla y no solo endpoint por dos razones: el revisor de Meta ve
+     un producto en vez de una terminal —y el permiso que se pide es
+     justamente el de administrar cuentas de terceros—, y el negocio va a
+     necesitar crear las suyas sin depender de nosotros. */
+  const fs2 = require('fs');
+  const path2 = require('path');
+  const ui = fs2.readFileSync(
+    path2.join(__dirname, '..', '..', 'Frontend', 'src', 'Components', 'Admin', 'WhatsAppInbox.jsx'), 'utf8',
+  );
+
+  it('está dentro de la bandeja, no escondida en otra sección', () => {
+    expect(ui).toContain('Plantillas');
+    expect(ui).toMatch(/vista === 'plantillas'/);
+  });
+
+  it('el nombre se corrige mientras se escribe', () => {
+    // Meta solo acepta minúsculas, números y guion bajo, y su error no lo dice.
+    expect(ui).toMatch(/toLowerCase\(\)\.replace\(\/\[\^a-z0-9_\]\/g, '_'\)/);
+  });
+
+  it('las variables se detectan solas y se les manda un ejemplo', () => {
+    // Sin ejemplos Meta la rechaza sin explicar por qué.
+    expect(ui).toContain('const variables = ');
+    expect(ui).toContain('cuerpo.match(');
+    expect(ui).toMatch(/ejemplos: variables\.map/);
+  });
+
+  it('se explica para qué sirven, porque el negocio no lo sabe', () => {
+    expect(ui).toMatch(/24 horas/);
+  });
+
+  it('el motivo de rechazo de Meta se muestra tal cual', () => {
+    expect(ui).toMatch(/motivoRechazo/);
+  });
+});
