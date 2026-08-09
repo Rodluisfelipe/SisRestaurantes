@@ -88,3 +88,33 @@ describe('la landing dice la verdad', () => {
     expect(home).toMatch(/los testimonios se retiraron a propósito/i);
   });
 });
+
+describe('el paso que trae el primer pedido', () => {
+  /* De 30 negocios: 30 se registran, 22 cargan su menú, 5 reciben un pedido.
+     La caída no está en cargar el menú — está en que nadie lo ve. El paso 3
+     del onboarding decía "cópialo desde la configuración" y mostraba un enlace
+     de ejemplo: una instrucción para irse a otro sitio, justo en el punto que
+     decide si el negocio se queda. */
+  const wizard = front('Components', 'Admin', 'WelcomeWizard.jsx');
+
+  it('el enlace que se muestra es el del negocio, no un ejemplo', () => {
+    expect(wizard).not.toContain('menuby.tech/tu-negocio');
+    expect(wizard).toMatch(/https:\/\/menuby\.tech\/\$\{slug\}/);
+  });
+
+  it('se puede compartir desde ahí mismo, sin ir a buscarlo', () => {
+    expect(wizard).toContain('CompartirMenu');
+    expect(wizard).toMatch(/wa\.me\/\?text=/);
+    expect(wizard).toMatch(/clipboard/);
+  });
+
+  it('el mensaje va escrito, no en blanco', () => {
+    // Un cuadro vacío es otra tarea; uno con el texto puesto es un envío.
+    expect(wizard).toMatch(/const mensaje =/);
+    expect(wizard).toMatch(/ya puedes ver el menú/i);
+  });
+
+  it('sin slug no se ofrece un enlace roto', () => {
+    expect(wizard).toMatch(/if \(!slug\) return null/);
+  });
+});
