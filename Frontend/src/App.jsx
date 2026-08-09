@@ -34,6 +34,8 @@ const LandingFeatures = lazy(() => import("./Pages/Landing/Features"));
 const LandingDemo = lazy(() => import("./Pages/Landing/Demo"));
 const LandingContact = lazy(() => import("./Pages/Landing/Contact"));
 const LandingPricing = lazy(() => import("./Pages/Landing/Pricing"));
+const LegalPrivacy = lazy(() => import("./Pages/Landing/Privacy"));
+const LegalTerms = lazy(() => import("./Pages/Landing/Terms"));
 const BlogIndex = lazy(() => import("./Pages/Blog/BlogIndex"));
 const BlogPost = lazy(() => import("./Pages/Blog/BlogPost"));
 const NichePage = lazy(() => import("./Pages/Landing/NichePage"));
@@ -187,7 +189,13 @@ function App() {
           <Route path="/blog" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><BlogIndex /></Suspense>} />
           <Route path="/blog/:slug" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><BlogPost /></Suspense>} />
           <Route path="/about" element={<LandingHome />} /> 
-          <Route path="/terms" element={<LandingHome />} /> 
+          {/* Legales. Se declaran en español y en inglés porque los enlaces del
+              registro y de Meta apuntan a /terms y /privacy, y antes /terms
+              mostraba la página de inicio y /privacy no existía. */}
+          <Route path="/privacidad" element={<LegalPrivacy />} />
+          <Route path="/privacy" element={<LegalPrivacy />} />
+          <Route path="/terminos" element={<LegalTerms />} />
+          <Route path="/terms" element={<LegalTerms />} />
           {/* Niche SEO landing pages — explicit routes to avoid conflicts with /:businessId */}
           <Route path="/menu-digital-restaurante" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><NichePage /></Suspense>} />
           <Route path="/menu-digital-bar" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><NichePage /></Suspense>} />

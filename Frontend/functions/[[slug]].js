@@ -41,6 +41,7 @@ const RESERVED_SLUGS = new Set([
   'login', 'register', 'features', 'pricing', 'demo', 'contact', 'blog',
   'restaurantes', 'mesero', 'crew', 'favoritos', 'pedidos', 'checkout',
   'pago', 'payment', 'not-found', '404', 'terms', 'privacy',
+  'terminos', 'privacidad',
 ]);
 
 // Known crawler user agents
