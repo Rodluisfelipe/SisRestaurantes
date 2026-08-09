@@ -514,3 +514,75 @@ describe('la pantalla de plantillas', () => {
     expect(ui).toMatch(/motivoRechazo/);
   });
 });
+
+describe('registro integrado', () => {
+  /* Es lo que convierte "cada negocio con su número" en algo vendible: hoy el
+     restaurante tendría que crear una cuenta de Meta Business, una WABA, dar de
+     alta su número y generar un token con dos permisos. Eso lo termina haciendo
+     uno por cada cliente, y ahí el negocio deja de escalar. */
+  const fs3 = require('fs');
+  const path3 = require('path');
+  const ruta = fs3.readFileSync(path3.join(__dirname, '..', 'Routes', 'whatsappInbox.js'), 'utf8');
+  const cloud = fs3.readFileSync(path3.join(__dirname, '..', 'services', 'whatsappCloud.js'), 'utf8');
+
+  /* El `state` viaja hasta Meta y vuelve por el navegador del cliente. Sin
+     firma, cambiarlo por el id de otro negocio le conectaría un número ajeno
+     —o le robaría el suyo—. */
+  it('el negocio viaja firmado en el state', () => {
+    expect(ruta).toMatch(/function firmarNegocio/);
+    expect(ruta).toMatch(/createHmac\('sha256', process\.env\.JWT_SECRET\)/);
+  });
+
+  it('un state manipulado no valida', () => {
+    process.env.JWT_SECRET = process.env.JWT_SECRET || 'prueba';
+    const crypto3 = require('crypto');
+    const firmar = (id) => `${id}.${crypto3.createHmac('sha256', process.env.JWT_SECRET).update(String(id)).digest('hex').slice(0, 32)}`;
+    const leer = (s) => {
+      const [d, f] = String(s || '').split('.');
+      if (!d || !f) return null;
+      const e = crypto3.createHmac('sha256', process.env.JWT_SECRET).update(d).digest('hex').slice(0, 32);
+      const a = Buffer.from(f); const b = Buffer.from(e);
+      if (a.length !== b.length || !crypto3.timingSafeEqual(a, b)) return null;
+      return d;
+    };
+    const bueno = firmar('negocioA');
+    expect(leer(bueno)).toBe('negocioA');
+    // Cambiar el id conservando la firma no cuela.
+    expect(leer(`negocioB.${bueno.split('.')[1]}`)).toBeNull();
+    expect(leer('negocioA')).toBeNull();
+  });
+
+  it('la comparación de la firma es en tiempo constante', () => {
+    // Con `===` se podría deducir el secreto midiendo tiempos.
+    const fn = ruta.slice(ruta.indexOf('function leerNegocioFirmado'));
+    expect(fn.slice(0, 600)).toMatch(/timingSafeEqual/);
+  });
+
+  it('un número no se puede conectar a dos negocios', () => {
+    const fn = ruta.slice(ruta.indexOf("router.get('/oauth/callback'"));
+    expect(fn).toMatch(/businessId: \{ \$ne: businessId \}/);
+    expect(fn).toMatch(/ya está conectado a otro negocio/);
+  });
+
+  it('se autoriza la app en la cuenta del cliente', () => {
+    // Sin esto Meta nunca manda los mensajes, por más que todo lo demás esté bien.
+    const fn = ruta.slice(ruta.indexOf("router.get('/oauth/callback'"));
+    expect(fn).toMatch(/subscribeAppToWaba/);
+  });
+
+  it('el token del cliente se guarda cifrado, como el manual', () => {
+    const fn = ruta.slice(ruta.indexOf("router.get('/oauth/callback'"));
+    expect(fn).toMatch(/account\.setAccessToken\(token\)/);
+    expect(fn).toMatch(/connectedVia = 'embedded_signup'/);
+  });
+
+  it('la cuenta autorizada se averigua, no se supone', () => {
+    // El token no dice de quién es: hay que preguntarle a Meta qué concedió.
+    expect(cloud).toMatch(/granular_scopes/);
+    expect(cloud).toMatch(/whatsapp_business_management/);
+  });
+
+  it('si el cliente cancela, no se trata como error', () => {
+    expect(ruta).toMatch(/return volver\('cancelado'\)/);
+  });
+});

@@ -314,6 +314,110 @@ const requiereComplemento = asyncHandler(async (req, res, next) => {
   next();
 });
 
+/* ─────────────────────────────────────────────
+ *  REGISTRO INTEGRADO
+ *
+ *  El cliente abre un enlace, entra con su Facebook y vuelve conectado, sin
+ *  ver nunca la consola de Meta ni copiar identificadores.
+ * ───────────────────────────────────────────── */
+
+/**
+ * Firma el negocio dentro del `state` que viaja hasta Meta y vuelve.
+ *
+ * Sin firma, cualquiera podría cambiar el `state` por el id de otro negocio y
+ * conectarle un número ajeno —o peor, robarle el suyo—. La firma sale del mismo
+ * secreto del servidor, así que un state manipulado no valida.
+ */
+function firmarNegocio(businessId) {
+  const dato = String(businessId);
+  const firma = crypto.createHmac('sha256', process.env.JWT_SECRET)
+    .update(dato).digest('hex').slice(0, 32);
+  return `${dato}.${firma}`;
+}
+
+function leerNegocioFirmado(state) {
+  const [dato, firma] = String(state || '').split('.');
+  if (!dato || !firma) return null;
+  const esperada = crypto.createHmac('sha256', process.env.JWT_SECRET)
+    .update(dato).digest('hex').slice(0, 32);
+  const a = Buffer.from(firma);
+  const b = Buffer.from(esperada);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  return dato;
+}
+
+/** GET /api/whatsapp-inbox/oauth/enlace — el enlace que se le manda al cliente. */
+router.get('/oauth/enlace', authMiddleware, requiereComplemento, asyncHandler(async (req, res) => {
+  const base = process.env.WHATSAPP_SIGNUP_URL;
+  if (!base) {
+    return res.status(503).json({
+      message: 'Falta configurar el enlace de registro de Meta (WHATSAPP_SIGNUP_URL).',
+    });
+  }
+  const sep = base.includes('?') ? '&' : '?';
+  res.json({ enlace: `${base}${sep}state=${encodeURIComponent(firmarNegocio(req.businessId))}` });
+}));
+
+/**
+ * GET /api/whatsapp-inbox/oauth/callback — a donde vuelve el cliente.
+ *
+ * Es público porque lo llama el navegador del cliente tras pasar por Meta; la
+ * autenticación la da el `state` firmado, no una sesión nuestra.
+ */
+router.get('/oauth/callback', asyncHandler(async (req, res) => {
+  const panel = process.env.FRONTEND_URL || 'https://menuby.tech';
+  const volver = (estado, detalle) => res.redirect(
+    `${panel}/whatsapp-conectado?estado=${estado}${detalle ? `&motivo=${encodeURIComponent(detalle)}` : ''}`,
+  );
+
+  const businessId = leerNegocioFirmado(req.query.state);
+  if (!businessId) {
+    logger.warn('[WhatsApp] Callback con state inválido');
+    return volver('error', 'El enlace no es válido o fue alterado');
+  }
+  if (!req.query.code) {
+    // El cliente cerró la ventana o rechazó los permisos.
+    return volver('cancelado');
+  }
+
+  try {
+    const token = await whatsappCloud.canjearCodigo(String(req.query.code));
+    const datos = await whatsappCloud.cuentaDelToken(token);
+
+    /* Un número pertenece a un solo negocio: sin esto, alguien podría conectar
+       el número de otro y quedarse con sus conversaciones. */
+    const ajeno = await WhatsAppAccount.findOne({
+      phoneNumberId: datos.phoneNumberId, businessId: { $ne: businessId },
+    });
+    if (ajeno) return volver('error', 'Ese número ya está conectado a otro negocio');
+
+    /* El paso invisible: sin autorizar la app en la cuenta, Meta nunca manda
+       los mensajes por más que todo lo demás esté bien. */
+    await whatsappCloud.subscribeAppToWaba({ wabaId: datos.wabaId, accessToken: token });
+
+    const account = await WhatsAppAccount.findOne({ businessId })
+      || new WhatsAppAccount({ businessId });
+    account.phoneNumberId = datos.phoneNumberId;
+    account.wabaId = datos.wabaId;
+    account.displayNumber = datos.displayNumber;
+    account.verifiedName = datos.verifiedName;
+    account.setAccessToken(token);
+    account.status = 'active';
+    account.lastError = '';
+    account.connectedVia = 'embedded_signup';
+    account.connectedAt = new Date();
+    await account.save();
+
+    logger.info('[WhatsApp] Número conectado por registro integrado', {
+      businessId, phoneNumberId: datos.phoneNumberId,
+    });
+    return volver('ok');
+  } catch (e) {
+    logger.error('[WhatsApp] Falló el registro integrado', { businessId, error: e.message });
+    return volver('error', e.message);
+  }
+}));
+
 /** GET /api/whatsapp-inbox/account — cómo está conectado el número. */
 router.get('/account', authMiddleware, requiereComplemento, asyncHandler(async (req, res) => {
   const account = await WhatsAppAccount.findOne({ businessId: req.businessId });

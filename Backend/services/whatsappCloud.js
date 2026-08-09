@@ -154,6 +154,79 @@ async function subscribeAppToWaba({ wabaId, accessToken }) {
 }
 
 /* ─────────────────────────────────────────────
+ *  REGISTRO INTEGRADO (Embedded Signup)
+ *
+ *  Es lo que convierte "cada negocio con su número" en algo vendible. Hoy el
+ *  restaurante tendría que crear una cuenta de Meta Business, una WABA, dar de
+ *  alta su número, verificarlo y generar un token con dos permisos concretos.
+ *  Eso no lo hace un dueño de restaurante: lo termina haciendo uno por cada
+ *  cliente, y ahí el negocio deja de escalar.
+ *
+ *  Con esto, el cliente abre un enlace, entra con su Facebook, y vuelve
+ *  conectado.
+ * ───────────────────────────────────────────── */
+
+/**
+ * Canjea el código que devuelve Meta por un token de acceso del cliente.
+ */
+async function canjearCodigo(code) {
+  const appId = process.env.WHATSAPP_APP_ID;
+  const appSecret = process.env.WHATSAPP_APP_SECRET;
+  if (!appId || !appSecret) throw new Error('Faltan WHATSAPP_APP_ID o WHATSAPP_APP_SECRET');
+
+  const url = `${GRAPH_BASE}/oauth/access_token`
+    + `?client_id=${encodeURIComponent(appId)}`
+    + `&client_secret=${encodeURIComponent(appSecret)}`
+    + `&code=${encodeURIComponent(code)}`;
+
+  const res = await fetch(url);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data?.access_token) {
+    throw new Error(data?.error?.message || 'Meta no devolvió el token');
+  }
+  return data.access_token;
+}
+
+/**
+ * Averigua a qué cuenta de WhatsApp dio acceso el cliente.
+ *
+ * El token no dice de quién es: hay que preguntarle a Meta qué permisos
+ * concedió y sobre qué cuentas. Eso viene en `granular_scopes`.
+ */
+async function cuentaDelToken(accessToken) {
+  const appId = process.env.WHATSAPP_APP_ID;
+  const appSecret = process.env.WHATSAPP_APP_SECRET;
+
+  const res = await fetch(
+    `${GRAPH_BASE}/debug_token?input_token=${encodeURIComponent(accessToken)}`
+    + `&access_token=${encodeURIComponent(`${appId}|${appSecret}`)}`,
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error?.message || 'No se pudo leer el token');
+
+  const scopes = data?.data?.granular_scopes || [];
+  const gestion = scopes.find((s) => s.scope === 'whatsapp_business_management');
+  const wabaId = gestion?.target_ids?.[0];
+  if (!wabaId) {
+    throw new Error('El cliente no autorizó ninguna cuenta de WhatsApp Business');
+  }
+
+  // De la cuenta salen sus números; se toma el primero, que es el caso normal.
+  const numeros = await graph(`${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name`, {
+    token: accessToken, method: 'GET',
+  });
+  const numero = numeros?.data?.[0];
+  if (!numero?.id) throw new Error('La cuenta autorizada no tiene ningún número');
+
+  return {
+    wabaId,
+    phoneNumberId: numero.id,
+    displayNumber: numero.display_phone_number || '',
+    verifiedName: numero.verified_name || '',
+  };
+}
+
+/* ─────────────────────────────────────────────
  *  PLANTILLAS
  *
  *  Son la única forma de escribirle a alguien fuera de la ventana de 24 horas:
@@ -286,6 +359,8 @@ module.exports = {
   sendText,
   verifyCredentials,
   subscribeAppToWaba,
+  canjearCodigo,
+  cuentaDelToken,
   listarPlantillas,
   crearPlantilla,
   borrarPlantilla,
