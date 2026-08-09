@@ -445,6 +445,115 @@ router.post('/chats/:phone/retomar', authMiddleware, requiereComplemento, asyncH
   res.json({ success: true });
 }));
 
+/* ─────────────────────────────────────────────
+ *  PLANTILLAS
+ *
+ *  Son la única forma de escribirle a alguien fuera de la ventana de 24 horas:
+ *  "tu pedido salió", "dejaste tu carrito". Meta las revisa una por una.
+ *
+ *  No confundir con Routes/whatsappTemplates.js, que es el texto del enlace
+ *  wa.me del menú y no tiene relación con esto.
+ * ───────────────────────────────────────────── */
+
+/** Devuelve la cuenta conectada, o corta con un mensaje claro. */
+async function cuentaConectada(req, res) {
+  const account = await WhatsAppAccount.findOne({ businessId: req.businessId });
+  if (!account) {
+    res.status(400).json({ message: 'Primero conecta tu número de WhatsApp.' });
+    return null;
+  }
+  if (!account.wabaId) {
+    res.status(400).json({
+      message: 'Falta el identificador de la cuenta de WhatsApp Business (WABA) para gestionar plantillas.',
+    });
+    return null;
+  }
+  return account;
+}
+
+/** GET /api/whatsapp-inbox/plantillas */
+router.get('/plantillas', authMiddleware, requiereComplemento, asyncHandler(async (req, res) => {
+  const account = await cuentaConectada(req, res);
+  if (!account) return;
+
+  try {
+    const plantillas = await whatsappCloud.listarPlantillas({
+      wabaId: account.wabaId, accessToken: account.getAccessToken(),
+    });
+    res.json({ plantillas });
+  } catch (e) {
+    res.status(502).json({ message: `Meta no devolvió las plantillas: ${e.message}` });
+  }
+}));
+
+/** POST /api/whatsapp-inbox/plantillas — crea una y la manda a revisión. */
+router.post('/plantillas', authMiddleware, requiereComplemento, asyncHandler(async (req, res) => {
+  const account = await cuentaConectada(req, res);
+  if (!account) return;
+
+  const { nombre, categoria, idioma, cuerpo, ejemplos } = req.body || {};
+  if (!nombre || !cuerpo) {
+    return res.status(400).json({ message: 'La plantilla necesita nombre y contenido.' });
+  }
+
+  try {
+    const creada = await whatsappCloud.crearPlantilla({
+      wabaId: account.wabaId,
+      accessToken: account.getAccessToken(),
+      nombre, categoria, idioma, cuerpo, ejemplos,
+    });
+    logger.info('[WhatsApp] Plantilla creada', {
+      businessId: String(req.businessId), nombre: creada.name,
+    });
+    res.status(201).json({
+      plantilla: creada,
+      aviso: 'Meta la revisa antes de poder usarla. Suele tardar unos minutos.',
+    });
+  } catch (e) {
+    /* El error de Meta se pasa tal cual: dice el motivo real ("nombre
+       inválido", "faltan ejemplos") y traducirlo a "error al crear" le quita
+       al negocio la única pista que tiene. */
+    res.status(400).json({ message: `Meta rechazó la plantilla: ${e.message}` });
+  }
+}));
+
+/** DELETE /api/whatsapp-inbox/plantillas/:nombre */
+router.delete('/plantillas/:nombre', authMiddleware, requiereComplemento, asyncHandler(async (req, res) => {
+  const account = await cuentaConectada(req, res);
+  if (!account) return;
+
+  try {
+    await whatsappCloud.borrarPlantilla({
+      wabaId: account.wabaId,
+      accessToken: account.getAccessToken(),
+      nombre: req.params.nombre,
+    });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(400).json({ message: `No se pudo borrar: ${e.message}` });
+  }
+}));
+
+/**
+ * POST /api/whatsapp-inbox/chats/:phone/plantilla — escribir fuera de las 24h.
+ */
+router.post('/chats/:phone/plantilla', authMiddleware, requiereComplemento, asyncHandler(async (req, res) => {
+  const account = await WhatsAppAccount.findOne({ businessId: req.businessId, status: 'active' });
+  if (!account) return res.status(400).json({ message: 'No hay un número conectado.' });
+
+  const { nombre, idioma, variables } = req.body || {};
+  if (!nombre) return res.status(400).json({ message: 'Falta la plantilla a enviar.' });
+
+  try {
+    const mensaje = await whatsappCloud.enviarPlantilla({
+      account, to: req.params.phone, nombre, idioma, variables,
+    });
+    res.status(201).json({ message: mensaje });
+  } catch (e) {
+    res.status(502).json({ message: `No se pudo enviar: ${e.message}` });
+  }
+}));
+
 /** DELETE /api/whatsapp-inbox/account — desconecta el número. */
 router.delete('/account', authMiddleware, requiereComplemento, asyncHandler(async (req, res) => {
   await WhatsAppAccount.deleteOne({ businessId: req.businessId });

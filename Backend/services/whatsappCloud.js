@@ -153,6 +153,120 @@ async function subscribeAppToWaba({ wabaId, accessToken }) {
   return { subscribed: true };
 }
 
+/* ─────────────────────────────────────────────
+ *  PLANTILLAS
+ *
+ *  Son la única forma de escribirle a alguien fuera de la ventana de 24 horas:
+ *  avisarle que su pedido salió, recordarle un carrito, una promoción. Meta las
+ *  revisa una por una antes de aprobarlas.
+ *
+ *  Vive acá y no en Routes/whatsappTemplates.js: aquellas son el texto del
+ *  enlace wa.me del menú, que no tiene nada que ver con esto.
+ * ───────────────────────────────────────────── */
+
+/** Las plantillas de la cuenta, con su estado de aprobación. */
+async function listarPlantillas({ wabaId, accessToken }) {
+  const data = await graph(
+    `${wabaId}/message_templates?fields=name,status,category,language,components,rejected_reason&limit=100`,
+    { token: accessToken, method: 'GET' },
+  );
+  return (data?.data || []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    status: p.status,             // APPROVED | PENDING | REJECTED
+    category: p.category,
+    language: p.language,
+    motivoRechazo: p.rejected_reason || '',
+    cuerpo: (p.components || []).find((c) => c.type === 'BODY')?.text || '',
+  }));
+}
+
+/**
+ * Crea una plantilla y la manda a revisión de Meta.
+ *
+ * `nombre` solo admite minúsculas, números y guion bajo — Meta rechaza
+ * cualquier otra cosa, y el error que devuelve no lo explica.
+ *
+ * Las variables van como {{1}}, {{2}}… y hay que darle un ejemplo de cada una:
+ * sin ejemplos la rechaza sin decir por qué.
+ */
+async function crearPlantilla({ wabaId, accessToken, nombre, categoria, idioma, cuerpo, ejemplos }) {
+  const limpio = String(nombre || '').toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 60);
+  if (!limpio) {
+    const e = new Error('La plantilla necesita un nombre'); e.code = 'SIN_NOMBRE'; throw e;
+  }
+
+  const body = { type: 'BODY', text: String(cuerpo || '').trim() };
+  if (Array.isArray(ejemplos) && ejemplos.length) {
+    body.example = { body_text: [ejemplos.map((v) => String(v).slice(0, 60))] };
+  }
+
+  const data = await graph(`${wabaId}/message_templates`, {
+    token: accessToken,
+    body: {
+      name: limpio,
+      category: categoria || 'UTILITY',   // UTILITY | MARKETING | AUTHENTICATION
+      language: idioma || 'es',
+      components: [body],
+    },
+  });
+
+  return { id: data?.id, name: limpio, status: data?.status || 'PENDING' };
+}
+
+async function borrarPlantilla({ wabaId, accessToken, nombre }) {
+  await graph(`${wabaId}/message_templates?name=${encodeURIComponent(nombre)}`, {
+    token: accessToken, method: 'DELETE',
+  });
+  return { ok: true };
+}
+
+/**
+ * Envía una plantilla ya aprobada. Es lo que permite escribir fuera de la
+ * ventana de 24 horas.
+ */
+async function enviarPlantilla({ account, to, nombre, idioma, variables }) {
+  const phone = normalizePhone(to);
+  if (!phone) {
+    const e = new Error('Número de destino inválido'); e.code = 'BAD_PHONE'; throw e;
+  }
+
+  const componentes = Array.isArray(variables) && variables.length
+    ? [{ type: 'body', parameters: variables.map((v) => ({ type: 'text', text: String(v) })) }]
+    : undefined;
+
+  const data = await graph(`${account.phoneNumberId}/messages`, {
+    token: account.getAccessToken(),
+    body: {
+      messaging_product: 'whatsapp',
+      to: phone,
+      type: 'template',
+      template: {
+        name: nombre,
+        language: { code: idioma || 'es' },
+        ...(componentes ? { components: componentes } : {}),
+      },
+    },
+  });
+
+  const wamid = data?.messages?.[0]?.id;
+  if (!wamid) throw new Error('Meta no devolvió el identificador del mensaje');
+
+  /* Queda en la bandeja como cualquier otro mensaje: si no, el negocio ve una
+     conversación donde él escribió algo que no aparece por ningún lado. */
+  return WhatsAppMessage.create({
+    businessId: account.businessId,
+    accountId: account._id,
+    wamid,
+    direction: 'out',
+    contactPhone: phone,
+    type: 'text',
+    text: `[plantilla: ${nombre}]${variables?.length ? ` ${variables.join(' · ')}` : ''}`,
+    status: 'sent',
+    sentAt: new Date(),
+  });
+}
+
 /** Marca como leído en el celular del cliente (los dos chulos azules). */
 async function markAsRead({ account, wamid }) {
   try {
@@ -172,6 +286,10 @@ module.exports = {
   sendText,
   verifyCredentials,
   subscribeAppToWaba,
+  listarPlantillas,
+  crearPlantilla,
+  borrarPlantilla,
+  enviarPlantilla,
   markAsRead,
   SERVICE_WINDOW_MS,
   GRAPH_BASE

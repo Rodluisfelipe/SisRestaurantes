@@ -438,3 +438,42 @@ describe('normalización de teléfonos', () => {
     expect(normalizePhone(null)).toBeNull();
   });
 });
+
+describe('plantillas de Meta', () => {
+  /* Son la única forma de escribirle a alguien fuera de la ventana de 24 horas,
+     y demostrar que se saben crear es requisito para que Meta apruebe el
+     permiso whatsapp_business_management. */
+  const fs2 = require('fs');
+  const path2 = require('path');
+  const cloud = fs2.readFileSync(path2.join(__dirname, '..', 'services', 'whatsappCloud.js'), 'utf8');
+  const ruta = fs2.readFileSync(path2.join(__dirname, '..', 'Routes', 'whatsappInbox.js'), 'utf8');
+
+  it('se crean contra la API de Meta, no en nuestra base', () => {
+    expect(cloud).toMatch(/message_templates/);
+    expect(cloud).toMatch(/async function crearPlantilla/);
+  });
+
+  it('el nombre se limpia como Meta exige', () => {
+    // Solo minúsculas, números y guion bajo; el error de Meta no lo explica.
+    expect(cloud).toMatch(/toLowerCase\(\)\.replace\(\/\[\^a-z0-9_\]\/g, '_'\)/);
+  });
+
+  it('no se confunden con las plantillas del enlace wa.me', () => {
+    expect(cloud).toMatch(/no tiene nada que ver con esto/);
+  });
+
+  it('sin WABA se dice qué falta, en vez de fallar contra Meta', () => {
+    expect(ruta).toMatch(/Falta el identificador de la cuenta de WhatsApp Business/);
+  });
+
+  it('el motivo de rechazo de Meta llega tal cual al negocio', () => {
+    // "nombre inválido" o "faltan ejemplos" es la única pista que tiene.
+    expect(ruta).toMatch(/Meta rechazó la plantilla: \$\{e\.message\}/);
+  });
+
+  it('lo enviado por plantilla queda en la bandeja', () => {
+    // Si no, el negocio ve una conversación donde escribió algo invisible.
+    const fn = cloud.slice(cloud.indexOf('async function enviarPlantilla'));
+    expect(fn).toMatch(/WhatsAppMessage\.create/);
+  });
+});
