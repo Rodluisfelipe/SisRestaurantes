@@ -11,7 +11,6 @@ import PushNotificationToggle from "../Components/PushNotificationToggle";
 import AdminDashboard from "../Components/Admin/AdminDashboard";
 import AdminTabWrapper from "../Components/Admin/AdminTabWrapper";
 import AdminHeader from "../Components/Admin/AdminHeader";
-import PanelesRapidos from "../Components/Admin/PanelesRapidos";
 import AdminToasts from "../Components/Admin/AdminToasts";
 import ConfirmationModal from "../Components/Admin/ConfirmationModal";
 import DeleteConfirmationModal from "../Components/Admin/DeleteConfirmationModal";
@@ -166,29 +165,16 @@ function Admin() {
     });
   }, []);
 
-  /* Modo pantalla completa: la sección sola, sin menú lateral ni cabeceras,
-     con la barra de los tres paneles arriba. Es como se atiende de verdad —
-     los chats y el menú se trabajan a pantalla llena, no en una ventana con
-     el panel alrededor. */
-  const [pantallaCompleta, setPantallaCompleta] = useState(false);
+  /* Saltar entre las tres pantallas del día a día. El POS no es una sección
+     del panel sino su propia dirección, así que ese sale de la aplicación;
+     las otras dos son cambio de pestaña y no recargan nada. */
   const abrirPanel = useCallback((panel) => {
-    // El POS no es una sección del panel, es su propia pantalla.
-    if (panel.ruta) {
+    if (panel.id === 'pos') {
       window.location.href = `/${businessConfig?.slug || businessConfig?._id}/pos`;
       return;
     }
     setActiveTab(panel.id);
-    setPantallaCompleta(true);
   }, [businessConfig?.slug, businessConfig?._id, setActiveTab]);
-
-  /* Escape sale, como en cualquier pantalla completa. Sin esto, quien entra
-     sin querer no sabe cómo volver. */
-  useEffect(() => {
-    if (!pantallaCompleta) return undefined;
-    const alTeclear = (e) => { if (e.key === 'Escape') setPantallaCompleta(false); };
-    window.addEventListener('keydown', alTeclear);
-    return () => window.removeEventListener('keydown', alTeclear);
-  }, [pantallaCompleta]);
 
   // Limpiar params de URL después de leerlos (no mostrar ?tab=... en la barra)
   useEffect(() => {
@@ -352,66 +338,47 @@ function Admin() {
         />
       )}
 
-      <div className={`flex ${pantallaCompleta ? 'h-dvh overflow-hidden' : 'min-h-screen'}`}>
-        {/* Sidebar — en pantalla completa no va: es justo lo que estorba */}
-        {!pantallaCompleta && (
-          <ModernAdminSidebar
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            businessConfig={businessConfig}
-            handleLogout={logout}
-            pendingOrdersCount={pendingOrdersCount}
-            whatsappSinLeer={whatsappSinLeer}
-            subscriptionData={subscriptionData}
-            onboarding={onboardingData}
-            userRole={user?.role}
-            colapsado={sidebarColapsado}
-            onAlternar={alternarSidebar}
-          />
-        )}
+      <div className="flex min-h-screen">
+        {/* Sidebar */}
+        <ModernAdminSidebar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          businessConfig={businessConfig}
+          handleLogout={logout}
+          pendingOrdersCount={pendingOrdersCount}
+          whatsappSinLeer={whatsappSinLeer}
+          subscriptionData={subscriptionData}
+          onboarding={onboardingData}
+          userRole={user?.role}
+          colapsado={sidebarColapsado}
+          onAlternar={alternarSidebar}
+        />
 
         {/* Main Content */}
-        <div className={`flex-1 w-full lg:ml-0 ${pantallaCompleta ? 'flex flex-col min-w-0' : ''}`}>
-          {pantallaCompleta ? (
-            <PanelesRapidos
-              variante="pleno"
-              activo={activeTab}
-              onIr={abrirPanel}
-              onSalir={() => setPantallaCompleta(false)}
+        <div className="flex-1 w-full lg:ml-0">
+          {/* Mobile Header — iOS nav bar style */}
+          <MobileHeader activeTab={activeTab} setActiveTab={setActiveTab} />
+
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="hidden lg:block bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40"
+          >
+            <AdminHeader
+              activeTab={activeTab}
+              onAbrirPanel={abrirPanel}
               whatsappSinLeer={whatsappSinLeer}
               posDisponible={!!businessConfig?.features?.posBetaEnabled}
               superAdmin={isSuperAdminMode}
             />
-          ) : (
-            /* Mobile Header — iOS nav bar style */
-            <MobileHeader activeTab={activeTab} setActiveTab={setActiveTab} />
-          )}
-
-          {!pantallaCompleta && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="hidden lg:block bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40"
-            >
-              <AdminHeader
-                activeTab={activeTab}
-                onAbrirPanel={abrirPanel}
-                whatsappSinLeer={whatsappSinLeer}
-                posDisponible={!!businessConfig?.features?.posBetaEnabled}
-                superAdmin={isSuperAdminMode}
-              />
-            </motion.div>
-          )}
+          </motion.div>
 
           {/* Audio para notificaciones */}
           <audio ref={notificationAudioRef} preload="auto">
             <source src="/audio/new-order-notification.mp3" type="audio/mpeg" />
           </audio>
 
-          <div className={pantallaCompleta
-            ? 'flex-1 min-h-0 flex flex-col p-3 sm:p-4'
-            : 'p-4 sm:p-4 md:p-6 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] lg:pb-6'}
-          >
+          <div className="p-4 sm:p-4 md:p-6 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] lg:pb-6">
             {/* Banner de nuevo pedido */}
             <OrderNotificationBanner
               showOrderBanner={showOrderBanner}
@@ -424,11 +391,10 @@ function Admin() {
             {/* Invitación a configurar desde un computador. Solo en el inicio
                 y en pantallas chicas: en las demás pestañas ya está trabajando
                 y meterle un aviso ahí es estorbar. */}
-            {activeTab === 'dashboard' && !pantallaCompleta && <DesktopNudge />}
+            {activeTab === 'dashboard' && <DesktopNudge />}
 
-            {/* Subscription Status — only on dashboard in mobile, all tabs on desktop.
-                En pantalla completa no va: se pidió la sección sola. */}
-            {businessConfig && businessConfig._id && !pantallaCompleta && (
+            {/* Subscription Status — only on dashboard in mobile, all tabs on desktop */}
+            {businessConfig && businessConfig._id && (
               <div className={`mb-6 ${activeTab !== 'dashboard' ? 'hidden lg:block' : ''}`}>
                 <SubscriptionStatus
                   {...subscriptionData}
@@ -451,9 +417,7 @@ function Admin() {
                 animate="center"
                 exit="exit"
                 transition={{ duration: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
-                /* En pantalla completa la sección tiene que poder ocupar todo
-                   el alto disponible; si no, queda flotando arriba. */
-                className={pantallaCompleta ? 'w-full flex-1 min-h-0 flex flex-col overflow-y-auto' : 'w-full'}
+                className="w-full"
               >
                 <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" /></div>}>
                 {activeTab === 'dashboard' && (
@@ -545,20 +509,11 @@ function Admin() {
                   </AdminTabWrapper>
                 )}
                 {activeTab === 'whatsapp-inbox' && (
-                  /* En pantalla completa se salta el envoltorio de pestaña: ese
-                     añade el botón de volver y separación vertical, y la bandeja
-                     necesita el alto entero. */
-                  pantallaCompleta ? (
-                    <AdminSectionErrorBoundary sectionName="Chats WhatsApp" onGoBack={() => setPantallaCompleta(false)}>
-                      <WhatsAppInbox pleno />
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Chats WhatsApp" onGoBack={() => setActiveTab('dashboard')}>
+                      <WhatsAppInbox />
                     </AdminSectionErrorBoundary>
-                  ) : (
-                    <AdminTabWrapper setActiveTab={setActiveTab}>
-                      <AdminSectionErrorBoundary sectionName="Chats WhatsApp" onGoBack={() => setActiveTab('dashboard')}>
-                        <WhatsAppInbox />
-                      </AdminSectionErrorBoundary>
-                    </AdminTabWrapper>
-                  )
+                  </AdminTabWrapper>
                 )}
                 {activeTab === 'monthly-closing' && (
                   <AdminTabWrapper setActiveTab={setActiveTab}>
@@ -790,8 +745,8 @@ function Admin() {
       {/* Modo Operación full-screen overlay */}
       <ModoOperacion isOpen={modoOpOpen} onClose={() => setModoOpOpen(false)} />
 
-      {/* Mobile Bottom Navigation — fuera en pantalla completa */}
-      {!pantallaCompleta && <MobileBottomNav
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         pendingOrdersCount={pendingOrdersCount}
@@ -800,7 +755,7 @@ function Admin() {
         handleLogout={logout}
         userRole={user?.role}
         onOpenModoOp={() => setModoOpOpen(true)}
-      />}
+      />
 
       {/* Varios negocios estaban usando la calculadora de Windows encima del
           panel. Esta vive dentro y responde al teclado (Alt+C para abrirla). */}

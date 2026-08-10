@@ -460,6 +460,11 @@ export default function POS() {
         onCloseCash={() => setShowCashClose(true)}
         onNewOrder={startNewOrder}
         onExit={() => navigate(`/${businessId}/admin`)}
+        /* El panel lee `?tab=` al arrancar, así que se puede llegar
+           directamente a los chats sin pasar por el inicio. */
+        onIrAPanel={(panel) => navigate(
+          panel.id === 'dashboard' ? `/${businessId}/admin` : `/${businessId}/admin?tab=${panel.id}`
+        )}
         offline={offline}
       />
 
