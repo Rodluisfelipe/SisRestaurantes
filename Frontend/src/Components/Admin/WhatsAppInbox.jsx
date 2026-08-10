@@ -15,7 +15,7 @@ import {
   FaCheck, FaCheckDouble, FaExclamationTriangle, FaImage, FaMapMarkerAlt,
   FaFileAlt, FaMicrophone, FaVideo, FaArrowLeft, FaArrowDown, FaSyncAlt,
   FaUser, FaShoppingBag, FaGift, FaHome, FaClock, FaUserPlus, FaSearch,
-  FaUtensils, FaMotorcycle, FaRegSmile, FaSignOutAlt
+  FaUtensils, FaMotorcycle, FaRegSmile, FaSignOutAlt, FaExpand
 } from 'react-icons/fa';
 import api from '../../services/api';
 import { socket, joinBusiness } from '../../services/socket';
@@ -550,7 +550,7 @@ export default function WhatsAppInbox({ pleno = false, onSalir }) {
             >
               <FaSyncAlt className="text-[14px]" />
             </button>
-            {onSalir && (
+            {onSalir ? (
               <button
                 onClick={onSalir}
                 title="Volver al panel"
@@ -558,6 +558,19 @@ export default function WhatsAppInbox({ pleno = false, onSalir }) {
               >
                 <FaSignOutAlt className="text-[15px]" />
               </button>
+            ) : (
+              /* Dentro del panel: pasar a pantalla completa, que es la vista
+                 pensada para dejar en una pestaña del navegador toda la
+                 jornada. */
+              businessConfig?.slug && (
+                <a
+                  href={`/${businessConfig.slug}/whatsapp`}
+                  title="Abrir a pantalla completa"
+                  className="w-9 h-9 rounded-full grid place-items-center text-[#54656f] hover:bg-black/5 transition-colors"
+                >
+                  <FaExpand className="text-[14px]" />
+                </a>
+              )
             )}
           </div>
 

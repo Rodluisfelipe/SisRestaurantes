@@ -79,9 +79,11 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
         /* Se muestra aunque el negocio no lo tenga contratado: la pantalla
            explica de qué se trata en vez de fallar, y así el complemento se
            descubre solo en lugar de quedar escondido. */
-        /* Los chats viven en su propia dirección, como el POS: `ruta` hace que
-           este ítem navegue en vez de cambiar de pestaña. */
-        { id: 'whatsapp-inbox', label: 'Chats WhatsApp', Icon: FaWhatsapp, badge: whatsappSinLeer || null, ruta: 'whatsapp' },
+        /* Abre la bandeja DENTRO del panel, con el resumen del canal debajo.
+           Desde ahí hay un botón para pasarla a pantalla completa, que es su
+           propia dirección —como el POS— y sirve para dejarla en una pestaña
+           del navegador toda la jornada. */
+        { id: 'whatsapp-inbox', label: 'Chats WhatsApp', Icon: FaWhatsapp, badge: whatsappSinLeer || null },
         { id: 'coupons', label: 'Cupones', Icon: FaTicketAlt, badge: null },
         { id: 'loyalty', label: 'Fidelidad', Icon: FaGift, badge: null, beta: true },
         { id: 'reviews', label: 'Reseñas', Icon: FaStar, badge: null },
