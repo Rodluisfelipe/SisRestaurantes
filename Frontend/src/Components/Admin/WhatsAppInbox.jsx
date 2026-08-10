@@ -271,19 +271,26 @@ function Burbuja({ mensaje: m, pegado, businessId }) {
     ? 'rounded-2xl'
     : mio ? 'rounded-2xl rounded-br-md' : 'rounded-2xl rounded-bl-md';
 
+  /* Los stickers van sin globo, como en WhatsApp: son recortes con fondo
+     transparente, y meterlos en una caja verde deja un cuadro alrededor del
+     dibujo que se ve como un error. */
+  const desnudo = m.type === 'sticker';
+
   return (
     <div className={`flex ${mio ? 'justify-end' : 'justify-start'} ${pegado ? 'mt-0.5' : 'mt-2.5'}`}>
       <div
-        className={`max-w-[85%] sm:max-w-[75%] px-3.5 py-2 shadow-sm ${esquina} ${
-          mio
-            ? 'bg-[#d9fdd3] text-slate-800'
-            : 'bg-white border border-slate-200/70 text-slate-700'
-        }`}
+        className={desnudo
+          ? 'max-w-[60%]'
+          : `max-w-[85%] sm:max-w-[75%] px-3.5 py-2 shadow-sm ${esquina} ${
+            mio
+              ? 'bg-[#d9fdd3] text-slate-800'
+              : 'bg-white border border-slate-200/70 text-slate-700'
+          }`}
       >
         {/* El archivo se pinta; solo la ubicación queda como etiqueta, porque
             no es un archivo que se pueda bajar. */}
         {m.mediaId ? (
-          <div className="mb-1"><Adjunto mensaje={m} businessId={businessId} /></div>
+          <div className={desnudo ? '' : 'mb-1'}><Adjunto mensaje={m} businessId={businessId} /></div>
         ) : Icono && (
           <p className={`text-[11.5px] mb-1 flex items-center gap-1.5 font-semibold ${mio ? 'text-emerald-700' : 'text-slate-400'}`}>
             <Icono /> {m.type === 'location' ? 'Ubicación' : 'Archivo adjunto'}
@@ -298,7 +305,9 @@ function Burbuja({ mensaje: m, pegado, businessId }) {
             {abierto ? 'Ver menos' : 'Ver mensaje completo'}
           </button>
         )}
-        <div className={`flex items-center gap-1 justify-end -mb-0.5 mt-0.5 ${mio ? 'text-emerald-800/50' : 'text-slate-400/70'}`}>
+        <div className={`flex items-center gap-1 justify-end -mb-0.5 mt-0.5 ${
+          desnudo ? 'text-slate-500' : mio ? 'text-emerald-800/50' : 'text-slate-400/70'
+        }`}>
           <span className="text-[10.5px]">
             {new Date(m.sentAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
           </span>

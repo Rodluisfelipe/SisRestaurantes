@@ -366,13 +366,24 @@ async function markAsRead({ account, wamid }) {
 
 /* ── Archivos: fotos, audios, documentos ── */
 
-/** Los tipos que Meta acepta y que sabemos pintar en la bandeja. */
+/**
+ * Los tipos que Meta acepta y que sabemos pintar en la bandeja.
+ *
+ * El WebP va en `sticker` y no en `image` a propósito: Meta solo admite JPEG y
+ * PNG como imagen, y un WebP mandado como imagen lo rechaza. Como sticker sí
+ * lo acepta —es justo el formato que usa para ellos.
+ */
 const TIPOS_ARCHIVO = {
-  image: ['image/jpeg', 'image/png', 'image/webp'],
+  image: ['image/jpeg', 'image/png'],
+  sticker: ['image/webp'],
   video: ['video/mp4', 'video/3gpp'],
   audio: ['audio/aac', 'audio/mp4', 'audio/mpeg', 'audio/amr', 'audio/ogg'],
   document: null,   // cualquiera
 };
+
+/* El pie de foto solo existe en estos tres. En audio y en sticker, Meta
+   rechaza el mensaje entero si se manda el campo. */
+const ADMITEN_PIE = ['image', 'video', 'document'];
 
 function tipoDeArchivo(mimeType) {
   const m = String(mimeType || '').toLowerCase().split(';')[0];
@@ -462,10 +473,8 @@ async function sendMedia({ account, to, buffer, mimeType, fileName, caption, sen
   const mediaId = await subirMedio(account, { buffer, mimeType, fileName });
   const pie = String(caption || '').trim().slice(0, 1024);
 
-  /* El pie de foto solo existe en imágenes, vídeos y documentos. En audio Meta
-     rechaza el campo entero, así que ahí no se manda. */
   const contenido = { id: mediaId };
-  if (pie && tipo !== 'audio') contenido.caption = pie;
+  if (pie && ADMITEN_PIE.includes(tipo)) contenido.caption = pie;
   if (tipo === 'document' && fileName) contenido.filename = fileName;
 
   const data = await graph(`${account.phoneNumberId}/messages`, {
@@ -489,13 +498,22 @@ async function sendMedia({ account, to, buffer, mimeType, fileName, caption, sen
     direction: 'out',
     contactPhone: phone,
     type: tipo,
-    text: pie,
+    // Solo se guarda como pie lo que de verdad viajó como pie.
+    text: ADMITEN_PIE.includes(tipo) ? pie : '',
     mediaId,
     mediaMimeType: mimeType,
     status: 'sent',
     sentBy: sentBy || null,
     sentAt: new Date(),
   });
+
+  /* Si el tipo no admite pie pero había texto escrito, se manda aparte en vez
+     de tirarlo. Perder en silencio lo que alguien escribió es peor que mandar
+     dos mensajes — y es lo mismo que hace WhatsApp con un sticker y un
+     comentario. */
+  if (pie && !ADMITEN_PIE.includes(tipo)) {
+    await sendText({ account, to: phone, text: pie, sentBy }).catch(() => {});
+  }
 
   try {
     require('./socketService').emitToBusiness(String(account.businessId), 'whatsapp:mensaje', {
