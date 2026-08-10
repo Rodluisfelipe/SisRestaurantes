@@ -473,10 +473,8 @@ export default function WhatsAppInbox({ pleno = false, onSalir }) {
        relleno y la barra inferior en celular; en escritorio, la cabecera fija
        y el relleno de 1.5rem. `min-h` evita que en una pantalla corta quede
        una rendija. */
-    <div className={`flex flex-col bg-white overflow-hidden ${
-      pleno
-        ? 'h-full min-h-0 shadow-2xl lg:rounded-lg'
-        : 'h-[calc(100dvh-19rem)] lg:h-[calc(100dvh-16rem)] min-h-[480px] rounded-2xl border border-slate-200/80 shadow-sm'
+    <div className={`flex flex-col bg-white overflow-hidden h-full min-h-0 ${
+      pleno ? 'shadow-2xl lg:rounded-lg' : 'border-t border-[#e9edef]'
     }`}>
       {/* Si Meta rechazó las credenciales, se dice arriba de todo: el negocio
           puede seguir viendo los chats que entran pero no responder ninguno, y
@@ -927,9 +925,12 @@ export default function WhatsAppInbox({ pleno = false, onSalir }) {
      WhatsApp está produciendo, que es lo que nadie va a ir a buscar aparte. */
   if (pleno) return bandeja;
 
+  /* La bandeja se queda con todo el alto que sobre y el resumen se ancla
+     abajo: así los cuatro números están siempre a la vista, sin desplazar, y
+     la conversación no queda encogida para hacerles sitio. */
   return (
-    <div className="space-y-4">
-      {bandeja}
+    <div className="h-full flex flex-col min-h-0">
+      <div className="flex-1 min-h-0">{bandeja}</div>
       <ResumenWhatsApp chats={chats} businessId={businessId} />
     </div>
   );
@@ -978,19 +979,19 @@ function ResumenWhatsApp({ chats, businessId }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="shrink-0 grid grid-cols-2 lg:grid-cols-4 bg-white border-t border-[#e9edef]">
       {tarjetas.map((t) => (
         <div
           key={t.txt}
-          className={`bg-white rounded-2xl border p-4 ${
-            t.alerta ? 'border-amber-300 bg-amber-50/50' : 'border-slate-200/80'
+          className={`px-4 py-3 border-r border-[#e9edef] last:border-r-0 ${
+            t.alerta ? 'bg-amber-50/70' : ''
           }`}
         >
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">{t.txt}</p>
-          <p className={`text-2xl font-bold mt-1 ${t.alerta ? 'text-amber-600' : 'text-slate-800'}`}>
+          <p className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wide">{t.txt}</p>
+          <p className={`text-xl font-bold leading-tight mt-0.5 ${t.alerta ? 'text-amber-600' : 'text-slate-800'}`}>
             {t.valor}
           </p>
-          <p className="text-[11.5px] text-slate-400 mt-0.5">{t.pie}</p>
+          <p className="text-[11px] text-slate-400">{t.pie}</p>
         </div>
       ))}
     </div>

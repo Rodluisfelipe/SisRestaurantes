@@ -150,6 +150,10 @@ function Admin() {
     setActiveTabRaw(newTab);
     if (window.innerWidth < 1024) window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
+  /* Pantallas que se comen todo el espacio a la derecha del menú, sin relleno
+     ni tarjeta: son herramientas de trabajo, no una sección más. */
+  const anchoCompleto = activeTab === 'whatsapp-inbox';
+
   const [activeCatalogTab, setActiveCatalogTab] = useState('upload');
   const [showWelcome, setShowWelcome] = useState(false);
   const [modoOpOpen, setModoOpOpen] = useState(false);
@@ -363,7 +367,14 @@ function Admin() {
             <source src="/audio/new-order-notification.mp3" type="audio/mpeg" />
           </audio>
 
-          <div className="p-4 sm:p-4 md:p-6 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] lg:pb-6">
+          {/* La bandeja de WhatsApp va de borde a borde y al alto de la
+              pantalla: es una herramienta de trabajo, no una tarjeta más del
+              panel, y con el relleno de siempre quedaba una conversación
+              estrecha rodeada de gris. */}
+          <div className={anchoCompleto
+            ? 'p-0 h-[calc(100dvh-9rem)] lg:h-[calc(100dvh-2.75rem)] min-h-[520px]'
+            : 'p-4 sm:p-4 md:p-6 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] lg:pb-6'}
+          >
             {/* Banner de nuevo pedido */}
             <OrderNotificationBanner
               showOrderBanner={showOrderBanner}
@@ -378,8 +389,10 @@ function Admin() {
                 y meterle un aviso ahí es estorbar. */}
             {activeTab === 'dashboard' && <DesktopNudge />}
 
-            {/* Subscription Status — only on dashboard in mobile, all tabs on desktop */}
-            {businessConfig && businessConfig._id && (
+            {/* Subscription Status — only on dashboard in mobile, all tabs on desktop.
+                Fuera de las pantallas a ancho completo: ahí robaría alto a la
+                herramienta. */}
+            {businessConfig && businessConfig._id && !anchoCompleto && (
               <div className={`mb-6 ${activeTab !== 'dashboard' ? 'hidden lg:block' : ''}`}>
                 <SubscriptionStatus
                   {...subscriptionData}
@@ -402,7 +415,7 @@ function Admin() {
                 animate="center"
                 exit="exit"
                 transition={{ duration: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
-                className="w-full"
+                className={anchoCompleto ? 'w-full h-full' : 'w-full'}
               >
                 <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" /></div>}>
                 {activeTab === 'dashboard' && (
@@ -494,11 +507,13 @@ function Admin() {
                   </AdminTabWrapper>
                 )}
                 {activeTab === 'whatsapp-inbox' && (
-                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                  /* Sin `AdminTabWrapper`: ese añade separación vertical y el
+                     botón de volver, y acá la bandeja necesita el alto entero. */
+                  <div className="h-full">
                     <AdminSectionErrorBoundary sectionName="Chats WhatsApp" onGoBack={() => setActiveTab('dashboard')}>
                       <WhatsAppInbox />
                     </AdminSectionErrorBoundary>
-                  </AdminTabWrapper>
+                  </div>
                 )}
                 {activeTab === 'monthly-closing' && (
                   <AdminTabWrapper setActiveTab={setActiveTab}>
