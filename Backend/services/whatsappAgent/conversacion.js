@@ -31,6 +31,114 @@ const PREGUNTA = {
   nombre: '¿A nombre de quién lo dejo?',
 };
 
+/**
+ * Las mismas preguntas, dichas de varias formas.
+ *
+ * Repetir la frase exacta en cada turno es lo que hace que suene a máquina:
+ * una persona no pregunta dos veces con las mismas palabras. Se elige por el
+ * número de mensajes de la conversación, así que no hay azar —dos veces el
+ * mismo estado dan la misma respuesta— pero a lo largo del chat va variando.
+ */
+const FORMAS = {
+  productos: [
+    '¿Qué te gustaría pedir?',
+    '¿Qué te provoca hoy?',
+    'Cuéntame qué quieres y te lo armo.',
+  ],
+  tipo: [
+    '¿Es a domicilio, para recoger, o para comer acá?',
+    '¿Te lo llevamos o lo recoges?',
+    '¿Para domicilio o para recoger?',
+  ],
+  direccion: [
+    '¿A qué dirección te lo llevamos?',
+    'Pásame la dirección y lo mandamos.',
+    '¿Dónde te lo dejamos?',
+  ],
+  nombre: [
+    '¿A nombre de quién lo dejo?',
+    'Y por último, ¿cómo te llamas?',
+    '¿Tu nombre, para el pedido?',
+  ],
+};
+
+function preguntar(campo, turno) {
+  const opciones = FORMAS[campo] || [PREGUNTA[campo]];
+  return opciones[turno % opciones.length];
+}
+
+/** Buenos días / buenas tardes / buenas noches, en hora de Colombia. */
+function franjaDelDia() {
+  const { COL_OFFSET_MS } = require('../../utils/timezone');
+  // Colombia es UTC−5: se RESTA, igual que hace `startOfDayCOL`.
+  const hora = new Date(Date.now() - COL_OFFSET_MS).getUTCHours();
+  if (hora < 12) return 'Buenos días';
+  if (hora < 19) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
+/**
+ * El primer mensaje, que es donde se decide si esto parece un negocio o un
+ * contestador.
+ *
+ * Tres cosas que antes no hacía: saludar según la hora, tratar distinto a
+ * quien ya ha comprado —a un cliente de siempre, un "bienvenido" lo trata como
+ * si nunca hubiera venido— y no repetir la misma frase a todo el mundo.
+ */
+function saludar({ sesion, negocio, pidioMenu, turno }) {
+  if (pidioMenu) {
+    return ['Claro, acá está la carta', 'De una, mira lo que tenemos', 'Claro que sí, acá te la dejo'][turno % 3];
+  }
+
+  const nombre = String(sesion.customerName || '').trim().split(' ')[0];
+  const franja = franjaDelDia();
+
+  if (nombre) {
+    return [
+      `¡${franja}, ${nombre}! Qué bueno verte de nuevo por ${negocio} 😊`,
+      `¡Hola ${nombre}! ${franja}. Acá estamos en ${negocio}, mira lo que tenemos hoy`,
+      `¡${nombre}! ${franja}, bienvenido otra vez a ${negocio}`,
+    ][turno % 3];
+  }
+
+  return [
+    `¡${franja}! Bienvenido a ${negocio} 😊 Acá está nuestra carta`,
+    `¡${franja}! Soy de ${negocio}, con gusto te ayudo. Mira lo que tenemos`,
+    `¡${franja}! Gracias por escribirnos a ${negocio}. Esta es la carta`,
+  ][turno % 3];
+}
+
+/**
+ * Acusar recibo de lo que el cliente acaba de decir.
+ *
+ * Es lo que más se echaba en falta: el cliente pedía una hamburguesa y le
+ * llegaba una pregunta seca, sin señal de que se hubiera entendido. Un "listo,
+ * una hamburguesa 👍" antes de la siguiente pregunta cambia por completo cómo
+ * se siente la conversación, y no toca ninguna cifra —lo arma el código con lo
+ * que de verdad entró al pedido.
+ */
+function acusar({ agregados, fijados }, turno) {
+  const partes = [];
+
+  if (agregados?.length) {
+    const lista = agregados.length === 1
+      ? agregados[0]
+      : `${agregados.slice(0, -1).join(', ')} y ${agregados[agregados.length - 1]}`;
+    partes.push(['Listo', 'Perfecto', 'De una'][turno % 3] + `, ${lista} 👍`);
+  }
+
+  /* Confirmar el dato que acaban de dar evita el "¿me habrá entendido la
+     dirección?" que termina en que la escriben otra vez. */
+  if (fijados?.direccion) partes.push(`Anoto: ${fijados.direccion}.`);
+  else if (fijados?.tipo === 'delivery') partes.push('A domicilio entonces.');
+  else if (fijados?.tipo === 'takeaway') partes.push('Para recoger, listo.');
+  else if (fijados?.tipo === 'inSite') partes.push('Para comer acá, listo.');
+
+  if (fijados?.nombre) partes.push(`Gracias, ${fijados.nombre}.`);
+
+  return partes.join(' ');
+}
+
 const TIPOS = { domicilio: 'delivery', recoger: 'takeaway', mesa: 'inSite' };
 
 /** El pedido tal como lo ve el cliente. Lo escribe el código, siempre. */
@@ -85,13 +193,21 @@ function esRepeticion(sesion, producto, textoDelCliente) {
  */
 async function aplicar(sesion, catalogo, dicho, textoDelCliente) {
   const avisos = [];
+  /* Lo que de verdad entró: sirve para acusar recibo con el nombre real del
+     producto —el del catálogo— y no con lo que el cliente escribió. */
+  const agregados = [];
+  const fijados = {};
 
   for (const p of dicho.productos) {
     if (esRepeticion(sesion, p, textoDelCliente)) continue;
     const r = await acciones.agregar(sesion, catalogo, {
       producto: p.nombre, cantidad: p.cantidad, nota: p.nota,
     });
-    if (r.ok) continue;
+    if (r.ok) {
+      const ult = sesion.items[sesion.items.length - 1];
+      if (ult) agregados.push(`${ult.quantity > 1 ? `${ult.quantity}x ` : ''}${ult.name}`);
+      continue;
+    }
 
     if (r.motivo === 'no_existe') avisos.push(`No tenemos "${p.nombre}".`);
     else if (r.motivo === 'ambiguo') avisos.push(`¿Cuál de estos querías? ${r.opciones.join(', ')}`);
@@ -106,11 +222,20 @@ async function aplicar(sesion, catalogo, dicho, textoDelCliente) {
     acciones.quitar(sesion, catalogo, { producto: nombre });
   }
 
-  if (dicho.tipo && TIPOS[dicho.tipo]) sesion.orderType = TIPOS[dicho.tipo];
-  if (dicho.nombre) sesion.customerName = dicho.nombre.slice(0, 80);
-  if (dicho.direccion) sesion.address = dicho.direccion.slice(0, 300);
+  if (dicho.tipo && TIPOS[dicho.tipo] && sesion.orderType !== TIPOS[dicho.tipo]) {
+    sesion.orderType = TIPOS[dicho.tipo];
+    fijados.tipo = sesion.orderType;
+  }
+  if (dicho.nombre && sesion.customerName !== dicho.nombre) {
+    sesion.customerName = dicho.nombre.slice(0, 80);
+    fijados.nombre = sesion.customerName;
+  }
+  if (dicho.direccion && sesion.address !== dicho.direccion) {
+    sesion.address = dicho.direccion.slice(0, 300);
+    fijados.direccion = sesion.address;
+  }
 
-  return avisos;
+  return { avisos, agregados, fijados };
 }
 
 /**
@@ -152,9 +277,14 @@ async function resolver({ sesion, catalogo, dicho, enlace, negocio, estadoPedido
     };
   }
 
-  const avisos = await aplicar(sesion, catalogo, dicho, texto);
+  const { avisos, agregados, fijados } = await aplicar(sesion, catalogo, dicho, texto);
   const falta = acciones.queFalta(sesion);
   const tienePedido = !!sesion.items?.length;
+
+  /* El turno de la conversación: hace que las frases varíen a lo largo del chat
+     sin ser aleatorias. Con azar, dos clientes en el mismo punto recibirían
+     mensajes distintos y no habría forma de reproducir un fallo. */
+  const turno = Number(sesion.mensajes || 0);
 
   /* El menú se manda cuando de verdad ayuda: al empezar, o si lo pide. NO se
      manda si ya está dictando su pedido, que es lo que hacía que la
@@ -165,8 +295,16 @@ async function resolver({ sesion, catalogo, dicho, enlace, negocio, estadoPedido
   if (enlace && (pidioMenu || (arrancando && !sesion.menuEnviadoAt))) {
     sesion.menuEnviadoAt = new Date();
     return {
-      respuesta: `${pidioMenu ? 'Claro, acá está' : `¡Hola! Bienvenido a ${negocio}. Mira la carta y arma tu pedido acá`}:\n\n🍔 ${enlace}\n\nO si prefieres, dime qué quieres y te lo armo por acá.`,
+      respuesta: `${saludar({ sesion, negocio, pidioMenu, turno })}\n\n🍔 ${enlace}\n\n`
+        + 'O si prefieres, dime qué quieres y yo te lo armo por acá.',
     };
+  }
+
+  /* Un saludo sin carta que mandar tampoco puede recibir una pregunta pelada:
+     sin enlace, el cliente escribía "Hola" y le llegaba "¿Qué te gustaría
+     pedir?" sin un buenas siquiera. */
+  if (soloSaludo && !tienePedido) {
+    return { respuesta: `${saludar({ sesion, negocio, pidioMenu: false, turno })}\n\n${preguntar('productos', turno)}` };
   }
 
   if (dicho.preguntaCarta) {
@@ -181,20 +319,33 @@ async function resolver({ sesion, catalogo, dicho, enlace, negocio, estadoPedido
   }
 
   // ── Pedir lo que falte, de a uno ──
-  const partes = [...avisos];
+  const acuse = acusar({ agregados, fijados }, turno);
+  const cambio = !!(agregados.length || Object.keys(fijados).length);
 
+  /* Los avisos van en su propio renglón: "No tenemos X" pegado a la siguiente
+     pregunta se leía como una sola frase atropellada. */
+  const partes = [];
+  if (acuse) partes.push(acuse);
+  if (avisos.length) partes.push(avisos.join(' '));
+
+  let pidiendoConfirmacion = false;
   if (falta.length) {
-    partes.push(PREGUNTA[falta[0]]);
+    partes.push(preguntar(falta[0], turno));
   } else if (tienePedido) {
+    pidiendoConfirmacion = true;
     partes.push('¿Confirmo el pedido? Responde *sí* para cerrarlo.');
   } else {
-    partes.push(PREGUNTA.productos);
+    partes.push(preguntar('productos', turno));
   }
 
-  /* El pedido va SIEMPRE que exista, no solo cuando cambia: es lo que delata
-     al instante si algo no se agregó como el cliente creía. */
-  const cuerpo = partes.join(' ');
-  return { respuesta: tienePedido ? `${cuerpo}\n\n${resumen(sesion)}` : cuerpo };
+  /* El resumen se manda cuando el pedido CAMBIÓ y siempre al pedir confirmación.
+     Antes iba en cada mensaje y la conversación parecía una tira de recibos;
+     pero quitarlo del todo traería de vuelta el fallo que lo puso ahí —un
+     cliente confirmando un total que nunca vio—, así que en el momento de
+     confirmar es obligatorio. */
+  const cuerpo = partes.filter(Boolean).join('\n');
+  const mostrarResumen = tienePedido && (cambio || pidiendoConfirmacion);
+  return { respuesta: mostrarResumen ? `${cuerpo}\n\n${resumen(sesion)}` : cuerpo };
 }
 
 module.exports = { resolver, aplicar, resumen, PREGUNTA, TIPOS };
