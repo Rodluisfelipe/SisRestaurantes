@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
+import { socket, joinBusiness } from '../services/socket';
 
 /**
  * Cuántos mensajes de WhatsApp esperan respuesta.
@@ -12,7 +13,7 @@ import api from '../services/api';
  * responde 402 —no la tiene— deja de preguntar para siempre en vez de golpear
  * la API cada medio minuto sin motivo.
  */
-export default function useWhatsAppUnread(businessId, { intervaloMs = 30000 } = {}) {
+export default function useWhatsAppUnread(businessId, { intervaloMs = 60000 } = {}) {
   const [sinLeer, setSinLeer] = useState(0);
   const noAplica = useRef(false);
 
@@ -36,8 +37,20 @@ export default function useWhatsAppUnread(businessId, { intervaloMs = 30000 } = 
     };
 
     consultar();
+
+    /* El aviso llega por socket, así que el número sube en el momento. La
+       consulta periódica queda de red de seguridad —más espaciada— por si el
+       socket se cae o un aviso se pierde. */
+    if (!socket.connected) socket.connect();
+    joinBusiness(businessId);
+    socket.on('whatsapp:mensaje', consultar);
+
     const t = setInterval(consultar, intervaloMs);
-    return () => { vivo = false; clearInterval(t); };
+    return () => {
+      vivo = false;
+      socket.off('whatsapp:mensaje', consultar);
+      clearInterval(t);
+    };
   }, [businessId, intervaloMs]);
 
   return sinLeer;

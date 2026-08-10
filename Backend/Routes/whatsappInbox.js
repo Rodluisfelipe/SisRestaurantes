@@ -119,14 +119,20 @@ async function procesarCambio(value) {
     const guardado = await guardarEntrante(account, msg, nombres[aTexto(msg.from)] || '');
     // Solo se contesta lo que se acaba de guardar: si era un reintento de Meta,
     // guardarEntrante devuelve null y el agente no responde dos veces.
-    if (guardado) await quizaContesteElAgente(account, guardado);
+    if (guardado) {
+      avisarAlPanel(account.businessId, 'whatsapp:mensaje', {
+        contactPhone: guardado.contactPhone,
+        direction: 'in',
+      });
+      await quizaContesteElAgente(account, guardado);
+    }
   }
 
   // ── Acuses de entrega de lo que mandamos ──
   for (const st of value.statuses || []) {
     const permitidos = ['sent', 'delivered', 'read', 'failed'];
     if (!permitidos.includes(st.status)) continue;
-    await WhatsAppMessage.updateOne(
+    const r = await WhatsAppMessage.updateOne(
       { wamid: aTexto(st.id) },
       {
         $set: {
@@ -135,6 +141,29 @@ async function procesarCambio(value) {
         }
       }
     );
+    /* Solo si de verdad cambió algo: Meta manda 'sent', 'delivered' y 'read'
+       del mismo mensaje, y sin este filtro cada acuse dispararía un refresco
+       del panel para pintar un chulo. */
+    if (r.modifiedCount) {
+      avisarAlPanel(account.businessId, 'whatsapp:estado', { wamid: aTexto(st.id), status: st.status });
+    }
+  }
+}
+
+/**
+ * Avisar al panel de que pasó algo, por socket.
+ *
+ * Sin esto la bandeja solo se enteraba cuando le tocaba volver a preguntar
+ * —cada quince segundos—, así que un mensaje podía pasar un cuarto de minuto
+ * sin que nadie lo viera. Va envuelto en try porque un fallo del socket no
+ * puede tumbar el webhook: si el aviso se pierde, el refresco periódico sigue
+ * ahí de red de seguridad.
+ */
+function avisarAlPanel(businessId, evento, datos) {
+  try {
+    require('../services/socketService').emitToBusiness(String(businessId), evento, datos);
+  } catch (e) {
+    logger.warn('[WhatsApp] No se pudo avisar al panel', { error: e.message, evento });
   }
 }
 

@@ -117,6 +117,17 @@ async function sendText({ account, to, text, sentBy }) {
     sentAt: new Date()
   });
 
+  /* Se avisa a los paneles abiertos. Importa sobre todo cuando contesta el
+     agente: nadie tocó nada en el panel, así que sin este aviso su respuesta
+     no aparecía hasta el siguiente refresco. Un fallo del socket no puede
+     tumbar un envío que Meta ya aceptó, de ahí el try. */
+  try {
+    require('./socketService').emitToBusiness(String(account.businessId), 'whatsapp:mensaje', {
+      contactPhone: phone,
+      direction: 'out',
+    });
+  } catch { /* el refresco periódico queda de red de seguridad */ }
+
   return guardado;
 }
 

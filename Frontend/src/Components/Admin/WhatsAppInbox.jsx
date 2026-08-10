@@ -18,6 +18,7 @@ import {
   FaUtensils, FaMotorcycle, FaRegSmile, FaSignOutAlt
 } from 'react-icons/fa';
 import api from '../../services/api';
+import { socket, joinBusiness } from '../../services/socket';
 import { useBusinessConfig } from '../../Context/BusinessContext';
 import QuickOrderModal from '../QuickOrderModal';
 
@@ -266,17 +267,45 @@ export default function WhatsAppInbox({ pleno = false, onSalir }) {
     })();
   }, [businessId, cargarCuenta, cargarChats]);
 
-  /* Se refresca solo cada 15 segundos. No es tiempo real por websocket a
-     propósito: un chat que llega con 15 segundos de retraso no rompe nada y
-     evita sumarle otra conexión abierta al servidor por cada panel abierto. */
+  /* Los mensajes llegan por socket, no preguntando.
+     El backend avisa cuando entra uno, cuando el agente contesta y cuando Meta
+     confirma la entrega. Antes esto solo se refrescaba cada quince segundos:
+     un cliente escribía y su mensaje podía pasar un cuarto de minuto sin que
+     nadie lo viera. Se usa el mismo socket que ya tiene el panel para los
+     pedidos, así que no suma una conexión por pantalla. */
   useEffect(() => {
-    if (sinComplemento || !cuenta) return undefined;
+    if (sinComplemento || !cuenta || !businessId) return undefined;
+
+    if (!socket.connected) socket.connect();
+    joinBusiness(businessId);
+
+    const alLlegarMensaje = ({ contactPhone } = {}) => {
+      cargarChats();
+      // El chat abierto se recarga solo si el mensaje es de esa conversación.
+      if (chatActivo && (!contactPhone || contactPhone === chatActivo)) {
+        abrirChat(chatActivo, { silencioso: true });
+      }
+    };
+    const alCambiarEstado = () => {
+      if (chatActivo) abrirChat(chatActivo, { silencioso: true });
+    };
+
+    socket.on('whatsapp:mensaje', alLlegarMensaje);
+    socket.on('whatsapp:estado', alCambiarEstado);
+
+    /* Red de seguridad, mucho más espaciada: si el socket se cae o un aviso se
+       pierde, la bandeja se pone al día sola en vez de quedarse congelada. */
     const t = setInterval(() => {
       cargarChats();
       if (chatActivo) abrirChat(chatActivo, { silencioso: true });
-    }, 15000);
-    return () => clearInterval(t);
-  }, [sinComplemento, cuenta, chatActivo, cargarChats]);
+    }, 60000);
+
+    return () => {
+      socket.off('whatsapp:mensaje', alLlegarMensaje);
+      socket.off('whatsapp:estado', alCambiarEstado);
+      clearInterval(t);
+    };
+  }, [sinComplemento, cuenta, chatActivo, cargarChats, businessId]);
 
   /* Bajar al final, pero solo cuando corresponde.
      Antes esto era un `scrollIntoView` sobre cada cambio de `mensajes`. Dos
@@ -435,7 +464,7 @@ export default function WhatsAppInbox({ pleno = false, onSalir }) {
   const chatSeleccionado = chats.find((c) => c.contactPhone === chatActivo);
   const chatsVisibles = filtrarChats(chats, busqueda, filtro);
 
-  return (
+  const bandeja = (
     /* Alto de pantalla, como un cliente de correo. Antes era una caja de 600px
        suelta en medio del panel: quedaba una conversación diminuta con el resto
        de la página vacía alrededor. */
@@ -447,7 +476,7 @@ export default function WhatsAppInbox({ pleno = false, onSalir }) {
     <div className={`flex flex-col bg-white overflow-hidden ${
       pleno
         ? 'h-full min-h-0 shadow-2xl lg:rounded-lg'
-        : 'h-[calc(100dvh-12.5rem)] md:h-[calc(100dvh-14rem)] lg:h-[calc(100dvh-9rem)] min-h-[520px] rounded-2xl border border-slate-200/80 shadow-sm'
+        : 'h-[calc(100dvh-19rem)] lg:h-[calc(100dvh-16rem)] min-h-[480px] rounded-2xl border border-slate-200/80 shadow-sm'
     }`}>
       {/* Si Meta rechazó las credenciales, se dice arriba de todo: el negocio
           puede seguir viendo los chats que entran pero no responder ninguno, y
@@ -877,6 +906,80 @@ export default function WhatsAppInbox({ pleno = false, onSalir }) {
           );
         }}
       />
+    </div>
+  );
+
+  /* A pantalla completa manda la conversación y nada más. Dentro del panel, en
+     cambio, se está mirando el negocio: ahí abajo van los números de lo que
+     WhatsApp está produciendo, que es lo que nadie va a ir a buscar aparte. */
+  if (pleno) return bandeja;
+
+  return (
+    <div className="space-y-4">
+      {bandeja}
+      <ResumenWhatsApp chats={chats} businessId={businessId} />
+    </div>
+  );
+}
+
+/**
+ * Qué está produciendo WhatsApp.
+ *
+ * Los tres primeros números salen de los chats que ya están cargados, así que
+ * no cuestan una petición. Las ventas vienen del mismo sitio que la pantalla
+ * de origen de pedidos.
+ */
+function ResumenWhatsApp({ chats, businessId }) {
+  const [origen, setOrigen] = useState(null);
+
+  useEffect(() => {
+    let vivo = true;
+    api.get(`/whatsapp-inbox/origen?businessId=${businessId}&dias=30`)
+      .then(({ data }) => { if (vivo) setOrigen(data); })
+      .catch(() => { if (vivo) setOrigen(null); });
+    return () => { vivo = false; };
+  }, [businessId]);
+
+  const sinResponder = chats.filter((c) => c.esperandoRespuesta).length;
+  const conPedido = chats.filter((c) => c.agente?.orderNumber).length;
+  const porWhatsapp = origen?.origenes?.find((o) => o.origen === 'whatsapp');
+
+  /* De cada cien conversaciones, cuántas terminaron en pedido. Es el número
+     que dice si esto sirve o solo entretiene. */
+  const conversion = chats.length ? Math.round((conPedido / chats.length) * 100) : 0;
+
+  const tarjetas = [
+    { txt: 'Conversaciones', valor: chats.length, pie: 'en la bandeja' },
+    {
+      txt: 'Sin responder',
+      valor: sinResponder,
+      pie: sinResponder ? 'esperando respuesta' : 'todo contestado',
+      alerta: sinResponder > 0,
+    },
+    { txt: 'Terminaron en pedido', valor: conPedido, pie: `${conversion}% de las conversaciones` },
+    {
+      txt: 'Ventas por WhatsApp',
+      valor: porWhatsapp ? pesos(porWhatsapp.ventas) : '—',
+      pie: porWhatsapp ? `${porWhatsapp.pedidos} pedidos · 30 días` : 'últimos 30 días',
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {tarjetas.map((t) => (
+        <div
+          key={t.txt}
+          className={`bg-white rounded-2xl border p-4 ${
+            t.alerta ? 'border-amber-300 bg-amber-50/50' : 'border-slate-200/80'
+          }`}
+        >
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">{t.txt}</p>
+          <p className={`text-2xl font-bold mt-1 ${t.alerta ? 'text-amber-600' : 'text-slate-800'}`}>
+            {t.valor}
+          </p>
+          <p className="text-[11.5px] text-slate-400 mt-0.5">{t.pie}</p>
+        </div>
+      ))}
     </div>
   );
 }

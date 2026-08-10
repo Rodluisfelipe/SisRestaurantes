@@ -293,7 +293,16 @@ describe('la frontera entre el modelo y el código', () => {
 
   it('un reintento de Meta no hace que conteste dos veces', () => {
     const ruta = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'whatsappInbox.js'), 'utf8');
-    expect(ruta).toMatch(/if \(guardado\) await quizaContesteElAgente/);
+    /* Lo que importa es que el agente solo entre con un mensaje recién
+       guardado: `guardarEntrante` devuelve null en el reintento de Meta. Se
+       comprueba que haya una sola llamada y que caiga dentro del `if
+       (guardado)`, sin atarse a cómo esté escrito el bloque. */
+    const llamadas = ruta.match(/quizaContesteElAgente\(account, guardado\)/g) || [];
+    expect(llamadas).toHaveLength(1);
+
+    const bloque = ruta.match(/if \(guardado\) \{[\s\S]*?\n {4}\}/);
+    expect(bloque).not.toBeNull();
+    expect(bloque[0]).toMatch(/await quizaContesteElAgente\(account, guardado\)/);
   });
 
   it('el traspaso a una persona caduca si nadie lo atiende', () => {
@@ -523,7 +532,16 @@ describe('el cupo de conversaciones', () => {
     const ruta = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'whatsappInbox.js'), 'utf8');
     expect(ruta).toMatch(/e\.code === 'SIN_CUPO'/);
     // El mensaje ya quedó guardado antes de que el agente entrara en juego.
-    expect(ruta).toMatch(/if \(guardado\) await quizaContesteElAgente/);
+    /* Lo que importa es que el agente solo entre con un mensaje recién
+       guardado: `guardarEntrante` devuelve null en el reintento de Meta. Se
+       comprueba que haya una sola llamada y que caiga dentro del `if
+       (guardado)`, sin atarse a cómo esté escrito el bloque. */
+    const llamadas = ruta.match(/quizaContesteElAgente\(account, guardado\)/g) || [];
+    expect(llamadas).toHaveLength(1);
+
+    const bloque = ruta.match(/if \(guardado\) \{[\s\S]*?\n {4}\}/);
+    expect(bloque).not.toBeNull();
+    expect(bloque[0]).toMatch(/await quizaContesteElAgente\(account, guardado\)/);
   });
 
   it('se cuenta después de atender, no antes', () => {
