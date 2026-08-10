@@ -172,6 +172,7 @@ function Adjunto({ mensaje: m, businessId }) {
   const [url, setUrl] = useState(null);
   const [estado, setEstado] = useState('espera');   // espera | cargando | listo | error
   const cajaRef = useRef(null);
+  const urlRef = useRef(null);
 
   useEffect(() => {
     const caja = cajaRef.current;
@@ -189,21 +190,26 @@ function Adjunto({ mensaje: m, businessId }) {
   useEffect(() => {
     if (estado !== 'cargando') return undefined;
     let vivo = true;
-    let creada = null;
     api.get(`/whatsapp-inbox/media/${m.mediaId}?businessId=${businessId}`, { responseType: 'blob' })
       .then(({ data }) => {
         if (!vivo) return;
-        creada = URL.createObjectURL(data);
+        const creada = URL.createObjectURL(data);
+        urlRef.current = creada;
         setUrl(creada);
         setEstado('listo');
       })
       .catch(() => { if (vivo) setEstado('error'); });
-    return () => {
-      vivo = false;
-      // Sin esto el navegador se queda con el archivo en memoria para siempre.
-      if (creada) URL.revokeObjectURL(creada);
-    };
+    return () => { vivo = false; };
   }, [estado, m.mediaId, businessId]);
+
+  /* La dirección se libera SOLO al desmontar.
+     Estaba en la limpieza del efecto de arriba, y ahí se rompía: ese efecto
+     depende de `estado`, así que al pasar a 'listo' se volvía a ejecutar, su
+     limpieza revocaba la dirección recién creada, y la imagen fallaba con
+     ERR_FILE_NOT_FOUND antes de alcanzar a pintarse. */
+  useEffect(() => () => {
+    if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+  }, []);
 
   const Icono = ICONO_TIPO[m.type] || FaFileAlt;
 
