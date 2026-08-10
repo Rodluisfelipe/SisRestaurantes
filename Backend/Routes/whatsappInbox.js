@@ -317,6 +317,15 @@ async function quizaContesteElAgente(account, mensaje) {
     const dicho = mensaje.text || mensaje.transcripcion;
     if (!dicho) return;
 
+    /* Acuse de lectura y "escribiendo…", en la misma llamada.
+       Va acá y no antes porque Meta pide no mostrar los puntitos si no se va a
+       responder: en este punto ya se sabe que sí. Interpretar el mensaje tarda
+       unos segundos, y sin esta señal el cliente cree que nadie lo leyó. */
+    if (mensaje.wamid) {
+      whatsappCloud.markAsRead({ account, wamid: mensaje.wamid, escribiendo: true })
+        .catch(() => {});   // cosmético: nunca puede frenar la respuesta
+    }
+
     const BusinessConfig = require('../Models/BusinessConfig');
     const negocio = await BusinessConfig.findById(account.businessId)
       .select('name businessName slug').lean();
@@ -504,6 +513,7 @@ router.get('/oauth/callback', asyncHandler(async (req, res) => {
     account.wabaId = datos.wabaId;
     account.displayNumber = datos.displayNumber;
     account.verifiedName = datos.verifiedName;
+  account.nameStatus = datos.nameStatus || '';
     account.setAccessToken(token);
     account.status = 'active';
     account.lastError = '';
@@ -584,6 +594,7 @@ router.post('/account', authMiddleware, requiereComplemento, asyncHandler(async 
   account.wabaId = String(wabaId || '').trim();
   account.displayNumber = datos.displayNumber;
   account.verifiedName = datos.verifiedName;
+  account.nameStatus = datos.nameStatus || '';
   account.setAccessToken(accessToken);
   account.status = 'active';
   account.lastError = '';
@@ -949,10 +960,28 @@ router.get('/chats/:phone', authMiddleware, requiereComplemento, asyncHandler(as
     .limit(limit)
     .lean();
 
+  /* Los que estaban sin leer, antes de marcarlos: hacen falta para avisarle a
+     WhatsApp, y después de la actualización ya no se sabe cuáles eran. */
+  const sinLeer = await WhatsAppMessage
+    .find({ businessId: req.businessId, contactPhone, direction: 'in', readByStaffAt: null })
+    .sort({ sentAt: -1 }).limit(1).select('wamid').lean();
+
   await WhatsAppMessage.updateMany(
     { businessId: req.businessId, contactPhone, direction: 'in', readByStaffAt: null },
     { $set: { readByStaffAt: new Date() } }
   );
+
+  /* El doble check azul en el teléfono del cliente. Basta con marcar el último:
+     WhatsApp da por leídos todos los anteriores. Solo se llama cuando de verdad
+     había algo sin leer —si no, cada refresco de la bandeja sería una llamada a
+     Meta cada minuto y por cada panel abierto. Sin await: es cosmético y no
+     puede retrasar el pintado del chat. */
+  if (sinLeer[0]?.wamid) {
+    const cuenta = await WhatsAppAccount.findOne({ businessId: req.businessId, status: 'active' });
+    if (cuenta) {
+      whatsappCloud.markAsRead({ account: cuenta, wamid: sinLeer[0].wamid }).catch(() => {});
+    }
+  }
 
   res.json({
     contactPhone,

@@ -137,14 +137,19 @@ async function sendText({ account, to, text, sentBy }) {
  * cliente escriba y nadie pueda responderle.
  */
 async function verifyCredentials({ phoneNumberId, accessToken }) {
-  const data = await graph(`${phoneNumberId}?fields=display_phone_number,verified_name,quality_rating`, {
-    token: accessToken,
-    method: 'GET'
-  });
+  const data = await graph(
+    `${phoneNumberId}?fields=display_phone_number,verified_name,quality_rating,name_status`,
+    { token: accessToken, method: 'GET' }
+  );
   return {
     displayNumber: data?.display_phone_number || '',
     verifiedName: data?.verified_name || '',
-    qualityRating: data?.quality_rating || ''
+    qualityRating: data?.quality_rating || '',
+    /* `verified_name` es el nombre que se mandó a revisar, no el aprobado:
+       tenerlo no significa que se muestre. Quien decide es `name_status`, y si
+       sale DECLINED el negocio aparece ante sus clientes con el número pelado
+       en vez de su nombre —y no se entera por ningún lado. */
+    nameStatus: data?.name_status || '',
   };
 }
 
@@ -352,11 +357,21 @@ async function enviarPlantilla({ account, to, nombre, idioma, variables }) {
 }
 
 /** Marca como leído en el celular del cliente (los dos chulos azules). */
-async function markAsRead({ account, wamid }) {
+async function markAsRead({ account, wamid, escribiendo = false }) {
   try {
     await graph(`${account.phoneNumberId}/messages`, {
       token: account.getAccessToken(),
-      body: { messaging_product: 'whatsapp', status: 'read', message_id: wamid }
+      body: {
+        messaging_product: 'whatsapp',
+        status: 'read',
+        message_id: wamid,
+        /* Los tres puntitos de "escribiendo…". Van en la misma llamada que el
+           acuse de lectura, no en otra.
+           Meta pide no mostrarlos si no se va a contestar, así que esto solo
+           se activa cuando el agente ya decidió responder. Se quitan solos al
+           enviar la respuesta, o a los 25 segundos. */
+        ...(escribiendo ? { typing_indicator: { type: 'text' } } : {}),
+      }
     });
   } catch (e) {
     // Cosmético: si falla, el mensaje ya está guardado y la bandeja funciona.

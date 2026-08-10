@@ -31,6 +31,12 @@ const whatsAppAccountSchema = new mongoose.Schema({
   displayNumber: { type: String, trim: true, default: '' },    // +57 300 ... (solo para mostrar)
   verifiedName: { type: String, trim: true, default: '' },
 
+  /* Si Meta aprobó el nombre que se muestra en los chats. APPROVED, DECLINED,
+     PENDING_REVIEW… Con DECLINED el negocio le aparece a sus clientes como un
+     número pelado en vez de su nombre, y hasta ahora no había forma de saberlo
+     desde el panel. */
+  nameStatus: { type: String, trim: true, default: '' },
+
   /* Token cifrado. Nunca se expone: los endpoints devuelven `tokenHint`. */
   accessTokenEnc: { type: String, default: '' },
   tokenHint: { type: String, default: '' },
@@ -109,6 +115,7 @@ whatsAppAccountSchema.methods.toPanel = function () {
     phoneNumberId: this.phoneNumberId,
     displayNumber: this.displayNumber,
     verifiedName: this.verifiedName,
+    nameStatus: this.nameStatus,
     status: this.status,
     lastError: this.lastError,
     lastInboundAt: this.lastInboundAt,

@@ -592,8 +592,9 @@ function buildMetaHtml(business, slug, products, categories) {
   <meta property="og:title" content="${name} - Menú Digital" />
   <meta property="og:description" content="${description}" />
   <meta property="og:image" content="${escapeHtml(absoluteLogo)}" />
-  <meta property="og:image:width" content="512" />
-  <meta property="og:image:height" content="512" />
+  <!-- Sin declarar medidas: el logo lo sube cada negocio y puede ser de
+       cualquier tamaño. Decir 512x512 de un logo alargado hacía que WhatsApp
+       lo tratara como cuadrado y la vista previa saliera mal. Que lo mida. -->
   <meta property="og:url" content="${url}" />
   <meta property="og:site_name" content="Menuby" />
   <meta property="og:locale" content="es_CO" />
