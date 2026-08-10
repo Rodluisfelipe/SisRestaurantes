@@ -35,6 +35,20 @@ function periodoDe(t) {
    ventas sino la de más vendido. */
 const REGLAS = [
   {
+    /* Va primero de todas: "se acabó el pan" es una orden de cambiar el menú,
+       no la consulta de inventario, y la de inventario coincidiría también. */
+    id: 'agotar',
+    prueba: (t) => /\bse (me )?acabo\b|\bse acabaron\b|\bagota(r|me)?\b|\bquita(r|me)?\b|\bdesactiva(r|me)?\b|\bno hay mas\b|\bsin existencias\b/.test(t),
+    escribe: true,
+    operacion: 'agotar',
+  },
+  {
+    id: 'activar',
+    prueba: (t) => /\bactiva(r|me)?\b|\bvuelve a\b|\bhabilita(r)?\b|\bya hay\b|\bllego mas\b|\bpon(er|le|lo)? de nuevo\b/.test(t),
+    escribe: true,
+    operacion: 'activar',
+  },
+  {
     id: 'ayuda',
     prueba: (t) => /\bayuda\b|\bque puedes\b|\bcomandos\b|\bopciones\b|^menu$/.test(t),
     responde: () => ayuda(),
@@ -74,15 +88,25 @@ const REGLAS = [
 ];
 
 function ayuda() {
-  return '👋 *Soy el asistente de tu negocio.* Pregúntame:\n\n'
-    + '• *¿Cuánto vendimos hoy?* — también ayer, esta semana o este mes\n'
-    + '• *¿Cómo va el negocio?* — el resumen completo\n'
-    + '• *¿Hay pedidos pendientes?*\n'
-    + '• *¿Cuánto hay en caja?*\n'
-    + '• *¿Qué es lo más vendido?*\n'
-    + '• *¿Qué se está acabando?* — inventario bajo\n\n'
-    + '_Por ahora solo consulto. Para cerrar caja o cambiar algo, hay que entrar al panel._';
+  return '👋 *Soy el asistente de tu negocio.*\n\n'
+    + '*Consultar*\n'
+    + '• ¿Cuánto vendimos hoy? — también ayer, esta semana o este mes\n'
+    + '• ¿Cómo va el negocio? — el resumen completo\n'
+    + '• ¿Hay pedidos pendientes?\n'
+    + '• ¿Cuánto hay en caja?\n'
+    + '• ¿Qué es lo más vendido?\n'
+    + '• ¿Qué se está acabando?\n\n'
+    + '*Cambiar el menú*\n'
+    + '• Se acabó la hamburguesa doble — la quita del menú\n'
+    + '• Activa la hamburguesa doble — la vuelve a poner\n'
+    + '• Sirve igual para los extras: "se acabó el queso"\n\n'
+    + '_Todo cambio te lo confirmo antes de hacerlo. La caja y los precios solo se tocan desde el panel._';
 }
+
+/* Lo que cuenta como un sí y como un no. Nada más: ante la duda con algo que
+   cambia el menú, se vuelve a preguntar en vez de interpretar. */
+const ES_SI = /^(si|sí|s|dale|hazlo|confirmo|correcto|ok|oka|listo|eso|exacto|claro)\b/;
+const ES_NO = /^(no|nel|cancela|cancelar|dejalo|olvidalo|mejor no)\b/;
 
 /**
  * ¿Este número es de alguien autorizado a preguntar?
@@ -119,6 +143,27 @@ async function atender({ account, contactPhone, texto }) {
   const t = plano(texto);
   if (!t) return null;
 
+  const acciones = require('./acciones');
+  const pendientes = require('./pendientes');
+
+  /* ¿Está contestando a un "¿confirmas?" anterior? Eso manda sobre cualquier
+     otra regla: un "sí" suelto no significa nada por sí mismo. */
+  const pendiente = await pendientes.leer(account.businessId, contactPhone);
+  if (pendiente) {
+    if (ES_SI.test(t)) {
+      await pendientes.borrar(account.businessId, contactPhone);
+      return acciones.aplicar({ businessId: account.businessId, persona, accion: pendiente });
+    }
+    if (ES_NO.test(t)) {
+      await pendientes.borrar(account.businessId, contactPhone);
+      return 'Listo, no cambié nada.';
+    }
+    /* Ni sí ni no: se descarta lo pendiente y se atiende lo nuevo. Dejarlo
+       vivo haría que un "sí" de otra conversación, diez minutos después,
+       agotara un producto que ya nadie recordaba. */
+    await pendientes.borrar(account.businessId, contactPhone);
+  }
+
   const regla = REGLAS.find((r) => r.prueba(t));
   if (!regla) {
     /* No se adivina. Antes de contestar cualquier cosa a quien pregunta por
@@ -127,13 +172,75 @@ async function atender({ account, contactPhone, texto }) {
   }
 
   try {
+    if (regla.escribe) return await proponerCambio({ account, persona, contactPhone, texto, t, regla });
     return await regla.responde(account.businessId, t);
   } catch (e) {
     logger.error('[WhatsApp] Falló una consulta administrativa', {
       error: e.message, consulta: regla.id, businessId: String(account.businessId),
     });
-    return 'No pude consultar eso ahora mismo. Intenta en un momento.';
+    return 'No pude hacer eso ahora mismo. Intenta en un momento.';
   }
 }
 
-module.exports = { atender, autorizado, ayuda, plano, REGLAS };
+/**
+ * Propone el cambio y espera un sí.
+ *
+ * Nunca aplica nada en el mismo mensaje. Con un solo factor de identidad, la
+ * confirmación es la segunda barrera: obliga a leer qué va a pasar antes de
+ * que pase, y a que quien escribe vea si el producto que entendimos es el que
+ * tenía en la cabeza.
+ */
+async function proponerCambio({ account, persona, contactPhone, texto, t, regla }) {
+  const acciones = require('./acciones');
+  const pendientes = require('./pendientes');
+
+  /* Se le quitan las palabras de la orden para quedarse con el nombre: de
+     "se acabó la hamburguesa doble" queda "hamburguesa doble". */
+  const nombre = t
+    .replace(/\b(se|me|ya|no|hay|mas|de|la|el|los|las|un|una|por favor|porfa)\b/g, ' ')
+    .replace(/\b(acabo|acabaron|agotar|agotame|agota|quitar|quitame|quita|desactivar|desactiva|activar|activame|activa|habilitar|habilita|vuelve|a|poner|ponle|ponlo|pon|llego|existencias|sin)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!nombre) {
+    return regla.operacion === 'agotar'
+      ? '¿Qué se acabó? Dime el nombre, por ejemplo: "se acabó la hamburguesa doble".'
+      : '¿Qué activo? Dime el nombre, por ejemplo: "activa la hamburguesa doble".';
+  }
+
+  const hallazgo = await acciones.encontrar(account.businessId, nombre);
+
+  if (hallazgo.ninguno) {
+    return `No encontré nada que se llame "${nombre}" en tu menú ni en tus extras.`;
+  }
+  if (hallazgo.ambiguo) {
+    const lista = hallazgo.ambiguo.map((p) => `• ${p.name}`).join('\n');
+    return `¿Cuál de estos?\n${lista}\n\nEscríbeme el nombre completo.`;
+  }
+
+  const item = hallazgo.item;
+  const activar = regla.operacion === 'activar';
+  const queEs = hallazgo.tipo === 'producto' ? 'producto' : 'extra';
+
+  // Si ya está como se pide, se dice y no se pregunta nada.
+  if (!!item.active === activar) {
+    return activar
+      ? `*${item.name}* ya está disponible.`
+      : `*${item.name}* ya estaba fuera del menú.`;
+  }
+
+  await pendientes.guardar(account.businessId, contactPhone, {
+    tipo: hallazgo.tipo,
+    operacion: regla.operacion,
+    itemId: String(item._id),
+    grupoId: item.grupoId ? String(item.grupoId) : null,
+    nombre: item.name,
+  });
+
+  return activar
+    ? `¿Activo el ${queEs} *${item.name}*?\n\nResponde *sí* para confirmar.`
+    : `¿Quito el ${queEs} *${item.name}* del menú?\n`
+      + `Los clientes dejarán de verlo hasta que lo actives.\n\nResponde *sí* para confirmar.`;
+}
+
+module.exports = { atender, autorizado, ayuda, plano, REGLAS, ES_SI, ES_NO };

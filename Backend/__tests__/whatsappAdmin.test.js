@@ -116,3 +116,47 @@ describe('el periodo que se lee de la pregunta', () => {
     expect(periodoDe(texto)).toBe(esperado);
   });
 });
+
+describe('cambiar el menú desde WhatsApp', () => {
+  it('"se acabó la hamburguesa" es una orden, no la consulta de inventario', () => {
+    /* Las dos reglas coinciden con ese texto; la de agotar va primero porque
+       es lo que el dueño quiere hacer, no lo que quiere saber. */
+    expect(intencion('se acabo la hamburguesa')).toBe('agotar');
+    expect(intencion('se acabaron las papas')).toBe('agotar');
+    expect(intencion('quita el big mac del menu')).toBe('agotar');
+    expect(intencion('desactiva la coca cola')).toBe('agotar');
+  });
+
+  it('reconoce cuándo hay que volver a activar algo', () => {
+    expect(intencion('activa la hamburguesa doble')).toBe('activar');
+    expect(intencion('ya hay pan')).toBe('activar');
+    expect(intencion('llego mas pollo')).toBe('activar');
+  });
+
+  it('preguntar por el inventario sigue siendo una consulta', () => {
+    expect(intencion('que se esta acabando')).toBe('stock');
+    expect(intencion('inventario')).toBe('stock');
+    expect(intencion('que productos estan agotados')).toBe('stock');
+  });
+});
+
+describe('qué cuenta como confirmar y como cancelar', () => {
+  const { ES_SI, ES_NO } = require('../services/whatsappAdmin');
+
+  it.each([['si'], ['sí'], ['dale'], ['hazlo'], ['confirmo'], ['ok'], ['listo']])(
+    '"%s" confirma', (t) => expect(ES_SI.test(plano(t))).toBe(true)
+  );
+
+  it.each([['no'], ['cancela'], ['mejor no'], ['olvidalo']])(
+    '"%s" cancela', (t) => expect(ES_NO.test(plano(t))).toBe(true)
+  );
+
+  /* Ante la duda con algo que cambia el menú se vuelve a preguntar, no se
+     interpreta: un "sirve" o un "quizás" no pueden sacar un producto. */
+  it.each([['quizas'], ['sirve'], ['tal vez'], ['no se']])(
+    '"%s" no confirma nada', (t) => {
+      const p = plano(t);
+      expect(ES_SI.test(p) && !ES_NO.test(p)).toBe(false);
+    }
+  );
+});
