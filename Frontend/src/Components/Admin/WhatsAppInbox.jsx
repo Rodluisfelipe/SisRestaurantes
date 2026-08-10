@@ -15,7 +15,7 @@ import {
   FaCheck, FaCheckDouble, FaExclamationTriangle, FaImage, FaMapMarkerAlt,
   FaFileAlt, FaMicrophone, FaVideo, FaArrowLeft, FaArrowDown, FaSyncAlt,
   FaUser, FaShoppingBag, FaGift, FaHome, FaClock, FaUserPlus, FaSearch,
-  FaUtensils, FaMotorcycle, FaRegSmile, FaSignOutAlt, FaExpand, FaPaperclip
+  FaUtensils, FaMotorcycle, FaRegSmile, FaSignOutAlt, FaExpand, FaPaperclip, FaRobot
 } from 'react-icons/fa';
 import api from '../../services/api';
 import { socket, joinBusiness } from '../../services/socket';
@@ -297,6 +297,16 @@ function Burbuja({ mensaje: m, pegado, businessId }) {
             no es un archivo que se pueda bajar. */}
         {m.mediaId ? (
           <div className={desnudo ? '' : 'mb-1'}><Adjunto mensaje={m} businessId={businessId} /></div>
+        ) : m.type === 'unsupported' ? (
+          /* Meta a veces no entrega el contenido y solo avisa. Se dice, con su
+             motivo: una burbuja muda parece un fallo nuestro. */
+          <p className="text-[13px] italic text-slate-400 flex items-start gap-1.5">
+            <FaExclamationTriangle className="mt-0.5 shrink-0 text-[11px]" />
+            <span>
+              WhatsApp no entregó este mensaje
+              {m.errorMessage ? <span className="not-italic"> — {m.errorMessage}</span> : null}
+            </span>
+          </p>
         ) : Icono && (
           <p className={`text-[11.5px] mb-1 flex items-center gap-1.5 font-semibold ${mio ? 'text-emerald-700' : 'text-slate-400'}`}>
             <Icono /> {m.type === 'location' ? 'Ubicación' : 'Archivo adjunto'}
@@ -355,6 +365,7 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
   const [borradores, setBorradores] = useState({});
   const [enviando, setEnviando] = useState(false);
   const [subiendo, setSubiendo] = useState(false);
+  const [reactivandoBot, setReactivandoBot] = useState(false);
   const [error, setError] = useState('');
   const [falloCarga, setFalloCarga] = useState(false);
   const [ficha, setFicha] = useState(null);
@@ -595,6 +606,33 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
       if (r?.code === 'OUTSIDE_WINDOW') setPuedeResponder(false);
     } finally {
       setSubiendo(false);
+    }
+  }
+
+  /**
+   * Devolverle la conversación al bot.
+   *
+   * El backend, además de reactivarlo, le hace contestar lo que quedó
+   * pendiente: si no, reactivar no producía nada visible y el cliente seguía
+   * esperando hasta volver a escribir.
+   */
+  async function devolverAlBot() {
+    if (!chatActivo || reactivandoBot) return;
+    setReactivandoBot(true);
+    setError('');
+    try {
+      await api.post(`/whatsapp-inbox/chats/${chatActivo}/retomar`, {
+        businessId,
+        devolverAlAgente: true,
+      });
+      await cargarChats();
+      /* La respuesta del agente tarda unos segundos en llegar; el socket la
+         traerá sola, pero se refresca ya para que el estado cambie al toque. */
+      abrirChat(chatActivo, { silencioso: true });
+    } catch (e) {
+      setError(e?.response?.data?.message || 'No se pudo devolver la conversación al bot');
+    } finally {
+      setReactivandoBot(false);
     }
   }
 
@@ -945,6 +983,18 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
                   </div>
                 </button>
 
+                {/* Estado del bot en esta conversación, y cómo devolvérselo.
+                    Contestar a mano lo calla —dos voces confunden al cliente—
+                    pero hasta ahora no había forma de deshacerlo: el bot se
+                    quedaba mudo sin que nadie supiera por qué. */}
+                {cuenta.agente?.activo && (
+                  <EstadoDelBot
+                    estado={chatSeleccionado?.agente?.estado}
+                    reactivando={reactivandoBot}
+                    onReactivar={devolverAlBot}
+                  />
+                )}
+
                 {/* Con la ficha cerrada este botón es la única forma de tomar
                     el pedido, así que se queda a la vista. */}
                 <button
@@ -1240,6 +1290,39 @@ function ResumenWhatsApp({ chats, businessId }) {
         </div>
       ))}
     </div>
+  );
+}
+
+/**
+ * En qué anda el bot en esta conversación.
+ *
+ * Cuando alguien del negocio contesta a mano, el bot se calla —dos voces
+ * respondiendo confunden al cliente— pero eso pasaba en silencio: el bot
+ * quedaba mudo y nadie sabía por qué, ni cómo deshacerlo.
+ */
+function EstadoDelBot({ estado, reactivando, onReactivar }) {
+  if (estado === 'con_humano') {
+    return (
+      <button
+        onClick={onReactivar}
+        disabled={reactivando}
+        title="El bot dejó de contestar porque respondió una persona. Devuélvele la conversación."
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 text-[11.5px] font-bold transition-colors shrink-0 disabled:opacity-60"
+      >
+        {reactivando
+          ? <><FaSpinner className="animate-spin text-[10px]" /> Devolviendo…</>
+          : <><FaRobot className="text-[11px]" /> Bot en pausa · Reactivar</>}
+      </button>
+    );
+  }
+
+  return (
+    <span
+      title="El bot está atendiendo esta conversación"
+      className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#d9fdd3] text-[#027d69] text-[11.5px] font-bold shrink-0"
+    >
+      <FaRobot className="text-[11px]" /> Atiende el bot
+    </span>
   );
 }
 

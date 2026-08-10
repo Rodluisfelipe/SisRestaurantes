@@ -184,13 +184,20 @@ function interpretarMensaje(msg) {
 
   /* Cuando llega algo que no manejamos hay que dejar constancia de QUÉ era.
      Sin esto, un mensaje que no aparece en la bandeja es un misterio sin
-     forma de investigarlo: en la base queda 'unsupported' y nada más. */
-  if (!conocido && msg?.type) {
-    logger.warn('[WhatsApp] Llegó un tipo de mensaje que no manejamos', {
-      tipo: msg.type,
-      campos: Object.keys(msg).join(','),
-      // El contenido del propio campo, recortado: es lo que dice qué hacer con él.
-      muestra: JSON.stringify(msg[msg.type] || {}).slice(0, 300),
+     forma de investigarlo: en la base queda 'unsupported' y nada más.
+
+     Se registra también cuando el tipo ES 'unsupported', y no solo cuando no
+     lo reconocemos: 'unsupported' está en nuestra lista, así que ese caso
+     pasaba por bueno en silencio. Y resulta que es el propio Meta el que
+     manda ese tipo, con un `errors` que explica el motivo — justo lo que
+     hacía falta saber. */
+  if (!conocido || msg?.type === 'unsupported') {
+    logger.warn('[WhatsApp] Mensaje que no se puede mostrar', {
+      tipo: msg?.type || '(sin tipo)',
+      campos: Object.keys(msg || {}).join(','),
+      // Aquí viene el código y el título de Meta: el motivo exacto.
+      errores: JSON.stringify(msg?.errors || []).slice(0, 400),
+      muestra: JSON.stringify(msg?.[msg?.type] || {}).slice(0, 300),
     });
   }
 
@@ -219,6 +226,10 @@ function interpretarMensaje(msg) {
     text: aTexto(cuerpo).slice(0, 8000),
     mediaId: medio?.id || null,
     mediaMimeType: medio?.mime_type || '',
+    /* El motivo que da Meta cuando no entrega el contenido. Guardarlo permite
+       decirle a quien atiende por qué no ve nada, en vez de dejar una burbuja
+       muda que parece un fallo nuestro. */
+    errorMessage: aTexto(msg?.errors?.[0]?.title || '').slice(0, 300),
     sentAt: msg?.timestamp ? new Date(Number(msg.timestamp) * 1000) : new Date()
   };
 }
@@ -624,19 +635,46 @@ router.post('/chats/:phone/retomar', authMiddleware, requiereComplemento, asyncH
   const telefono = whatsappCloud.normalizePhone(req.params.phone);
   if (!telefono) return res.status(400).json({ message: 'Número inválido' });
 
+  const devolver = !!req.body?.devolverAlAgente;
+
   const WhatsAppAgentSession = require('../Models/WhatsAppAgentSession');
   await WhatsAppAgentSession.updateOne(
     { businessId: req.businessId, contactPhone: telefono },
     {
       $set: {
-        estado: req.body?.devolverAlAgente ? 'activa' : 'con_humano',
-        motivoTraspaso: req.body?.devolverAlAgente ? '' : 'lo tomó una persona del negocio',
+        estado: devolver ? 'activa' : 'con_humano',
+        motivoTraspaso: devolver ? '' : 'lo tomó una persona del negocio',
         ultimaActividad: new Date(),
       },
     },
     { upsert: true },
   );
-  res.json({ success: true });
+
+  /* Al devolverle el chat, el agente contesta lo que quedó sin responder.
+     Sin esto, reactivarlo no hacía nada visible: el cliente ya había escrito
+     y se quedaba esperando hasta que volviera a escribir. */
+  let contestara = false;
+  if (devolver) {
+    const ultimo = await WhatsAppMessage
+      .findOne({ businessId: req.businessId, contactPhone: telefono })
+      .sort({ sentAt: -1 });
+
+    // Solo si el último de la conversación es del cliente: si el último es
+    // nuestro, ya se le contestó y no hay nada pendiente.
+    if (ultimo && ultimo.direction === 'in') {
+      const account = await WhatsAppAccount.findOne({ businessId: req.businessId, status: 'active' });
+      if (account) {
+        contestara = true;
+        /* Sin await: interpretar y responder tarda segundos, y el botón del
+           panel no puede quedarse colgado esperando. */
+        quizaContesteElAgente(account, ultimo).catch((e) => {
+          logger.warn('[WhatsApp] El agente no pudo retomar la conversación', { error: e.message });
+        });
+      }
+    }
+  }
+
+  res.json({ success: true, estado: devolver ? 'activa' : 'con_humano', contestara });
 }));
 
 /* ─────────────────────────────────────────────
