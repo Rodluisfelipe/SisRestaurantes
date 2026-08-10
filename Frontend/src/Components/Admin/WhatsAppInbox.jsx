@@ -240,6 +240,18 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
   const [vista, setVista] = useState('chats');
   const [busqueda, setBusqueda] = useState('');
   const [filtro, setFiltro] = useState('todos');
+  /* La ficha del cliente arranca cerrada, como el panel de contacto de
+     WhatsApp Web: al atender lo que importa es la conversación, y esa columna
+     le quitaba un tercio de ancho todo el tiempo para algo que se mira de vez
+     en cuando. Se recuerda la elección: a quien la quiere abierta, no se la
+     cerramos en cada visita. */
+  const [fichaAbierta, setFichaAbierta] = useState(
+    () => localStorage.getItem('menuby.waFichaAbierta') === '1'
+  );
+  const alternarFicha = () => setFichaAbierta((v) => {
+    localStorage.setItem('menuby.waFichaAbierta', v ? '0' : '1');
+    return !v;
+  });
   const scrollRef = useRef(null);
   const areaRef = useRef(null);
   const pegadoAbajo = useRef(true);
@@ -543,7 +555,9 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
 
       {/* Tres columnas, como WhatsApp Web: lista, conversación y —lo que él no
           tiene— la ficha del cliente a la derecha. */}
-      <div className="grid lg:grid-cols-[minmax(300px,30%)_1fr] xl:grid-cols-[minmax(300px,28%)_1fr_320px] flex-1 min-h-0">
+      <div className={`grid lg:grid-cols-[minmax(300px,30%)_1fr] flex-1 min-h-0 ${
+        fichaAbierta ? 'xl:grid-cols-[minmax(300px,26%)_1fr_320px]' : ''
+      }`}>
         {/* Lista de chats */}
         {/* En celular solo cabe una columna: con un chat abierto —o con las
             plantillas— la lista se aparta. */}
@@ -749,31 +763,54 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
                 >
                   <FaArrowLeft className="text-sm" />
                 </button>
-                <Avatar nombre={chatSeleccionado?.contactName} telefono={chatActivo} grande />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[16px] text-[#111b21] truncate leading-tight">
-                    {chatSeleccionado?.contactName || telefonoLegible(chatActivo)}
-                  </p>
-                  <p className="text-[13px] text-[#667781] truncate">
-                    {telefonoLegible(chatActivo)}
-                    {puedeResponder && <span className="text-[#00a884]"> · puedes responder</span>}
-                  </p>
-                </div>
-                {/* En pantalla ancha este botón vive en la ficha de la derecha;
-                    acá se repite porque esa columna no existe. */}
+                {/* Tocar el nombre abre la ficha, igual que en WhatsApp Web
+                    se toca la cabecera para ver los datos del contacto. */}
+                <button
+                  onClick={alternarFicha}
+                  className="flex items-center gap-3 min-w-0 flex-1 text-left"
+                  title={fichaAbierta ? 'Ocultar los datos del cliente' : 'Ver los datos del cliente'}
+                >
+                  <Avatar nombre={chatSeleccionado?.contactName} telefono={chatActivo} grande />
+                  <div className="min-w-0">
+                    <p className="text-[16px] text-[#111b21] truncate leading-tight">
+                      {chatSeleccionado?.contactName || telefonoLegible(chatActivo)}
+                    </p>
+                    <p className="text-[13px] text-[#667781] truncate">
+                      {telefonoLegible(chatActivo)}
+                      {puedeResponder && <span className="text-[#00a884]"> · puedes responder</span>}
+                    </p>
+                  </div>
+                </button>
+
+                {/* Con la ficha cerrada este botón es la única forma de tomar
+                    el pedido, así que se queda a la vista. */}
                 <button
                   onClick={() => setTomandoPedido(true)}
-                  className="xl:hidden flex items-center gap-1.5 bg-[#00a884] hover:bg-[#029072] text-white px-3 py-2 rounded-lg text-xs font-bold transition-colors active:scale-95 shrink-0"
+                  className={`items-center gap-1.5 bg-[#00a884] hover:bg-[#029072] text-white px-3 py-2 rounded-lg text-xs font-bold transition-colors active:scale-95 shrink-0 ${
+                    fichaAbierta ? 'flex xl:hidden' : 'flex'
+                  }`}
                 >
                   <FaShoppingBag className="text-[10px]" /> Tomar pedido
                 </button>
+
+                <button
+                  onClick={alternarFicha}
+                  title={fichaAbierta ? 'Ocultar los datos del cliente' : 'Ver los datos del cliente'}
+                  className={`w-9 h-9 shrink-0 rounded-full grid place-items-center transition-colors ${
+                    fichaAbierta ? 'bg-[#00a884] text-white' : 'text-[#54656f] hover:bg-black/5'
+                  }`}
+                >
+                  <FaUser className="text-[14px]" />
+                </button>
               </div>
 
-              {/* Debajo de la cabecera solo en pantallas donde no cabe la
-                  columna de la derecha. */}
-              <div className="xl:hidden shrink-0 max-h-[38%] overflow-y-auto">
-                <FichaCliente ficha={ficha} cargando={cargandoFicha} />
-              </div>
+              {/* Solo si la pidieron, y solo donde no cabe la columna de la
+                  derecha: en pantalla ancha esos datos ya están en la ficha. */}
+              {fichaAbierta && (
+                <div className="xl:hidden shrink-0 max-h-[38%] overflow-y-auto">
+                  <FichaCliente ficha={ficha} cargando={cargandoFicha} />
+                </div>
+              )}
 
               <div className="relative flex-1 min-h-0">
                 <div
@@ -888,8 +925,12 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
           )}
         </div>
 
-        {/* Ficha del cliente — columna propia en pantalla ancha */}
-        <aside className="hidden xl:flex flex-col min-h-0 border-l border-slate-100 bg-slate-50/50">
+        {/* Ficha del cliente — columna propia en pantalla ancha, y solo si la
+            abrieron. Cerrada es el estado normal: al atender manda la
+            conversación. */}
+        <aside className={`flex-col min-h-0 border-l border-[#e9edef] bg-[#f0f2f5] ${
+          fichaAbierta ? 'hidden xl:flex' : 'hidden'
+        }`}>
           {chatActivo ? (
             <FichaRail
               ficha={ficha}
