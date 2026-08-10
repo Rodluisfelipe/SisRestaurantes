@@ -165,15 +165,13 @@ function Admin() {
     });
   }, []);
 
-  /* Saltar entre las tres pantallas del día a día. El POS no es una sección
-     del panel sino su propia dirección, así que ese sale de la aplicación;
-     las otras dos son cambio de pestaña y no recargan nada. */
+  /* Saltar entre las tres pantallas del día a día. El POS y los chats tienen
+     su propia dirección, así que esos son navegación; el panel ya es esta. */
   const abrirPanel = useCallback((panel) => {
-    if (panel.id === 'pos') {
-      window.location.href = `/${businessConfig?.slug || businessConfig?._id}/pos`;
-      return;
-    }
-    setActiveTab(panel.id);
+    const negocio = businessConfig?.slug || businessConfig?._id;
+    if (panel.id === 'pos') return void (window.location.href = `/${negocio}/pos`);
+    if (panel.id === 'whatsapp') return void (window.location.href = `/${negocio}/whatsapp`);
+    setActiveTab('dashboard');
   }, [businessConfig?.slug, businessConfig?._id, setActiveTab]);
 
   // Limpiar params de URL después de leerlos (no mostrar ?tab=... en la barra)

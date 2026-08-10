@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "MenuBy — Panel, WhatsApp y POS",
+  "version": "1.0.0",
+  "description": "Salta entre tu panel, tus chats de WhatsApp y el punto de venta desde cualquier pestaña.",
+  "icons": {
+    "16": "iconos/favicon-16x16.png",
+    "32": "iconos/favicon-32x32.png",
+    "48": "iconos/favicon-48x48.png",
+    "96": "iconos/favicon-96x96.png",
+    "192": "iconos/favicon-192x192.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "MenuBy",
+    "default_icon": {
+      "16": "iconos/favicon-16x16.png",
+      "32": "iconos/favicon-32x32.png",
+      "48": "iconos/favicon-48x48.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://menuby.tech/*",
+    "https://www.menuby.tech/*"
+  ],
+  "commands": {
+    "abrir-panel": {
+      "suggested_key": { "default": "Alt+1" },
+      "description": "Abrir el panel"
+    },
+    "abrir-whatsapp": {
+      "suggested_key": { "default": "Alt+2" },
+      "description": "Abrir los chats de WhatsApp"
+    },
+    "abrir-pos": {
+      "suggested_key": { "default": "Alt+3" },
+      "description": "Abrir el punto de venta"
+    }
+  }
+}

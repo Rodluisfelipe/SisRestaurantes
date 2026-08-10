@@ -9,6 +9,7 @@ const Menu = lazy(() => import("./Pages/Menu"));
 const Admin = lazy(() => import("./Pages/Admin"));
 const Kitchen = lazy(() => import("./Pages/Kitchen"));
 const POS = lazy(() => import("./Pages/POS"));
+const WhatsAppPanel = lazy(() => import("./Pages/WhatsAppPanel"));
 const Waiter = lazy(() => import("./Pages/Waiter"));
 const SuperAdminDashboard = lazy(() => import("./Pages/SuperAdmin/SuperAdminDashboard"));
 const CrewApp = lazy(() => import("./Pages/Crew/CrewApp"));
@@ -262,7 +263,7 @@ function App() {
             } 
           />
 
-          <Route 
+          <Route
           path="/:businessId/pos"
             element={
               <BusinessProviderWrapper>
@@ -270,7 +271,20 @@ function App() {
                   <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><POS /></Suspense>
                 </ProtectedRoute>
               </BusinessProviderWrapper>
-            } 
+            }
+          />
+
+          {/* Los chats en su propia direccion, como el POS: asi pueden quedarse
+              abiertos en una pestana toda la jornada. */}
+          <Route
+          path="/:businessId/whatsapp"
+            element={
+              <BusinessProviderWrapper>
+                <ProtectedRoute>
+                  <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div></div>}><WhatsAppPanel /></Suspense>
+                </ProtectedRoute>
+              </BusinessProviderWrapper>
+            }
           />
 
           <Route 

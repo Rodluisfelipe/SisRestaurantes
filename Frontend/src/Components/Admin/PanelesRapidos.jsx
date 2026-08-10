@@ -12,9 +12,11 @@
 import React from 'react';
 import { FaThLarge, FaWhatsapp, FaCashRegister } from 'react-icons/fa';
 
+/* Las tres son direcciones propias, no pestañas de una misma pantalla: cada
+   una puede quedarse abierta en su pestaña del navegador toda la jornada. */
 export const PANELES = [
   { id: 'dashboard', txt: 'Panel', Icono: FaThLarge },
-  { id: 'whatsapp-inbox', txt: 'WhatsApp', Icono: FaWhatsapp },
+  { id: 'whatsapp', txt: 'WhatsApp', Icono: FaWhatsapp },
   { id: 'pos', txt: 'POS', Icono: FaCashRegister },
 ];
 
@@ -52,7 +54,7 @@ export default function PanelesRapidos({
     <div className={`inline-flex items-center gap-0.5 p-1 rounded-xl ${piel.caja} ${superAdmin ? 'mr-36' : ''}`}>
       {paneles.map((p) => {
         const esActivo = activo === p.id;
-        const sinLeer = p.id === 'whatsapp-inbox' ? whatsappSinLeer : 0;
+        const sinLeer = p.id === 'whatsapp' ? whatsappSinLeer : 0;
 
         return (
           <button

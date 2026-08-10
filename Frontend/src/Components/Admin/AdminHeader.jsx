@@ -65,7 +65,7 @@ export default function AdminHeader({ activeTab, onAbrirPanel, whatsappSinLeer =
             sección — o peor, si venías del POS, salir primero. */}
         {onAbrirPanel && (
           <PanelesRapidos
-            activo={activeTab === 'whatsapp-inbox' ? 'whatsapp-inbox' : 'dashboard'}
+            activo="dashboard"
             onIr={onAbrirPanel}
             whatsappSinLeer={whatsappSinLeer}
             posDisponible={posDisponible}

@@ -77,7 +77,9 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
         /* Se muestra aunque el negocio no lo tenga contratado: la pantalla
            explica de qué se trata en vez de fallar, y así el complemento se
            descubre solo en lugar de quedar escondido. */
-        { id: 'whatsapp-inbox', label: 'Chats WhatsApp', Icon: FaWhatsapp, badge: whatsappSinLeer || null },
+        /* Los chats viven en su propia dirección, como el POS: `ruta` hace que
+           este ítem navegue en vez de cambiar de pestaña. */
+        { id: 'whatsapp-inbox', label: 'Chats WhatsApp', Icon: FaWhatsapp, badge: whatsappSinLeer || null, ruta: 'whatsapp' },
         { id: 'coupons', label: 'Cupones', Icon: FaTicketAlt, badge: null },
         { id: 'loyalty', label: 'Fidelidad', Icon: FaGift, badge: null, beta: true },
         { id: 'reviews', label: 'Reseñas', Icon: FaStar, badge: null },
@@ -379,7 +381,13 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
                           <div key={item.id} className="flex items-center group/item">
                             <motion.button
                               whileTap={{ scale: 0.97 }}
-                              onClick={() => setActiveTab(item.id)}
+                              onClick={() => {
+                                if (item.ruta) {
+                                  window.location.href = `/${businessConfig?.slug || businessConfig?._id}/${item.ruta}`;
+                                  return;
+                                }
+                                setActiveTab(item.id);
+                              }}
                               className={`flex-1 flex items-center justify-between pl-4 pr-3 py-2 rounded-lg text-left transition-all duration-150 group relative ${
                                 isActive
                                   ? 'bg-blue-50 text-blue-700'
