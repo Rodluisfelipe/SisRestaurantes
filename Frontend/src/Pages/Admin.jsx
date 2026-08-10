@@ -380,6 +380,7 @@ function Admin() {
               onSalir={() => setPantallaCompleta(false)}
               whatsappSinLeer={whatsappSinLeer}
               posDisponible={!!businessConfig?.features?.posBetaEnabled}
+              superAdmin={isSuperAdminMode}
             />
           ) : (
             /* Mobile Header — iOS nav bar style */
@@ -397,6 +398,7 @@ function Admin() {
                 onAbrirPanel={abrirPanel}
                 whatsappSinLeer={whatsappSinLeer}
                 posDisponible={!!businessConfig?.features?.posBetaEnabled}
+                superAdmin={isSuperAdminMode}
               />
             </motion.div>
           )}

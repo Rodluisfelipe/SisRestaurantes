@@ -44,7 +44,7 @@ const SERVICE_OVERRIDES = {
   'toppings':         { title: 'Gestión de Opciones',     desc: 'Configura variantes y opciones' },
 };
 
-export default function AdminHeader({ activeTab, onAbrirPanel, whatsappSinLeer = 0, posDisponible = true }) {
+export default function AdminHeader({ activeTab, onAbrirPanel, whatsappSinLeer = 0, posDisponible = true, superAdmin = false }) {
   const { businessConfig } = useBusinessConfig();
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const isHotel = businessConfig?.businessType === 'hotel';
@@ -54,7 +54,11 @@ export default function AdminHeader({ activeTab, onAbrirPanel, whatsappSinLeer =
 
   return (
     <div className="hidden md:block bg-white border-b border-slate-200 sticky top-0 z-40">
-      <div className="px-4 md:px-6 py-2 mt-12 lg:mt-0 flex items-center justify-between gap-4">
+      {/* La insignia de SuperAdmin va fija en la esquina y por encima de todo:
+          sin este hueco se sienta justo sobre los botones de WhatsApp y POS. */}
+      <div className={`px-4 md:px-6 py-2 mt-12 lg:mt-0 flex items-center justify-between gap-4 ${
+        superAdmin ? 'pr-40' : ''
+      }`}>
         <h1 className="text-sm font-semibold text-slate-700 truncate min-w-0">
           {config.title}
           <span className="ml-2 text-xs font-normal text-slate-400 hidden xl:inline">{config.desc}</span>

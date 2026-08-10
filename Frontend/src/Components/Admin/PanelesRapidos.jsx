@@ -12,12 +12,14 @@
  *     con el botón de salir.
  */
 import React from 'react';
-import { FaHamburger, FaWhatsapp, FaCashRegister, FaCompress } from 'react-icons/fa';
+import { FaThLarge, FaWhatsapp, FaCashRegister, FaCompress } from 'react-icons/fa';
 
-/* El POS no es una pestaña del panel sino su propia pantalla, así que ese va
+/* "Menú" acá es el menú de opciones del administrador —la pantalla de inicio
+   del panel, con el resumen del día y los accesos— no la carta de comida.
+   El POS no es una pestaña del panel sino su propia pantalla, así que ese va
    por navegación y los otros dos por cambio de sección. */
 export const PANELES = [
-  { id: 'products', txt: 'Menú', Icono: FaHamburger, color: 'orange' },
+  { id: 'dashboard', txt: 'Menú', Icono: FaThLarge, color: 'orange' },
   { id: 'whatsapp-inbox', txt: 'WhatsApp', Icono: FaWhatsapp, color: 'emerald' },
   { id: 'pos', txt: 'POS', Icono: FaCashRegister, color: 'blue', ruta: true },
 ];
@@ -35,6 +37,7 @@ export default function PanelesRapidos({
   onSalir,
   whatsappSinLeer = 0,
   posDisponible = true,
+  superAdmin = false,
 }) {
   const paneles = PANELES.filter((p) => p.id !== 'pos' || posDisponible);
   const pleno = variante === 'pleno';
@@ -43,7 +46,9 @@ export default function PanelesRapidos({
     <div
       className={
         pleno
-          ? 'flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border-b border-slate-200 shadow-sm shrink-0'
+          /* El hueco de la derecha es para la insignia de SuperAdmin, que va
+             fija en esa esquina y por encima de todo. */
+          ? `flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border-b border-slate-200 shadow-sm shrink-0 ${superAdmin ? 'pr-40' : ''}`
           : 'flex items-center gap-1.5'
       }
     >
