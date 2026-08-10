@@ -973,6 +973,109 @@ router.post('/chats/:phone', authMiddleware, requiereComplemento, asyncHandler(a
   }
 }));
 
+/**
+ * GET /api/whatsapp-inbox/media/:mediaId — el archivo que mandó un cliente.
+ *
+ * Pasa por acá y no directo a Meta porque la URL que Meta entrega es temporal
+ * y además exige el token: el navegador no puede pedirla, y publicar el token
+ * para que pudiera sería regalar la cuenta de WhatsApp del negocio.
+ *
+ * El archivo se sirve solo si pertenece a este negocio. Sin esa comprobación,
+ * cualquiera con una sesión válida podría ver las fotos que los clientes le
+ * mandan a otro restaurante.
+ */
+router.get('/media/:mediaId', authMiddleware, requiereComplemento, asyncHandler(async (req, res) => {
+  const mensaje = await WhatsAppMessage.findOne({
+    businessId: req.businessId,
+    mediaId: String(req.params.mediaId),
+  }).lean();
+  if (!mensaje) return res.status(404).json({ message: 'Archivo no encontrado' });
+
+  const account = await WhatsAppAccount.findOne({ businessId: req.businessId });
+  if (!account) return res.status(400).json({ message: 'El negocio no tiene WhatsApp conectado.' });
+
+  try {
+    const archivo = await whatsappCloud.obtenerMedio(account, mensaje.mediaId);
+    res.set('Content-Type', archivo.mimeType);
+    /* Meta los borra a los 30 días, pero mientras existan no cambian: se
+       pueden cachear en el navegador y ahorrarse el viaje en cada scroll. */
+    res.set('Cache-Control', 'private, max-age=86400');
+    if (archivo.fileName) {
+      res.set('Content-Disposition', `inline; filename="${encodeURIComponent(archivo.fileName)}"`);
+    }
+    return res.send(archivo.buffer);
+  } catch (e) {
+    logger.warn('[WhatsApp] No se pudo bajar un archivo', { error: e.message, mediaId: mensaje.mediaId });
+    /* 404 y no 502: pasados 30 días Meta lo borra, y eso no es una avería
+       nuestra sino el archivo que ya no existe. */
+    return res.status(404).json({ message: 'El archivo ya no está disponible en WhatsApp.' });
+  }
+}));
+
+/**
+ * POST /api/whatsapp-inbox/chats/:phone/media — mandarle un archivo al cliente.
+ */
+const multer = require('multer');
+const subida = multer({
+  storage: multer.memoryStorage(),
+  // El tope de Meta para documentos son 100 MB; los demás, menos.
+  limits: { fileSize: 16 * 1024 * 1024, files: 1 },
+});
+
+router.post(
+  '/chats/:phone/media',
+  authMiddleware,
+  requiereComplemento,
+  subida.single('archivo'),
+  asyncHandler(async (req, res) => {
+    const account = await WhatsAppAccount.findOne({ businessId: req.businessId, status: 'active' });
+    if (!account) {
+      return res.status(400).json({ message: 'El negocio no tiene un número de WhatsApp conectado.' });
+    }
+    if (!req.file?.buffer?.length) {
+      return res.status(400).json({ message: 'No llegó ningún archivo.' });
+    }
+
+    try {
+      const mensaje = await whatsappCloud.sendMedia({
+        account,
+        to: req.params.phone,
+        buffer: req.file.buffer,
+        mimeType: req.file.mimetype,
+        fileName: req.file.originalname,
+        caption: req.body?.caption,
+        sentBy: req.user?.id,
+      });
+      await WhatsAppAccount.updateOne({ _id: account._id }, { $set: { lastOutboundAt: new Date() } });
+
+      // Igual que con el texto: si contesta una persona, el agente se calla.
+      const WhatsAppAgentSession = require('../Models/WhatsAppAgentSession');
+      await WhatsAppAgentSession.updateOne(
+        { businessId: req.businessId, contactPhone: mensaje.contactPhone },
+        {
+          $set: {
+            estado: 'con_humano',
+            motivoTraspaso: 'contestó una persona del negocio',
+            ultimaActividad: new Date(),
+          },
+        },
+        { upsert: true },
+      ).catch(() => {});
+
+      return res.status(201).json({ message: mensaje });
+    } catch (e) {
+      if (e.code === 'OUTSIDE_WINDOW') return res.status(409).json({ message: e.message, code: e.code });
+      if (e.code === 'BAD_PHONE' || e.code === 'EMPTY') {
+        return res.status(400).json({ message: e.message, code: e.code });
+      }
+      logger.error('[WhatsApp] Falló el envío de un archivo', {
+        error: e.message, businessId: String(req.businessId),
+      });
+      return res.status(502).json({ message: `No se pudo enviar: ${e.message}` });
+    }
+  })
+);
+
 module.exports = router;
 // Expuesto solo para poder probarlo sin base de datos.
 module.exports.interpretarMensaje = interpretarMensaje;

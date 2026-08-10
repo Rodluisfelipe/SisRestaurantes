@@ -364,10 +364,156 @@ async function markAsRead({ account, wamid }) {
   }
 }
 
+/* ── Archivos: fotos, audios, documentos ── */
+
+/** Los tipos que Meta acepta y que sabemos pintar en la bandeja. */
+const TIPOS_ARCHIVO = {
+  image: ['image/jpeg', 'image/png', 'image/webp'],
+  video: ['video/mp4', 'video/3gpp'],
+  audio: ['audio/aac', 'audio/mp4', 'audio/mpeg', 'audio/amr', 'audio/ogg'],
+  document: null,   // cualquiera
+};
+
+function tipoDeArchivo(mimeType) {
+  const m = String(mimeType || '').toLowerCase().split(';')[0];
+  for (const [tipo, permitidos] of Object.entries(TIPOS_ARCHIVO)) {
+    if (permitidos && permitidos.includes(m)) return tipo;
+  }
+  return 'document';
+}
+
+/**
+ * Baja un archivo que mandó un cliente.
+ *
+ * Son dos viajes, no uno: Meta primero da una URL temporal y esa URL además
+ * exige el token, así que el navegador no puede pedirla directamente. Por eso
+ * pasa por el servidor.
+ */
+async function obtenerMedio(account, mediaId) {
+  const token = account.getAccessToken();
+  const meta = await graph(String(mediaId), { token, method: 'GET' });
+  if (!meta?.url) {
+    const e = new Error('Meta no devolvió la dirección del archivo'); e.code = 'SIN_URL'; throw e;
+  }
+
+  const res = await fetch(meta.url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) {
+    const e = new Error(`No se pudo bajar el archivo (${res.status})`); e.status = res.status; throw e;
+  }
+  return {
+    buffer: Buffer.from(await res.arrayBuffer()),
+    mimeType: meta.mime_type || 'application/octet-stream',
+    fileName: meta.file_name || '',
+    size: Number(meta.file_size) || 0,
+  };
+}
+
+/**
+ * Sube un archivo a Meta y devuelve su identificador.
+ *
+ * Este endpoint NO acepta JSON: va como formulario, así que no puede usar el
+ * ayudante `graph`.
+ */
+async function subirMedio(account, { buffer, mimeType, fileName }) {
+  const form = new FormData();
+  form.append('messaging_product', 'whatsapp');
+  form.append('type', mimeType);
+  form.append('file', new Blob([buffer], { type: mimeType }), fileName || 'archivo');
+
+  const res = await fetch(`${GRAPH_BASE}/${account.phoneNumberId}/media`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${account.getAccessToken()}` },
+    body: form,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data?.id) {
+    const e = new Error(data?.error?.message || `Meta rechazó el archivo (${res.status})`);
+    e.status = res.status;
+    throw e;
+  }
+  return data.id;
+}
+
+/**
+ * Manda un archivo al cliente y lo deja registrado en la bandeja.
+ *
+ * Misma regla que el texto: se guarda DESPUÉS de que Meta confirma, con el
+ * wamid que devuelve, para que no quede un "enviado" que nunca salió.
+ */
+async function sendMedia({ account, to, buffer, mimeType, fileName, caption, sentBy }) {
+  const phone = normalizePhone(to);
+  if (!phone) {
+    const e = new Error('Número de destino inválido'); e.code = 'BAD_PHONE'; throw e;
+  }
+  if (!buffer?.length) {
+    const e = new Error('El archivo va vacío'); e.code = 'EMPTY'; throw e;
+  }
+
+  if (!(await isWithinServiceWindow(account.businessId, phone))) {
+    const e = new Error(
+      'Pasaron más de 24 horas desde el último mensaje del cliente. '
+      + 'Meta solo permite retomar la conversación con una plantilla aprobada.'
+    );
+    e.code = 'OUTSIDE_WINDOW';
+    throw e;
+  }
+
+  const tipo = tipoDeArchivo(mimeType);
+  const mediaId = await subirMedio(account, { buffer, mimeType, fileName });
+  const pie = String(caption || '').trim().slice(0, 1024);
+
+  /* El pie de foto solo existe en imágenes, vídeos y documentos. En audio Meta
+     rechaza el campo entero, así que ahí no se manda. */
+  const contenido = { id: mediaId };
+  if (pie && tipo !== 'audio') contenido.caption = pie;
+  if (tipo === 'document' && fileName) contenido.filename = fileName;
+
+  const data = await graph(`${account.phoneNumberId}/messages`, {
+    token: account.getAccessToken(),
+    body: {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: phone,
+      type: tipo,
+      [tipo]: contenido,
+    },
+  });
+
+  const wamid = data?.messages?.[0]?.id;
+  if (!wamid) throw new Error('Meta no devolvió el identificador del mensaje');
+
+  const guardado = await WhatsAppMessage.create({
+    businessId: account.businessId,
+    accountId: account._id,
+    wamid,
+    direction: 'out',
+    contactPhone: phone,
+    type: tipo,
+    text: pie,
+    mediaId,
+    mediaMimeType: mimeType,
+    status: 'sent',
+    sentBy: sentBy || null,
+    sentAt: new Date(),
+  });
+
+  try {
+    require('./socketService').emitToBusiness(String(account.businessId), 'whatsapp:mensaje', {
+      contactPhone: phone,
+      direction: 'out',
+    });
+  } catch { /* el refresco periódico queda de red de seguridad */ }
+
+  return guardado;
+}
+
 module.exports = {
   normalizePhone,
   isWithinServiceWindow,
   sendText,
+  obtenerMedio,
+  sendMedia,
+  tipoDeArchivo,
   verifyCredentials,
   subscribeAppToWaba,
   canjearCodigo,

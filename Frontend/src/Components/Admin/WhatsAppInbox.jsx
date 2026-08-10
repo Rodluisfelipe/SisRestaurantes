@@ -15,7 +15,7 @@ import {
   FaCheck, FaCheckDouble, FaExclamationTriangle, FaImage, FaMapMarkerAlt,
   FaFileAlt, FaMicrophone, FaVideo, FaArrowLeft, FaArrowDown, FaSyncAlt,
   FaUser, FaShoppingBag, FaGift, FaHome, FaClock, FaUserPlus, FaSearch,
-  FaUtensils, FaMotorcycle, FaRegSmile, FaSignOutAlt, FaExpand
+  FaUtensils, FaMotorcycle, FaRegSmile, FaSignOutAlt, FaExpand, FaPaperclip
 } from 'react-icons/fa';
 import api from '../../services/api';
 import { socket, joinBusiness } from '../../services/socket';
@@ -158,12 +158,107 @@ function SeparadorDia({ fecha }) {
   );
 }
 
+/**
+ * El archivo que mandó un cliente.
+ *
+ * No se puede poner la dirección de Meta en un `<img>`: es temporal y exige el
+ * token del negocio. Así que se pide al backend, que lo trae y lo entrega, y
+ * acá se convierte en una dirección local del navegador.
+ *
+ * Se baja solo cuando la burbuja aparece en pantalla. Con un chat de doscientos
+ * mensajes, cargarlos todos al abrirlo son doscientas descargas para ver tres.
+ */
+function Adjunto({ mensaje: m, businessId }) {
+  const [url, setUrl] = useState(null);
+  const [estado, setEstado] = useState('espera');   // espera | cargando | listo | error
+  const cajaRef = useRef(null);
+
+  useEffect(() => {
+    const caja = cajaRef.current;
+    if (!caja || estado !== 'espera') return undefined;
+    const observador = new IntersectionObserver((entradas) => {
+      if (entradas.some((e) => e.isIntersecting)) {
+        setEstado('cargando');
+        observador.disconnect();
+      }
+    }, { rootMargin: '200px' });
+    observador.observe(caja);
+    return () => observador.disconnect();
+  }, [estado]);
+
+  useEffect(() => {
+    if (estado !== 'cargando') return undefined;
+    let vivo = true;
+    let creada = null;
+    api.get(`/whatsapp-inbox/media/${m.mediaId}?businessId=${businessId}`, { responseType: 'blob' })
+      .then(({ data }) => {
+        if (!vivo) return;
+        creada = URL.createObjectURL(data);
+        setUrl(creada);
+        setEstado('listo');
+      })
+      .catch(() => { if (vivo) setEstado('error'); });
+    return () => {
+      vivo = false;
+      // Sin esto el navegador se queda con el archivo en memoria para siempre.
+      if (creada) URL.revokeObjectURL(creada);
+    };
+  }, [estado, m.mediaId, businessId]);
+
+  const Icono = ICONO_TIPO[m.type] || FaFileAlt;
+
+  if (estado === 'error') {
+    return (
+      <p className="text-[12.5px] text-slate-400 flex items-center gap-2 py-1">
+        <Icono /> El archivo ya no está disponible
+      </p>
+    );
+  }
+
+  if (estado !== 'listo') {
+    return (
+      <div ref={cajaRef} className="w-52 h-32 rounded-lg bg-black/5 grid place-items-center text-slate-400">
+        <FaSpinner className="animate-spin" />
+      </div>
+    );
+  }
+
+  if (m.type === 'image' || m.type === 'sticker') {
+    return (
+      <a href={url} target="_blank" rel="noreferrer" title="Abrir en grande">
+        <img
+          src={url}
+          alt={m.text || 'Foto'}
+          className={`rounded-lg max-w-full ${m.type === 'sticker' ? 'w-32' : 'max-h-80'}`}
+        />
+      </a>
+    );
+  }
+  if (m.type === 'video') {
+    return <video src={url} controls className="rounded-lg max-w-full max-h-80" />;
+  }
+  if (m.type === 'audio') {
+    return <audio src={url} controls className="w-60 max-w-full" />;
+  }
+
+  return (
+    <a
+      href={url}
+      download={m.text || 'archivo'}
+      className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-black/5 hover:bg-black/10 transition-colors"
+    >
+      <FaFileAlt className="text-slate-500 shrink-0" />
+      <span className="text-[13px] text-slate-700 truncate">{m.text || 'Descargar archivo'}</span>
+    </a>
+  );
+}
+
 /* Un mensaje muy largo —a alguien le pasa: pega un documento entero— dejaba la
    conversación imposible de recorrer. Se corta y se abre si de verdad se quiere
    leer. */
 const LARGO_MAXIMO = 600;
 
-function Burbuja({ mensaje: m, pegado }) {
+function Burbuja({ mensaje: m, pegado, businessId }) {
   const [abierto, setAbierto] = useState(false);
   const mio = m.direction === 'out';
   const Icono = ICONO_TIPO[m.type];
@@ -185,7 +280,11 @@ function Burbuja({ mensaje: m, pegado }) {
             : 'bg-white border border-slate-200/70 text-slate-700'
         }`}
       >
-        {Icono && (
+        {/* El archivo se pinta; solo la ubicación queda como etiqueta, porque
+            no es un archivo que se pueda bajar. */}
+        {m.mediaId ? (
+          <div className="mb-1"><Adjunto mensaje={m} businessId={businessId} /></div>
+        ) : Icono && (
           <p className={`text-[11.5px] mb-1 flex items-center gap-1.5 font-semibold ${mio ? 'text-emerald-700' : 'text-slate-400'}`}>
             <Icono /> {m.type === 'location' ? 'Ubicación' : 'Archivo adjunto'}
           </p>
@@ -231,6 +330,7 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
      quien no era. */
   const [borradores, setBorradores] = useState({});
   const [enviando, setEnviando] = useState(false);
+  const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState('');
   const [falloCarga, setFalloCarga] = useState(false);
   const [ficha, setFicha] = useState(null);
@@ -254,6 +354,7 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
   });
   const scrollRef = useRef(null);
   const areaRef = useRef(null);
+  const archivoRef = useRef(null);
   const pegadoAbajo = useRef(true);
   const ultimoVisto = useRef(null);
   const [lejosDelFinal, setLejosDelFinal] = useState(false);
@@ -432,6 +533,44 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
       setFicha(null);
     } finally {
       setCargandoFicha(false);
+    }
+  }
+
+  /**
+   * Mandar una foto o un archivo.
+   *
+   * El tope se comprueba acá y no solo en el servidor: subir 20 MB por una red
+   * de restaurante para que lo rechacen al final es peor que no dejar empezar.
+   */
+  async function enviarArchivo(archivo) {
+    if (!archivo || !chatActivo || subiendo) return;
+    if (archivo.size > 16 * 1024 * 1024) {
+      setError('El archivo pesa más de 16 MB. WhatsApp no lo acepta.');
+      return;
+    }
+
+    setSubiendo(true);
+    setError('');
+    try {
+      const cuerpo = new FormData();
+      cuerpo.append('archivo', archivo);
+      // Lo escrito en el cuadro viaja como pie de foto y se limpia al enviarse.
+      if (borrador.trim()) cuerpo.append('caption', borrador.trim());
+
+      const { data } = await api.post(`/whatsapp-inbox/chats/${chatActivo}/media?businessId=${businessId}`, cuerpo, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 60000,   // el de siempre son 5s: no alcanza para subir nada
+      });
+      pegadoAbajo.current = true;
+      setMensajes((prev) => [...prev, data.message]);
+      setBorrador('');
+      cargarChats();
+    } catch (e) {
+      const r = e?.response?.data;
+      setError(r?.message || 'No se pudo enviar el archivo');
+      if (r?.code === 'OUTSIDE_WINDOW') setPuedeResponder(false);
+    } finally {
+      setSubiendo(false);
     }
   }
 
@@ -849,7 +988,7 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
                           {/* Sin esto, un mensaje de ayer a las 6 y uno de hoy a
                               las 10 se leen seguidos y parecen la misma charla. */}
                           {dia && <SeparadorDia fecha={m.sentAt} />}
-                          <Burbuja mensaje={m} pegado={pegado} />
+                          <Burbuja mensaje={m} pegado={pegado} businessId={businessId} />
                         </React.Fragment>
                       );
                     })
@@ -882,6 +1021,28 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
                   />
 
                   <form onSubmit={enviar} className="flex items-end gap-2 px-4 py-2.5">
+                    {/* Adjuntar. El pie de foto sale de lo que haya escrito en
+                        el cuadro, así se manda foto y explicación de una vez. */}
+                    <input
+                      ref={archivoRef}
+                      type="file"
+                      className="hidden"
+                      accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        e.target.value = '';   // permite volver a elegir el mismo
+                        if (f) enviarArchivo(f);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => archivoRef.current?.click()}
+                      disabled={subiendo}
+                      title="Adjuntar una foto o un archivo"
+                      className="w-11 h-11 shrink-0 rounded-full text-[#54656f] hover:bg-black/5 disabled:opacity-40 grid place-items-center transition-colors"
+                    >
+                      {subiendo ? <FaSpinner className="animate-spin text-lg" /> : <FaPaperclip className="text-lg" />}
+                    </button>
                     <textarea
                       ref={areaRef}
                       value={borrador}

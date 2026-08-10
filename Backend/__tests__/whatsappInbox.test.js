@@ -213,7 +213,8 @@ describe('la sección del panel está cableada', () => {
   it('Admin.jsx renderiza algo para ese id', () => {
     const src = front('Pages', 'Admin.jsx');
     expect(src).toContain(`activeTab === '${ID}'`);
-    expect(src).toContain('<WhatsAppInbox />');
+    // Sin atarse a qué props lleve: lo que se comprueba es que esté montado.
+    expect(src).toMatch(/<WhatsAppInbox[\s/>]/);
     expect(src).toMatch(/const WhatsAppInbox = lazy\(/);
   });
 
