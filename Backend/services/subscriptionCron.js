@@ -4,6 +4,7 @@ const { sendPushToBusinessId } = require('./pushService');
 const logger = require('../utils/logger');
 const { startOfDayCOL } = require('../utils/timezone');
 const { trackRun } = require('./cronRegistry');
+const { GRACE_DAYS } = require('../utils/subscriptionHelper');
 
 /**
  * Servicio de recordatorios automáticos de suscripción.
@@ -24,6 +25,44 @@ function daysDiff(dateA, dateB) {
   const a = startOfDayCOL(dateA);
   const b = startOfDayCOL(dateB);
   return Math.round((b - a) / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * Marca como vencidas las suscripciones que ya pasaron su periodo de gracia.
+ *
+ * El campo `status` guardado no lo actualizaba nadie: este proceso solo mandaba
+ * recordatorios. Resultado, las 28 suscripciones decían 'active' —incluida una
+ * vencida hacía cuatro meses— y cualquier consulta que leyera ese campo mentía.
+ *
+ * El acceso NO dependía de esto: `calculateSubscriptionStatus` compara fechas
+ * al leer, así que nadie estuvo usando MenuBy gratis. Lo que estaba roto era
+ * el dato, no el cobro. Pero un campo que puede estar desactualizado siempre
+ * acaba mordiendo, y ya mordió una vez.
+ */
+async function marcarVencidas() {
+  try {
+    /* Se respeta el periodo de gracia: una suscripción de ayer sigue viva hoy,
+       igual que la trata `calculateSubscriptionStatus`. Si acá se marcara
+       antes, el estado guardado y el calculado se contradirían. */
+    const limite = new Date();
+    limite.setDate(limite.getDate() - GRACE_DAYS);
+
+    const r = await Subscription.updateMany(
+      { status: 'active', periodEnd: { $ne: null, $lt: limite } },
+      { $set: { status: 'expired' } }
+    );
+
+    if (r.modifiedCount) {
+      logger.info(`[SubscriptionCron] ${r.modifiedCount} suscripción(es) marcadas como vencidas`);
+    }
+    return r.modifiedCount;
+  } catch (e) {
+    /* No puede tumbar los recordatorios: son dos trabajos distintos y el aviso
+       a quien está por vencer importa más que ordenar el dato de quien ya
+       venció. */
+    logger.error('[SubscriptionCron] No se pudieron marcar las vencidas', { error: e.message });
+    return 0;
+  }
 }
 
 /**
@@ -225,6 +264,7 @@ function startSubscriptionCron() {
     _subCronRunning = true;
     try {
       logger.info('[SubscriptionCron] Ejecutando verificación diaria de suscripciones...');
+      await marcarVencidas();
       await trackRun('subscriptions', checkSubscriptionReminders);
     } finally {
       _subCronRunning = false;
