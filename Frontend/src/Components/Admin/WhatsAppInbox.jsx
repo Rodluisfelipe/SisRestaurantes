@@ -228,9 +228,11 @@ function Adjunto({ mensaje: m, businessId }) {
   }
 
   if (estado === 'error') {
+    /* Se dice el plazo: si no, parece un fallo del panel. WhatsApp solo guarda
+       siete días los archivos que le llegan a un negocio. */
     return (
       <p className="text-[12.5px] text-slate-400 flex items-center gap-2 py-1">
-        <Icono /> El archivo ya no está disponible
+        <Icono /> WhatsApp ya no guarda este archivo (los borra a los 7 días)
       </p>
     );
   }
@@ -593,8 +595,19 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
    */
   async function enviarArchivo(archivo) {
     if (!archivo || !chatActivo || subiendo) return;
-    if (archivo.size > 16 * 1024 * 1024) {
-      setError('El archivo pesa más de 16 MB. WhatsApp no lo acepta.');
+
+    /* Los topes de WhatsApp, distintos por tipo. Se comprueban antes de subir:
+       mandar cinco megas por la red de un restaurante para que los rechacen al
+       final es peor que no dejar empezar. El servidor los revisa igual. */
+    const TOPES = [
+      [/^image\/webp/, 500 * 1024, 'El sticker', '500 KB'],
+      [/^image\//, 5 * 1024 * 1024, 'La foto', '5 MB'],
+      [/^(video|audio)\//, 16 * 1024 * 1024, 'El archivo', '16 MB'],
+    ];
+    const regla = TOPES.find(([patron]) => patron.test(archivo.type || ''));
+    const [, tope, nombre, medida] = regla || [null, 16 * 1024 * 1024, 'El archivo', '16 MB'];
+    if (archivo.size > tope) {
+      setError(`${nombre} pesa más de ${medida}, que es el máximo que acepta WhatsApp.`);
       return;
     }
 
@@ -1115,7 +1128,15 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
                       ref={archivoRef}
                       type="file"
                       className="hidden"
-                      accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx"
+                      /* Solo lo que WhatsApp acepta de verdad. `image/*` dejaba
+                         elegir un GIF o un BMP, que Meta rechaza; y faltaban
+                         texto y PowerPoint, que sí admite. */
+                      accept={
+                        'image/jpeg,image/png,image/webp,'
+                        + 'video/mp4,video/3gpp,'
+                        + 'audio/aac,audio/mpeg,audio/mp4,audio/amr,audio/ogg,'
+                        + '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt'
+                      }
                       onChange={(e) => {
                         const f = e.target.files?.[0];
                         e.target.value = '';   // permite volver a elegir el mismo

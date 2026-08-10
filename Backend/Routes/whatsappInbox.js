@@ -1098,8 +1098,11 @@ router.get('/media/:mediaId', authMiddleware, requiereComplemento, asyncHandler(
   try {
     const archivo = await whatsappCloud.obtenerMedio(account, mensaje.mediaId);
     res.set('Content-Type', archivo.mimeType);
-    /* Meta los borra a los 30 días, pero mientras existan no cambian: se
-       pueden cachear en el navegador y ahorrarse el viaje en cada scroll. */
+    /* Mientras existan no cambian, así que se cachean en el navegador y se
+       ahorra el viaje en cada scroll. Ojo con el plazo: los archivos que
+       llegan por webhook viven 7 días, no 30 —los 30 son para los que subimos
+       nosotros—, así que una conversación de la semana pasada ya no tiene sus
+       fotos. */
     res.set('Cache-Control', 'private, max-age=86400');
     if (archivo.fileName) {
       res.set('Content-Disposition', `inline; filename="${encodeURIComponent(archivo.fileName)}"`);
@@ -1126,9 +1129,9 @@ router.get('/media/:mediaId', authMiddleware, requiereComplemento, asyncHandler(
       });
     }
 
-    /* 404 y no 502: pasados 30 días Meta lo borra, y eso no es una avería
-       nuestra sino el archivo que ya no existe. */
-    return res.status(404).json({ message: 'El archivo ya no está disponible en WhatsApp.' });
+    /* 404 y no 502: Meta guarda 7 días los archivos que llegan por webhook, y
+       pasado eso no es una avería nuestra sino un archivo que ya no existe. */
+    return res.status(404).json({ message: 'WhatsApp ya no guarda este archivo (los borra a los 7 días).' });
   }
 }));
 
@@ -1185,7 +1188,7 @@ router.post(
       return res.status(201).json({ message: mensaje });
     } catch (e) {
       if (e.code === 'OUTSIDE_WINDOW') return res.status(409).json({ message: e.message, code: e.code });
-      if (e.code === 'BAD_PHONE' || e.code === 'EMPTY') {
+      if (['BAD_PHONE', 'EMPTY', 'MUY_GRANDE', 'TIPO_NO_ADMITIDO'].includes(e.code)) {
         return res.status(400).json({ message: e.message, code: e.code });
       }
       logger.error('[WhatsApp] Falló el envío de un archivo', {

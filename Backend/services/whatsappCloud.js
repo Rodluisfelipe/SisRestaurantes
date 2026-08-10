@@ -378,12 +378,66 @@ const TIPOS_ARCHIVO = {
   sticker: ['image/webp'],
   video: ['video/mp4', 'video/3gpp'],
   audio: ['audio/aac', 'audio/mp4', 'audio/mpeg', 'audio/amr', 'audio/ogg'],
-  document: null,   // cualquiera
+  document: null,   // se comprueba aparte, contra la lista de abajo
 };
+
+/* Como documento, Meta NO acepta cualquier cosa: solo estos ocho. Un .zip o
+   un .csv se subían y los rechazaba al enviarlos, con un error suyo a mitad
+   del camino en vez de un aviso antes de empezar. */
+const DOCUMENTOS = [
+  'text/plain',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+];
 
 /* El pie de foto solo existe en estos tres. En audio y en sticker, Meta
    rechaza el mensaje entero si se manda el campo. */
 const ADMITEN_PIE = ['image', 'video', 'document'];
+
+/* Los topes de Meta, distintos para cada tipo. Comprobarlos acá deja un
+   mensaje que se entiende —"la foto pesa más de 5 MB"— en vez del error
+   genérico de Meta a mitad de la subida.
+   El sticker va con el tope del animado (500 KB); el estático son 100 KB, y
+   distinguirlos exigiría abrir el WebP, así que ahí sí decide Meta. */
+const TOPES = {
+  image: { bytes: 5 * 1024 * 1024, nombre: 'La foto', deMeta: true },
+  sticker: { bytes: 500 * 1024, nombre: 'El sticker', deMeta: true },
+  video: { bytes: 16 * 1024 * 1024, nombre: 'El video', deMeta: true },
+  audio: { bytes: 16 * 1024 * 1024, nombre: 'El audio', deMeta: true },
+  /* Meta admite 100 MB en documentos, pero el archivo pasa entero por la
+     memoria del servidor y son 1.9 GB para todo: el tope lo ponemos nosotros,
+     y el mensaje lo dice en vez de echarle la culpa a WhatsApp. */
+  document: { bytes: 16 * 1024 * 1024, nombre: 'El archivo', deMeta: false },
+};
+
+function comprobarArchivo(tipo, mimeType, bytes) {
+  if (tipo === 'document') {
+    const base = String(mimeType || '').toLowerCase().split(';')[0];
+    if (!DOCUMENTOS.includes(base)) {
+      const e = new Error(
+        'WhatsApp solo acepta PDF, Word, Excel, PowerPoint y texto. Ese tipo de archivo no lo deja enviar.'
+      );
+      e.code = 'TIPO_NO_ADMITIDO';
+      throw e;
+    }
+  }
+
+  const tope = TOPES[tipo];
+  if (!tope || bytes <= tope.bytes) return;
+  const medida = tope.bytes >= 1024 * 1024
+    ? `${Math.round(tope.bytes / 1024 / 1024)} MB`
+    : `${Math.round(tope.bytes / 1024)} KB`;
+  const e = new Error(
+    `${tope.nombre} pesa más de ${medida}, que es el máximo${tope.deMeta ? ' que acepta WhatsApp' : ' que admitimos'}.`
+  );
+  e.code = 'MUY_GRANDE';
+  throw e;
+}
 
 function tipoDeArchivo(mimeType) {
   const m = String(mimeType || '').toLowerCase().split(';')[0];
@@ -402,12 +456,32 @@ function tipoDeArchivo(mimeType) {
  */
 async function obtenerMedio(account, mediaId) {
   const token = account.getAccessToken();
-  const meta = await graph(String(mediaId), { token, method: 'GET' });
+
+  /* `phone_number_id` no es obligatorio, pero Meta solo procesa la petición si
+     coincide con el número dueño del archivo. En un sistema multi-negocio eso
+     es una cerradura más: aunque un identificador se colara de un restaurante
+     a otro, el archivo no se entregaría. */
+  const pedirUrl = () => graph(
+    `${encodeURIComponent(String(mediaId))}?phone_number_id=${encodeURIComponent(account.phoneNumberId)}`,
+    { token, method: 'GET' }
+  );
+
+  let meta = await pedirUrl();
   if (!meta?.url) {
     const e = new Error('Meta no devolvió la dirección del archivo'); e.code = 'SIN_URL'; throw e;
   }
 
-  const res = await fetch(meta.url, { headers: { Authorization: `Bearer ${token}` } });
+  let res = await fetch(meta.url, { headers: { Authorization: `Bearer ${token}` } });
+
+  /* La dirección caduca a los cinco minutos. Si expiró entre las dos llamadas
+     —pasa con una red lenta— Meta contesta 404 y la propia documentación dice
+     que hay que pedir una nueva y reintentar. Antes eso se le mostraba al
+     negocio como "el archivo ya no está disponible". */
+  if (res.status === 404) {
+    meta = await pedirUrl();
+    if (meta?.url) res = await fetch(meta.url, { headers: { Authorization: `Bearer ${token}` } });
+  }
+
   if (!res.ok) {
     const e = new Error(`No se pudo bajar el archivo (${res.status})`); e.status = res.status; throw e;
   }
@@ -470,6 +544,7 @@ async function sendMedia({ account, to, buffer, mimeType, fileName, caption, sen
   }
 
   const tipo = tipoDeArchivo(mimeType);
+  comprobarArchivo(tipo, mimeType, buffer.length);
   const mediaId = await subirMedio(account, { buffer, mimeType, fileName });
   const pie = String(caption || '').trim().slice(0, 1024);
 
@@ -532,6 +607,8 @@ module.exports = {
   obtenerMedio,
   sendMedia,
   tipoDeArchivo,
+  // Expuesto para poder probar las reglas de Meta sin subir nada.
+  comprobarArchivo,
   verifyCredentials,
   subscribeAppToWaba,
   canjearCodigo,
