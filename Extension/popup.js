@@ -29,6 +29,33 @@ async function arrancar() {
 
   $('negocio').textContent = slug;
   mostrar('destinos');
+  pintarContadores();
+}
+
+/**
+ * Los contadores que el vigilante dejó guardados en la última revisión.
+ *
+ * Se muestran de una vez y luego se pide una revisión fresca: esperar a la
+ * respuesta dejaría el popup en blanco un segundo cada vez que se abre.
+ */
+async function pintarContadores() {
+  const { pendientes = 0, sinLeer = 0, token } = await chrome.storage.local.get(
+    ['pendientes', 'sinLeer', 'token']
+  );
+
+  const poner = (id, n) => {
+    const el = $(id);
+    el.textContent = n > 99 ? '99+' : n;
+    el.classList.toggle('oculto', !n);
+  };
+  poner('c-pendientes', pendientes);
+  poner('c-sinleer', sinLeer);
+
+  /* Sin sesión no hay contadores, y hay que decir por qué: si no, parece que
+     no hay pedidos cuando en realidad no estamos mirando. */
+  if (!token) {
+    $('estado').textContent = 'Abre MenuBy una vez para ver los avisos';
+  }
 }
 
 document.querySelectorAll('.destino').forEach((boton) => {

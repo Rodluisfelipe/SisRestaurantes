@@ -46,6 +46,16 @@
       color: #94a3b8; background: #f1f5f9;
       padding: 4px 6px; border-radius: 5px;
     }
+    /* El contador va pegado al nombre, no al borde: así se lee como parte de
+       "Panel 3" y no como un adorno suelto. */
+    button.destino .globo {
+      min-width: 19px; height: 19px; padding: 0 5px;
+      border-radius: 99px; color: #fff;
+      font: 800 10px/19px -apple-system, sans-serif;
+      text-align: center;
+    }
+    .globo.rojo { background: #ef4444; }
+    .globo.verde { background: #10b981; }
 
     footer {
       padding: 9px 14px; border-top: 1px solid #f1f5f9;
@@ -98,11 +108,13 @@
       <button class="destino" data-destino="panel">
         <span class="icono" style="background:#f97316">▦</span>
         Panel
+        <span class="globo rojo oculto" id="c-pendientes"></span>
         <kbd>Alt+1</kbd>
       </button>
       <button class="destino" data-destino="whatsapp">
         <span class="icono" style="background:#10b981">✆</span>
         WhatsApp
+        <span class="globo verde oculto" id="c-sinleer"></span>
         <kbd>Alt+2</kbd>
       </button>
       <button class="destino" data-destino="pos">
@@ -113,7 +125,7 @@
     </div>
 
     <footer>
-      Si ya está abierto, lo trae al frente
+      <span id="estado">Si ya está abierto, lo trae al frente</span>
       <button id="cambiar">Cambiar</button>
     </footer>
   </div>

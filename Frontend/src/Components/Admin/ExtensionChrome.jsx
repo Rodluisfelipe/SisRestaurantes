@@ -9,7 +9,7 @@
  */
 import React, { useState } from 'react';
 import {
-  FaChrome, FaDownload, FaCheck, FaCopy, FaKeyboard, FaBolt, FaWindowRestore,
+  FaChrome, FaDownload, FaCheck, FaCopy, FaKeyboard, FaBell, FaWindowRestore,
 } from 'react-icons/fa';
 import { useBusinessConfig } from '../../Context/BusinessContext';
 
@@ -52,14 +52,19 @@ export default function ExtensionChrome() {
           <div className="min-w-0">
             <h2 className="text-base font-bold text-slate-800">Extensión de Chrome</h2>
             <p className="text-[13px] text-slate-500 mt-1 leading-relaxed">
-              Salta entre el panel, los chats de WhatsApp y el punto de venta
-              desde cualquier pestaña, sin recargar nada.
+              Te avisa de cada pedido nuevo aunque tengas MenuBy cerrado, y te
+              deja saltar entre el panel, los chats y el punto de venta.
             </p>
           </div>
         </div>
 
         <ul className="mt-5 space-y-3">
           {[
+            {
+              Icono: FaBell,
+              t: 'Avisa de un pedido nuevo con MenuBy cerrado',
+              d: 'El aviso se queda en pantalla hasta que alguien lo mire, y al tocarlo abre los pedidos. También lleva el contador de pendientes en el ícono de Chrome.',
+            },
             {
               Icono: FaWindowRestore,
               t: 'No recarga lo que ya tienes abierto',
@@ -68,12 +73,7 @@ export default function ExtensionChrome() {
             {
               Icono: FaKeyboard,
               t: 'Atajos Alt+1, Alt+2 y Alt+3',
-              d: 'Funcionan en cualquier pestaña de Chrome, esté MenuBy al frente o no.',
-            },
-            {
-              Icono: FaBolt,
-              t: 'Sin configurar nada',
-              d: 'Detecta tu negocio de la pestaña que tengas abierta.',
+              d: 'Funcionan en cualquier pestaña de Chrome, esté MenuBy al frente o no. Y no hay nada que configurar: reconoce tu negocio de la sesión que ya tienes abierta.',
             },
           ].map(({ Icono, t, d }) => (
             <li key={t} className="flex gap-3">
@@ -160,8 +160,21 @@ export default function ExtensionChrome() {
 
       {/* Lo que hay que saber antes de repartirla */}
       <div className="bg-amber-50/70 rounded-2xl border border-amber-200/70 p-5">
-        <p className="text-[13px] font-bold text-amber-800">Dos cosas que conviene saber</p>
+        <p className="text-[13px] font-bold text-amber-800">Lo que conviene saber</p>
         <ul className="mt-2 space-y-1.5 text-[12.5px] text-amber-700 leading-relaxed">
+          <li>
+            <strong>Para avisarte necesita que abras MenuBy de vez en cuando.</strong>{' '}
+            Usa tu sesión, que dura 24 horas. Si pasas más de un día sin entrar, deja
+            de avisar hasta que vuelvas — y te lo dice, no te muestra un cero falso.
+          </li>
+          <li>
+            <strong>Chrome tiene que estar abierto</strong>, aunque sea sin ninguna
+            pestaña de MenuBy. Si cierras el navegador por completo, nadie vigila.
+          </li>
+          <li>
+            <strong>El aviso no suena</strong>, es visual. El sonido llega en una
+            versión siguiente.
+          </li>
           <li>
             <strong>No se actualiza sola.</strong> Cuando saquemos una versión nueva
             hay que descargarla y repetir los pasos. Eso se arregla el día que se
@@ -175,9 +188,9 @@ export default function ExtensionChrome() {
       </div>
 
       <p className="text-[11.5px] text-slate-400 leading-relaxed">
-        La extensión solo pide dos permisos: guardar el nombre de tu negocio y ver
-        qué pestañas de MenuBy tienes abiertas, para traer la correcta al frente.
-        No lee otras páginas ni envía información a ningún lado.
+        La extensión usa tu propia sesión de MenuBy para consultar tus pedidos y
+        mensajes, contra la misma API que usa este panel. No toca ninguna otra
+        página, no envía nada a servidores de terceros y no rastrea nada.
       </p>
     </div>
   );
