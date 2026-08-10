@@ -303,6 +303,15 @@ function Burbuja({ mensaje: m, pegado, businessId }) {
           </p>
         )}
         {texto && <p className="text-[14.5px] leading-[1.45] whitespace-pre-wrap break-words">{texto}</p>}
+
+        {/* Lo que dijo la nota de voz. Se marca como transcripción y no se
+            pinta como si el cliente lo hubiera escrito: la máquina se equivoca,
+            y quien atiende tiene que saber que puede estar leyendo un error. */}
+        {m.transcripcion && (
+          <p className="text-[13.5px] italic leading-snug text-slate-500 mt-1.5 pl-2 border-l-2 border-slate-300">
+            {m.transcripcion}
+          </p>
+        )}
         {largo && (
           <button
             onClick={() => setAbierto((v) => !v)}

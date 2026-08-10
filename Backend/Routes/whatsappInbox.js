@@ -124,6 +124,8 @@ async function procesarCambio(value) {
         contactPhone: guardado.contactPhone,
         direction: 'in',
       });
+      // Una nota de voz se pasa a texto antes de que el agente la lea.
+      await quizaTranscribir(account, guardado);
       await quizaContesteElAgente(account, guardado);
     }
   }
@@ -177,9 +179,20 @@ const TIPOS_CON_MEDIO = ['image', 'audio', 'video', 'document', 'sticker'];
  * descubrió mandando un WhatsApp de verdad.
  */
 function interpretarMensaje(msg) {
-  const tipo = WhatsAppMessage.schema.path('type').enumValues.includes(msg?.type)
-    ? msg.type
-    : 'unsupported';
+  const conocido = WhatsAppMessage.schema.path('type').enumValues.includes(msg?.type);
+  const tipo = conocido ? msg.type : 'unsupported';
+
+  /* Cuando llega algo que no manejamos hay que dejar constancia de QUÉ era.
+     Sin esto, un mensaje que no aparece en la bandeja es un misterio sin
+     forma de investigarlo: en la base queda 'unsupported' y nada más. */
+  if (!conocido && msg?.type) {
+    logger.warn('[WhatsApp] Llegó un tipo de mensaje que no manejamos', {
+      tipo: msg.type,
+      campos: Object.keys(msg).join(','),
+      // El contenido del propio campo, recortado: es lo que dice qué hacer con él.
+      muestra: JSON.stringify(msg[msg.type] || {}).slice(0, 300),
+    });
+  }
 
   let cuerpo = '';
   if (msg?.type === 'text') cuerpo = msg.text?.body || '';
@@ -191,6 +204,10 @@ function interpretarMensaje(msg) {
   } else if (msg?.type === 'location') {
     const l = msg.location || {};
     cuerpo = [l.name, l.address].filter(Boolean).join(' — ');
+  } else if (msg?.type === 'reaction') {
+    /* Una reacción es un emoji sobre un mensaje anterior, no un mensaje con
+       contenido. Sin esto quedaba una burbuja vacía en la conversación. */
+    cuerpo = msg.reaction?.emoji ? `Reaccionó ${msg.reaction.emoji}` : 'Quitó su reacción';
   }
 
   const medio = TIPOS_CON_MEDIO.includes(msg?.type) ? msg[msg.type] : null;
@@ -237,11 +254,55 @@ async function guardarEntrante(account, msg, contactName) {
  * cliente y los avisos por socket. Duplicar todo eso es como aparecen las
  * diferencias entre canales que ya arreglamos.
  */
+/**
+ * Pasa a texto la nota de voz que acaba de llegar.
+ *
+ * En Colombia mucha gente pide por audio. Hasta ahora el agente los ignoraba
+ * en silencio: el cliente hablaba y no le contestaba nadie.
+ *
+ * La transcripción se guarda aparte del texto y se muta el mensaje en memoria
+ * para que el agente, que viene justo después, la lea como si el cliente la
+ * hubiera escrito.
+ *
+ * Nunca lanza: que falle transcribir no puede impedir que el audio quede en la
+ * bandeja para que lo escuche una persona.
+ */
+async function quizaTranscribir(account, mensaje) {
+  if (mensaje.type !== 'audio' || !mensaje.mediaId) return;
+
+  try {
+    // Solo si el agente va a usarla: bajar y transcribir cuesta, y sin agente
+    // encendido nadie leería el resultado.
+    if (!account.agente?.activo) return;
+    if (!(await businessHasFeature(account.businessId, 'whatsappAgent'))) return;
+
+    const archivo = await whatsappCloud.obtenerMedio(account, mensaje.mediaId);
+    const { transcribir } = require('../services/whatsappAgent/transcribir');
+    const texto = await transcribir({ buffer: archivo.buffer, mimeType: archivo.mimeType });
+    if (!texto) return;
+
+    await WhatsAppMessage.updateOne({ _id: mensaje._id }, { $set: { transcripcion: texto } });
+    mensaje.transcripcion = texto;
+
+    avisarAlPanel(account.businessId, 'whatsapp:mensaje', {
+      contactPhone: mensaje.contactPhone,
+      direction: 'in',
+    });
+  } catch (e) {
+    logger.warn('[WhatsApp] No se pudo transcribir la nota de voz', {
+      error: e.message, businessId: String(account.businessId),
+    });
+  }
+}
+
 async function quizaContesteElAgente(account, mensaje) {
   try {
     if (!account.agente?.activo) return;
     if (!(await businessHasFeature(account.businessId, 'whatsappAgent'))) return;
-    if (!mensaje.text) return;   // por ahora no interpreta audios ni fotos
+    /* Lo dicho en una nota de voz vale igual que lo escrito. Las fotos y los
+       documentos siguen sin interpretarse. */
+    const dicho = mensaje.text || mensaje.transcripcion;
+    if (!dicho) return;
 
     const BusinessConfig = require('../Models/BusinessConfig');
     const negocio = await BusinessConfig.findById(account.businessId)
@@ -253,7 +314,7 @@ async function quizaContesteElAgente(account, mensaje) {
       negocio: negocio?.name || negocio?.businessName || 'nuestro restaurante',
       // Con el slug el agente puede mandar al menú en vez de teclear el pedido.
       slug: negocio?.slug,
-      texto: mensaje.text,
+      texto: dicho,
       contactPhone: mensaje.contactPhone,
       reglas: account.agente?.reglas || '',
       crearOrden: (datos) => crearPedidoPorLaApi(account.businessId, datos),
@@ -786,7 +847,9 @@ router.get('/chats', authMiddleware, requiereComplemento, asyncHandler(async (re
       $group: {
         _id: '$contactPhone',
         contactName: { $first: '$contactName' },
-        lastText: { $first: '$text' },
+        /* Si es una nota de voz, en la lista se lee lo que dijo. Sin esto la
+           fila salía vacía y había que abrir el chat para saber de qué iba. */
+        lastText: { $first: { $ifNull: [{ $cond: [{ $eq: ['$text', ''] }, null, '$text'] }, '$transcripcion'] } },
         lastType: { $first: '$type' },
         lastDirection: { $first: '$direction' },
         lastAt: { $first: '$sentAt' },

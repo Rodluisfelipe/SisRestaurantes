@@ -29,7 +29,7 @@ const whatsAppMessageSchema = new mongoose.Schema({
 
   type: {
     type: String,
-    enum: ['text', 'image', 'audio', 'video', 'document', 'sticker', 'location', 'button', 'interactive', 'unsupported'],
+    enum: ['text', 'image', 'audio', 'video', 'document', 'sticker', 'location', 'button', 'interactive', 'reaction', 'unsupported'],
     default: 'text'
   },
   text: { type: String, default: '', maxlength: 8000 },
@@ -37,6 +37,12 @@ const whatsAppMessageSchema = new mongoose.Schema({
      exige el token y los medios expiran, así que se resuelve bajo demanda. */
   mediaId: { type: String, default: null },
   mediaMimeType: { type: String, default: '' },
+
+  /* Lo que decía la nota de voz. Va en su propio campo y no en `text`: `text`
+     es lo que el cliente escribió, y mezclarlo con lo que una máquina creyó
+     entender haría imposible saber cuál es cuál cuando la transcripción se
+     equivoque —que se equivoca. */
+  transcripcion: { type: String, default: '' },
 
   /* Estado de entrega que Meta reporta por webhook para los salientes. */
   status: {
