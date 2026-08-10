@@ -185,6 +185,11 @@ const PIDE_MAS = /\b(otra?|otro|mas|más|tambien|también|agrega|agregame|agrég
    la palabra entera ("encargado"), y un límite de palabra ahí lo impide. */
 const PIDE_PERSONA = /\b(persona|humano|asesor|agente|encargad|due[ñn]|alguien|operador|atiend|hablar con|con un[ao]? )/i;
 
+/* Cortesía: "gracias", "ok", "listo", "perfecto". No piden nada y no cambian
+   el pedido, pero ignorarlas y repetir la última pregunta es lo que hace que
+   una conversación se sienta con una máquina. */
+const CORTESIA = /^\s*(gracias|muchas gracias|mil gracias|ok+|oka+y?|vale|listo|perfecto|de una|bueno|genial|excelente|👍|🙏|😊|😁|❤️)\s*[!.]*\s*$/i;
+
 /* Saludos. No son una consulta ni una petición: son el principio. */
 const SALUDO = /^\s*(hola+|holi|buenas?|buen[oa]s? (dias|días|tardes|noches)|hey|ola|q hubo|quiubo|qué más|que mas|saludos)\s*[!.¡]*\s*$/i;
 
@@ -230,12 +235,14 @@ async function aplicar(sesion, catalogo, dicho, textoDelCliente) {
       continue;
     }
 
-    if (r.motivo === 'no_existe') avisos.push(`No tenemos "${p.nombre}".`);
+    /* Dar una mala noticia también se hace con tono. "No tenemos X" suena a
+       formulario; "uy, no manejamos X" suena a alguien que lo siente. */
+    if (r.motivo === 'no_existe') avisos.push(`Uy, no manejamos "${p.nombre}" 😕`);
     else if (r.motivo === 'ambiguo') avisos.push(`¿Cuál de estos querías? ${r.opciones.join(', ')}`);
     else if (r.motivo === 'sin_stock') {
       avisos.push(r.disponible > 0
-        ? `De ${r.producto} solo me quedan ${r.disponible}.`
-        : `Se nos acabó ${r.producto}.`);
+        ? `De ${r.producto} me quedan solo ${r.disponible}, ¿te sirven?`
+        : `Uy, se nos acabó ${r.producto} 😕`);
     }
   }
 
@@ -362,6 +369,16 @@ async function resolver({ sesion, catalogo, dicho, enlace, negocio, estadoPedido
      pedir?" sin un buenas siquiera. */
   if (soloSaludo && !tienePedido) {
     return { respuesta: `${saludar({ sesion, negocio, pidioMenu: false, turno })}\n\n${preguntar('productos', turno)}` };
+  }
+
+  /* Un "gracias" o un "ok" se contestan y ya. Antes caían en la rueda de
+     siempre y el cliente recibía otra vez la misma pregunta que acababa de
+     responder —o peor, se escalaban a una persona por ser "otra pregunta". */
+  if (CORTESIA.test(mensaje) && !dicho.productos.length) {
+    const cierre = falta.length
+      ? `${['Con gusto 😊', '¡A la orden!', 'Listo 👍'][turno % 3]} ${preguntar(falta[0], turno)}`
+      : ['¡Con gusto! 😊', '¡A la orden! Cualquier cosa me escribes.', 'Listo 👍 Acá estoy.'][turno % 3];
+    return { respuesta: cierre };
   }
 
   if (dicho.preguntaCarta) {

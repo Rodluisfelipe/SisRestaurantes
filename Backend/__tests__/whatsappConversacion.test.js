@@ -107,7 +107,10 @@ describe('el pedido está siempre a la vista', () => {
   it('lo que no se pudo agregar se dice, no se calla', async () => {
     const s = nuevaSesion();
     const r = await turno(s, { productos: [{ nombre: 'sushi', cantidad: 1 }] });
-    expect(r.respuesta).toContain('No tenemos "sushi"');
+    /* Se comprueba el fondo y no la frase: que nombre lo que no hay y que no
+       lo meta al pedido. El tono se cambió una vez y esta prueba se rompió
+       sin que nada hubiera dejado de funcionar. */
+    expect(r.respuesta).toContain('sushi');
     expect(s.items).toHaveLength(0);
   });
 
@@ -122,7 +125,8 @@ describe('el pedido está siempre a la vista', () => {
   it('no se vende más de lo que hay', async () => {
     const s = nuevaSesion();
     const r = await turno(s, { productos: [{ nombre: 'papas', cantidad: 10 }] });
-    expect(r.respuesta).toContain('solo me quedan 3');
+    // Lo que importa: que diga cuántas hay de verdad y no venda las diez.
+    expect(r.respuesta).toMatch(/\b3\b/);
     expect(s.items).toHaveLength(0);
   });
 });

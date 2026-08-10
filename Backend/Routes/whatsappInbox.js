@@ -387,7 +387,19 @@ async function quizaContesteElAgente(account, mensaje) {
     });
 
     if (respuesta) {
-      await whatsappCloud.sendText({ account, to: mensaje.contactPhone, text: respuesta });
+      /* No se manda de golpe: una respuesta instantánea y en un solo bloque es
+         lo que más delata que no hay nadie del otro lado. Se escribe con una
+         pausa proporcional al largo, y el acuse va aparte de la pregunta,
+         como escribe cualquiera en WhatsApp. */
+      const { enviarComoPersona } = require('../services/whatsappAgent/humanizar');
+      await enviarComoPersona({
+        respuesta,
+        enviar: (texto) => whatsappCloud.sendText({ account, to: mensaje.contactPhone, text: texto }),
+        // Los puntitos se caen al llegar un mensaje: hay que repetirlos.
+        escribiendo: () => (mensaje.wamid
+          ? whatsappCloud.markAsRead({ account, wamid: mensaje.wamid, escribiendo: true })
+          : Promise.resolve()),
+      });
     }
   } catch (e) {
     /* Sin cupo no es un error: es el tope que se le vendió. El mensaje ya está
