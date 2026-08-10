@@ -12,7 +12,7 @@ import {
   FaShoppingBag, FaStore, FaTools, FaCog, FaMoneyBillWave, FaStar, FaGift,
   FaQuestionCircle, FaExternalLinkAlt, FaChartBar, FaPrint, FaCashRegister,
   FaCalendarAlt, FaShareAlt, FaCodeBranch, FaLink, FaCalculator, FaBoxOpen,
-  FaChevronLeft
+  FaChevronLeft, FaChrome
 } from 'react-icons/fa';
 
 const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, whatsappSinLeer, subscriptionData, onboarding, userRole, colapsado = false, onAlternar }) => {
@@ -115,6 +115,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       label: 'Herramientas',
       items: [
         { id: 'tools', label: 'Calculadoras', Icon: FaCalculator, badge: null },
+        { id: 'extension', label: 'Extensión Chrome', Icon: FaChrome, badge: null },
       ]
     },
     {

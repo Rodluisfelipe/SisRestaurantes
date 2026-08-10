@@ -27,6 +27,7 @@ const TAB_CONFIG = {
   'payment-config':   { title: 'Configuración de Pagos',  desc: 'Configura métodos de pago y modo de pedidos' },
   'reviews':          { title: 'Reseñas y Calificaciones', desc: 'Gestiona las reseñas de tus clientes' },
   'popups':           { title: 'Anuncios del menú',        desc: 'Popups para promocionar productos y ver sus estadísticas' },
+  'extension':        { title: 'Extensión de Chrome',      desc: 'Salta entre el panel, los chats y el punto de venta' },
 };
 
 const HOTEL_OVERRIDES = {

@@ -16,6 +16,26 @@ Un enlace normal recarga la página. Esta extensión, en cambio:
   aunque MenuBy no esté al frente. Una página web solo escucha el teclado
   mientras está activa; una extensión, siempre.
 
+## Al cambiar algo acá, regenera el zip
+
+El panel la reparte desde **Herramientas → Extensión Chrome**, y ese botón
+descarga `Frontend/public/menuby-extension.zip`. Ese archivo **no se genera
+solo**: si tocas algo de esta carpeta y no lo regeneras, los restaurantes se
+siguen bajando la versión vieja.
+
+```powershell
+# Windows
+$t = "$env:TEMP\menuby-extension"; Remove-Item -Recurse -Force $t -EA 0
+New-Item -ItemType Directory -Force $t | Out-Null
+Copy-Item Extension\* $t -Recurse -Exclude README.md
+Compress-Archive -Path $t -DestinationPath Frontend\public\menuby-extension.zip -Force
+```
+
+```bash
+# Linux / macOS
+cd Extension && zip -r ../Frontend/public/menuby-extension.zip . -x README.md && cd ..
+```
+
 ## Instalar
 
 No está en la Chrome Web Store, así que se carga a mano. Toma un minuto y no

@@ -63,6 +63,7 @@ const Marketplace = lazy(() => import("../Components/Admin/Marketplace"));
 const SupplierOrders = lazy(() => import("../Components/Admin/SupplierOrders"));
 const WhatsAppCampaign = lazy(() => import("../Components/Admin/WhatsAppCampaign"));
 const ToolsPanel = lazy(() => import("../Components/Admin/ToolsPanel"));
+const ExtensionChrome = lazy(() => import("../Components/Admin/ExtensionChrome"));
 const BranchManager = lazy(() => import("../Components/Admin/BranchManager"));
 const LinkPageSettings = lazy(() => import("../Components/Admin/LinkPageSettings"));
 
@@ -705,6 +706,13 @@ function Admin() {
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Herramientas" onGoBack={() => setActiveTab('dashboard')}>
                       <ToolsPanel />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'extension' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Extensión Chrome" onGoBack={() => setActiveTab('dashboard')}>
+                      <ExtensionChrome />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}
