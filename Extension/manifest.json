@@ -7,8 +7,7 @@
     "16": "iconos/favicon-16x16.png",
     "32": "iconos/favicon-32x32.png",
     "48": "iconos/favicon-48x48.png",
-    "96": "iconos/favicon-96x96.png",
-    "192": "iconos/favicon-192x192.png"
+    "128": "iconos/favicon-128x128.png"
   },
   "action": {
     "default_popup": "popup.html",

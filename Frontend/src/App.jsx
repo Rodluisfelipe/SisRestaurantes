@@ -37,6 +37,7 @@ const LandingContact = lazy(() => import("./Pages/Landing/Contact"));
 const LandingPricing = lazy(() => import("./Pages/Landing/Pricing"));
 const LegalPrivacy = lazy(() => import("./Pages/Landing/Privacy"));
 const LegalTerms = lazy(() => import("./Pages/Landing/Terms"));
+const PrivacidadExtension = lazy(() => import("./Pages/Landing/PrivacidadExtension"));
 const WhatsAppConectado = lazy(() => import("./Pages/Landing/WhatsAppConectado"));
 const BlogIndex = lazy(() => import("./Pages/Blog/BlogIndex"));
 const BlogPost = lazy(() => import("./Pages/Blog/BlogPost"));
@@ -204,6 +205,8 @@ function App() {
           <Route path="/privacy" element={<LegalPrivacy />} />
           <Route path="/terminos" element={<LegalTerms />} />
           <Route path="/terms" element={<LegalTerms />} />
+          {/* Google la exige como URL publica para publicar la extension */}
+          <Route path="/extension/privacidad" element={<PrivacidadExtension />} />
           {/* Niche SEO landing pages — explicit routes to avoid conflicts with /:businessId */}
           <Route path="/menu-digital-restaurante" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><NichePage /></Suspense>} />
           <Route path="/menu-digital-bar" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><NichePage /></Suspense>} />

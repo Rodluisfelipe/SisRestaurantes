@@ -52,25 +52,23 @@ mostrar un cero engañoso.
 
 La sesión no sale de la extensión: se usa contra la misma API que usa el panel.
 
-## Al cambiar algo acá, regenera el zip
-
-El panel la reparte desde **Herramientas → Extensión Chrome**, y ese botón
-descarga `Frontend/public/menuby-extension.zip`. Ese archivo **no se genera
-solo**: si tocas algo de esta carpeta y no lo regeneras, los restaurantes se
-siguen bajando la versión vieja.
-
-```powershell
-# Windows
-$t = "$env:TEMP\menuby-extension"; Remove-Item -Recurse -Force $t -EA 0
-New-Item -ItemType Directory -Force $t | Out-Null
-Copy-Item Extension\* $t -Recurse -Exclude README.md
-Compress-Archive -Path $t -DestinationPath Frontend\public\menuby-extension.zip -Force
-```
+## Al cambiar algo acá, regenera los zips
 
 ```bash
-# Linux / macOS
-cd Extension && zip -r ../Frontend/public/menuby-extension.zip . -x README.md && cd ..
+node scripts/empacar-extension.cjs
 ```
+
+Genera **dos**, y no son intercambiables:
+
+| Archivo | Para qué | Estructura |
+| --- | --- | --- |
+| `Frontend/public/menuby-extension.zip` | El botón de descarga del panel | Dentro de una carpeta `menuby-extension/`, para que quien instala a mano sepa cuál elegir |
+| `Extension/menuby-extension-tienda.zip` | Subir a la Chrome Web Store | `manifest.json` en la raíz — la tienda rechaza el otro |
+
+**No se generan solos.** Si tocas algo de esta carpeta y no los regeneras, los
+restaurantes se siguen bajando la versión vieja sin que nada lo avise.
+
+Para publicar, todo lo que pide el formulario está en [PUBLICAR.md](PUBLICAR.md).
 
 ## Instalar
 
