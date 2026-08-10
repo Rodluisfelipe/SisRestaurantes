@@ -167,18 +167,6 @@ function Admin() {
     });
   }, []);
 
-  /* Saltar entre las tres pantallas del día a día.
-     Con `navigate` y no `window.location.href`: las tres viven en la misma
-     aplicación, así que cambiar de dirección es cuestión de milisegundos.
-     Recargando eran dos o tres segundos de pantalla en blanco cada salto —y
-     volvía a pedir el negocio, la sesión y los productos que ya tenía. */
-  const abrirPanel = useCallback((panel) => {
-    const negocio = businessConfig?.slug || businessConfig?._id;
-    if (panel.id === 'pos') return navigate(`/${negocio}/pos`);
-    if (panel.id === 'whatsapp') return navigate(`/${negocio}/whatsapp`);
-    setActiveTab('dashboard');
-  }, [businessConfig?.slug, businessConfig?._id, setActiveTab, navigate]);
-
   // Limpiar params de URL después de leerlos (no mostrar ?tab=... en la barra)
   useEffect(() => {
     if (searchParams.has('tab')) {
@@ -367,13 +355,7 @@ function Admin() {
             animate={{ opacity: 1, y: 0 }}
             className="hidden lg:block bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40"
           >
-            <AdminHeader
-              activeTab={activeTab}
-              onAbrirPanel={abrirPanel}
-              whatsappSinLeer={whatsappSinLeer}
-              posDisponible={!!businessConfig?.features?.posBetaEnabled}
-              superAdmin={isSuperAdminMode}
-            />
+            <AdminHeader activeTab={activeTab} />
           </motion.div>
 
           {/* Audio para notificaciones */}

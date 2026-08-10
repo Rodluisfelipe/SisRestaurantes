@@ -3,7 +3,6 @@
  * Elimina los 18+ líneas repetidas de {activeTab === 'x' && 'Title'}.
  */
 import { useBusinessConfig } from '../../Context/BusinessContext';
-import PanelesRapidos from './PanelesRapidos';
 
 const TAB_CONFIG = {
   'dashboard':        { title: 'Panel Principal',         desc: 'Acceso rápido a todas las funciones' },
@@ -45,7 +44,7 @@ const SERVICE_OVERRIDES = {
   'toppings':         { title: 'Gestión de Opciones',     desc: 'Configura variantes y opciones' },
 };
 
-export default function AdminHeader({ activeTab, onAbrirPanel, whatsappSinLeer = 0, posDisponible = true, superAdmin = false }) {
+export default function AdminHeader({ activeTab }) {
   const { businessConfig } = useBusinessConfig();
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const isHotel = businessConfig?.businessType === 'hotel';
@@ -55,24 +54,11 @@ export default function AdminHeader({ activeTab, onAbrirPanel, whatsappSinLeer =
 
   return (
     <div className="hidden md:block bg-white border-b border-slate-200 sticky top-0 z-40">
-      <div className="px-4 md:px-6 py-2 mt-12 lg:mt-0 flex items-center justify-between gap-4">
-        <h1 className="text-sm font-semibold text-slate-700 truncate min-w-0">
+      <div className="px-4 md:px-6 py-2 mt-12 lg:mt-0 flex items-center justify-between">
+        <h1 className="text-sm font-semibold text-slate-700 truncate">
           {config.title}
-          <span className="ml-2 text-xs font-normal text-slate-400 hidden xl:inline">{config.desc}</span>
+          <span className="ml-2 text-xs font-normal text-slate-400">{config.desc}</span>
         </h1>
-
-        {/* Las tres pantallas del día a día, siempre en el mismo sitio y en las
-            tres. Cambiar de una a otra era abrir el lateral y buscar la
-            sección — o peor, si venías del POS, salir primero. */}
-        {onAbrirPanel && (
-          <PanelesRapidos
-            activo="dashboard"
-            onIr={onAbrirPanel}
-            whatsappSinLeer={whatsappSinLeer}
-            posDisponible={posDisponible}
-            superAdmin={superAdmin}
-          />
-        )}
       </div>
     </div>
   );

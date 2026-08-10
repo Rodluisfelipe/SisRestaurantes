@@ -460,9 +460,6 @@ export default function POS() {
         onCloseCash={() => setShowCashClose(true)}
         onNewOrder={startNewOrder}
         onExit={() => navigate(`/${businessId}/admin`)}
-        onIrAPanel={(panel) => navigate(
-          panel.id === 'dashboard' ? `/${businessId}/admin` : `/${businessId}/${panel.id}`
-        )}
         offline={offline}
       />
 

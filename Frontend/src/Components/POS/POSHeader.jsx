@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import AI from '../Admin/AdminIcons';
-import PanelesRapidos from '../Admin/PanelesRapidos';
 
-export default function POSHeader({ businessConfig, cashRegister, user, pendingOrdersCount, showOrderBanner, newOrderNotification, onDismissBanner, onGoToOrders, onOpenMovements, onCloseCash, onNewOrder, onExit, offline, onIrAPanel }) {
+export default function POSHeader({ businessConfig, cashRegister, user, pendingOrdersCount, showOrderBanner, newOrderNotification, onDismissBanner, onGoToOrders, onOpenMovements, onCloseCash, onNewOrder, onExit, offline }) {
   const [time, setTime] = useState(new Date());
   const [showMenu, setShowMenu] = useState(false);
 
@@ -32,15 +31,6 @@ export default function POSHeader({ businessConfig, cashRegister, user, pendingO
             <p className="text-white text-sm font-bold leading-tight">{businessConfig?.businessName || 'POS'}</p>
             <p className="text-slate-400 text-xs font-medium">Punto de Venta</p>
           </div>
-
-          {/* Saltar al panel o a los chats sin salir primero. Antes, para ir de
-              acá a WhatsApp había que salir al panel, esperar a que cargue y
-              buscar la sección en el menú lateral. */}
-          {onIrAPanel && (
-            <div className="ml-1 lg:ml-3">
-              <PanelesRapidos activo="pos" onIr={onIrAPanel} tono="oscuro" />
-            </div>
-          )}
         </div>
 
         {/* Center: clock — hidden on very small screens */}

@@ -1,16 +1,17 @@
 /**
  * Los chats de WhatsApp como pantalla propia, igual que el POS.
  *
- * Antes eran una pestaña dentro del panel, y eso obligaba a elegir: o los
- * chats o cualquier otra cosa. Con su propia dirección puede quedarse abierta
- * en una pestaña del navegador toda la jornada, sin que ir al POS o a los
- * pedidos la cierre.
+ * Se ve como WhatsApp Web a propósito: quien atiende un restaurante ya sabe
+ * usar WhatsApp Web: dónde está la lista, dónde el buscador, cómo se lee un
+ * chat. Copiar esa disposición ahorra explicar la herramienta.
+ *
+ * La página no pone cabecera propia. La bandeja ya trae la suya —el número del
+ * negocio, buscar, actualizar— y encimarle otra barra dejaba dos franjas
+ * apiladas comiéndose la conversación.
  */
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { FaWhatsapp, FaSignOutAlt } from 'react-icons/fa';
 import { useBusinessConfig } from '../Context/BusinessContext';
-import PanelesRapidos from '../Components/Admin/PanelesRapidos';
 import AdminSectionErrorBoundary from '../Components/Admin/AdminSectionErrorBoundary';
 import WhatsAppInbox from '../Components/Admin/WhatsAppInbox';
 import useWhatsAppUnread from '../hooks/useWhatsAppUnread';
@@ -21,64 +22,30 @@ export default function WhatsAppPanel() {
   const { businessConfig } = useBusinessConfig();
   const sinLeer = useWhatsAppUnread(businessConfig?._id);
 
-  const irA = (panel) => {
-    if (panel.id === 'pos') return navigate(`/${businessId}/pos`);
-    if (panel.id === 'dashboard') return navigate(`/${businessId}/admin`);
-  };
+  const volver = () => navigate(`/${businessId}/admin`);
 
   return (
-    <div className="h-dvh flex flex-col bg-slate-100 overflow-hidden">
-      <header className="h-14 shrink-0 bg-slate-900 flex items-center gap-3 px-3 lg:px-4">
-        {businessConfig?.logo ? (
-          <img src={businessConfig.logo} alt="" className="w-8 h-8 rounded-lg object-cover shrink-0" />
-        ) : (
-          <span className="w-8 h-8 rounded-lg bg-emerald-500 grid place-items-center text-white shrink-0">
-            <FaWhatsapp />
-          </span>
-        )}
-        <div className="hidden sm:block min-w-0">
-          <p className="text-white text-sm font-bold leading-tight truncate">
-            {businessConfig?.businessName || 'WhatsApp'}
-          </p>
-          <p className="text-slate-400 text-xs font-medium">Chats de WhatsApp</p>
-        </div>
-
-        <div className="ml-1 lg:ml-3">
-          <PanelesRapidos
-            activo="whatsapp"
-            onIr={irA}
-            tono="oscuro"
-            posDisponible={!!businessConfig?.features?.posBetaEnabled}
-          />
-        </div>
-
-        <button
-          onClick={() => navigate(`/${businessId}/admin`)}
-          title="Volver al panel"
-          className="ml-auto w-9 h-9 shrink-0 rounded-lg bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 grid place-items-center transition-colors"
-        >
-          <FaSignOutAlt className="text-sm" />
-        </button>
-      </header>
-
-      {/* `pleno`: la bandeja toma el alto del contenedor en vez de calcularlo
-          descontando el armazón del panel, que acá no existe. */}
-      <div className="flex-1 min-h-0 p-2 sm:p-3">
-        <AdminSectionErrorBoundary
-          sectionName="Chats WhatsApp"
-          onGoBack={() => navigate(`/${businessId}/admin`)}
-        >
-          <WhatsAppInbox pleno />
+    /* La franja verde de arriba y el fondo gris son de WhatsApp Web: la
+       aplicación queda flotando encima, no pegada a los bordes. */
+    <div className="h-dvh bg-[#dadbd3] overflow-hidden">
+      <div className="absolute inset-x-0 top-0 h-32 bg-[#00a884]" />
+      <div className="relative h-full max-w-[1600px] mx-auto lg:py-5 lg:px-6">
+        <AdminSectionErrorBoundary sectionName="Chats WhatsApp" onGoBack={volver}>
+          <WhatsAppInbox pleno onSalir={volver} />
         </AdminSectionErrorBoundary>
       </div>
 
-      {/* El contador vive en el título de la pestaña: con la ventana de fondo,
-          es la única señal de que entró un mensaje. */}
       <TituloConContador sinLeer={sinLeer} nombre={businessConfig?.businessName} />
     </div>
   );
 }
 
+/**
+ * El contador en el título de la pestaña.
+ *
+ * Es lo que hace que trabajar con esto en su propia pestaña funcione: con la
+ * ventana de fondo, el título es la única señal de que entró un mensaje.
+ */
 function TituloConContador({ sinLeer, nombre }) {
   React.useEffect(() => {
     const base = nombre ? `WhatsApp · ${nombre}` : 'WhatsApp · MenuBy';
