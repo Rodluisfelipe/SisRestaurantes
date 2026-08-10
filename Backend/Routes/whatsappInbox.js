@@ -171,6 +171,8 @@ function avisarAlPanel(businessId, evento, datos) {
 
 const TIPOS_CON_MEDIO = ['image', 'audio', 'video', 'document', 'sticker'];
 
+const { motivoDeMeta } = require('../utils/motivosWhatsApp');
+
 /**
  * Traduce un mensaje de Meta a los campos que guardamos.
  *
@@ -229,7 +231,7 @@ function interpretarMensaje(msg) {
     /* El motivo que da Meta cuando no entrega el contenido. Guardarlo permite
        decirle a quien atiende por qué no ve nada, en vez de dejar una burbuja
        muda que parece un fallo nuestro. */
-    errorMessage: aTexto(msg?.errors?.[0]?.title || '').slice(0, 300),
+    errorMessage: motivoDeMeta(msg?.errors?.[0]),
     sentAt: msg?.timestamp ? new Date(Number(msg.timestamp) * 1000) : new Date()
   };
 }

@@ -7,6 +7,7 @@
  * mitad de una subida y con un error suyo que no dice qué hacer.
  */
 const { tipoDeArchivo, comprobarArchivo } = require('../services/whatsappCloud');
+const { motivoDeMeta } = require('../utils/motivosWhatsApp');
 
 const KB = 1024;
 const MB = 1024 * 1024;
@@ -62,6 +63,46 @@ describe('lo que Meta no acepta se rechaza antes de subirlo', () => {
      lista de documentos: Meta no admite ninguno de los dos. */
   it.each([['image/gif'], ['image/bmp']])('%s tampoco', (mime) => {
     expect(() => comprobarArchivo(tipoDeArchivo(mime), mime, 1 * KB)).toThrow();
+  });
+});
+
+describe('lo que WhatsApp no entrega, y por qué', () => {
+  /* Este es el mensaje exacto que mandó Meta al recibir un sticker animado,
+     copiado de los registros de producción. Se guarda tal cual porque la
+     conclusión no es obvia: la tabla de tipos soportados SÍ incluye los
+     animados, pero esa tabla es de lo que se puede ENVIAR. Al recibir, la
+     Cloud API no los entrega y no manda ningún identificador de archivo. */
+  const ERROR_STICKER_ANIMADO = {
+    code: 131051,
+    title: 'Message type unknown',
+    message: 'Message type unknown',
+    error_data: { details: 'Message type is currently not supported.' },
+  };
+
+  it('el sticker animado se explica en español, no con un código', () => {
+    expect(motivoDeMeta(ERROR_STICKER_ANIMADO)).toMatch(/stickers animados/i);
+  });
+
+  it('un archivo de más de 100 MB dice que pesa demasiado', () => {
+    expect(motivoDeMeta({ code: 131052, title: 'Media file size too big' })).toMatch(/100 MB/);
+  });
+
+  it('un motivo que no conocemos se muestra igual, en vez de callarlo', () => {
+    const r = motivoDeMeta({ code: 999999, title: 'Otra cosa', error_data: { details: 'El detalle' } });
+    expect(r).toBe('El detalle');
+  });
+
+  it('sin error no se inventa ningún motivo', () => {
+    expect(motivoDeMeta(null)).toBe('');
+    expect(motivoDeMeta(undefined)).toBe('');
+  });
+
+  /* Estos tipos no están en TIPOS_CON_MEDIO, así que un 'unsupported' nunca
+     trae identificador de archivo: no hay nada que descargar, por mucho que se
+     intente. */
+  it('un mensaje sin entregar no cuenta como archivo descargable', () => {
+    expect(tipoDeArchivo('application/octet-stream')).toBe('document');
+    expect(['image', 'audio', 'video', 'document', 'sticker']).not.toContain('unsupported');
   });
 });
 

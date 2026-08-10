@@ -318,10 +318,7 @@ function Burbuja({ mensaje: m, pegado, businessId }) {
              motivo: una burbuja muda parece un fallo nuestro. */
           <p className="text-[13px] italic text-slate-400 flex items-start gap-1.5">
             <FaExclamationTriangle className="mt-0.5 shrink-0 text-[11px]" />
-            <span>
-              WhatsApp no entregó este mensaje
-              {m.errorMessage ? <span className="not-italic"> — {m.errorMessage}</span> : null}
-            </span>
+            <span>{m.errorMessage || 'WhatsApp no entregó este mensaje'}</span>
           </p>
         ) : Icono && (
           <p className={`text-[11.5px] mb-1 flex items-center gap-1.5 font-semibold ${mio ? 'text-emerald-700' : 'text-slate-400'}`}>
