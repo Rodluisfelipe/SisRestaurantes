@@ -198,7 +198,10 @@ function Adjunto({ mensaje: m, businessId }) {
         setUrl(creada);
         setEstado('listo');
       })
-      .catch(() => { if (vivo) setEstado('error'); });
+      .catch((e) => {
+        if (!vivo) return;
+        setEstado(e?.response?.status === 401 ? 'caducado' : 'error');
+      });
     return () => { vivo = false; };
   }, [estado, m.mediaId, businessId]);
 
@@ -212,6 +215,17 @@ function Adjunto({ mensaje: m, businessId }) {
   }, []);
 
   const Icono = ICONO_TIPO[m.type] || FaFileAlt;
+
+  if (estado === 'caducado') {
+    /* No es el archivo: es la sesión de WhatsApp. Se distingue porque mandar a
+       buscar un archivo perdido, cuando lo que hay es un token vencido, es
+       perder la tarde en el sitio equivocado. */
+    return (
+      <p className="text-[12.5px] text-amber-700 flex items-center gap-2 py-1">
+        <FaExclamationTriangle /> La sesión de WhatsApp caducó
+      </p>
+    );
+  }
 
   if (estado === 'error') {
     return (

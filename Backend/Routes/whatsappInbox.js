@@ -1106,7 +1106,26 @@ router.get('/media/:mediaId', authMiddleware, requiereComplemento, asyncHandler(
     }
     return res.send(archivo.buffer);
   } catch (e) {
-    logger.warn('[WhatsApp] No se pudo bajar un archivo', { error: e.message, mediaId: mensaje.mediaId });
+    logger.warn('[WhatsApp] No se pudo bajar un archivo', {
+      error: e.message, status: e.status, mediaId: mensaje.mediaId,
+    });
+
+    /* Un 401 no es un archivo perdido: es la sesión de WhatsApp caducada, y
+       con ella deja de funcionar TODO —también enviar—. Decir "el archivo ya
+       no está disponible" mandaba a buscar el problema donde no estaba; que
+       fue exactamente lo que pasó. Se marca la cuenta para que el aviso de
+       reconectar salga arriba de la bandeja. */
+    if (e.status === 401) {
+      await WhatsAppAccount.updateOne(
+        { _id: account._id },
+        { $set: { status: 'error', lastError: 'La sesión de WhatsApp caducó. Vuelve a conectar el número con un token permanente.' } }
+      ).catch(() => {});
+      return res.status(401).json({
+        message: 'La sesión de WhatsApp caducó. Vuelve a conectar el número.',
+        code: 'TOKEN_VENCIDO',
+      });
+    }
+
     /* 404 y no 502: pasados 30 días Meta lo borra, y eso no es una avería
        nuestra sino el archivo que ya no existe. */
     return res.status(404).json({ message: 'El archivo ya no está disponible en WhatsApp.' });
