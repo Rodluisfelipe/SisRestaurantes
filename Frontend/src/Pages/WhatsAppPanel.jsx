@@ -31,7 +31,15 @@ export default function WhatsAppPanel() {
       <div className="absolute inset-x-0 top-0 h-32 bg-[#00a884]" />
       <div className="relative h-full max-w-[1600px] mx-auto lg:py-5 lg:px-6">
         <AdminSectionErrorBoundary sectionName="Chats WhatsApp" onGoBack={volver}>
-          <WhatsAppInbox pleno onSalir={volver} />
+          {/* Acá sí es navegación: esta pantalla vive fuera del panel, así que
+              se entra a Clientes con el teléfono ya en la búsqueda. */}
+          <WhatsAppInbox
+            pleno
+            onSalir={volver}
+            onVerPerfil={(telefono) => navigate(
+              `/${businessId}/admin?tab=customers&buscar=${encodeURIComponent(String(telefono || '').replace(/^57/, ''))}`
+            )}
+          />
         </AdminSectionErrorBoundary>
       </div>
 

@@ -154,6 +154,15 @@ function Admin() {
      ni tarjeta: son herramientas de trabajo, no una sección más. */
   const anchoCompleto = activeTab === 'whatsapp-inbox';
 
+  /* Ir de un chat a la ficha del cliente. Se lleva el teléfono ya buscado
+     porque, si no, hay que copiarlo de una pantalla y pegarlo en la otra —y
+     en WhatsApp viene con indicativo, así que ni siquiera coincide al pegarlo. */
+  const [busquedaClientes, setBusquedaClientes] = useState(() => searchParams.get('buscar') || '');
+  const verPerfilDeCliente = useCallback((telefono) => {
+    setBusquedaClientes(String(telefono || '').replace(/^57/, ''));
+    setActiveTab('customers');
+  }, [setActiveTab]);
+
   const [activeCatalogTab, setActiveCatalogTab] = useState('upload');
   const [showWelcome, setShowWelcome] = useState(false);
   const [modoOpOpen, setModoOpOpen] = useState(false);
@@ -173,9 +182,11 @@ function Admin() {
 
   // Limpiar params de URL después de leerlos (no mostrar ?tab=... en la barra)
   useEffect(() => {
-    if (searchParams.has('tab')) {
+    if (searchParams.has('tab') || searchParams.has('buscar')) {
       const newParams = new URLSearchParams(searchParams);
       newParams.delete('tab');
+      // `buscar` ya se leyó al montar; dejarlo en la barra solo ensucia la URL.
+      newParams.delete('buscar');
       setSearchParams(newParams, { replace: true });
     }
   }, []);
@@ -354,13 +365,18 @@ function Admin() {
           {/* Mobile Header — iOS nav bar style */}
           <MobileHeader activeTab={activeTab} setActiveTab={setActiveTab} />
 
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="hidden lg:block bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40"
-          >
-            <AdminHeader activeTab={activeTab} />
-          </motion.div>
+          {/* En las pantallas a ancho completo esta barra iba vacía —no hay
+              título para ellas— y se comía 40px de alto. La sección pone ahí
+              lo suyo. */}
+          {!anchoCompleto && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="hidden lg:block bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40"
+            >
+              <AdminHeader activeTab={activeTab} />
+            </motion.div>
+          )}
 
           {/* Audio para notificaciones */}
           <audio ref={notificationAudioRef} preload="auto">
@@ -372,7 +388,7 @@ function Admin() {
               panel, y con el relleno de siempre quedaba una conversación
               estrecha rodeada de gris. */}
           <div className={anchoCompleto
-            ? 'p-0 h-[calc(100dvh-9rem)] lg:h-[calc(100dvh-2.75rem)] min-h-[520px]'
+            ? 'p-0 h-[calc(100dvh-9rem)] lg:h-dvh min-h-[520px]'
             : 'p-4 sm:p-4 md:p-6 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] lg:pb-6'}
           >
             {/* Banner de nuevo pedido */}
@@ -511,7 +527,7 @@ function Admin() {
                      botón de volver, y acá la bandeja necesita el alto entero. */
                   <div className="h-full">
                     <AdminSectionErrorBoundary sectionName="Chats WhatsApp" onGoBack={() => setActiveTab('dashboard')}>
-                      <WhatsAppInbox />
+                      <WhatsAppInbox onVerPerfil={verPerfilDeCliente} />
                     </AdminSectionErrorBoundary>
                   </div>
                 )}
@@ -532,7 +548,7 @@ function Admin() {
                 {activeTab === 'customers' && (
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Clientes" onGoBack={() => setActiveTab('dashboard')}>
-                      <CustomersManager />
+                      <CustomersManager busquedaInicial={busquedaClientes} />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}

@@ -82,6 +82,31 @@ const FILTROS = [
   { id: 'humano', txt: 'Lo tomó alguien' },
 ];
 
+function Filtros({ chats, filtro, setFiltro }) {
+  return (
+    <div className="flex gap-1.5 overflow-x-auto pb-0.5 min-w-0">
+      {FILTROS.map((f) => (
+        <button
+          key={f.id}
+          onClick={() => setFiltro(f.id)}
+          className={`shrink-0 px-2.5 py-1 rounded-full text-[12px] font-medium transition-colors ${
+            filtro === f.id
+              ? 'bg-[#d9fdd3] text-[#027d69]'
+              : 'bg-[#f0f2f5] text-[#54656f] hover:bg-[#e9edef]'
+          }`}
+        >
+          {f.txt}
+          {f.id !== 'todos' && (
+            <span className="opacity-60">
+              {' '}{chats.filter((c) => COINCIDE[f.id](c)).length}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /* Sin tildes y en minúscula: nadie escribe "Andrés" con tilde en un buscador. */
 const plano = (s) => String(s || '')
   .toLowerCase()
@@ -185,7 +210,7 @@ function Burbuja({ mensaje: m, pegado }) {
   );
 }
 
-export default function WhatsAppInbox({ pleno = false, onSalir }) {
+export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
   /* El negocio se manda explícito, como hace el resto del panel. Confiar solo
      en `req.user.businessId` dejaba la petición sin negocio, el backend
      respondía error, y la pantalla caía en el formulario de conectar como si
@@ -474,8 +499,18 @@ export default function WhatsAppInbox({ pleno = false, onSalir }) {
        y el relleno de 1.5rem. `min-h` evita que en una pantalla corta quede
        una rendija. */
     <div className={`flex flex-col bg-white overflow-hidden h-full min-h-0 ${
-      pleno ? 'shadow-2xl lg:rounded-lg' : 'border-t border-[#e9edef]'
+      pleno ? 'shadow-2xl lg:rounded-lg' : ''
     }`}>
+      {/* La franja de arriba, donde iba el título de la sección. Vacía no
+          servía de nada; los filtros sí, y desde acá cruzan toda la pantalla
+          en vez de apretarse en la columna de la izquierda. */}
+      {!pleno && (
+        <div className="hidden lg:flex items-center gap-3 px-4 h-[42px] bg-white border-b border-[#e9edef] shrink-0">
+          <span className="text-[13px] font-bold text-slate-700 shrink-0">Chats de WhatsApp</span>
+          <span className="w-px h-4 bg-slate-200 shrink-0" />
+          <Filtros chats={chats} filtro={filtro} setFiltro={setFiltro} />
+        </div>
+      )}
       {/* Si Meta rechazó las credenciales, se dice arriba de todo: el negocio
           puede seguir viendo los chats que entran pero no responder ninguno, y
           sin este aviso la única señal sería que nadie contesta. */}
@@ -592,26 +627,9 @@ export default function WhatsAppInbox({ pleno = false, onSalir }) {
                 </button>
               )}
             </div>
-            <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-              {FILTROS.map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setFiltro(f.id)}
-                  className={`shrink-0 px-2.5 py-1 rounded-full text-[12px] font-medium transition-colors ${
-                    filtro === f.id
-                      ? 'bg-[#d9fdd3] text-[#027d69]'
-                      : 'bg-[#f0f2f5] text-[#54656f] hover:bg-[#e9edef]'
-                  }`}
-                >
-                  {f.txt}
-                  {f.id !== 'todos' && (
-                    <span className="opacity-60">
-                      {' '}{chats.filter((c) => COINCIDE[f.id](c)).length}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
+            {/* En el panel los filtros van arriba, cruzando la pantalla; acá
+                solo aparecen a pantalla completa, donde no hay esa franja. */}
+            {pleno && <Filtros chats={chats} filtro={filtro} setFiltro={setFiltro} />}
           </div>
 
           {chats.length === 0 ? (
@@ -879,6 +897,7 @@ export default function WhatsAppInbox({ pleno = false, onSalir }) {
               telefono={chatActivo}
               nombreChat={chatSeleccionado?.contactName}
               onTomarPedido={() => setTomandoPedido(true)}
+              onVerPerfil={onVerPerfil}
             />
           ) : (
             <div className="p-6 text-center text-slate-400 grid place-items-center h-full">
@@ -1057,7 +1076,7 @@ function RespuestasRapidas({ slug, nombre, onElegir }) {
  * sin robarle alto a la conversación, que era el problema de tenerla encima de
  * los mensajes.
  */
-function FichaRail({ ficha, cargando, telefono, nombreChat, onTomarPedido }) {
+function FichaRail({ ficha, cargando, telefono, nombreChat, onTomarPedido, onVerPerfil }) {
   if (cargando) {
     return <div className="p-6 text-center text-slate-300"><FaSpinner className="animate-spin mx-auto" /></div>;
   }
@@ -1082,12 +1101,25 @@ function FichaRail({ ficha, cargando, telefono, nombreChat, onTomarPedido }) {
           </span>
         )}
 
-        <button
-          onClick={onTomarPedido}
-          className="w-full mt-4 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-3 py-2.5 rounded-xl text-[13px] font-bold transition-colors active:scale-[0.98]"
-        >
-          <FaShoppingBag className="text-[11px]" /> Tomar pedido
-        </button>
+        {/* Las dos cosas que se hacen desde acá, una al lado de la otra:
+            tomarle el pedido, o irse a su ficha completa de cliente. */}
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={onTomarPedido}
+            className="flex-1 flex items-center justify-center gap-2 bg-[#00a884] hover:bg-[#029072] text-white px-3 py-2.5 rounded-xl text-[13px] font-bold transition-colors active:scale-[0.98]"
+          >
+            <FaShoppingBag className="text-[11px]" /> Tomar pedido
+          </button>
+          {onVerPerfil && (
+            <button
+              onClick={() => onVerPerfil(telefono)}
+              title="Abrir su ficha en Clientes"
+              className="shrink-0 w-11 grid place-items-center bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-500 rounded-xl transition-colors active:scale-95"
+            >
+              <FaUser className="text-[13px]" />
+            </button>
+          )}
+        </div>
       </div>
 
       {ficha && esConocido && (

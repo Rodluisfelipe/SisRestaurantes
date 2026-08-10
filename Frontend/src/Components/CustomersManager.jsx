@@ -8,14 +8,19 @@ import { getBusinessSlug } from '../utils/getBusinessId';
 import { logSystem } from '../utils/systemLogger';
 import { formatCurrency as fmtCurrency } from '../utils/currency';
 
-const CustomersManager = () => {
+/**
+ * `busquedaInicial` llega desde los chats de WhatsApp: al abrir la ficha de
+ * quien está escribiendo, se entra acá con su teléfono ya buscado en vez de
+ * dejar a alguien copiando el número de una pantalla a la otra.
+ */
+const CustomersManager = ({ busquedaInicial = '' }) => {
   const { businessConfig } = useBusinessConfig();
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const [customers, setCustomers] = useState([]);
   
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({});
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(busquedaInicial);
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('lastOrderDate');
   const [sortOrder, setSortOrder] = useState('desc');
