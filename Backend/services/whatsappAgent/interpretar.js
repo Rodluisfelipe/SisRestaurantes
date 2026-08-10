@@ -24,6 +24,7 @@ const NADA = {
   productos: [], quitar: [], tipo: null, nombre: null, direccion: null,
   confirma: null, quiereMenu: false, quiereHumano: false,
   preguntaEstado: false, preguntaCarta: false, otraPregunta: null,
+  busca: null, preguntaPrecio: null,
 };
 
 function instrucciones(nombresDeProductos) {
@@ -51,6 +52,8 @@ Devuelves SOLO este JSON:
   "quiereHumano": true | false,
   "preguntaEstado": true | false,
   "preguntaCarta": true | false,
+  "busca": "lo que busca sin nombrar un producto exacto" | null,
+  "preguntaPrecio": "producto por el que pregunta el precio" | null,
   "otraPregunta": "lo que preguntó, si no es nada de lo anterior" | null
 }
 
@@ -60,6 +63,8 @@ CÓMO DECIDIR CADA CAMPO:
 - "tipo": solo si lo dice. "a domicilio" → domicilio. "paso por él" → recoger. "acá en la mesa" → mesa.
 - "nombre" y "direccion": si los da, aunque sea en el mismo mensaje y sin etiquetas. "Felipe, Cra 6 # 3 139" → nombre "Felipe", direccion "Cra 6 # 3 139".
 - "confirma": true si está diciendo que sí a algo ("sí", "dale", "correcto", "listo"). false si dice que no. null si no responde sí ni no.
+- "busca": cuando pregunta por algo SIN nombrar un producto de la lista. "¿qué tienen de pollo?" → "pollo". "algo de postre" → "postre". "¿tienen bebidas?" → "bebidas". Va vacío si nombró un producto concreto.
+- "preguntaPrecio": cuando pregunta cuánto vale algo. "¿cuánto vale la doble?" → "doble". "precio de las papas" → "papas". No es un pedido: no lo pongas también en "productos".
 - "quiereMenu": true si pide ver el menú o el link.
 - "preguntaCarta": true si pregunta qué tienen o qué hay, sin pedir el link.
 - "preguntaEstado": true si pregunta por un pedido que ya hizo.

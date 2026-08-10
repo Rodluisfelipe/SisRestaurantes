@@ -67,6 +67,27 @@ function preguntar(campo, turno) {
   return opciones[turno % opciones.length];
 }
 
+/**
+ * Qué trae el plato, recortado.
+ *
+ * Es lo que responde la pregunta que viene siempre después del precio. Se
+ * corta porque hay descripciones de párrafo entero, y una lista de seis
+ * productos con párrafos no la lee nadie en WhatsApp.
+ */
+function detalle(p, largo = 90) {
+  const d = String(p.description || '').replace(/\s+/g, ' ').trim();
+  if (!d) return '';
+  return d.length > largo ? `${d.slice(0, largo).trimEnd()}…` : d;
+}
+
+/** Una lista de productos como la ve el cliente: qué es, qué trae y cuánto. */
+function enLista(productos) {
+  return productos.map((p) => {
+    const que = detalle(p, 60);
+    return `• *${p.name}* — ${pesos(p.price)}${que ? `\n  _${que}_` : ''}`;
+  }).join('\n');
+}
+
 /** Buenos días / buenas tardes / buenas noches, en hora de Colombia. */
 function franjaDelDia() {
   const { COL_OFFSET_MS } = require('../../utils/timezone');
@@ -264,6 +285,42 @@ async function resolver({ sesion, catalogo, dicho, enlace, negocio, estadoPedido
     return {
       respuesta: 'Déjame consultarlo con alguien del equipo, te responden en un momento. 👤',
       traspasar: `preguntó: ${dicho.otraPregunta}`.slice(0, 200),
+    };
+  }
+
+  /* ── Preguntas del catálogo ──
+     Van ANTES de `otraPregunta`, que es lo que escala a una persona. Antes,
+     "¿qué tienen de pollo?" o "¿cuánto vale la doble?" acababan sacando al
+     agente de la conversación por algo que el código sabe responder solo.
+
+     El modelo únicamente señala QUÉ buscar. Los nombres y los precios salen
+     del catálogo, igual que los totales: si el modelo dijera el precio, un
+     día se lo inventaría. */
+  if (dicho.preguntaPrecio) {
+    const r = acciones.buscarProducto(catalogo, dicho.preguntaPrecio);
+    if (r.producto) {
+      const que = detalle(r.producto);
+      return {
+        respuesta: `*${r.producto.name}* cuesta ${pesos(r.producto.price)}.`
+          + (que ? `\n_${que}_` : '') + '\n\n¿Te lo agrego?',
+      };
+    }
+    if (r.opciones?.length) {
+      return { respuesta: `Tengo estos:\n${enLista(r.opciones)}\n\n¿Cuál te sirve?` };
+    }
+    return { respuesta: `No encuentro "${dicho.preguntaPrecio}" en la carta. ${preguntar('productos', turno)}` };
+  }
+
+  if (dicho.busca) {
+    const hallados = acciones.buscarVarios(catalogo, dicho.busca);
+    if (hallados.length) {
+      return { respuesta: `De ${dicho.busca} tengo:\n${enLista(hallados)}\n\n¿Cuál te provoca?` };
+    }
+    /* Que no haya nada se dice y se sigue: mandarlo a un humano por una
+       búsqueda vacía es gastarle el tiempo a los dos. */
+    return {
+      respuesta: `No tengo nada de ${dicho.busca} en la carta 😕`
+        + (enlace ? `\n\nMira todo lo que hay acá:\n🍔 ${enlace}` : ''),
     };
   }
 

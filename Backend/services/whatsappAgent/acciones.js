@@ -73,6 +73,67 @@ function buscarProducto(catalogo, texto) {
   return { opciones: parejos.slice(0, 6).map((x) => x.p) };
 }
 
+/**
+ * Buscar por algo vago: "pollo", "postres", "algo barato".
+ *
+ * `buscarProducto` está hecho para elegir UNO —es lo que hace falta al armar
+ * un pedido— y ante la duda prefiere no elegir. Acá pasa lo contrario: se
+ * quieren todos los que se parezcan, para poder enseñárselos.
+ *
+ * Busca también por categoría, porque "¿qué tienen de postres?" no nombra
+ * ningún producto: nombra el grupo.
+ */
+/* Las cartas mezclan español e inglés —"Chicken McNuggets", "McPollo"— y el
+   cliente pregunta en español. Sin esto, "¿qué tienen de pollo?" no encontraba
+   los nuggets, que son pollo.
+   Va solo en la búsqueda vaga: al armar un pedido se busca el nombre exacto y
+   ampliar ahí traería productos que el cliente no nombró. */
+const SINONIMOS = {
+  pollo: ['chicken'],
+  carne: ['beef', 'res'],
+  queso: ['cheese'],
+  papas: ['fries', 'french'],
+  bebida: ['drink', 'soda', 'gaseosa', 'jugo', 'refresco'],
+  bebidas: ['drink', 'soda', 'gaseosa', 'jugo', 'refresco'],
+  postre: ['dessert', 'helado', 'flurry', 'sundae'],
+  postres: ['dessert', 'helado', 'flurry', 'sundae'],
+  hamburguesa: ['burger'],
+  hamburguesas: ['burger'],
+};
+
+function buscarVarios(catalogo, texto, limite = 8) {
+  const q = llano(texto);
+  if (!q) return [];
+
+  const partir = (s) => s.split(/\s+/).filter((w) => w.length > 2 || /^\d+$/.test(w));
+  const palabras = [...partir(q)];
+  // Se añaden los equivalentes, sin quitar lo que el cliente escribió.
+  for (const w of [...palabras]) {
+    if (SINONIMOS[w]) palabras.push(...SINONIMOS[w]);
+  }
+  if (!palabras.length) return [];
+
+  return catalogo
+    .map((p) => {
+      const nombre = llano(p.name);
+      const categoria = llano(p.category?.name || p.category || '');
+      const descripcion = llano(p.description || '');
+      const enNombre = palabras.filter((w) => nombre.includes(w)).length;
+      /* Tres pesos distintos, de más a menos fiable. El nombre es lo que el
+         negocio eligió llamar al plato; la categoría, dónde lo puso; la
+         descripción, lo que lleva dentro —ahí está "tocineta" o "sin picante",
+         que es como pregunta la gente, pero también palabras sueltas que
+         aparecen en media carta. */
+      const enCategoria = palabras.filter((w) => categoria.includes(w)).length;
+      const enDescripcion = palabras.filter((w) => descripcion.includes(w)).length;
+      return { p, puntaje: enNombre * 3 + enCategoria * 2 + enDescripcion };
+    })
+    .filter((x) => x.puntaje > 0)
+    .sort((a, b) => b.puntaje - a.puntaje)
+    .slice(0, limite)
+    .map((x) => x.p);
+}
+
 /** ¿Se puede vender? El stock manda, no lo que crea el modelo. */
 function hayExistencias(producto, cantidad) {
   if (!producto.trackStock) return { ok: true };
@@ -290,6 +351,7 @@ async function estadoDelPedido({ businessId, contactPhone, Order, CompletedOrder
 module.exports = {
   llano,
   buscarProducto,
+  buscarVarios,
   estadoDelPedido,
   COMO_VA,
   hayExistencias,

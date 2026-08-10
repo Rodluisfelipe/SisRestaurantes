@@ -50,7 +50,10 @@ async function cargarCatalogo(businessId) {
      agente ofrecía productos retirados de la carta —incluido uno llamado
      "Prueba"— como si estuvieran a la venta. */
   const productos = await Product.find({ businessId, active: { $ne: false } })
-    .select('name price stock trackStock category displayOrder')
+    /* La descripción entra porque es donde vive lo que el cliente pregunta de
+       verdad: "la que trae tocineta", "algo sin picante", "la vegetariana".
+       Nada de eso está en el nombre. */
+    .select('name description price stock trackStock category displayOrder')
     .populate('category', 'name')
     .sort({ displayOrder: 1 })
     .limit(300)
