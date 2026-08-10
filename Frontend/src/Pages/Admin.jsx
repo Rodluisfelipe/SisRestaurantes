@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useBusinessConfig } from "../Context/BusinessContext";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -137,6 +137,7 @@ function Admin() {
 
   // --- UI local ---
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [activeTab, setActiveTabRaw] = useState(() => {
     // Si viene de ePayco redirect con ?tab=subscription
     const tabParam = searchParams.get('tab');
@@ -166,14 +167,17 @@ function Admin() {
     });
   }, []);
 
-  /* Saltar entre las tres pantallas del día a día. El POS y los chats tienen
-     su propia dirección, así que esos son navegación; el panel ya es esta. */
+  /* Saltar entre las tres pantallas del día a día.
+     Con `navigate` y no `window.location.href`: las tres viven en la misma
+     aplicación, así que cambiar de dirección es cuestión de milisegundos.
+     Recargando eran dos o tres segundos de pantalla en blanco cada salto —y
+     volvía a pedir el negocio, la sesión y los productos que ya tenía. */
   const abrirPanel = useCallback((panel) => {
     const negocio = businessConfig?.slug || businessConfig?._id;
-    if (panel.id === 'pos') return void (window.location.href = `/${negocio}/pos`);
-    if (panel.id === 'whatsapp') return void (window.location.href = `/${negocio}/whatsapp`);
+    if (panel.id === 'pos') return navigate(`/${negocio}/pos`);
+    if (panel.id === 'whatsapp') return navigate(`/${negocio}/whatsapp`);
     setActiveTab('dashboard');
-  }, [businessConfig?.slug, businessConfig?._id, setActiveTab]);
+  }, [businessConfig?.slug, businessConfig?._id, setActiveTab, navigate]);
 
   // Limpiar params de URL después de leerlos (no mostrar ?tab=... en la barra)
   useEffect(() => {

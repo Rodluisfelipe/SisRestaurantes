@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import SubscriptionStatus from './SubscriptionStatus';
@@ -16,6 +17,7 @@ import {
 } from 'react-icons/fa';
 
 const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, whatsappSinLeer, subscriptionData, onboarding, userRole, colapsado = false, onAlternar }) => {
+  const navigate = useNavigate();
   const isStaff = userRole === 'staff';
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const isHotel = businessConfig?.businessType === 'hotel';
@@ -383,8 +385,9 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
                             <motion.button
                               whileTap={{ scale: 0.97 }}
                               onClick={() => {
+                                // `navigate` y no `location.href`: no recarga la aplicación.
                                 if (item.ruta) {
-                                  window.location.href = `/${businessConfig?.slug || businessConfig?._id}/${item.ruta}`;
+                                  navigate(`/${businessConfig?.slug || businessConfig?._id}/${item.ruta}`);
                                   return;
                                 }
                                 setActiveTab(item.id);
