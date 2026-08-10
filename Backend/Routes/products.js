@@ -219,13 +219,15 @@ async function buildPopularPayload(businessId, popCfg) {
   }
 
   const favoriteSet = new Set(favoriteIds);
-  const finalIds = ordered.slice(0, limit);
-  if (finalIds.length === 0) {
+  if (ordered.length === 0) {
     return { enabled: true, title: popCfg.title || 'Los más pedidos', showBadges: !!popCfg.showBadges, showOrderCounts: !!popCfg.showOrderCounts, windowDays, products: [] };
   }
 
-  // Cargar productos reales (activos) preservando el orden calculado
-  const products = await Product.find({ _id: { $in: finalIds }, businessId: bid, active: true })
+  /* Se cargan TODOS los candidatos y se recorta después.
+     Antes se recortaba a `limit` primero y luego se descartaban los inactivos,
+     así que cada producto desactivado dejaba un hueco: con el límite en 10 y
+     cuatro productos apagados, la sección mostraba seis. */
+  const products = await Product.find({ _id: { $in: ordered }, businessId: bid, active: true })
     .populate({
       path: 'toppingGroups',
       match: { active: true },
@@ -234,6 +236,8 @@ async function buildPopularPayload(businessId, popCfg) {
     .lean();
 
   const productsById = new Map(products.map(p => [String(p._id), p]));
+  // El orden calculado manda; solo se quedan los que existen y están activos.
+  const finalIds = ordered.filter(id => productsById.has(id)).slice(0, limit);
   const pinnedSet = new Set(pinned);
 
   // Ranking solo entre los que tienen ventas, para badges #1/#2/#3
@@ -692,7 +696,7 @@ router.post("/", tenantAuth, validateProductInput, async (req, res) => {
       });
     
     // Emitir evento de actualización por WebSocket
-    emitToBusiness(newProduct.businessId?.toString(), "products_update", { type: "created", product: populatedProduct });
+    avisarCambioDeProductos(newProduct.businessId, { type: "created", product: populatedProduct });
     
     // Audit log
     const bizCreate = await BusinessConfig.findById(newProduct.businessId).select('businessName').lean();
@@ -743,8 +747,8 @@ router.put("/products-reorder", tenantAuth, validateProductsReorder, async (req,
     logger.debug("Bulk update result", { modifiedCount: result.modifiedCount }, req);
     
     // Emitir evento de actualización
-    emitToBusiness(businessId, "products_update", { 
-      type: "reordered", 
+    avisarCambioDeProductos(businessId, {
+      type: "reordered",
       businessId,
       message: "Orden de productos actualizado" 
     });
@@ -903,6 +907,11 @@ router.put("/:id/toggle-featured", tenantAuth, validateToggleFeatured, async (re
 
     logger.info(`Product ${id} featured status toggled to ${product.isFeatured}`);
 
+    /* En modo híbrido —el de por defecto— los destacados alimentan "Los más
+       pedidos". Destacar algo y no verlo aparecer ahí durante tres minutos
+       parece que el botón no sirvió. */
+    invalidatePopularCache(product.businessId);
+
     // Emit update
     emitToBusiness(req, product.businessId, "product_featured_update", {
       type: "featured_toggled",
@@ -982,7 +991,12 @@ router.put("/:id", tenantAuth, validateUpdateProductParam, validateProductInput,
     }
 
     logger.info('Producto actualizado', { productId: updatedProduct._id.toString() }, req);
-    
+
+    /* Esta ruta no avisa por socket, pero sí cambia el nombre, el precio y la
+       foto: sin vaciar la caché, "Los más pedidos" seguía mostrando los datos
+       viejos unos minutos. */
+    invalidatePopularCache(finalBusinessId);
+
     // Audit log
     if (beforeUpdate) {
       const bizUpdate = await BusinessConfig.findById(finalBusinessId).select('businessName').lean();
@@ -1008,7 +1022,7 @@ router.delete("/:id", tenantAuth, validateDeleteProduct, async (req, res) => {
     
     // Emitir evento de actualización por WebSocket
     if (deletedProduct) {
-      emitToBusiness(deletedProduct.businessId?.toString(), "products_update", { type: "deleted", productId: deletedProduct._id });
+      avisarCambioDeProductos(deletedProduct.businessId, { type: "deleted", productId: deletedProduct._id });
       // Audit log
       const bizDel = await BusinessConfig.findById(deletedProduct.businessId).select('businessName').lean();
       audit({ action: 'delete', resource: 'product', resourceId: deletedProduct._id, resourceName: deletedProduct.name, businessId: deletedProduct.businessId, businessName: bizDel?.businessName, before: beforeDelete, req });
@@ -1046,11 +1060,17 @@ router.patch("/:id/toggle", tenantAuth, validateToggleProduct, async (req, res) 
     const bizToggle = await BusinessConfig.findById(product.businessId).select('businessName').lean();
     audit({ action: 'toggle', resource: 'product', resourceId: product._id, resourceName: product.name, businessId: product.businessId, businessName: bizToggle?.businessName, before: beforeToggle, after: product.toObject(), req });
     
+    /* La sección "Los más pedidos" se sirve de una caché de 3 minutos. Sin
+       vaciarla acá, un producto recién desactivado seguía apareciendo ahí
+       —fuera del menú pero visible en esa fila— y quien lo desactivó pensaba
+       que no había funcionado. */
+    invalidatePopularCache(product.businessId);
+
     logger.info(`Product toggled`, { productId: product._id.toString(), name: product.name, active: product.active }, req);
     
     // Emitir evento de actualización por WebSocket
-    emitToBusiness(product.businessId?.toString(), "products_update", { 
-      type: "toggled", 
+    avisarCambioDeProductos(product.businessId, {
+      type: "toggled",
       productId: product._id,
       active: product.active
     });
