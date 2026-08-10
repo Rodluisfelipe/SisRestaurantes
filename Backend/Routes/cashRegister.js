@@ -115,32 +115,31 @@ router.post("/close", authMiddleware, checkPosBeta, async (req, res) => {
     const totalIncome = incomeMovements.reduce((sum, m) => sum + m.amount, 0);
     const totalExpense = expenseMovements.reduce((sum, m) => sum + m.amount, 0);
 
-    // Desglose por método de pago
-    const byPaymentMethod = {};
-    salesMovements.forEach(m => {
-      const method = m.paymentMethod || 'cash';
-      if (!byPaymentMethod[method]) byPaymentMethod[method] = { count: 0, total: 0 };
-      byPaymentMethod[method].count += 1;
-      byPaymentMethod[method].total += m.amount;
-    });
+    /* El mismo método de pago tiene dos nombres en la base: 'cash' y
+       'efectivo', 'transfer' y 'transferencia'. Los dos son válidos en el
+       modelo y los dos se usan según por dónde entró la venta.
 
-    // Desglose por método de pago POS
-    const posByPaymentMethod = {};
-    posSales.forEach(m => {
-      const method = m.paymentMethod || 'cash';
-      if (!posByPaymentMethod[method]) posByPaymentMethod[method] = { count: 0, total: 0 };
-      posByPaymentMethod[method].count += 1;
-      posByPaymentMethod[method].total += m.amount;
-    });
+       Agruparlos por el nombre crudo partía el efectivo en dos montones y el
+       cierre solo miraba uno: $37.608.800 quedaban invisibles y 35 de 38
+       cierres salían descuadrados. Los cajeros llevaban meses cuadrando a mano
+       una diferencia que no existía. */
+    const MISMO_METODO = { efectivo: 'cash', transferencia: 'transfer' };
+    const metodoDe = (m) => MISMO_METODO[m.paymentMethod] || m.paymentMethod || 'cash';
 
-    // Desglose por método de pago MenuBy
-    const menubyByPaymentMethod = {};
-    menubySales.forEach(m => {
-      const method = m.paymentMethod || 'cash';
-      if (!menubyByPaymentMethod[method]) menubyByPaymentMethod[method] = { count: 0, total: 0 };
-      menubyByPaymentMethod[method].count += 1;
-      menubyByPaymentMethod[method].total += m.amount;
-    });
+    const agrupar = (movimientos) => {
+      const por = {};
+      movimientos.forEach(m => {
+        const method = metodoDe(m);
+        if (!por[method]) por[method] = { count: 0, total: 0 };
+        por[method].count += 1;
+        por[method].total += m.amount;
+      });
+      return por;
+    };
+
+    const byPaymentMethod = agrupar(salesMovements);
+    const posByPaymentMethod = agrupar(posSales);
+    const menubyByPaymentMethod = agrupar(menubySales);
 
     // Efectivo esperado = apertura + ventas en efectivo + ingresos - retiros - reembolsos en efectivo
     const cashSales = (byPaymentMethod['cash']?.total || 0);

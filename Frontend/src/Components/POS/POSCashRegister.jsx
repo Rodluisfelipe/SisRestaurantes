@@ -100,7 +100,14 @@ export default function POSCashRegister({ mode, businessId, businessConfig, busi
     const income = moves.filter(m => m.type === 'income').reduce((s, m) => s + m.amount, 0);
     const expenses = moves.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0);
     const refunds = moves.filter(m => m.type === 'refund').reduce((s, m) => s + m.amount, 0);
-    const cashSales = allSales.filter(m => (m.paymentMethod === 'cash' || !m.paymentMethod)).reduce((s, m) => s + m.amount, 0);
+    /* 'cash' y 'efectivo' son el mismo método con dos nombres: los dos existen
+       en la base y se usan según por dónde entró la venta. Contar solo uno
+       dejaba fuera más de la mitad del efectivo, y este es justo el número
+       contra el que el cajero cuenta el dinero de la caja. */
+    const ES_EFECTIVO = ['cash', 'efectivo'];
+    const cashSales = allSales
+      .filter(m => !m.paymentMethod || ES_EFECTIVO.includes(m.paymentMethod))
+      .reduce((s, m) => s + m.amount, 0);
     const expected = (cashRegister.openingAmount || 0) + cashSales + income - expenses - refunds;
 
     return {
