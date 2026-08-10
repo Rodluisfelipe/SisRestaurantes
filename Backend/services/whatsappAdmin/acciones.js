@@ -85,6 +85,8 @@ async function encontrar(businessId, texto) {
 
 /** Aplica el cambio. Se llama solo después de que el dueño confirmó. */
 async function aplicar({ businessId, persona, accion }) {
+  if (accion.operacion === 'stock') return aplicarStock({ businessId, persona, accion });
+
   const activar = accion.operacion === 'activar';
 
   if (accion.tipo === 'producto') {
@@ -123,4 +125,34 @@ async function aplicar({ businessId, persona, accion }) {
     : `🚫 *${accion.nombre}* ya no se ofrece.\n\n_Para volver a activarlo: "activa ${accion.nombre}"._`;
 }
 
-module.exports = { encontrar, aplicar, anotar };
+/**
+ * Deja el stock de un producto en una cantidad, o le suma unidades.
+ *
+ * Si el producto no tenía control de inventario, se le activa. Eso se avisa en
+ * la confirmación: encender el control hace que el producto se agote solo
+ * cuando llegue a cero, y quien solo quería anotar una cifra tiene que saber
+ * que a partir de ahí el menú se va a apagar por su cuenta.
+ */
+async function aplicarStock({ businessId, persona, accion }) {
+  const p = await Product.findOne({ _id: accion.itemId, businessId });
+  if (!p) return 'Ese producto ya no existe.';
+
+  const antes = p.trackStock ? (Number(p.stock) || 0) : null;
+  const nuevo = accion.sumar
+    ? (antes || 0) + accion.cantidad
+    : accion.cantidad;
+
+  p.stock = nuevo;
+  p.trackStock = true;
+  await p.save();
+
+  await anotar({
+    businessId, persona, recurso: 'product', recursoId: p._id,
+    nombre: p.name, antes, despues: nuevo,
+  });
+
+  const seActivo = antes === null ? '\n\n_Le activé el control de inventario: se va a agotar solo al llegar a cero._' : '';
+  return `📦 *${p.name}*: ${nuevo} unidad${nuevo === 1 ? '' : 'es'}.${seActivo}`;
+}
+
+module.exports = { encontrar, aplicar, aplicarStock, anotar };

@@ -160,3 +160,53 @@ describe('qué cuenta como confirmar y como cancelar', () => {
     }
   );
 });
+
+describe('las consultas nuevas', () => {
+  it.each([
+    ['pedido 746', 'pedido'],
+    ['orden #1842', 'pedido'],
+    ['pedido #63', 'pedido'],
+    ['clientes', 'clientes'],
+    ['cuantos clientes nuevos', 'clientes'],
+    ['quien mas compra', 'clientes'],
+    ['como vamos vs la semana pasada', 'comparar'],
+    ['compara con ayer', 'comparar'],
+  ])('"%s" → %s', (texto, esperado) => {
+    expect(intencion(texto)).toBe(esperado);
+  });
+
+  /* "pedido 746" pide UN pedido; "pedidos pendientes" pide la lista. Las dos
+     empiezan igual, y confundirlas devuelve algo que no se pidió. */
+  it('un número concreto gana a la lista de pendientes', () => {
+    expect(intencion('pedido 746')).toBe('pedido');
+    expect(intencion('pedidos pendientes')).toBe('pendientes');
+    expect(intencion('hay pedidos pendientes')).toBe('pendientes');
+  });
+});
+
+describe('ajustar el inventario', () => {
+  it.each([
+    ['quedan 20 hamburguesas'],
+    ['llegaron 50 panes'],
+    ['ponle 15 unidades a la coca cola'],
+    ['deja el pan en 30'],
+  ])('"%s" es un ajuste de stock', (t) => {
+    expect(intencion(t)).toBe('stock_ajuste');
+  });
+
+  /* "Llegaron 50" suma a lo que había; "quedan 50" lo deja en esa cifra.
+     Confundirlas descuadra el inventario en silencio. */
+  const sumar = (t) => /\b(llegaron|llegue|entraron|sumale|suma|agrega|agregale|mas)\b/.test(plano(t));
+
+  it('distingue sumar de fijar', () => {
+    expect(sumar('llegaron 50 panes')).toBe(true);
+    expect(sumar('sumale 20 a las papas')).toBe(true);
+    expect(sumar('quedan 20 hamburguesas')).toBe(false);
+    expect(sumar('deja el pan en 30')).toBe(false);
+  });
+
+  it('preguntar por el inventario sigue sin ser un ajuste', () => {
+    expect(intencion('inventario')).toBe('stock');
+    expect(intencion('que se esta acabando')).toBe('stock');
+  });
+});

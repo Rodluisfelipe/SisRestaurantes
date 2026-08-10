@@ -1917,18 +1917,32 @@ function NumerosDeConsulta({ businessId }) {
         </p>
         <ul className="text-[12.5px] text-slate-600 space-y-1">
           {[
-            '¿Cuánto vendimos hoy? — también ayer, esta semana o este mes',
-            '¿Cómo va el negocio? — el resumen completo',
+            '¿Cuánto vendimos hoy? — también ayer, semana o mes',
+            '¿Cómo va el negocio? — resumen con comparación',
+            '¿Cómo vamos vs la semana pasada?',
             '¿Hay pedidos pendientes?',
+            'Pedido 746 — un pedido concreto',
             '¿Cuánto hay en caja?',
             '¿Qué es lo más vendido?',
             '¿Qué se está acabando?',
+            'Clientes — cuántos nuevos y los que más gastan',
+          ].map((t) => <li key={t}>• {t}</li>)}
+        </ul>
+        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 mb-2">
+          Lo que pueden cambiar
+        </p>
+        <ul className="text-[12.5px] text-slate-600 space-y-1">
+          {[
+            'Se acabó la hamburguesa doble — la quita del menú',
+            'Activa la hamburguesa doble — la vuelve a poner',
+            'Quedan 20 hamburguesas — deja el inventario en esa cifra',
+            'Llegaron 50 panes — se los suma a lo que había',
           ].map((t) => <li key={t}>• {t}</li>)}
         </ul>
         <p className="text-[11.5px] text-amber-700 bg-amber-50 border border-amber-200/70 rounded-lg px-3 py-2 mt-3 leading-relaxed">
-          <strong>Solo consultan.</strong> No pueden cerrar caja ni cambiar nada desde
-          WhatsApp: el teléfono es una sola prueba de identidad, y con eso no se
-          mueve dinero.
+          <strong>Todo cambio se confirma antes de hacerse</strong>, y queda anotado con
+          el número de quien lo pidió. La caja y los precios siguen fuera: el teléfono
+          es una sola prueba de identidad, y con eso no se mueve dinero.
         </p>
       </div>
 

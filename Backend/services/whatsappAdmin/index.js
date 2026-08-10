@@ -35,7 +35,25 @@ function periodoDe(t) {
    ventas sino la de más vendido. */
 const REGLAS = [
   {
-    /* Va primero de todas: "se acabó el pan" es una orden de cambiar el menú,
+    /* Antes que nada: "pedido 746" es un número concreto y no la lista de
+       pendientes, que también coincidiría con la palabra "pedido". */
+    id: 'pedido',
+    prueba: (t) => /\b(pedido|orden|factura)\s*#?\s*\d{1,7}\b/.test(t),
+    responde: (id, t) => {
+      const n = t.match(/\b(?:pedido|orden|factura)\s*#?\s*(\d{1,7})\b/)[1];
+      return consultas.pedido(id, n);
+    },
+  },
+  {
+    /* "Quedan 20 hamburguesas" o "llegaron 50 panes": una cifra pegada a un
+       producto es un ajuste de inventario, no una pregunta. */
+    id: 'stock_ajuste',
+    prueba: (t) => /\b(quedan|hay|deja|dejame|pon|ponle|ponme|llegaron|llegue|entraron|sumale|suma|agrega|agregale)\b.*\b\d{1,5}\b|\b\d{1,5}\b.*\b(unidades|und|uds)\b/.test(t),
+    escribe: true,
+    operacion: 'stock',
+  },
+  {
+    /* Va antes de "agotar": "se acabó el pan" es una orden de cambiar el menú,
        no la consulta de inventario, y la de inventario coincidiría también. */
     id: 'agotar',
     prueba: (t) => /\bse (me )?acabo\b|\bse acabaron\b|\bagota(r|me)?\b|\bquita(r|me)?\b|\bdesactiva(r|me)?\b|\bno hay mas\b|\bsin existencias\b/.test(t),
@@ -76,6 +94,18 @@ const REGLAS = [
     responde: (id) => consultas.pedidosPendientes(id),
   },
   {
+    id: 'clientes',
+    prueba: (t) => /\bclientes?\b|\bcompradores\b|\bquien(es)? (mas )?(compra|gasta)/.test(t),
+    responde: (id, t) => consultas.clientes(id, periodoDe(t)),
+  },
+  {
+    /* Antes que el resumen: "cómo vamos vs la semana pasada" coincide con los
+       dos, y lo que se está pidiendo es la comparación. */
+    id: 'comparar',
+    prueba: (t) => /\bcompara|\bvs\b|\bversus\b|\bfrente a\b|\bmejor que\b|\bpeor que\b|\bque (la semana|el mes|ayer)\b/.test(t),
+    responde: (id, t) => consultas.comparar(id, periodoDe(t)),
+  },
+  {
     id: 'resumen',
     prueba: (t) => /\bcomo va\b|\bresumen\b|\bcomo vamos\b|\bcomo esta el negocio\b|\breporte\b/.test(t),
     responde: (id) => consultas.resumen(id),
@@ -91,14 +121,19 @@ function ayuda() {
   return '👋 *Soy el asistente de tu negocio.*\n\n'
     + '*Consultar*\n'
     + '• ¿Cuánto vendimos hoy? — también ayer, esta semana o este mes\n'
-    + '• ¿Cómo va el negocio? — el resumen completo\n'
+    + '• ¿Cómo va el negocio? — resumen con comparación\n'
+    + '• ¿Cómo vamos vs la semana pasada?\n'
     + '• ¿Hay pedidos pendientes?\n'
+    + '• Pedido 746 — un pedido concreto\n'
     + '• ¿Cuánto hay en caja?\n'
     + '• ¿Qué es lo más vendido?\n'
-    + '• ¿Qué se está acabando?\n\n'
+    + '• ¿Qué se está acabando?\n'
+    + '• Clientes — cuántos nuevos y los que más gastan\n\n'
     + '*Cambiar el menú*\n'
     + '• Se acabó la hamburguesa doble — la quita del menú\n'
     + '• Activa la hamburguesa doble — la vuelve a poner\n'
+    + '• Quedan 20 hamburguesas — deja el inventario en esa cifra\n'
+    + '• Llegaron 50 panes — se los suma a lo que había\n'
     + '• Sirve igual para los extras: "se acabó el queso"\n\n'
     + '_Todo cambio te lo confirmo antes de hacerlo. La caja y los precios solo se tocan desde el panel._';
 }
@@ -194,15 +229,30 @@ async function proponerCambio({ account, persona, contactPhone, texto, t, regla 
   const acciones = require('./acciones');
   const pendientes = require('./pendientes');
 
+  /* En un ajuste de inventario, el número es la cantidad y hay que sacarlo
+     antes de buscar: "quedan 20 hamburguesas" busca "hamburguesas", no
+     "20 hamburguesas". */
+  const esStock = regla.operacion === 'stock';
+  const cifra = esStock ? Number((t.match(/\b(\d{1,5})\b/) || [])[1]) : null;
+  /* "Llegaron 50" suma a lo que había; "quedan 50" lo deja en esa cifra. Son
+     dos cosas distintas y confundirlas descuadra el inventario. */
+  const sumar = esStock && /\b(llegaron|llegue|entraron|sumale|suma|agrega|agregale|mas)\b/.test(t);
+
+  if (esStock && !Number.isFinite(cifra)) {
+    return '¿Cuántas unidades? Por ejemplo: "quedan 20 hamburguesas".';
+  }
+
   /* Se le quitan las palabras de la orden para quedarse con el nombre: de
      "se acabó la hamburguesa doble" queda "hamburguesa doble". */
   const nombre = t
+    .replace(/\b\d{1,5}\b/g, ' ')
     .replace(/\b(se|me|ya|no|hay|mas|de|la|el|los|las|un|una|por favor|porfa)\b/g, ' ')
-    .replace(/\b(acabo|acabaron|agotar|agotame|agota|quitar|quitame|quita|desactivar|desactiva|activar|activame|activa|habilitar|habilita|vuelve|a|poner|ponle|ponlo|pon|llego|existencias|sin)\b/g, ' ')
+    .replace(/\b(acabo|acabaron|agotar|agotame|agota|quitar|quitame|quita|desactivar|desactiva|activar|activame|activa|habilitar|habilita|vuelve|a|poner|ponle|ponlo|pon|ponme|llego|llegaron|llegue|entraron|quedan|deja|dejame|sumale|suma|agrega|agregale|unidades|und|uds|existencias|sin)\b/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 
   if (!nombre) {
+    if (esStock) return '¿De qué producto? Por ejemplo: "quedan 20 hamburguesas".';
     return regla.operacion === 'agotar'
       ? '¿Qué se acabó? Dime el nombre, por ejemplo: "se acabó la hamburguesa doble".'
       : '¿Qué activo? Dime el nombre, por ejemplo: "activa la hamburguesa doble".';
@@ -219,6 +269,27 @@ async function proponerCambio({ account, persona, contactPhone, texto, t, regla 
   }
 
   const item = hallazgo.item;
+
+  if (esStock) {
+    if (hallazgo.tipo !== 'producto') {
+      return 'El inventario se lleva por producto, no por extras.';
+    }
+    await pendientes.guardar(account.businessId, contactPhone, {
+      operacion: 'stock',
+      itemId: String(item._id),
+      nombre: item.name,
+      cantidad: cifra,
+      sumar,
+    });
+
+    const aviso = item.trackStock
+      ? ''
+      : '\n\n_Le voy a activar el control de inventario: se agotará solo al llegar a cero._';
+    return sumar
+      ? `¿Le sumo *${cifra}* unidades a *${item.name}*?${aviso}\n\nResponde *sí* para confirmar.`
+      : `¿Dejo *${item.name}* en *${cifra}* unidades?${aviso}\n\nResponde *sí* para confirmar.`;
+  }
+
   const activar = regla.operacion === 'activar';
   const queEs = hallazgo.tipo === 'producto' ? 'producto' : 'extra';
 

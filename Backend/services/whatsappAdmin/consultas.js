@@ -134,14 +134,121 @@ async function stockBajo(businessId) {
   return `📦 *${bajos.length} producto${bajos.length === 1 ? '' : 's'} por acabarse*\n${lineas.join('\n')}`;
 }
 
+/**
+ * Un pedido concreto, por su número.
+ *
+ * Se busca en los activos y en los completados: un número que ya se despachó
+ * sigue siendo el que el cliente tiene en la mano cuando llama a reclamar.
+ */
+async function pedido(businessId, numero) {
+  const Order = require('../../Models/Order');
+  const CompletedOrder = require('../../Models/CompletedOrder');
+
+  const criterio = { businessId, orderNumber: String(numero) };
+  const p = await Order.findOne(criterio).lean()
+    || await CompletedOrder.findOne(criterio).sort({ completedAt: -1 }).lean();
+
+  if (!p) return `No encontré el pedido #${numero}.`;
+
+  const ESTADO = {
+    pending: 'sin empezar', pending_payment: 'esperando pago',
+    payment_uploaded: 'por cobrar', payment_confirmed: 'pago confirmado',
+    confirmed: 'confirmado', preparing: 'en preparación',
+    inProgress: 'en preparación', ready: 'listo',
+    completed: 'completado', delivered: 'entregado', cancelled: 'cancelado',
+  };
+  const TIPO = { delivery: 'domicilio', takeaway: 'para recoger', inSite: 'en el local' };
+
+  const items = (p.items || [])
+    .map((i) => `• ${i.quantity || 1}× ${i.name}`)
+    .join('\n');
+
+  const cuando = new Date(p.completedAt || p.createdAt).toLocaleString('es-CO', {
+    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+  });
+
+  return `🧾 *Pedido #${p.orderNumber}* — ${ESTADO[p.status] || p.status}\n`
+    + `${p.customerName || 'Sin nombre'} · ${TIPO[p.orderType] || p.orderType}\n`
+    + `${cuando}\n\n`
+    + (items ? `${items}\n\n` : '')
+    + `*Total: ${pesos(p.finalAmount ?? p.totalAmount)}*`
+    + (p.deliveryAddress ? `\n📍 ${p.deliveryAddress}` : '');
+}
+
+/**
+ * Cómo va el periodo comparado con el anterior.
+ *
+ * Una cifra sola no dice nada: $800.000 puede ser un buen día o el peor del
+ * mes. Lo que informa es contra qué se compara.
+ */
+async function comparar(businessId, periodo) {
+  const CompletedOrder = require('../../Models/CompletedOrder');
+  const actual = rango(periodo);
+
+  // El mismo tramo, corrido hacia atrás: ayer contra anteayer, esta semana
+  // contra la anterior.
+  const largo = actual.hasta.getTime() - actual.desde.getTime();
+  const previo = {
+    desde: new Date(actual.desde.getTime() - largo - 1),
+    hasta: new Date(actual.desde.getTime() - 1),
+  };
+
+  const sumar = async ({ desde, hasta }) => {
+    const [r] = await CompletedOrder.aggregate([
+      { $match: { businessId, completedAt: { $gte: desde, $lte: hasta } } },
+      { $group: { _id: null, total: { $sum: '$finalAmount' }, pedidos: { $sum: 1 } } },
+    ]);
+    return { total: r?.total || 0, pedidos: r?.pedidos || 0 };
+  };
+
+  const [a, b] = await Promise.all([sumar(actual), sumar(previo)]);
+
+  if (!a.pedidos && !b.pedidos) return `No hay ventas ${actual.txt} ni en el periodo anterior.`;
+
+  let veredicto;
+  if (!b.total) {
+    veredicto = 'No hay con qué comparar del periodo anterior.';
+  } else {
+    const cambio = Math.round(((a.total - b.total) / b.total) * 100);
+    const flecha = cambio > 0 ? '📈' : cambio < 0 ? '📉' : '➡️';
+    veredicto = `${flecha} ${cambio > 0 ? '+' : ''}${cambio}% frente al periodo anterior (${pesos(b.total)})`;
+  }
+
+  return `💰 *Ventas ${actual.txt}*\n${pesos(a.total)} en ${a.pedidos} pedido${a.pedidos === 1 ? '' : 's'}\n${veredicto}`;
+}
+
+/** Cuántos clientes llegaron, y quiénes son los que más gastan. */
+async function clientes(businessId, periodo) {
+  const Customer = require('../../Models/Customer');
+  const { desde, hasta, txt } = rango(periodo || 'mes');
+
+  const [nuevos, mejores] = await Promise.all([
+    Customer.countDocuments({ businessId, createdAt: { $gte: desde, $lte: hasta } }),
+    Customer.find({ businessId }).sort({ totalSpent: -1 }).limit(5)
+      .select('name phone totalOrders totalSpent').lean(),
+  ]);
+
+  const lista = mejores.length
+    ? mejores.map((c, i) => `${i + 1}. ${c.name || c.phone} — ${pesos(c.totalSpent)} en ${c.totalOrders} pedidos`).join('\n')
+    : 'Todavía no hay clientes registrados.';
+
+  return `👥 *Clientes nuevos ${txt}:* ${nuevos}\n\n*Los que más han gastado*\n${lista}`;
+}
+
 /** El resumen de "¿cómo va el negocio?". */
 async function resumen(businessId) {
+  /* Con comparación y no solo la cifra: "$800.000" no dice si el día va bien
+     o mal, y eso es justo lo que se está preguntando. */
   const [v, p, c] = await Promise.all([
-    ventas(businessId, 'hoy'),
+    comparar(businessId, 'hoy'),
     pedidosPendientes(businessId),
     caja(businessId),
   ]);
   return [v, p, c].join('\n\n');
 }
 
-module.exports = { ventas, pedidosPendientes, caja, masVendido, stockBajo, resumen, pesos, rango };
+module.exports = {
+  ventas, pedidosPendientes, caja, masVendido, stockBajo, resumen,
+  pedido, comparar, clientes,
+  pesos, rango,
+};
