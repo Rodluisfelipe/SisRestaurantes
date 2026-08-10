@@ -86,6 +86,19 @@ const whatsAppAccountSchema = new mongoose.Schema({
     /* Cupo propio, si se le vendió un paquete distinto al del complemento.
        null = el que trae el complemento. */
     cupoConversaciones: { type: Number, default: null }
+  },
+
+  /* Números que pueden PREGUNTARLE al negocio por sus propios datos: ventas,
+     caja, inventario. Es el teléfono del dueño y de quien él autorice.
+     Va aparte del agente que atiende clientes porque son dos cosas distintas:
+     al cliente se le vende, al dueño se le informa. Y quien esté acá ve cifras
+     de dinero, así que la lista la maneja solo el panel. */
+  consultas: {
+    numeros: [{
+      telefono: { type: String, trim: true, required: true },
+      nombre: { type: String, trim: true, default: '' },
+      agregadoEn: { type: Date, default: Date.now },
+    }],
   }
 }, { timestamps: true });
 

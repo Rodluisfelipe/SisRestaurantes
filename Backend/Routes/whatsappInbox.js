@@ -124,9 +124,15 @@ async function procesarCambio(value) {
         contactPhone: guardado.contactPhone,
         direction: 'in',
       });
-      // Una nota de voz se pasa a texto antes de que el agente la lea.
+      // Una nota de voz se pasa a texto antes de que nadie la lea.
       await quizaTranscribir(account, guardado);
-      await quizaContesteElAgente(account, guardado);
+
+      /* El dueño preguntando por su negocio va primero: si su número está
+         autorizado, no se le trata como a un cliente que quiere pedir. Sin
+         este orden, "cuánto vendimos hoy" acabaría en el agente de ventas
+         intentando venderle una hamburguesa a su propio dueño. */
+      const respondido = await quizaRespondaElAsistente(account, guardado);
+      if (!respondido) await quizaContesteElAgente(account, guardado);
     }
   }
 
@@ -305,6 +311,44 @@ async function quizaTranscribir(account, mensaje) {
     logger.warn('[WhatsApp] No se pudo transcribir la nota de voz', {
       error: e.message, businessId: String(account.businessId),
     });
+  }
+}
+
+/**
+ * Si escribe el dueño, se le informa en vez de venderle.
+ *
+ * Devuelve true si contestó, para que el agente de clientes no vuelva a
+ * responder al mismo mensaje.
+ *
+ * No depende del complemento del agente ni de que esté encendido: consultar
+ * tus propios datos no es lo mismo que tener un bot atendiendo clientes, y
+ * cobrarlo junto habría dejado a medio mundo sin poder preguntar cuánto vendió.
+ */
+async function quizaRespondaElAsistente(account, mensaje) {
+  const dicho = mensaje.text || mensaje.transcripcion;
+  if (!dicho) return false;
+
+  try {
+    const asistente = require('../services/whatsappAdmin');
+    const respuesta = await asistente.atender({
+      account,
+      contactPhone: mensaje.contactPhone,
+      texto: dicho,
+    });
+    if (!respuesta) return false;
+
+    if (mensaje.wamid) {
+      whatsappCloud.markAsRead({ account, wamid: mensaje.wamid, escribiendo: true }).catch(() => {});
+    }
+    await whatsappCloud.sendText({ account, to: mensaje.contactPhone, text: respuesta });
+    return true;
+  } catch (e) {
+    logger.error('[WhatsApp] Falló el asistente administrativo', {
+      error: e.message, businessId: String(account.businessId),
+    });
+    /* Se devuelve true igual: el número es del dueño, y dejar que el agente de
+       ventas le conteste a una pregunta de caja es peor que no contestar. */
+    return true;
   }
 }
 
@@ -1229,6 +1273,53 @@ router.post(
     }
   })
 );
+
+/* ─────────────────────────────────────────────
+ *  CONSULTAS DEL DUEÑO
+ *
+ *  Los números que pueden preguntarle al negocio por sus ventas, su caja y su
+ *  inventario. Quien esté en esta lista ve cifras de dinero, así que se
+ *  gestiona solo desde el panel y nunca desde WhatsApp: si se pudiera añadir
+ *  un número por chat, bastaría con engañar al bot para leer la caja ajena.
+ * ───────────────────────────────────────────── */
+
+router.get('/consultas/numeros', authMiddleware, requiereComplemento, asyncHandler(async (req, res) => {
+  const account = await WhatsAppAccount.findOne({ businessId: req.businessId });
+  res.json({ numeros: account?.consultas?.numeros || [] });
+}));
+
+router.post('/consultas/numeros', authMiddleware, requiereComplemento, asyncHandler(async (req, res) => {
+  const account = await WhatsAppAccount.findOne({ businessId: req.businessId });
+  if (!account) return res.status(400).json({ message: 'El negocio no tiene WhatsApp conectado.' });
+
+  const telefono = whatsappCloud.normalizePhone(req.body?.telefono);
+  if (!telefono) return res.status(400).json({ message: 'Ese número no parece válido.' });
+
+  const yaEsta = (account.consultas?.numeros || [])
+    .some((n) => String(n.telefono).replace(/\D/g, '').slice(-10) === telefono.slice(-10));
+  if (yaEsta) return res.status(409).json({ message: 'Ese número ya está autorizado.' });
+
+  account.consultas = account.consultas || { numeros: [] };
+  account.consultas.numeros.push({
+    telefono,
+    nombre: String(req.body?.nombre || '').trim().slice(0, 60),
+  });
+  await account.save();
+
+  res.status(201).json({ numeros: account.consultas.numeros });
+}));
+
+router.delete('/consultas/numeros/:telefono', authMiddleware, requiereComplemento, asyncHandler(async (req, res) => {
+  const account = await WhatsAppAccount.findOne({ businessId: req.businessId });
+  if (!account) return res.status(400).json({ message: 'El negocio no tiene WhatsApp conectado.' });
+
+  const buscado = String(req.params.telefono).replace(/\D/g, '').slice(-10);
+  account.consultas.numeros = (account.consultas?.numeros || [])
+    .filter((n) => String(n.telefono).replace(/\D/g, '').slice(-10) !== buscado);
+  await account.save();
+
+  res.json({ numeros: account.consultas.numeros });
+}));
 
 module.exports = router;
 // Expuesto solo para poder probarlo sin base de datos.

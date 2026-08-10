@@ -15,7 +15,8 @@ import {
   FaCheck, FaCheckDouble, FaExclamationTriangle, FaImage, FaMapMarkerAlt,
   FaFileAlt, FaMicrophone, FaVideo, FaArrowLeft, FaArrowDown, FaSyncAlt,
   FaUser, FaShoppingBag, FaGift, FaHome, FaClock, FaUserPlus, FaSearch,
-  FaUtensils, FaMotorcycle, FaRegSmile, FaSignOutAlt, FaExpand, FaPaperclip, FaRobot
+  FaUtensils, FaMotorcycle, FaRegSmile, FaSignOutAlt, FaExpand, FaPaperclip, FaRobot,
+  FaChartBar
 } from 'react-icons/fa';
 import api from '../../services/api';
 import { socket, joinBusiness } from '../../services/socket';
@@ -787,7 +788,7 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
         {/* En celular solo cabe una columna: con un chat abierto —o con las
             plantillas— la lista se aparta. */}
         <div className={`border-r border-[#e9edef] min-h-0 flex flex-col bg-white ${
-          chatActivo || vista === 'plantillas' ? 'hidden lg:flex' : 'flex'
+          chatActivo || vista !== 'chats' ? 'hidden lg:flex' : 'flex'
         }`}>
           {/* La cabecera del negocio va acá dentro y no cruzando toda la
               pantalla: es la barra de perfil de WhatsApp Web, y así la
@@ -814,6 +815,15 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
               }`}
             >
               <FaFileAlt className="text-[15px]" />
+            </button>
+            <button
+              onClick={() => setVista(vista === 'consultas' ? 'chats' : 'consultas')}
+              title="Consultas del dueño"
+              className={`w-9 h-9 rounded-full grid place-items-center transition-colors ${
+                vista === 'consultas' ? 'bg-[#00a884] text-white' : 'text-[#54656f] hover:bg-black/5'
+              }`}
+            >
+              <FaChartBar className="text-[15px]" />
             </button>
             <button
               onClick={() => { cargarChats(); if (chatActivo) abrirChat(chatActivo, { silencioso: true }); }}
@@ -941,8 +951,20 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
         </div>
 
         {/* Conversación */}
-        <div className={`flex flex-col min-h-0 ${chatActivo || vista === 'plantillas' ? '' : 'hidden lg:flex'}`}>
-          {vista === 'plantillas' ? (
+        <div className={`flex flex-col min-h-0 ${chatActivo || vista !== 'chats' ? '' : 'hidden lg:flex'}`}>
+          {vista === 'consultas' ? (
+            <>
+              <div className="lg:hidden flex items-center gap-3 px-4 h-[59px] bg-[#f0f2f5] shrink-0">
+                <button onClick={() => setVista('chats')} className="p-1.5 -ml-1.5 text-[#54656f]">
+                  <FaArrowLeft className="text-sm" />
+                </button>
+                <p className="text-[16px] text-[#111b21]">Consultas del dueño</p>
+              </div>
+              <div className="flex-1 min-h-0 overflow-y-auto bg-[#f0f2f5] border-l border-[#e9edef]">
+                <NumerosDeConsulta businessId={businessId} />
+              </div>
+            </>
+          ) : vista === 'plantillas' ? (
             /* Las plantillas ocupan el lado de la conversación, como los
                paneles de ajustes de WhatsApp Web: la lista se queda visible. */
             <>
@@ -1817,6 +1839,158 @@ function OrigenPedidos({ businessId }) {
           sin identificar. Para medirlos, comparte el menú añadiéndole <code>?source=</code> y el nombre del canal.
         </p>
       )}
+    </div>
+  );
+}
+
+/**
+ * Los números que pueden preguntarle al negocio por sus datos.
+ *
+ * Quien esté acá puede consultar ventas, caja e inventario escribiéndole al
+ * WhatsApp del negocio. Por eso la lista se maneja solo desde el panel: si se
+ * pudiera autorizar un número por chat, bastaría con engañar al bot para leer
+ * la caja de otro.
+ */
+function NumerosDeConsulta({ businessId }) {
+  const [numeros, setNumeros] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [telefono, setTelefono] = useState('');
+  const [nombre, setNombre] = useState('');
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState('');
+
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    try {
+      const { data } = await api.get(`/whatsapp-inbox/consultas/numeros?businessId=${businessId}`);
+      setNumeros(data.numeros || []);
+      setError('');
+    } catch (e) {
+      setError(e?.response?.data?.message || 'No se pudieron cargar los números');
+    } finally {
+      setCargando(false);
+    }
+  }, [businessId]);
+
+  useEffect(() => { cargar(); }, [cargar]);
+
+  async function agregar(e) {
+    e.preventDefault();
+    setGuardando(true);
+    setError('');
+    try {
+      const { data } = await api.post('/whatsapp-inbox/consultas/numeros', {
+        businessId, telefono, nombre,
+      });
+      setNumeros(data.numeros || []);
+      setTelefono(''); setNombre('');
+    } catch (e) {
+      setError(e?.response?.data?.message || 'No se pudo agregar');
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  async function quitar(tel) {
+    if (!window.confirm('¿Quitar este número? Dejará de poder consultar.')) return;
+    try {
+      const { data } = await api.delete(
+        `/whatsapp-inbox/consultas/numeros/${encodeURIComponent(tel)}?businessId=${businessId}`
+      );
+      setNumeros(data.numeros || []);
+    } catch (e) {
+      setError(e?.response?.data?.message || 'No se pudo quitar');
+    }
+  }
+
+  return (
+    <div className="p-4 max-w-2xl">
+      <p className="text-sm font-bold text-slate-800">Consultas del dueño</p>
+      <p className="text-[12.5px] text-slate-500 mt-1 leading-relaxed">
+        Los números de esta lista pueden escribirle al WhatsApp del negocio y preguntar
+        por sus ventas, su caja o su inventario, sin entrar al panel.
+      </p>
+
+      <div className="mt-3 bg-white rounded-xl border border-slate-200 p-3.5">
+        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">
+          Lo que pueden preguntar
+        </p>
+        <ul className="text-[12.5px] text-slate-600 space-y-1">
+          {[
+            '¿Cuánto vendimos hoy? — también ayer, esta semana o este mes',
+            '¿Cómo va el negocio? — el resumen completo',
+            '¿Hay pedidos pendientes?',
+            '¿Cuánto hay en caja?',
+            '¿Qué es lo más vendido?',
+            '¿Qué se está acabando?',
+          ].map((t) => <li key={t}>• {t}</li>)}
+        </ul>
+        <p className="text-[11.5px] text-amber-700 bg-amber-50 border border-amber-200/70 rounded-lg px-3 py-2 mt-3 leading-relaxed">
+          <strong>Solo consultan.</strong> No pueden cerrar caja ni cambiar nada desde
+          WhatsApp: el teléfono es una sola prueba de identidad, y con eso no se
+          mueve dinero.
+        </p>
+      </div>
+
+      <form onSubmit={agregar} className="mt-4 bg-white rounded-xl border border-slate-200 p-3.5">
+        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">
+          Autorizar un número
+        </p>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            value={telefono}
+            onChange={(e) => setTelefono(e.target.value)}
+            placeholder="310 555 1122"
+            inputMode="tel"
+            required
+            className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-emerald-400"
+          />
+          <input
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            placeholder="Nombre (opcional)"
+            className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-emerald-400"
+          />
+          <button
+            type="submit"
+            disabled={guardando || !telefono.trim()}
+            className="px-4 py-2 rounded-lg bg-[#00a884] hover:bg-[#029072] disabled:bg-slate-200 text-white text-sm font-bold transition-colors"
+          >
+            {guardando ? 'Agregando…' : 'Agregar'}
+          </button>
+        </div>
+        {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+      </form>
+
+      <div className="mt-4">
+        {cargando ? (
+          <div className="py-8 text-center text-slate-300"><FaSpinner className="animate-spin mx-auto" /></div>
+        ) : numeros.length === 0 ? (
+          <p className="text-[12.5px] text-slate-400 text-center py-6">
+            Todavía no hay ningún número autorizado.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {numeros.map((n) => (
+              <li key={n.telefono} className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5">
+                <Avatar nombre={n.nombre} telefono={n.telefono} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-slate-700 truncate">
+                    {n.nombre || 'Sin nombre'}
+                  </p>
+                  <p className="text-[12px] text-slate-400">{telefonoLegible(n.telefono)}</p>
+                </div>
+                <button
+                  onClick={() => quitar(n.telefono)}
+                  className="text-[11.5px] font-bold text-slate-400 hover:text-red-500 transition-colors"
+                >
+                  Quitar
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
