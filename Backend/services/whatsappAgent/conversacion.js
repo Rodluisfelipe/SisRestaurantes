@@ -237,7 +237,12 @@ async function aplicar(sesion, catalogo, dicho, textoDelCliente) {
 
     /* Dar una mala noticia también se hace con tono. "No tenemos X" suena a
        formulario; "uy, no manejamos X" suena a alguien que lo siente. */
-    if (r.motivo === 'no_existe') avisos.push(`Uy, no manejamos "${p.nombre}" 😕`);
+    if (r.motivo === 'no_existe') {
+      const parecidos = acciones.buscarVarios(catalogo, p.nombre, 3);
+      avisos.push(parecidos.length
+        ? `No tengo "${p.nombre}" así, pero sí: ${parecidos.map((x) => x.name).join(', ')}. ¿Alguno te sirve?`
+        : `Uy, no manejamos "${p.nombre}" 😕`);
+    }
     else if (r.motivo === 'ambiguo') avisos.push(`¿Cuál de estos querías? ${r.opciones.join(', ')}`);
     else if (r.motivo === 'sin_stock') {
       avisos.push(r.disponible > 0
@@ -271,7 +276,7 @@ async function aplicar(sesion, catalogo, dicho, textoDelCliente) {
  *
  * @returns {Promise<{respuesta: string|null, traspasar?: string, crear?: boolean}>}
  */
-async function resolver({ sesion, catalogo, dicho, enlace, negocio, estadoPedido, texto }) {
+async function resolver({ sesion, catalogo, dicho, enlace, negocio, estadoPedido, texto, config }) {
   const mensaje = String(texto || '');
 
   /* ── Se comprueba lo que el modelo afirma ──
@@ -303,6 +308,25 @@ async function resolver({ sesion, catalogo, dicho, enlace, negocio, estadoPedido
      El modelo únicamente señala QUÉ buscar. Los nombres y los precios salen
      del catálogo, igual que los totales: si el modelo dijera el precio, un
      día se lo inventaría. */
+  /* "¿Tienen servicio?" es de lo que más preguntan y acababa esperando a que
+     contestara una persona. Un cliente esperando a que le confirmen si pueden
+     atenderlo es un cliente que se va a otro lado. */
+  if (dicho.preguntaHorario) {
+    const horario = require('./horario');
+    const hoy = horario.estadoDeHoy(config);
+    if (hoy) {
+      /* Si está abierto se sigue la conversación; si no, se dice cuándo
+         vuelve y no se le pregunta qué quiere pedir. */
+      return { respuesta: hoy.abierto ? `${hoy.texto}\n\n${preguntar('productos', turno)}` : hoy.texto };
+    }
+    /* Sin horarios configurados es mejor pasarlo a una persona que inventar
+       una hora: un cliente que llega y encuentra cerrado no vuelve. */
+    return {
+      respuesta: 'Déjame confirmarte eso con alguien del equipo. 👤',
+      traspasar: 'preguntó por el horario y el negocio no lo tiene configurado',
+    };
+  }
+
   if (dicho.preguntaPrecio) {
     const r = acciones.buscarProducto(catalogo, dicho.preguntaPrecio);
     if (r.producto) {

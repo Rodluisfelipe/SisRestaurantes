@@ -372,7 +372,7 @@ async function quizaContesteElAgente(account, mensaje) {
 
     const BusinessConfig = require('../Models/BusinessConfig');
     const negocio = await BusinessConfig.findById(account.businessId)
-      .select('name businessName slug').lean();
+      .select('name businessName slug businessHours isOpen').lean();
 
     const agente = require('../services/whatsappAgent');
     const respuesta = await agente.atender({
@@ -380,6 +380,9 @@ async function quizaContesteElAgente(account, mensaje) {
       negocio: negocio?.name || negocio?.businessName || 'nuestro restaurante',
       // Con el slug el agente puede mandar al menú en vez de teclear el pedido.
       slug: negocio?.slug,
+      /* El horario: "¿tienen servicio?" es de lo que más preguntan y sin esto
+         acababa esperando a que contestara una persona. */
+      config: negocio,
       texto: dicho,
       contactPhone: mensaje.contactPhone,
       reglas: account.agente?.reglas || '',

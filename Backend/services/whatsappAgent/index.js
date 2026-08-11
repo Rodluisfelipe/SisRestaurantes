@@ -127,7 +127,7 @@ function enlaceMenu(slug) {
  * Procesa un mensaje entrante y devuelve el texto a responder.
  * Devuelve null si el agente no debe contestar.
  */
-async function atender({ account, negocio, slug, texto, contactPhone, reglas, crearOrden }) {
+async function atender({ account, negocio, slug, texto, contactPhone, reglas, crearOrden, config }) {
   const businessId = account.businessId;
   const enlace = enlaceMenu(slug);
 
@@ -242,6 +242,8 @@ async function atender({ account, negocio, slug, texto, contactPhone, reglas, cr
       dicho,
       enlace,
       negocio,
+      // Con la configuración el agente puede responder el horario él mismo.
+      config,
       reglas,
       // El texto crudo: con él se distingue "pide otra" de "está hablando de la que ya pidió".
       texto,
