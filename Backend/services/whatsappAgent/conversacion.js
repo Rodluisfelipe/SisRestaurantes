@@ -279,6 +279,16 @@ async function aplicar(sesion, catalogo, dicho, textoDelCliente) {
 async function resolver({ sesion, catalogo, dicho, enlace, negocio, estadoPedido, texto, config }) {
   const mensaje = String(texto || '');
 
+  /* El turno de la conversación: hace que las frases varíen a lo largo del chat
+     sin ser aleatorias. Con azar, dos clientes en el mismo punto recibirían
+     mensajes distintos y no habría forma de reproducir un fallo.
+
+     Se declara acá arriba, antes de la primera rama que pueda usarlo. Estaba
+     más abajo, entre medias, y las ramas del catálogo lo leían antes de que
+     existiera: `const` no se puede leer antes de su línea, así que preguntar
+     por el horario reventaba con ReferenceError en vez de contestar. */
+  const turno = Number(sesion.mensajes || 0);
+
   /* ── Se comprueba lo que el modelo afirma ──
      Un "Hola" se leyó como "quiero hablar con una persona" y la conversación
      quedó bloqueada media hora: el cliente escribió cuatro veces más sin
@@ -291,19 +301,15 @@ async function resolver({ sesion, catalogo, dicho, enlace, negocio, estadoPedido
   if (dicho.quiereHumano && pidePersona) {
     return { respuesta: 'Claro, ya te ayuda alguien del equipo. 👤', traspasar: 'lo pidió el cliente' };
   }
-  /* Una consulta que el agente no puede resolver sí se pasa, pero solo si el
-     mensaje de verdad parece una pregunta y no un saludo. */
-  if (dicho.otraPregunta && pareceConsulta && !soloSaludo) {
-    return {
-      respuesta: 'Déjame consultarlo con alguien del equipo, te responden en un momento. 👤',
-      traspasar: `preguntó: ${dicho.otraPregunta}`.slice(0, 200),
-    };
-  }
-
   /* ── Preguntas del catálogo ──
      Van ANTES de `otraPregunta`, que es lo que escala a una persona. Antes,
      "¿qué tienen de pollo?" o "¿cuánto vale la doble?" acababan sacando al
      agente de la conversación por algo que el código sabe responder solo.
+
+     Este comentario ya decía esto mientras el código hacía lo contrario: el
+     traspaso estaba unas líneas más arriba. "¿Tienes servicio?" llega con
+     `otraPregunta` puesta —el modelo tiene instrucción de meter ahí los
+     horarios— y salía por el traspaso sin llegar nunca a mirar el horario.
 
      El modelo únicamente señala QUÉ buscar. Los nombres y los precios salen
      del catálogo, igual que los totales: si el modelo dijera el precio, un
@@ -365,14 +371,19 @@ async function resolver({ sesion, catalogo, dicho, enlace, negocio, estadoPedido
     };
   }
 
+  /* Recién acá se pasa a una persona: cuando ya se descartó que sea algo del
+     catálogo, del horario o de un pedido. Solo si el mensaje de verdad parece
+     una pregunta y no un saludo. */
+  if (dicho.otraPregunta && pareceConsulta && !soloSaludo) {
+    return {
+      respuesta: 'Déjame consultarlo con alguien del equipo, te responden en un momento. 👤',
+      traspasar: `preguntó: ${dicho.otraPregunta}`.slice(0, 200),
+    };
+  }
+
   const { avisos, agregados, fijados } = await aplicar(sesion, catalogo, dicho, texto);
   const falta = acciones.queFalta(sesion);
   const tienePedido = !!sesion.items?.length;
-
-  /* El turno de la conversación: hace que las frases varíen a lo largo del chat
-     sin ser aleatorias. Con azar, dos clientes en el mismo punto recibirían
-     mensajes distintos y no habría forma de reproducir un fallo. */
-  const turno = Number(sesion.mensajes || 0);
 
   /* El menú se manda cuando de verdad ayuda: al empezar, o si lo pide. NO se
      manda si ya está dictando su pedido, que es lo que hacía que la

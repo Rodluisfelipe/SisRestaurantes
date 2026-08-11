@@ -104,6 +104,9 @@ function normalizar(bruto) {
     quiereHumano: bool(bruto?.quiereHumano),
     preguntaEstado: bool(bruto?.preguntaEstado),
     preguntaCarta: bool(bruto?.preguntaCarta),
+    busca: texto(bruto?.busca),
+    preguntaPrecio: texto(bruto?.preguntaPrecio),
+    preguntaHorario: bool(bruto?.preguntaHorario),
     otraPregunta: texto(bruto?.otraPregunta),
   };
 }
