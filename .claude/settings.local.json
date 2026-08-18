@@ -1,11 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node -e \"const p = require\\('./package.json'\\); console.log\\(Object.keys\\(p.dependencies\\).sort\\(\\).join\\('\\\\n'\\)\\)\")",
-      "Bash(npx vite *)",
-      "Bash(node --check Routes/crew.js)",
-      "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(ssh-add -l)",
+      "Read(//c/Users/HP VICTUS GAMING/.ssh/**)",
+      "Read(//c/Users/HP VICTUS GAMING/AppData/Roaming/Code/User/**)",
+      "Bash(xargs grep -l \"remote.SSH\")",
+      "Read(//c/Users/HP VICTUS GAMING/**)"
     ]
   }
 }

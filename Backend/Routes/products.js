@@ -150,6 +150,14 @@ function invalidatePopularCache(businessId) {
 // Exponer para que otras rutas (config/admin/orders) puedan invalidar
 router.invalidatePopularCache = invalidatePopularCache;
 
+/* Invalidar la caché de "Los más pedidos" y avisar por socket son la misma
+   operación desde el commit e2257b2a, pero esta función nunca se definió:
+   cada create/reorder/delete/toggle tiraba ReferenceError. */
+function avisarCambioDeProductos(businessId, payload) {
+  invalidatePopularCache(businessId);
+  emitToBusiness(businessId?.toString(), "products_update", payload);
+}
+
 async function buildPopularPayload(businessId, popCfg) {
   const bid = new mongoose.Types.ObjectId(String(businessId));
   const mode = popCfg.mode || 'hybrid';
