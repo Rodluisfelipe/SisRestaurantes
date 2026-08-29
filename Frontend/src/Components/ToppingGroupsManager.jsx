@@ -130,7 +130,7 @@ function ToppingGroupsManager() {
   const handleAddSubGroup = () => {
     setCurrentGroup({
       ...currentGroup,
-      subGroups: [...currentGroup.subGroups, { title: '', options: [] }]
+      subGroups: [...currentGroup.subGroups, { title: '', options: [], maxSelections: null }]
     });
   };
 
@@ -518,7 +518,7 @@ function ToppingGroupsManager() {
                           </button>
                         </div>
 
-                        <div className="flex gap-3 mb-2">
+                        <div className="flex flex-wrap items-center gap-3 mb-2">
                           <label className="flex items-center gap-1.5 cursor-pointer">
                             <input
                               type="checkbox"
@@ -537,6 +537,24 @@ function ToppingGroupsManager() {
                             />
                             <span className="text-[11px] text-slate-600">Obligatorio</span>
                           </label>
+                          {subGroup.isMultipleChoice && (
+                            <label className="flex items-center gap-1.5 cursor-pointer">
+                              <span className="text-[11px] text-slate-600">Máx. a elegir</span>
+                              <input
+                                type="number"
+                                min="1"
+                                step="1"
+                                value={subGroup.maxSelections || ''}
+                                onChange={(e) => handleSubGroupPropertyChange(
+                                  subGroupIndex,
+                                  'maxSelections',
+                                  e.target.value === '' ? null : parseInt(e.target.value, 10)
+                                )}
+                                placeholder="Sin límite"
+                                className="w-20 rounded-md border border-slate-200 text-[11px] text-slate-800 px-2 py-1 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
+                              />
+                            </label>
+                          )}
                         </div>
 
                         <div className="pl-3 border-l-2 border-slate-200 space-y-1">
@@ -771,6 +789,9 @@ function ToppingGroupsManager() {
                                   <span className="text-[9px] px-1 py-0.5 bg-purple-100 text-purple-600 rounded">
                                     {subGroup.isMultipleChoice ? 'Múltiple' : 'Única'}
                                   </span>
+                                  {subGroup.isMultipleChoice && subGroup.maxSelections > 0 && (
+                                    <span className="text-[9px] px-1 py-0.5 bg-amber-100 text-amber-700 rounded">Máx {subGroup.maxSelections}</span>
+                                  )}
                                   {subGroup.isRequired && (
                                     <span className="text-[9px] px-1 py-0.5 bg-red-100 text-red-600 rounded">Req</span>
                                   )}

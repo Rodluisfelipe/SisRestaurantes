@@ -35,6 +35,13 @@ const subGroupSchema = new mongoose.Schema({
     type: Boolean,
     default: false // Por defecto, no es obligatorio seleccionar
   },
+  // Tope de opciones elegibles cuando isMultipleChoice es true (ej: "máx 3 de 4 vegetales").
+  // null/undefined = sin límite.
+  maxSelections: {
+    type: Number,
+    default: null,
+    min: 1
+  },
   options: [toppingOptionSchema]
 });
 

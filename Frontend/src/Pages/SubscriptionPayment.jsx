@@ -257,8 +257,8 @@ const SubscriptionPayment = () => {
   const loadPaymentHistory = async () => {
     try {
       const [epaycoRes, dlocalRes] = await Promise.all([
-        api.get('/epayco/history').catch(() => ({ data: { payments: [] } })),
-        api.get('/dlocal/history').catch(() => ({ data: { payments: [] } })),
+        api.get(`/epayco/history?businessId=${businessId}`).catch(() => ({ data: { payments: [] } })),
+        api.get(`/dlocal/history?businessId=${businessId}`).catch(() => ({ data: { payments: [] } })),
       ]);
       const all = [
         ...(epaycoRes.data.payments || []).map(p => ({ ...p, gateway: 'ePayco' })),

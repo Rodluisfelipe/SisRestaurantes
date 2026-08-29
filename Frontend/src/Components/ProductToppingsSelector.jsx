@@ -234,10 +234,10 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
       
       // Determinar si es selección múltiple o única
       const group = uniqueToppingGroups.find(g => g && g._id === groupId);
-      const isMultiple = isSubGroup 
-        ? (subGroupId && group?.subGroups?.find(s => s?._id === subGroupId)?.isMultipleChoice) 
-        : (group?.isMultipleChoice);
-      
+      const subGroup = isSubGroup ? group?.subGroups?.find(s => s?._id === subGroupId) : null;
+      const isMultiple = isSubGroup ? subGroup?.isMultipleChoice : group?.isMultipleChoice;
+      const maxSelections = isSubGroup ? subGroup?.maxSelections : null;
+
       if (!isMultiple) {
         // Para selección única
         newSelectedToppings[key] = newSelectedToppings[key].includes(optionId) ? [] : [optionId];
@@ -245,8 +245,11 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
         // Para selección múltiple
         if (newSelectedToppings[key].includes(optionId)) {
           newSelectedToppings[key] = newSelectedToppings[key].filter(id => id !== optionId);
+        } else if (maxSelections && newSelectedToppings[key].length >= maxSelections) {
+          // Ya se alcanzó el tope de este subgrupo (ej: "máx 3 de 4 vegetales"); no agregar más.
+          return prev;
         } else {
-          newSelectedToppings[key].push(optionId);
+          newSelectedToppings[key] = [...newSelectedToppings[key], optionId];
         }
       }
       
@@ -399,8 +402,8 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
           // Si hay subgrupos obligatorios, verificar que al menos uno tenga selecciones
           const hasSubGroupSelections = group.subGroups.some(subGroup => {
             if (!subGroup.isRequired) return true; // Si no es obligatorio, no validar
-            return selectedToppings[`${group._id}_${subGroup.title}`] && 
-                   selectedToppings[`${group._id}_${subGroup.title}`].length > 0;
+            return selectedToppings[`${group._id}_${subGroup._id}`] && 
+                   selectedToppings[`${group._id}_${subGroup._id}`].length > 0;
           });
           
           if (!hasMainSelections && !hasSubGroupSelections) {
@@ -416,7 +419,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
       if (group.subGroups) {
         group.subGroups.forEach(subGroup => {
           if (subGroup.isRequired) {
-            const subGroupKey = `${group._id}_${subGroup.title}`;
+            const subGroupKey = `${group._id}_${subGroup._id}`;
             const hasSubGroupSelection = selectedToppings[subGroupKey] && 
               selectedToppings[subGroupKey].length > 0;
             
@@ -453,8 +456,8 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
             // Si hay subgrupos obligatorios, verificar que al menos uno tenga selecciones
             const hasSubGroupSelections = group.subGroups.some(subGroup => {
               if (!subGroup.isRequired) return true; // Si no es obligatorio, no validar
-              return selectedToppings[`${group._id}_${subGroup.title}`] && 
-                     selectedToppings[`${group._id}_${subGroup.title}`].length > 0;
+              return selectedToppings[`${group._id}_${subGroup._id}`] && 
+                     selectedToppings[`${group._id}_${subGroup._id}`].length > 0;
             });
             
             return !hasMainSelections && !hasSubGroupSelections;
@@ -600,18 +603,30 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
                     </div>
 
                     {/* Subgroups as chips too */}
-                    {Array.isArray(group.subGroups) && group.subGroups.filter(s => s && s._id).map(subGroup => (
+                    {Array.isArray(group.subGroups) && group.subGroups.filter(s => s && s._id).map(subGroup => {
+                      const subSelections = selectedToppings[`${group._id}_${subGroup._id}`] || [];
+                      const atMax = subGroup.isMultipleChoice && subGroup.maxSelections > 0 && subSelections.length >= subGroup.maxSelections;
+                      return (
                       <div key={subGroup._id} className="mt-2">
-                        <span className="text-[11px] font-bold text-slate-400 mb-1.5 block">{subGroup.title}</span>
+                        <span className="text-[11px] font-bold text-slate-400 mb-1.5 block">
+                          {subGroup.title}
+                          {subGroup.isMultipleChoice && subGroup.maxSelections > 0 && (
+                            <span className={`ml-1.5 font-semibold ${atMax ? 'text-amber-500' : 'text-slate-300'}`}>
+                              ({subSelections.length}/{subGroup.maxSelections})
+                            </span>
+                          )}
+                        </span>
                         <div className="flex flex-wrap gap-2">
                           {Array.isArray(subGroup.options) && subGroup.options.filter(o => o && o._id && o.active !== false).map(option => {
-                            const isSelected = (selectedToppings[`${group._id}_${subGroup._id}`] || []).includes(option._id);
+                            const isSelected = subSelections.includes(option._id);
+                            const disabled = atMax && !isSelected;
                             return (
                               <button
                                 key={option._id}
-                                onClick={() => handleOptionChange(group._id, option._id, true, subGroup._id, !subGroup.isMultipleChoice)}
+                                onClick={() => !disabled && handleOptionChange(group._id, option._id, true, subGroup._id, !subGroup.isMultipleChoice)}
+                                disabled={disabled}
                                 className={`px-3 py-2 rounded-xl text-sm font-bold transition-all active:scale-95 border-2 ${
-                                  isSelected ? 'text-white shadow-md' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                                  isSelected ? 'text-white shadow-md' : disabled ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
                                 }`}
                                 style={isSelected ? { backgroundColor: themeBtn, borderColor: themeBtn } : undefined}
                               >
@@ -624,7 +639,8 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
                           })}
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : null)}
               </div>
@@ -992,10 +1008,20 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
                         {/* Subgroups */}
                         {Array.isArray(group.subGroups) && group.subGroups.length > 0 && (
                           <div className="mt-2 space-y-2.5">
-                            {group.subGroups.filter(subGroup => subGroup && subGroup._id).map(subGroup => (
+                            {group.subGroups.filter(subGroup => subGroup && subGroup._id).map(subGroup => {
+                              const subSelections = selectedToppings[`${group._id}_${subGroup._id}`] || [];
+                              const atMax = subGroup.isMultipleChoice && subGroup.maxSelections > 0 && subSelections.length >= subGroup.maxSelections;
+                              return (
                                 <div key={subGroup._id} className="rounded-xl bg-slate-50/80 border border-slate-100 p-3">
                                   <div className="flex items-center justify-between mb-2">
-                                    <h5 className="font-bold text-[13px] text-slate-700">{subGroup.title}</h5>
+                                    <h5 className="font-bold text-[13px] text-slate-700 flex items-center gap-1.5">
+                                      {subGroup.title}
+                                      {subGroup.isMultipleChoice && subGroup.maxSelections > 0 && (
+                                        <span className={`text-[11px] font-semibold ${atMax ? 'text-amber-500' : 'text-slate-400'}`}>
+                                          ({subSelections.length}/{subGroup.maxSelections})
+                                        </span>
+                                      )}
+                                    </h5>
                                     {subGroup.options && subGroup.options.some(option => isFreeOption(option.name)) && (
                                       <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100">
                                         <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8L12 2z"/></svg>
@@ -1003,24 +1029,27 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
                                       </span>
                                     )}
                                   </div>
-                                  
+
                                   <div className="space-y-1.5">
                                     {Array.isArray(subGroup.options) && subGroup.options.filter(option => option && option._id && option.active !== false).map(option => {
-                                      const isSelected = (selectedToppings[`${group._id}_${subGroup._id}`] || []).includes(option._id);
+                                      const isSelected = subSelections.includes(option._id);
+                                      const disabled = atMax && !isSelected;
                                       return (
                                         <div
                                           key={option._id}
-                                          onClick={() => handleOptionChange(
+                                          onClick={() => !disabled && handleOptionChange(
                                             group._id,
                                             option._id,
                                             true,
                                             subGroup._id,
                                             !subGroup.isMultipleChoice
                                           )}
-                                          className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all duration-150 ${
+                                          className={`flex items-center justify-between p-2.5 rounded-lg transition-all duration-150 ${
                                             isSelected
-                                              ? 'bg-white shadow-sm border-2'
-                                              : 'bg-white/80 hover:bg-white border border-slate-100 hover:border-slate-200'
+                                              ? 'cursor-pointer bg-white shadow-sm border-2'
+                                              : disabled
+                                                ? 'cursor-not-allowed opacity-50 bg-white/50 border border-slate-100'
+                                                : 'cursor-pointer bg-white/80 hover:bg-white border border-slate-100 hover:border-slate-200'
                                           }`}
                                           style={isSelected ? { borderColor: `${themeBtn}40`, backgroundColor: `${themeBtn}05` } : undefined}
                                         >
@@ -1029,8 +1058,8 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
                                               className={`w-5 h-5 flex-shrink-0 flex items-center justify-center transition-all duration-150 ${
                                                 subGroup.isMultipleChoice ? 'rounded-md' : 'rounded-full'
                                               }`}
-                                              style={isSelected 
-                                                ? { backgroundColor: themeBtn, borderColor: themeBtn } 
+                                              style={isSelected
+                                                ? { backgroundColor: themeBtn, borderColor: themeBtn }
                                                 : { backgroundColor: 'transparent', border: '2px solid #cbd5e1' }
                                               }
                                             >
@@ -1048,7 +1077,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
                                             )}
                                             <span className={`text-sm ${isSelected ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>{option.name || 'Opción'}</span>
                                           </div>
-                                          
+
                                           {isFreeOption(option.name) ? (
                                             <span className="text-[11px] font-bold text-emerald-500 flex-shrink-0">GRATIS</span>
                                           ) : Number(option.price) > 0 ? (
@@ -1059,7 +1088,8 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
                                     })}
                                   </div>
                                 </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </div>

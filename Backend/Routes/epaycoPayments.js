@@ -17,7 +17,7 @@ const BusinessConfig = require('../Models/BusinessConfig');
 const authMiddleware = require('../middleware/authMiddleware');
 const logger = require('../utils/logger');
 const { isValidObjectId } = require('../utils/validators');
-const { resolveBusinessId } = require('../utils/businessResolver');
+const { resolveBusinessId, requireBusinessId } = require('../utils/businessResolver');
 const epaycoService = require('../services/epaycoService');
 const { resolvePaymentSelection, inferLegacyPlanTypeFromMonths } = require('../utils/commercialPlans');
 
@@ -608,7 +608,7 @@ async function activateSubscription(payment) {
 // ============================================
 router.get('/history', authMiddleware, async (req, res) => {
   try {
-    const businessId = await resolveBusinessId(req);
+    const businessId = await requireBusinessId(req);
     if (!businessId) {
       return res.status(400).json({ success: false, message: 'businessId requerido' });
     }
