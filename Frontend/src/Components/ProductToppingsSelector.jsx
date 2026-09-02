@@ -203,9 +203,11 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
             const subGroupSelections = selectedToppings[subGroupKey] || [];
             
             subGroup.options.forEach(option => {
-              if (option && option._id && subGroupSelections.includes(option._id)) {
-                optionsPriceTotal += Number(option.price || 0);
-              }
+              if (!option || !option._id) return;
+              // Contar ocurrencias (no solo presencia) para que las repeticiones
+              // en subgrupos con allowRepeats cobren cada una su precio.
+              const count = subGroupSelections.filter(id => id === option._id).length;
+              if (count > 0) optionsPriceTotal += Number(option.price || 0) * count;
             });
           }
         });
@@ -254,6 +256,27 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
       }
       
       return newSelectedToppings;
+    });
+  };
+
+  // Para subgrupos con allowRepeats: sumar/restar una unidad de una misma opción
+  // (ej: "zanahoria x2"), en vez de solo incluirla/excluirla una vez.
+  const handleRepeatCountChange = (groupId, subGroupId, optionId, delta) => {
+    setSelectedToppings(prev => {
+      const key = `${groupId}_${subGroupId}`;
+      const current = prev[key] || [];
+
+      if (delta > 0) {
+        const group = uniqueToppingGroups.find(g => g && g._id === groupId);
+        const subGroup = group?.subGroups?.find(s => s?._id === subGroupId);
+        const maxSelections = subGroup?.maxSelections;
+        if (maxSelections && current.length >= maxSelections) return prev;
+        return { ...prev, [key]: [...current, optionId] };
+      }
+
+      const idx = current.lastIndexOf(optionId);
+      if (idx === -1) return prev;
+      return { ...prev, [key]: [...current.slice(0, idx), ...current.slice(idx + 1)] };
     });
   };
 
@@ -618,7 +641,48 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
                         </span>
                         <div className="flex flex-wrap gap-2">
                           {Array.isArray(subGroup.options) && subGroup.options.filter(o => o && o._id && o.active !== false).map(option => {
-                            const isSelected = subSelections.includes(option._id);
+                            const count = subSelections.filter(id => id === option._id).length;
+                            const isSelected = count > 0;
+
+                            if (subGroup.allowRepeats) {
+                              const canAdd = !atMax;
+                              return (
+                                <div
+                                  key={option._id}
+                                  className={`flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-xl text-sm font-bold border-2 transition-all ${
+                                    isSelected ? 'text-white shadow-md' : 'bg-white text-slate-700 border-slate-200'
+                                  }`}
+                                  style={isSelected ? { backgroundColor: themeBtn, borderColor: themeBtn } : undefined}
+                                >
+                                  <span>
+                                    {option.name}
+                                    {!isFreeOption(option.name) && Number(option.price) > 0 && (
+                                      <span className={`ml-1 text-[11px] font-semibold ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>+${option.price?.toLocaleString()}</span>
+                                    )}
+                                  </span>
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRepeatCountChange(group._id, subGroup._id, option._id, -1)}
+                                      disabled={count === 0}
+                                      className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black transition-colors ${
+                                        count === 0 ? 'opacity-30 cursor-not-allowed' : isSelected ? 'bg-white/20 hover:bg-white/30' : 'bg-slate-100 hover:bg-slate-200'
+                                      }`}
+                                    >−</button>
+                                    <span className="w-4 text-center tabular-nums">{count}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRepeatCountChange(group._id, subGroup._id, option._id, 1)}
+                                      disabled={!canAdd}
+                                      className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black transition-colors ${
+                                        !canAdd ? 'opacity-30 cursor-not-allowed' : isSelected ? 'bg-white/20 hover:bg-white/30' : 'bg-slate-100 hover:bg-slate-200'
+                                      }`}
+                                    >+</button>
+                                  </div>
+                                </div>
+                              );
+                            }
+
                             const disabled = atMax && !isSelected;
                             return (
                               <button
@@ -1032,7 +1096,57 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
 
                                   <div className="space-y-1.5">
                                     {Array.isArray(subGroup.options) && subGroup.options.filter(option => option && option._id && option.active !== false).map(option => {
-                                      const isSelected = subSelections.includes(option._id);
+                                      const count = subSelections.filter(id => id === option._id).length;
+                                      const isSelected = count > 0;
+
+                                      if (subGroup.allowRepeats) {
+                                        const canAdd = !atMax;
+                                        return (
+                                          <div
+                                            key={option._id}
+                                            className={`flex items-center justify-between p-2.5 rounded-lg border-2 transition-all duration-150 ${
+                                              isSelected ? 'bg-white shadow-sm' : 'bg-white/80 border-slate-100'
+                                            }`}
+                                            style={isSelected ? { borderColor: `${themeBtn}40`, backgroundColor: `${themeBtn}05` } : undefined}
+                                          >
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                              {option.image && (
+                                                <img
+                                                  src={option.image}
+                                                  alt=""
+                                                  loading="lazy"
+                                                  className="w-8 h-8 rounded-md object-cover flex-shrink-0 border border-slate-200 bg-slate-50"
+                                                />
+                                              )}
+                                              <span className={`text-sm ${isSelected ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>{option.name || 'Opción'}</span>
+                                              {!isFreeOption(option.name) && Number(option.price) > 0 && (
+                                                <span className={`text-[12px] font-semibold ${isSelected ? 'text-slate-700' : 'text-slate-400'}`}>+${option.price?.toLocaleString()}</span>
+                                              )}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                                              <button
+                                                type="button"
+                                                onClick={() => handleRepeatCountChange(group._id, subGroup._id, option._id, -1)}
+                                                disabled={count === 0}
+                                                className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm font-black transition-colors ${
+                                                  count === 0 ? 'opacity-30 cursor-not-allowed bg-slate-100' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                                                }`}
+                                              >−</button>
+                                              <span className="w-4 text-center text-sm font-bold text-slate-700 tabular-nums">{count}</span>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleRepeatCountChange(group._id, subGroup._id, option._id, 1)}
+                                                disabled={!canAdd}
+                                                className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm font-black transition-colors ${
+                                                  !canAdd ? 'opacity-30 cursor-not-allowed bg-slate-100' : 'text-white'
+                                                }`}
+                                                style={canAdd ? { backgroundColor: themeBtn } : undefined}
+                                              >+</button>
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+
                                       const disabled = atMax && !isSelected;
                                       return (
                                         <div

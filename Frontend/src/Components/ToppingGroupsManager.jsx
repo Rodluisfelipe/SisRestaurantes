@@ -130,7 +130,7 @@ function ToppingGroupsManager() {
   const handleAddSubGroup = () => {
     setCurrentGroup({
       ...currentGroup,
-      subGroups: [...currentGroup.subGroups, { title: '', options: [], maxSelections: null }]
+      subGroups: [...currentGroup.subGroups, { title: '', options: [], maxSelections: null, allowRepeats: false }]
     });
   };
 
@@ -538,22 +538,33 @@ function ToppingGroupsManager() {
                             <span className="text-[11px] text-slate-600">Obligatorio</span>
                           </label>
                           {subGroup.isMultipleChoice && (
-                            <label className="flex items-center gap-1.5 cursor-pointer">
-                              <span className="text-[11px] text-slate-600">Máx. a elegir</span>
-                              <input
-                                type="number"
-                                min="1"
-                                step="1"
-                                value={subGroup.maxSelections || ''}
-                                onChange={(e) => handleSubGroupPropertyChange(
-                                  subGroupIndex,
-                                  'maxSelections',
-                                  e.target.value === '' ? null : parseInt(e.target.value, 10)
-                                )}
-                                placeholder="Sin límite"
-                                className="w-20 rounded-md border border-slate-200 text-[11px] text-slate-800 px-2 py-1 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
-                              />
-                            </label>
+                            <>
+                              <label className="flex items-center gap-1.5 cursor-pointer">
+                                <span className="text-[11px] text-slate-600">Máx. a elegir</span>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  step="1"
+                                  value={subGroup.maxSelections || ''}
+                                  onChange={(e) => handleSubGroupPropertyChange(
+                                    subGroupIndex,
+                                    'maxSelections',
+                                    e.target.value === '' ? null : parseInt(e.target.value, 10)
+                                  )}
+                                  placeholder="Sin límite"
+                                  className="w-20 rounded-md border border-slate-200 text-[11px] text-slate-800 px-2 py-1 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
+                                />
+                              </label>
+                              <label className="flex items-center gap-1.5 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={!!subGroup.allowRepeats}
+                                  onChange={(e) => handleSubGroupPropertyChange(subGroupIndex, 'allowRepeats', e.target.checked)}
+                                  className="w-3.5 h-3.5 text-amber-500 rounded border-slate-300 focus:ring-amber-500"
+                                />
+                                <span className="text-[11px] text-slate-600">Permitir repetir la misma opción</span>
+                              </label>
+                            </>
                           )}
                         </div>
 
@@ -791,6 +802,9 @@ function ToppingGroupsManager() {
                                   </span>
                                   {subGroup.isMultipleChoice && subGroup.maxSelections > 0 && (
                                     <span className="text-[9px] px-1 py-0.5 bg-amber-100 text-amber-700 rounded">Máx {subGroup.maxSelections}</span>
+                                  )}
+                                  {subGroup.isMultipleChoice && subGroup.allowRepeats && (
+                                    <span className="text-[9px] px-1 py-0.5 bg-indigo-100 text-indigo-700 rounded">Repetible</span>
                                   )}
                                   {subGroup.isRequired && (
                                     <span className="text-[9px] px-1 py-0.5 bg-red-100 text-red-600 rounded">Req</span>

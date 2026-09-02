@@ -42,6 +42,12 @@ const subGroupSchema = new mongoose.Schema({
     default: null,
     min: 1
   },
+  // Si es true, el cliente puede elegir la misma opción más de una vez
+  // (ej: "zanahoria x2"), contando cada repetición contra maxSelections.
+  allowRepeats: {
+    type: Boolean,
+    default: false
+  },
   options: [toppingOptionSchema]
 });
 

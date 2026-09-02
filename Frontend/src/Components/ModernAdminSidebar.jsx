@@ -50,32 +50,24 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
     {
       id: 'operations',
       label: 'Operaciones',
+      // Orden por qué tan a diario se usa: pedidos y caja son constantes,
+      // el cierre mensual es lo menos frecuente de la sección.
       items: [
         { id: 'orders', label: isService ? 'Citas' : 'Pedidos', Icon: isService ? FaCalendarAlt : FaClipboardList, badge: pendingOrdersCount },
-        { id: 'completed_orders', label: 'Completados', Icon: FaCheckCircle, badge: null },
-        /* El cierre mensual no depende del POS: todo negocio cierra su mes,
-           tenga o no punto de venta. */
-        { id: 'monthly-closing', label: 'Cierre Mensual', Icon: FaCalendarAlt, badge: null },
         ...(businessConfig?.features?.posBetaEnabled ? [{ id: 'cash-closings', label: 'Cierres de Caja', Icon: FaCashRegister, badge: null }] : []),
+        { id: 'completed_orders', label: 'Completados', Icon: FaCheckCircle, badge: null },
         ...(businessConfig?.enableBookings ? [{ id: 'bookings', label: 'Agenda', Icon: FaCalendarAlt, badge: null }] : []),
-      ]
-    },
-    {
-      id: 'menu',
-      label: isService ? 'Servicios' : 'Menú',
-      items: [
-        { id: 'products', label: isService ? 'Servicios' : 'Productos', Icon: isService ? FaTools : FaHamburger, badge: null },
-        { id: 'inventory', label: 'Inventario', Icon: FaBoxOpen, badge: null },
-        { id: 'product-order', label: 'Orden', Icon: FaSortAmountDown, badge: null },
-        { id: 'categories', label: 'Categorías', Icon: FaFolderOpen, badge: null },
-        { id: 'toppings', label: isService ? 'Opciones' : 'Extras', Icon: isService ? FaCog : FaCheese, badge: null },
+        /* El cierre mensual no depende del POS: todo negocio cierra su mes,
+           tenga o no punto de venta. Va al final: es mensual, no diario. */
+        { id: 'monthly-closing', label: 'Cierre Mensual', Icon: FaCalendarAlt, badge: null },
       ]
     },
     {
       id: 'clients',
       label: 'Clientes y Servicio',
+      // Chats y domiciliarios se tocan todo el día; mesas y zonas se
+      // configuran una vez y casi no se vuelven a abrir.
       items: [
-        { id: 'customers', label: 'Clientes', Icon: FaUsers, badge: null },
         /* Se muestra aunque el negocio no lo tenga contratado: la pantalla
            explica de qué se trata en vez de fallar, y así el complemento se
            descubre solo en lugar de quedar escondido. */
@@ -84,34 +76,48 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
            propia dirección —como el POS— y sirve para dejarla en una pestaña
            del navegador toda la jornada. */
         { id: 'whatsapp-inbox', label: 'Chats WhatsApp', Icon: FaWhatsapp, badge: whatsappSinLeer || null },
+        ...(!isService && !isHotel ? [{ id: 'delivery', label: 'Domiciliarios', Icon: FaMotorcycle, badge: null }] : []),
+        { id: 'reviews', label: 'Reseñas', Icon: FaStar, badge: null },
+        { id: 'customers', label: 'Clientes', Icon: FaUsers, badge: null },
         { id: 'coupons', label: 'Cupones', Icon: FaTicketAlt, badge: null },
         { id: 'loyalty', label: 'Fidelidad', Icon: FaGift, badge: null, beta: true },
-        { id: 'reviews', label: 'Reseñas', Icon: FaStar, badge: null },
-        ...(!isService ? [{ id: 'tables', label: isHotel ? 'Habitaciones' : 'Mesas', Icon: FaChair, badge: null }] : []),
         ...(!isService && !isHotel ? [{ id: 'delivery-zones', label: 'Zonas', Icon: FaMapMarkedAlt, badge: null }] : []),
-        ...(!isService && !isHotel ? [{ id: 'delivery', label: 'Domiciliarios', Icon: FaMotorcycle, badge: null }] : []),
+        ...(!isService ? [{ id: 'tables', label: isHotel ? 'Habitaciones' : 'Mesas', Icon: FaChair, badge: null }] : []),
+      ]
+    },
+    {
+      id: 'menu',
+      label: isService ? 'Servicios' : 'Menú',
+      // Productos e inventario cambian seguido; el orden de despliegue se
+      // configura una vez y casi no se vuelve a tocar.
+      items: [
+        { id: 'products', label: isService ? 'Servicios' : 'Productos', Icon: isService ? FaTools : FaHamburger, badge: null },
+        { id: 'inventory', label: 'Inventario', Icon: FaBoxOpen, badge: null },
+        { id: 'toppings', label: isService ? 'Opciones' : 'Extras', Icon: isService ? FaCog : FaCheese, badge: null },
+        { id: 'categories', label: 'Categorías', Icon: FaFolderOpen, badge: null },
+        { id: 'product-order', label: 'Orden', Icon: FaSortAmountDown, badge: null },
       ]
     },
     {
       id: 'marketing',
       label: 'Marketing',
       items: [
-        { id: 'catalog', label: 'Catálogo', Icon: FaBullhorn, badge: null },
+        { id: 'wa-campaign', label: 'Campaña WA', Icon: FaWhatsapp, badge: null },
+        { id: 'referrals', label: 'Referidos', Icon: FaShareAlt, badge: null },
         { id: 'popups', label: 'Anuncios', Icon: FaBullhorn, badge: null },
         /* Este personaliza el mensaje del enlace wa.me del menú; no confundir
            con "Chats WhatsApp", que es la bandeja del número propio. */
         { id: 'whatsapp', label: 'Mensaje del menú', Icon: FaWhatsapp, badge: null },
-        { id: 'wa-campaign', label: 'Campaña WA', Icon: FaWhatsapp, badge: null },
+        { id: 'catalog', label: 'Catálogo', Icon: FaBullhorn, badge: null },
         { id: 'payment-config', label: 'Pagos', Icon: FaMoneyBillWave, badge: null },
-        { id: 'referrals', label: 'Referidos', Icon: FaShareAlt, badge: null },
       ]
     },
     {
       id: 'suppliers',
       label: 'Proveedores',
       items: [
-        { id: 'marketplace', label: 'Marketplace', Icon: FaShoppingBag, badge: null },
         { id: 'supplier-orders', label: businessConfig?.isSupplier ? 'Pedidos B2B' : 'Mis pedidos', Icon: FaClipboardList, badge: null },
+        { id: 'marketplace', label: 'Marketplace', Icon: FaShoppingBag, badge: null },
       ]
     },
     {
