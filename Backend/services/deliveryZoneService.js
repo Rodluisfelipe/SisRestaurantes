@@ -267,6 +267,11 @@ function validateZoneData(zoneData) {
   // Validar nombre
   if (!zoneData.name || zoneData.name.trim().length === 0) {
     errors.push('El nombre de la zona es requerido');
+  } else if (zoneData.name.trim().length > 100) {
+    // Debe coincidir con el maxlength del modelo (DeliveryZone.name): sin esto,
+    // un nombre largo pasaba esta validación y tronaba como 500 genérico al
+    // guardar, en vez de un error claro que el formulario pueda mostrar.
+    errors.push('El nombre de la zona no puede tener más de 100 caracteres. Si necesitas describir varios barrios, usa el campo de descripción.');
   }
   
   // Validar tipo

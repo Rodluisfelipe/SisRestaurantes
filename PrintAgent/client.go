@@ -21,27 +21,44 @@ type BusinessInfo struct {
 	NIT          string `json:"nit"`
 	Slug         string `json:"slug"`
 	PrintMode    string `json:"printMode"` // "comanda", "recibo", or "both"
+	// ShowQR y MenuURL los manda el backend desde printerSettings del negocio.
+	// Antes no viajaban, y por eso el interruptor "QR en el ticket" del panel
+	// no tenía ningún efecto sobre lo que imprimía la térmica.
+	ShowQR  bool   `json:"showQR"`
+	MenuURL string `json:"menuUrl"`
 }
 
-// SSEClient manages the connection to the backend SSE stream
+// SSEClient manages the connection to the backend SSE stream.
+// Hay uno por cuenta: cada negocio tiene su propia llave, su propia conexión
+// y sus propios datos de encabezado.
 type SSEClient struct {
-	config       *Config
+	apiURL       string
+	printKey     string
 	business     *BusinessInfo
 	onOrder      func(order map[string]interface{})
 	onReceipt    func(order map[string]interface{})
 	onConnect    func(info *BusinessInfo)
 	onDisconnect func()
 	connected    bool
+	lastError    string
 	mu           sync.RWMutex
 	stopCh       chan struct{}
 }
 
-// NewSSEClient creates a new SSE client
-func NewSSEClient(cfg *Config) *SSEClient {
+// NewSSEClient creates a new SSE client for one account
+func NewSSEClient(apiURL, printKey string) *SSEClient {
 	return &SSEClient{
-		config: cfg,
-		stopCh: make(chan struct{}),
+		apiURL:   apiURL,
+		printKey: printKey,
+		stopCh:   make(chan struct{}),
 	}
+}
+
+// LastError devuelve el último error de conexión de esta cuenta.
+func (c *SSEClient) LastError() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.lastError
 }
 
 // IsConnected returns the connection status
@@ -85,6 +102,9 @@ func (c *SSEClient) connectLoop() {
 
 		c.mu.Lock()
 		c.connected = false
+		if err != nil {
+			c.lastError = err.Error()
+		}
 		c.mu.Unlock()
 
 		if c.onDisconnect != nil {
@@ -104,7 +124,7 @@ func (c *SSEClient) connectLoop() {
 }
 
 func (c *SSEClient) connect() error {
-	url := fmt.Sprintf("%s/api/print-agent/stream?key=%s", c.config.APIUrl, c.config.PrintKey)
+	url := fmt.Sprintf("%s/api/print-agent/stream?key=%s", c.apiURL, c.printKey)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -190,6 +210,7 @@ func (c *SSEClient) handleEvent(eventType, data string) {
 		c.mu.Lock()
 		c.business = &info
 		c.connected = true
+		c.lastError = ""
 		c.mu.Unlock()
 
 		log.Printf("[SSE] Connected to business: %s (%s)", info.BusinessName, info.Slug)
@@ -211,6 +232,33 @@ func (c *SSEClient) handleEvent(eventType, data string) {
 		if c.onOrder != nil {
 			c.onOrder(order)
 		}
+
+	case "settings_updated":
+		// El negocio cambió algo en el panel (el QR, el modo de impresión).
+		// Se aplica sin reconectar: un agente sano puede estar conectado días.
+		var upd struct {
+			ShowQR    *bool  `json:"showQR"`
+			MenuURL   string `json:"menuUrl"`
+			PrintMode string `json:"printMode"`
+		}
+		if err := json.Unmarshal([]byte(data), &upd); err != nil {
+			log.Printf("[SSE] Error parsing settings event: %v", err)
+			return
+		}
+		c.mu.Lock()
+		if c.business != nil {
+			if upd.ShowQR != nil {
+				c.business.ShowQR = *upd.ShowQR
+			}
+			if upd.MenuURL != "" {
+				c.business.MenuURL = upd.MenuURL
+			}
+			if upd.PrintMode != "" {
+				c.business.PrintMode = upd.PrintMode
+			}
+		}
+		c.mu.Unlock()
+		log.Printf("[SSE] Configuración actualizada en caliente (QR=%v, modo=%s)", upd.ShowQR, upd.PrintMode)
 
 	case "print_receipt":
 		var order map[string]interface{}

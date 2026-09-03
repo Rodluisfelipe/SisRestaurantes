@@ -313,7 +313,12 @@ const DeliveryZoneManager = () => {
       loadZones();
     } catch (error) {
       console.error('Error al guardar zona:', error);
-      alert(error.response?.data?.message || 'Error al guardar la zona');
+      // El backend manda el motivo puntual (ej: nombre muy largo) en `errors`,
+      // no en `message` (que es genérico: "Datos de zona inválidos").
+      const detalle = Array.isArray(error.response?.data?.errors) && error.response.data.errors.length
+        ? error.response.data.errors.join('\n')
+        : error.response?.data?.message;
+      alert(detalle || 'Error al guardar la zona');
     }
   };
 

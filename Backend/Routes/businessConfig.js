@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const BusinessConfig = require("../Models/BusinessConfig");
 const eventService = require('../services/eventService');
-const { emitToBusiness } = require("../services/socketService");
+const { emitToBusiness, printEmitter } = require("../services/socketService");
 const { resolveBusiness, resolveBusinessId } = require("../utils/businessResolver");
 const logger = require("../utils/logger");
 const { formatHttpError } = require("../utils/errorFormatter");
@@ -17,6 +17,28 @@ const {
   validateUpdateMenuStatus,
   validateUpdateConfigById,
 } = require('../middleware/validators/businessConfigValidators');
+
+/**
+ * Avisa al agente de impresión que cambió algo que afecta al ticket.
+ *
+ * El agente lee esta configuración al conectarse y puede quedarse conectado
+ * durante días, así que sin este aviso el negocio activaba el QR en el panel
+ * y el recibo seguía saliendo igual hasta reiniciar el agente. Va envuelto en
+ * try porque un fallo acá no puede tumbar el guardado de la configuración.
+ */
+function notificarAgenteDeImpresion(config) {
+  try {
+    if (!config?._id) return;
+    const base = (process.env.FRONTEND_URL || 'https://menuby.tech').replace(/\/$/, '');
+    printEmitter.emit(`settings:${config._id.toString()}`, {
+      showQR: config.printerSettings?.showQR !== false,
+      menuUrl: config.slug ? `${base}/${config.slug}` : '',
+      printMode: config.printAgentMode || 'both'
+    });
+  } catch (e) {
+    logger.warn('No se pudo avisar al agente de impresión', { error: e.message });
+  }
+}
 
 // Obtener la configuración
 router.get("/", async (req, res) => {
@@ -121,6 +143,13 @@ router.put("/", tenantAuth, validateUpdateConfig, async (req, res) => {
         after: afterSnap,
         req,
       });
+
+      /* Si cambió algo que le importa a la impresora, avisarle al agente en
+         caliente. Antes el agente solo leía esto al conectarse, así que
+         activar el QR no tenía efecto hasta reiniciarlo. */
+      if (updateData.printerSettings !== undefined || updateData.slug !== undefined) {
+        notificarAgenteDeImpresion(config);
+      }
 
       logger.info('Configuración actualizada', { businessId: config._id }, req);
       res.json(config);

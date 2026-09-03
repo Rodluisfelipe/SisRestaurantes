@@ -10,17 +10,19 @@ export function Connect():Promise<void>;
 
 export function Disconnect():Promise<void>;
 
+export function GetAccounts():Promise<Array<main.Account>>;
+
 export function GetConfig():Promise<main.Config>;
 
 export function GetDefaultPrinterName():Promise<string>;
 
 export function GetHistory():Promise<Array<{[key: string]: any}>>;
 
-export function GetPrintMode():Promise<string>;
-
-export function GetPrinterStatusInfo():Promise<{[key: string]: any}>;
+export function GetPrinterStatusInfo():Promise<Array<{[key: string]: any}>>;
 
 export function GetPrinters():Promise<Array<string>>;
+
+export function GetPrintersConfig():Promise<Array<main.Printer>>;
 
 export function GetStatus():Promise<{[key: string]: any}>;
 
@@ -40,14 +42,22 @@ export function QuitApp():Promise<void>;
 
 export function Reconnect():Promise<void>;
 
+export function RemoveAccount(arg1:string):Promise<void>;
+
+export function RemovePrinter(arg1:string):Promise<void>;
+
 export function ReprintJob(arg1:string):Promise<void>;
 
 export function ReprintLast():Promise<void>;
 
-export function SaveConfig(arg1:string,arg2:string,arg3:string,arg4:number,arg5:boolean):Promise<void>;
+export function SaveAccount(arg1:string,arg2:string,arg3:string,arg4:string,arg5:boolean):Promise<void>;
+
+export function SavePrinter(arg1:string,arg2:string,arg3:number,arg4:boolean,arg5:string):Promise<string>;
+
+export function SetAPIUrl(arg1:string):Promise<void>;
 
 export function SetAutoStart(arg1:boolean):Promise<void>;
 
-export function TestPrint():Promise<void>;
+export function TestPrint(arg1:string):Promise<void>;
 
 export function ValidateKey(arg1:string):Promise<string>;

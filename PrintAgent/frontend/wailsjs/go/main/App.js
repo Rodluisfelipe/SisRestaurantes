@@ -18,6 +18,10 @@ export function Disconnect() {
   return window['go']['main']['App']['Disconnect']();
 }
 
+export function GetAccounts() {
+  return window['go']['main']['App']['GetAccounts']();
+}
+
 export function GetConfig() {
   return window['go']['main']['App']['GetConfig']();
 }
@@ -30,16 +34,16 @@ export function GetHistory() {
   return window['go']['main']['App']['GetHistory']();
 }
 
-export function GetPrintMode() {
-  return window['go']['main']['App']['GetPrintMode']();
-}
-
 export function GetPrinterStatusInfo() {
   return window['go']['main']['App']['GetPrinterStatusInfo']();
 }
 
 export function GetPrinters() {
   return window['go']['main']['App']['GetPrinters']();
+}
+
+export function GetPrintersConfig() {
+  return window['go']['main']['App']['GetPrintersConfig']();
 }
 
 export function GetStatus() {
@@ -78,6 +82,14 @@ export function Reconnect() {
   return window['go']['main']['App']['Reconnect']();
 }
 
+export function RemoveAccount(arg1) {
+  return window['go']['main']['App']['RemoveAccount'](arg1);
+}
+
+export function RemovePrinter(arg1) {
+  return window['go']['main']['App']['RemovePrinter'](arg1);
+}
+
 export function ReprintJob(arg1) {
   return window['go']['main']['App']['ReprintJob'](arg1);
 }
@@ -86,16 +98,24 @@ export function ReprintLast() {
   return window['go']['main']['App']['ReprintLast']();
 }
 
-export function SaveConfig(arg1, arg2, arg3, arg4, arg5) {
-  return window['go']['main']['App']['SaveConfig'](arg1, arg2, arg3, arg4, arg5);
+export function SaveAccount(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['SaveAccount'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function SavePrinter(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['SavePrinter'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function SetAPIUrl(arg1) {
+  return window['go']['main']['App']['SetAPIUrl'](arg1);
 }
 
 export function SetAutoStart(arg1) {
   return window['go']['main']['App']['SetAutoStart'](arg1);
 }
 
-export function TestPrint() {
-  return window['go']['main']['App']['TestPrint']();
+export function TestPrint(arg1) {
+  return window['go']['main']['App']['TestPrint'](arg1);
 }
 
 export function ValidateKey(arg1) {

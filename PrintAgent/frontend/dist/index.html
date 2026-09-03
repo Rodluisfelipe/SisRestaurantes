@@ -111,6 +111,15 @@
                 </div>
             </div>
 
+            <!-- Cuentas conectadas (una tarjeta por marca) -->
+            <div class="acct-section" id="accounts-section">
+                <div class="log-bar">
+                    <h3 class="log-title">Negocios conectados</h3>
+                    <button class="btn-text" onclick="openSettings('cuentas')">Administrar</button>
+                </div>
+                <div id="accounts-list"></div>
+            </div>
+
             <!-- Action Buttons -->
             <div class="actions">
                 <button class="action-card" onclick="testPrint()">
@@ -179,43 +188,83 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    <label class="label">Impresora</label>
-                    <select id="settings-printer" class="input select"></select>
-
-                    <label class="label mt-14">Ancho de papel</label>
-                    <div class="paper-row" id="settings-paper">
-                        <button class="chip" data-width="80">80 mm</button>
-                        <button class="chip" data-width="76">76 mm</button>
-                        <button class="chip" data-width="58">58 mm</button>
-                        <button class="chip" data-width="44">44 mm</button>
+                    <div class="tab-bar">
+                        <button class="tab active" id="stab-cuentas" onclick="switchSettingsTab('cuentas')">Negocios</button>
+                        <button class="tab" id="stab-impresoras" onclick="switchSettingsTab('impresoras')">Impresoras</button>
+                        <button class="tab" id="stab-general" onclick="switchSettingsTab('general')">General</button>
                     </div>
 
-                    <div class="switch-row mt-14">
-                        <span>Corte automatico</span>
-                        <button class="switch" id="toggle-autocut" onclick="toggleAutocut()"><div class="switch-thumb"></div></button>
-                    </div>
-                    <div class="switch-row">
-                        <span>Iniciar con Windows</span>
-                        <button class="switch" id="toggle-autostart" onclick="toggleAutostart()"><div class="switch-thumb"></div></button>
-                    </div>
+                    <!-- ── Negocios ── -->
+                    <div id="spane-cuentas">
+                        <div id="accounts-editor"></div>
 
-                    <div class="sep"></div>
-
-                    <label class="label">Clave de conexion</label>
-                    <input type="text" id="settings-key" class="input mono" readonly>
-
-                    <div class="btn-row mt-10">
-                        <button class="btn btn-ghost" onclick="openAppFolder()">Abrir carpeta</button>
-                        <button class="btn btn-ghost danger" onclick="resetConfig()">Cambiar clave</button>
+                        <div class="sep"></div>
+                        <h4 class="card-title">Agregar un negocio</h4>
+                        <p class="card-desc">Cada marca tiene su propia clave, en su panel → Configuracion → Impresoras.</p>
+                        <input type="text" id="new-acct-key" class="input mono" placeholder="Clave de 64 caracteres..." spellcheck="false" autocomplete="off">
+                        <input type="text" id="new-acct-alias" class="input mt-10" placeholder="Nombre para identificarlo (opcional)">
+                        <div id="new-acct-error" class="error-msg hidden"></div>
+                        <button id="btn-add-acct" class="btn btn-red mt-10" onclick="addAccount()">
+                            <span class="btn-label">Agregar negocio</span>
+                            <span class="btn-spinner hidden"></span>
+                        </button>
                     </div>
 
-                    <button class="btn btn-red mt-14" onclick="saveSettings()">Guardar cambios</button>
+                    <!-- ── Impresoras ── -->
+                    <div id="spane-impresoras" class="hidden">
+                        <div id="printers-editor"></div>
 
-                    <div class="sep"></div>
+                        <div class="sep"></div>
+                        <h4 class="card-title" id="printer-form-title">Agregar una impresora</h4>
+                        <input type="hidden" id="printer-form-id">
 
-                    <div class="settings-footer">
-                        <span class="settings-version" id="settings-version">v2.1.0</span>
-                        <button class="btn-text danger" onclick="quitApp()">Salir del agente</button>
+                        <label class="label">Impresora de Windows</label>
+                        <select id="printer-form-name" class="input select"></select>
+
+                        <label class="label mt-14">Ancho de papel</label>
+                        <div class="paper-row" id="settings-paper">
+                            <button class="chip active" data-width="80">80 mm</button>
+                            <button class="chip" data-width="76">76 mm</button>
+                            <button class="chip" data-width="58">58 mm</button>
+                            <button class="chip" data-width="44">44 mm</button>
+                        </div>
+
+                        <label class="label mt-14">Codigo QR del menu</label>
+                        <select id="printer-form-qr" class="input select">
+                            <option value="raster">Imagen (compatible con casi todas)</option>
+                            <option value="native">Nativo (mas nitido, no todas lo soportan)</option>
+                            <option value="off">No imprimir QR en esta impresora</option>
+                        </select>
+
+                        <div class="switch-row mt-14">
+                            <span>Corte automatico</span>
+                            <button class="switch" id="toggle-autocut" onclick="toggleAutocut()"><div class="switch-thumb"></div></button>
+                        </div>
+
+                        <div class="btn-row mt-10">
+                            <button class="btn btn-red" onclick="savePrinter()">Guardar impresora</button>
+                            <button class="btn btn-ghost" onclick="resetPrinterForm()">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <!-- ── General ── -->
+                    <div id="spane-general" class="hidden">
+                        <div class="switch-row">
+                            <span>Iniciar con Windows</span>
+                            <button class="switch" id="toggle-autostart" onclick="toggleAutostart()"><div class="switch-thumb"></div></button>
+                        </div>
+
+                        <div class="btn-row mt-14">
+                            <button class="btn btn-ghost" onclick="openAppFolder()">Abrir carpeta</button>
+                            <button class="btn btn-ghost" onclick="openTickets()">Ver tickets</button>
+                        </div>
+
+                        <div class="sep"></div>
+
+                        <div class="settings-footer">
+                            <span class="settings-version" id="settings-version">v2.1.0</span>
+                            <button class="btn-text danger" onclick="quitApp()">Salir del agente</button>
+                        </div>
                     </div>
                 </div>
             </div>

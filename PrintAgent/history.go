@@ -22,6 +22,11 @@ type HistoryEntry struct {
 	Error       string `json:"error,omitempty"`
 	RawData     string `json:"rawData"` // base64-encoded ESC/POS
 	Preview     string `json:"preview"` // plain text preview (truncated)
+	// Con varias marcas en un mismo agente, un historial sin dueño no sirve
+	// para nada: hay que poder ver de qué negocio salió cada ticket y por
+	// cuál impresora, sobre todo para reimprimir por la correcta.
+	Account   string `json:"account,omitempty"`
+	PrinterID string `json:"printerId,omitempty"`
 }
 
 // PrintHistory manages persistent print job history
@@ -66,7 +71,7 @@ func (h *PrintHistory) save() {
 }
 
 // AddEntry adds a new entry to history (most recent first)
-func (h *PrintHistory) AddEntry(orderNumber, docType, status, errMsg string, rawData []byte) {
+func (h *PrintHistory) AddEntry(orderNumber, docType, status, errMsg string, rawData []byte, account, printerID string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -79,6 +84,8 @@ func (h *PrintHistory) AddEntry(orderNumber, docType, status, errMsg string, raw
 		Error:       errMsg,
 		RawData:     base64.StdEncoding.EncodeToString(rawData),
 		Preview:     truncate(stripESCPOS(rawData), 200),
+		Account:     account,
+		PrinterID:   printerID,
 	}
 
 	h.Entries = append([]HistoryEntry{entry}, h.Entries...)
@@ -103,6 +110,8 @@ func (h *PrintHistory) GetEntries() []map[string]interface{} {
 			"status":      e.Status,
 			"error":       e.Error,
 			"preview":     e.Preview,
+			"account":     e.Account,
+			"printerId":   e.PrinterID,
 		}
 	}
 	return result

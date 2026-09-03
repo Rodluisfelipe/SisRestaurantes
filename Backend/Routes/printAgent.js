@@ -33,6 +33,23 @@ function unregisterAgentConnection(businessId, connectionId) {
   }
 }
 
+/**
+ * Datos del QR del menú que viajan al agente de impresión.
+ *
+ * El interruptor "QR en el ticket" existía en el panel desde antes que el
+ * agente, y nunca llegaba hasta acá: el agente imprimía el recibo sin QR y el
+ * negocio no entendía por qué. `showQR` va por defecto en true, igual que en
+ * el modelo, para no apagarlo en los negocios que nunca lo tocaron.
+ */
+function datosQR(business) {
+  const base = process.env.FRONTEND_URL || 'https://menuby.tech';
+  const showQR = business?.printerSettings?.showQR !== false;
+  return {
+    showQR,
+    menuUrl: business?.slug ? `${base.replace(/\/$/, '')}/${business.slug}` : ''
+  };
+}
+
 // Helper: resolve businessId from JWT, body, query, or DB lookup
 async function resolveBusinessId(req) {
   const bizId = req.user.businessId || req.body?.businessId || req.query?.businessId;
@@ -152,7 +169,7 @@ router.get('/stream', async (req, res) => {
 
   try {
     const business = await BusinessConfig.findOne({ printAgentKey: key })
-      .select('_id businessName address phone nit slug printAgentMode')
+      .select('_id businessName address phone nit slug printAgentMode printerSettings')
       .lean();
 
     if (!business) {
@@ -198,7 +215,8 @@ router.get('/stream', async (req, res) => {
       phone: business.phone,
       nit: business.nit,
       slug: business.slug,
-      printMode: business.printAgentMode || 'both'
+      printMode: business.printAgentMode || 'both',
+      ...datosQR(business)
     });
     res.write(`event: connected\ndata: ${connData}\n\n`);
     if (res.flush) res.flush();
@@ -235,14 +253,29 @@ router.get('/stream', async (req, res) => {
       }
     };
 
+    /* Cambios de configuración en caliente.
+       Sin esto, activar el QR en el panel no surtía efecto hasta que el agente
+       se reconectara —y un agente sano puede pasar días conectado—, así que el
+       negocio veía el interruptor encendido y el ticket seguía saliendo igual. */
+    const settingsHandler = (payload) => {
+      try {
+        res.write(`event: settings_updated\ndata: ${JSON.stringify(payload)}\n\n`);
+        if (res.flush) res.flush();
+      } catch (e) {
+        logger.error('Error writing SSE settings event', { error: e.message });
+      }
+    };
+
     printEmitter.on(`print:${businessId}`, orderHandler);
     printEmitter.on(`receipt:${businessId}`, receiptHandler);
+    printEmitter.on(`settings:${businessId}`, settingsHandler);
 
     // Cleanup on disconnect
     req.on('close', () => {
       clearInterval(keepalive);
       printEmitter.off(`print:${businessId}`, orderHandler);
       printEmitter.off(`receipt:${businessId}`, receiptHandler);
+      printEmitter.off(`settings:${businessId}`, settingsHandler);
       unregisterAgentConnection(businessId, connectionId);
       logger.info('Print agent disconnected', {
         businessId,

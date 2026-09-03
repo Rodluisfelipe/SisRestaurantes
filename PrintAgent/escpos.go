@@ -293,8 +293,10 @@ func GenerateComanda(order map[string]interface{}, business *BusinessInfo, paper
 	return buf
 }
 
-// GenerateRecibo creates an ESC/POS receipt (WITH prices, for the customer)
-func GenerateRecibo(order map[string]interface{}, business *BusinessInfo, paperWidth int, autoCut bool) []byte {
+// GenerateRecibo creates an ESC/POS receipt (WITH prices, for the customer).
+// qrMode define cómo se dibuja el QR del menú en esta impresora ("raster",
+// "native" u "off"); ver qr.go.
+func GenerateRecibo(order map[string]interface{}, business *BusinessInfo, paperWidth int, autoCut bool, qrMode string) []byte {
 	profile := GetProfile(paperWidth)
 	cols := profile.ColsNormal
 	colsD := profile.ColsDouble
@@ -616,6 +618,19 @@ func GenerateRecibo(order map[string]interface{}, business *BusinessInfo, paperW
 		buf = appendLine(buf, "Gracias!")
 	} else {
 		buf = appendLine(buf, "Gracias por tu compra!")
+	}
+
+	// QR del menú. Solo si el negocio lo activó en el panel: ese interruptor
+	// existía desde antes que el agente, pero nunca llegaba hasta acá.
+	if business != nil && business.ShowQR && business.MenuURL != "" {
+		buf = append(buf, cmdFeed...)
+		buf = appendLine(buf, "Pide desde tu celular!")
+		buf = AppendQR(buf, business.MenuURL, paperWidth, qrMode)
+		buf = append(buf, cmdFeed...)
+		buf = appendLine(buf, business.MenuURL)
+	}
+
+	if !isCompact {
 		buf = appendLine(buf, "Powered by MenuBy")
 	}
 	buf = append(buf, cmdAlignLeft...)

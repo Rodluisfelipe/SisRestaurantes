@@ -173,10 +173,11 @@ func FindPrinter(name string) (string, error) {
 	return "", fmt.Errorf("printer %q not found. Available: %s", name, strings.Join(printers, ", "))
 }
 
-// ResolvePrinter finds the best printer based on config
-func ResolvePrinter(cfg *Config) (string, error) {
-	if cfg.PrinterName != "" {
-		return FindPrinter(cfg.PrinterName)
+// ResolvePrinterName resuelve el nombre configurado a una impresora real del
+// sistema. Si no hay nombre configurado, cae a la impresora por defecto.
+func ResolvePrinterName(name string) (string, error) {
+	if name != "" {
+		return FindPrinter(name)
 	}
 
 	// Fall back to the system default
