@@ -375,7 +375,7 @@ router.get("/", authMiddleware, zoneLimiter, async (req, res) => {
       total: zones.length
     });
   } catch (error) {
-    logger.error("Error al obtener zonas", process.env.NODE_ENV !== 'production' ? error : undefined);
+    logger.error("Error al obtener zonas", error);
     res.status(500).json(formatHttpError(req, "Error al obtener las zonas de entrega", 500));
   }
 });
@@ -583,7 +583,7 @@ router.post("/", authMiddleware, zoneLimiter, validateDeliveryZoneInput, async (
       zone: newZone
     });
   } catch (error) {
-    logger.error("Error al crear zona", process.env.NODE_ENV !== 'production' ? error : undefined);
+    logger.error("Error al crear zona", error);
     const isDev = process.env.NODE_ENV === 'development';
     res.status(500).json(formatHttpError(
       req,

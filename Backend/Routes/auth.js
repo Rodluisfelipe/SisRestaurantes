@@ -357,7 +357,7 @@ router.post('/register', registerLimiter, validateRegister, async (req, res) => 
       refreshToken
     });
   } catch (error) {
-    logger.error('Error al registrar negocio', process.env.NODE_ENV !== 'production' ? error : undefined);
+    logger.error('Error al registrar negocio', error);
     res.status(500).json({ message: 'Error en el servidor al registrar el negocio' });
   }
 });
@@ -431,7 +431,7 @@ router.post('/suggest-slugs', checkEmailLimiter, async (req, res) => {
 
     res.json({ suggestions });
   } catch (error) {
-    logger.error('Error al sugerir slugs', process.env.NODE_ENV !== 'production' ? error : undefined);
+    logger.error('Error al sugerir slugs', error);
     res.status(500).json({ message: 'Error en el servidor' });
   }
 });
@@ -450,7 +450,7 @@ router.post('/check-slug', checkEmailLimiter, async (req, res) => {
     const existing = await BusinessConfig.findOne({ slug: normalized });
     res.json({ slug: normalized, available: !existing });
   } catch (error) {
-    logger.error('Error al verificar slug', process.env.NODE_ENV !== 'production' ? error : undefined);
+    logger.error('Error al verificar slug', error);
     res.status(500).json({ message: 'Error en el servidor' });
   }
 });
@@ -470,7 +470,7 @@ router.post('/check-email', checkEmailLimiter, async (req, res) => {
       available: !existingAdmin
     });
   } catch (error) {
-    logger.error('Error al verificar email', process.env.NODE_ENV !== 'production' ? error : undefined);
+    logger.error('Error al verificar email', error);
     res.status(500).json({ message: 'Error en el servidor' });
   }
 });
@@ -529,7 +529,7 @@ router.post('/login', loginLimiter, validateLogin, async (req, res) => {
       }
     });
   } catch (error) {
-    logger.error('Error en login', process.env.NODE_ENV !== 'production' ? error : undefined);
+    logger.error('Error en login', error);
     res.status(500).json({ message: 'Error en el servidor' });
   }
 });
@@ -733,7 +733,7 @@ router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
 
     res.json(generic);
   } catch (error) {
-    logger.error('Error en forgot-password', process.env.NODE_ENV !== 'production' ? error : undefined);
+    logger.error('Error en forgot-password', error);
     // Aun con error, respuesta genérica para no filtrar información
     res.json(generic);
   }
@@ -770,7 +770,7 @@ router.post('/reset-password', passwordResetLimiter, async (req, res) => {
 
     res.json({ message: 'Contraseña restablecida correctamente. Ya puedes iniciar sesión.' });
   } catch (error) {
-    logger.error('Error en reset-password', process.env.NODE_ENV !== 'production' ? error : undefined);
+    logger.error('Error en reset-password', error);
     res.status(500).json({ message: 'Error en el servidor' });
   }
 });
@@ -1226,7 +1226,7 @@ router.get('/onboarding-status', authMiddleware, async (req, res) => {
       nextStep
     });
   } catch (error) {
-    logger.error('Error getting onboarding status', process.env.NODE_ENV !== 'production' ? error : undefined);
+    logger.error('Error getting onboarding status', error);
     res.status(500).json({ message: 'Error en el servidor' });
   }
 });

@@ -137,37 +137,128 @@ function isValidCoordinates(lat, lon) {
 }
 
 /**
- * Valida un polígono GeoJSON
- * @param {Array} coordinates - Array de coordenadas
- * @returns {Object} {isValid, error}
+ * Área con signo de un anillo (fórmula del cordón/shoelace), usando lon como x
+ * y lat como y. El signo indica el sentido: positivo = antihorario (CCW),
+ * negativo = horario (CW). No es el área real en km² (para eso está
+ * `getPolygonArea`) — solo sirve para saber el sentido de giro.
+ * @param {Array} ring - Array de [lon, lat], sin contar el punto de cierre repetido
+ */
+function signedRingArea(ring) {
+  let sum = 0;
+  for (let i = 0; i < ring.length; i++) {
+    const [x1, y1] = ring[i];
+    const [x2, y2] = ring[(i + 1) % ring.length];
+    sum += x1 * y2 - x2 * y1;
+  }
+  return sum / 2;
+}
+
+/** ¿Los segmentos p1-p2 y p3-p4 se cruzan? (test de orientación estándar) */
+function segmentsIntersect(p1, p2, p3, p4) {
+  const orientation = (a, b, c) => {
+    const val = (b[1] - a[1]) * (c[0] - b[0]) - (b[0] - a[0]) * (c[1] - b[1]);
+    if (Math.abs(val) < 1e-12) return 0;
+    return val > 0 ? 1 : 2;
+  };
+  const onSegment = (a, b, c) =>
+    Math.min(a[0], c[0]) <= b[0] && b[0] <= Math.max(a[0], c[0]) &&
+    Math.min(a[1], c[1]) <= b[1] && b[1] <= Math.max(a[1], c[1]);
+
+  const o1 = orientation(p1, p2, p3);
+  const o2 = orientation(p1, p2, p4);
+  const o3 = orientation(p3, p4, p1);
+  const o4 = orientation(p3, p4, p2);
+
+  if (o1 !== o2 && o3 !== o4) return true;
+  if (o1 === 0 && onSegment(p1, p3, p2)) return true;
+  if (o2 === 0 && onSegment(p1, p4, p2)) return true;
+  if (o3 === 0 && onSegment(p3, p1, p4)) return true;
+  if (o4 === 0 && onSegment(p3, p2, p4)) return true;
+  return false;
+}
+
+/**
+ * ¿El anillo se cruza a sí mismo? Compara cada lado contra los demás,
+ * saltando los que comparten vértice (son vecinos en el polígono).
+ * @param {Array} ring - Array de [lon, lat], sin el punto de cierre repetido
+ */
+function hasSelfIntersection(ring) {
+  const n = ring.length;
+  for (let i = 0; i < n; i++) {
+    const a1 = ring[i], a2 = ring[(i + 1) % n];
+    for (let j = i + 1; j < n; j++) {
+      // Lados vecinos comparten un vértice (el final de uno es el inicio del
+      // otro) y no cuentan como cruce: eso pasa cuando j es el siguiente
+      // lado después de i, o cuando i es el primero y j el último (el
+      // anillo se cierra ahí).
+      const adjacent = (j === i + 1) || (i === 0 && j === n - 1);
+      if (adjacent) continue;
+      const b1 = ring[j], b2 = ring[(j + 1) % n];
+      if (segmentsIntersect(a1, a2, b1, b2)) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Valida un polígono GeoJSON.
+ *
+ * MongoDB exige el "right-hand rule" en el índice 2dsphere: el anillo
+ * exterior debe ir en sentido antihorario. Un polígono dibujado a mano
+ * (Leaflet, dedo en el celular) puede quedar en sentido horario sin que
+ * nada en el navegador lo note, y ahí `.save()` lo rechazaba con un error
+ * que además no se veía en producción (bug de logging aparte, ya corregido).
+ * Como el sentido de giro no cambia la forma, acá simplemente se corrige
+ * solo en vez de rechazar el polígono.
+ *
+ * @param {Array} coordinates - Array de coordenadas (se puede modificar in-place)
+ * @returns {Object} {isValid, error, corrected}
  */
 function validatePolygon(coordinates) {
   if (!Array.isArray(coordinates) || !Array.isArray(coordinates[0])) {
     return { isValid: false, error: 'Las coordenadas deben ser un array de arrays' };
   }
-  
+
   const ring = coordinates[0];
-  
+
   if (ring.length < 4) {
     return { isValid: false, error: 'Un polígono debe tener al menos 4 puntos' };
   }
-  
+
   // Verificar que el primer y último punto sean iguales
   const first = ring[0];
   const last = ring[ring.length - 1];
-  
+
   if (first[0] !== last[0] || first[1] !== last[1]) {
     return { isValid: false, error: 'El primer y último punto del polígono deben ser iguales' };
   }
-  
+
   // Verificar que todas las coordenadas sean válidas
   for (const [lon, lat] of ring) {
     if (!isValidCoordinates(lat, lon)) {
       return { isValid: false, error: `Coordenadas inválidas: [${lon}, ${lat}]` };
     }
   }
-  
-  return { isValid: true };
+
+  const vertices = ring.slice(0, -1); // sin el punto de cierre repetido
+
+  if (hasSelfIntersection(vertices)) {
+    return { isValid: false, error: 'El polígono se cruza a sí mismo. Dibújalo de nuevo sin que los lados se toquen.' };
+  }
+
+  const area = signedRingArea(vertices);
+  if (Math.abs(area) < 1e-14) {
+    return { isValid: false, error: 'El polígono no tiene área (los puntos están alineados o duplicados)' };
+  }
+
+  let corrected = false;
+  if (area < 0) {
+    // Sentido horario: invertir a antihorario, manteniendo el punto de cierre al final.
+    ring.reverse();
+    corrected = true;
+  }
+
+  return { isValid: true, corrected };
 }
 
 /**
