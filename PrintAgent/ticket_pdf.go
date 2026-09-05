@@ -1,7 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"log"
 	"os"
 	"path/filepath"
@@ -9,7 +13,23 @@ import (
 	"time"
 
 	"github.com/go-pdf/fpdf"
+	qrcode "github.com/skip2/go-qrcode"
 )
+
+// previewQRPNG genera la imagen de un QR para la vista previa en PDF, cuando la
+// impresora lo iba a dibujar por su cuenta (modo nativo) y por lo tanto no
+// viaja ningun mapa de bits que podamos mostrar.
+func previewQRPNG(url string) []byte {
+	if url == "" {
+		return nil
+	}
+	data, err := qrcode.Encode(url, qrcode.Medium, 200)
+	if err != nil {
+		log.Printf("[PDF] no se pudo generar el QR de vista previa: %v", err)
+		return nil
+	}
+	return data
+}
 
 // ticketState tracks ESC/POS state while parsing for PDF rendering
 type ticketState struct {
@@ -46,9 +66,13 @@ func saveTicketPDF(data []byte, docType string, paperWidthMM int) (string, error
 	bigH := 7.0   // double-size line height
 	totalH := 6.0 // top+bottom margin
 	for _, l := range lines {
-		if l.doubleH {
+		switch {
+		case l.png != nil:
+			// 8 puntos por mm, mas un respiro arriba y abajo.
+			totalH += float64(l.imgDots)/8.0 + 3
+		case l.doubleH:
 			totalH += bigH
-		} else {
+		default:
 			totalH += lineH
 		}
 	}
@@ -77,7 +101,20 @@ func saveTicketPDF(data []byte, docType string, paperWidthMM int) (string, error
 	bigSize := 13.0     // pt for double-size text
 
 	y := 3.0
-	for _, l := range lines {
+	for idx, l := range lines {
+		// Imagenes (el QR): se dibujan centradas y se sigue con la linea siguiente.
+		if l.png != nil {
+			ladoMM := float64(l.imgDots) / 8.0
+			if ladoMM > usableW {
+				ladoMM = usableW
+			}
+			nombre := fmt.Sprintf("qr%d", idx)
+			pdf.RegisterImageOptionsReader(nombre, fpdf.ImageOptions{ImageType: "PNG"}, bytes.NewReader(l.png))
+			pdf.ImageOptions(nombre, (pageW-ladoMM)/2, y+1.5, ladoMM, ladoMM, false, fpdf.ImageOptions{ImageType: "PNG"}, 0, "")
+			y += ladoMM + 3
+			continue
+		}
+
 		text := l.text
 
 		// Determine font size
@@ -126,7 +163,8 @@ func saveTicketPDF(data []byte, docType string, paperWidthMM int) (string, error
 	return filename, nil
 }
 
-// pdfLine represents a single rendered line with its formatting state
+// pdfLine represents a single rendered line with its formatting state.
+// Si `png` no es nil, la linea es una imagen (el QR) y no texto.
 type pdfLine struct {
 	text      string
 	bold      bool
@@ -135,6 +173,46 @@ type pdfLine struct {
 	fontB     bool
 	underline bool
 	align     string
+
+	png     []byte // imagen ya codificada, lista para incrustar
+	imgDots int    // ancho/alto en puntos de impresora (la imagen es cuadrada)
+}
+
+/*
+rasterAPNG convierte un mapa de bits ESC/POS (GS v 0) en un PNG.
+
+El formato es 1 bit por punto, empaquetado de 8 en 8 de izquierda a derecha,
+y el bit en 1 significa NEGRO (tinta), al reves de lo que uno esperaria de una
+imagen en escala de grises.
+*/
+func rasterAPNG(raster []byte, widthBytes, height int) ([]byte, int) {
+	widthDots := widthBytes * 8
+	if widthDots == 0 || height == 0 {
+		return nil, 0
+	}
+
+	img := image.NewGray(image.Rect(0, 0, widthDots, height))
+	for y := 0; y < height; y++ {
+		for x := 0; x < widthDots; x++ {
+			idx := y*widthBytes + x/8
+			if idx >= len(raster) {
+				continue
+			}
+			negro := raster[idx]&(0x80>>(x%8)) != 0
+			v := uint8(255)
+			if negro {
+				v = 0
+			}
+			img.SetGray(x, y, color.Gray{Y: v})
+		}
+	}
+
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		log.Printf("[PDF] no se pudo codificar el QR: %v", err)
+		return nil, 0
+	}
+	return buf.Bytes(), widthDots
 }
 
 // parseESCPOS walks through raw ESC/POS bytes and extracts text lines with formatting
@@ -244,6 +322,54 @@ func parseESCPOS(data []byte) []pdfLine {
 			case 0x56: // GS V — cut
 				i += 4 // GS V m n
 				continue
+
+			case 0x76: // GS v 0 — mapa de bits raster (el QR del menu)
+				/* Antes este comando caia en el `default` de abajo, que salta
+				   3 bytes: los miles de bytes de la imagen se seguian leyendo
+				   como si fueran texto y ensuciaban el PDF. Ahora se decodifica
+				   y se dibuja, que es el punto de la vista previa. */
+				if i+7 < len(data) {
+					widthBytes := int(data[i+4]) | int(data[i+5])<<8
+					height := int(data[i+6]) | int(data[i+7])<<8
+					inicio := i + 8
+					largo := widthBytes * height
+					if largo > 0 && inicio+largo <= len(data) {
+						flush()
+						if pngData, dots := rasterAPNG(data[inicio:inicio+largo], widthBytes, height); pngData != nil {
+							lines = append(lines, pdfLine{png: pngData, imgDots: dots, align: "C"})
+						}
+						i = inicio + largo
+						continue
+					}
+				}
+				i += 3
+				continue
+
+			case 0x28: // GS ( k — comandos de QR nativo
+				/* Aca el codigo lo dibuja la impresora, no nosotros, asi que
+				   para la vista previa se regenera a partir de la URL que
+				   viaja en el comando de datos (fn = 0x50). */
+				if i+4 < len(data) {
+					pL := int(data[i+3])
+					pH := int(data[i+4])
+					payload := pL + pH<<8
+					fin := i + 5 + payload
+					if payload > 0 && fin <= len(data) {
+						// fn 0x50 = almacenar datos del simbolo; la URL empieza tras 3 bytes
+						if payload > 3 && data[i+6] == 0x50 {
+							url := string(data[i+8 : fin])
+							flush()
+							if qr := previewQRPNG(url); qr != nil {
+								lines = append(lines, pdfLine{png: qr, imgDots: 200, align: "C"})
+							}
+						}
+						i = fin
+						continue
+					}
+				}
+				i += 3
+				continue
+
 			default:
 				i += 3
 				continue

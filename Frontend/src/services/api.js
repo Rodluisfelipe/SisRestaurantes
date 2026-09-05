@@ -47,6 +47,23 @@ api.interceptors.request.use(
   }
 );
 
+/**
+ * Instancia SIN interceptores, exclusiva para renovar el token.
+ *
+ * Es la pieza que evita un bloqueo mortal: si el refresh se pide con `api`,
+ * y el servidor responde 401 (que es justo lo que pasa cuando otra sesion
+ * invalidó este refresh token), el interceptor se intercepta a si mismo, ve
+ * que ya hay un refresh en curso —el suyo— y se encola a esperarse. La
+ * promesa nunca se resuelve, `isRefreshing` se queda en true para siempre y
+ * a partir de ahi TODA peticion del panel queda colgada cargando.
+ */
+export const refreshClient = axios.create({
+  baseURL: API_ENDPOINTS.BASE_URL,
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 10000,
+  withCredentials: true,
+});
+
 // Interceptor para las respuestas
 let isRefreshing = false;
 let refreshSubscribers = [];
@@ -72,9 +89,14 @@ api.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
-    // Solo intentar refrescar si no es login y hay refresh token
-    if (error.response && error.response.status === 401 && !originalRequest._retry && 
-        !originalRequest.url.includes('/auth/login') && 
+    /* No se intenta refrescar en login ni en el propio refresh. Lo segundo es
+       imprescindible: reintentar el refresh dentro del interceptor del refresh
+       es la espera circular que dejaba el panel cargando indefinidamente. */
+    const esRutaDeAuth = originalRequest?.url?.includes('/auth/login')
+      || originalRequest?.url?.includes('/auth/refresh');
+
+    if (error.response && error.response.status === 401 && !originalRequest._retry &&
+        !esRutaDeAuth &&
         (sessionStorage.getItem('refreshToken') || localStorage.getItem('refreshToken'))) {
       if (isRefreshing) {
         // Esperar a que el token se refresque
@@ -89,14 +111,24 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
       try {
+        const enSession = !!sessionStorage.getItem('refreshToken');
         const refreshToken = sessionStorage.getItem('refreshToken') || localStorage.getItem('refreshToken');
         if (!refreshToken) throw new Error('No refresh token');
-        const res = await api.post('/auth/refresh', { refreshToken });
+
+        // Con `refreshClient` (sin interceptores): un 401 acá cae limpio al
+        // catch de abajo en vez de encolarse esperándose a sí mismo.
+        const res = await refreshClient.post('/auth/refresh', { refreshToken });
         const newToken = res.data.token;
+
+        /* El token se guarda donde estaba el refresh token que se uso. Antes se
+           escribia siempre en los dos sitios, y eso pisaba el token de otras
+           pestañas: sessionStorage existe justamente para aislarlas. */
         sessionStorage.setItem('accessToken', newToken);
-        localStorage.setItem('accessToken', newToken);
+        if (!enSession) localStorage.setItem('accessToken', newToken);
+
         api.defaults.headers.common['Authorization'] = 'Bearer ' + newToken;
         onRefreshed(newToken);
+        originalRequest.headers['Authorization'] = 'Bearer ' + newToken;
         return api(originalRequest);
       } catch (refreshError) {
         // If refresh fails, reject all queued requests, clean up and redirect to login

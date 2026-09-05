@@ -18,7 +18,7 @@ import (
 )
 
 // AppVersion is the current application version (semver)
-const AppVersion = "2.3.0"
+const AppVersion = "2.3.1"
 
 // App struct — the Wails application bridge
 type App struct {
@@ -399,7 +399,14 @@ func (a *App) TestPrint(printerID string) error {
 
 	// Se usan los datos de la primera cuenta conectada para que la prueba se
 	// parezca a un ticket real (incluido el QR si el negocio lo tiene activo).
-	business := &BusinessInfo{BusinessName: "Test Business", Phone: "0000000000"}
+	// Sin ninguna cuenta conectada se usa un QR de muestra: el sentido de la
+	// prueba es justamente ver si la impresora lo dibuja bien.
+	business := &BusinessInfo{
+		BusinessName: "Test Business",
+		Phone:        "0000000000",
+		ShowQR:       true,
+		MenuURL:      "https://menuby.tech",
+	}
 	a.mu.Lock()
 	for _, c := range a.clients {
 		if b := c.GetBusiness(); b != nil {

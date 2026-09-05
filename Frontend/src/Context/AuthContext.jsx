@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
-import { getBusinessBySlug } from "../services/api";
+import { getBusinessBySlug, refreshClient } from "../services/api";
 
 const AuthContext = createContext(null);
 
@@ -175,14 +175,21 @@ export function AuthProvider({ children }) {
 
   // Refrescar access token
   const refreshToken = useCallback(async () => {
+    const enSession = !!sessionStorage.getItem('refreshToken');
     const refreshToken = sessionStorage.getItem('refreshToken') || localStorage.getItem('refreshToken');
     if (!refreshToken) throw new Error('No refresh token');
-    const res = await api.post('/auth/refresh', { refreshToken });
-    
-    // Actualizar tanto sessionStorage como localStorage
+
+    // Cliente sin interceptores: si el refresh devuelve 401 (porque otra
+    // sesion lo invalido), el error sube limpio en vez de encolarse a esperar
+    // el refresh que el mismo es.
+    const res = await refreshClient.post('/auth/refresh', { refreshToken });
+
+    /* Se guarda donde vive esta sesion. Escribir siempre en localStorage pisaba
+       el token de las demas pestañas, que es la mitad del problema cuando hay
+       dos sesiones abiertas. */
     sessionStorage.setItem('accessToken', res.data.token);
-    localStorage.setItem('accessToken', res.data.token);
-    
+    if (!enSession) localStorage.setItem('accessToken', res.data.token);
+
     setIsAuthenticated(true);
     return res.data.token;
   }, []);
