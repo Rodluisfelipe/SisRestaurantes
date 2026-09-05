@@ -5,6 +5,7 @@ import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { getBusinessSlug } from '../utils/getBusinessId';
 import { formatCurrency as fmtCurrency } from '../utils/currency';
+import { toast } from 'sonner';
 
 const CouponsManager = () => {
   const { businessConfig } = useBusinessConfig();
@@ -99,6 +100,7 @@ const CouponsManager = () => {
       setFormData(prev => ({ ...prev, code: response.data.code }));
     } catch (error) {
       console.error('Error generating code:', error);
+      toast.error(error?.response?.data?.message || 'No se pudo generar el codigo del cupon.');
     }
   };
 

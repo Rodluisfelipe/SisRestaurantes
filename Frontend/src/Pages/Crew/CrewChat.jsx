@@ -12,6 +12,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import crewApi from '../../services/crewApi';
 import { subscribeCrewConversation } from '../../services/crewSocket';
+import { crewToast } from './components/crewToast';
 
 function formatRelative(iso) {
   if (!iso) return '';
@@ -137,6 +138,7 @@ function ChatThread({ conversation, onBack }) {
       setText('');
     } catch (e) {
       console.error(e);
+      crewToast.error(e?.response?.data?.message || 'No se pudo enviar el mensaje.');
     } finally { setSending(false); }
   };
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../services/api';
+import { toast } from 'sonner';
 import { socket } from '../../services/socket';
 import {
   FaCalendarAlt, FaList, FaChevronLeft, FaChevronRight,
@@ -139,13 +140,24 @@ export default function BookingsManager({ businessId, businessConfig }) {
       setBookings(prev => prev.map(b => b._id === id ? { ...b, bookingStatus, status: bookingStatus === 'cancelled' ? 'cancelled' : bookingStatus === 'completed' ? 'completed' : bookingStatus === 'confirmed' ? 'confirmed' : b.status } : b));
     } catch (err) {
       console.error('Error updating booking status', err);
+      toast.error(err?.response?.data?.message || 'No se pudo actualizar la cita. Intentalo de nuevo.');
+      // Se relanza a proposito: quien llame a esto tiene que poder enterarse
+      // de que fallo. Ver confirmViaWhatsApp.
+      throw err;
     }
   };
 
   const confirmViaWhatsApp = async (booking) => {
-    // 1. Confirm in backend
-    await updateBookingStatus(booking._id, 'confirmed');
-    // 2. Open WhatsApp with confirmation message
+    /* Primero se confirma en el sistema y SOLO si eso funciona se le escribe al
+       cliente. Antes el error se tragaba aca dentro, asi que si el backend
+       fallaba igual se abria WhatsApp diciendole al cliente "tu cita ha sido
+       confirmada" — una cita que en el sistema seguia sin confirmar. */
+    try {
+      await updateBookingStatus(booking._id, 'confirmed');
+    } catch {
+      return; // el aviso del error ya lo mostro updateBookingStatus
+    }
+
     if (!booking.phone) return;
     const phone = booking.phone.replace(/\D/g, '');
     const bName = businessConfig?.businessName || 'nuestro negocio';
@@ -162,6 +174,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
       setBookings(prev => prev.map(b => b._id === bookingId ? { ...b, staffId, staffName } : b));
     } catch (err) {
       console.error('Error assigning staff', err);
+      toast.error(err?.response?.data?.message || 'No se pudo asignar el personal a la cita.');
     }
   };
 
@@ -431,7 +444,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
                             className="p-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-colors" title="Confirmar por WhatsApp">
                             <FaWhatsapp className="text-sm" />
                           </button>
-                          <button onClick={() => updateBookingStatus(booking._id, 'cancelled')}
+                          <button onClick={() => { updateBookingStatus(booking._id, 'cancelled').catch(() => {}); }}
                             className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors" title="Cancelar">
                             <FaTimes className="text-xs" />
                           </button>
@@ -443,7 +456,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
                             className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" title="Completar">
                             <FaCheck className="text-xs" />
                           </button>
-                          <button onClick={() => updateBookingStatus(booking._id, 'no_show')}
+                          <button onClick={() => { updateBookingStatus(booking._id, 'no_show').catch(() => {}); }}
                             className="p-1.5 rounded-lg bg-orange-50 text-orange-500 hover:bg-orange-100 transition-colors" title="No asistió">
                             <FaBan className="text-xs" />
                           </button>
@@ -840,10 +853,18 @@ export default function BookingsManager({ businessId, businessConfig }) {
                             });
                           } catch (noteErr) {
                             console.error('Could not save note', noteErr);
+                            // La cita si se completa; lo que se pierde es la
+                            // nota, y eso hay que decirlo.
+                            toast.error('La cita se completo, pero no se pudo guardar la nota.');
                           }
                         }
-                        await updateBookingStatus(completeModal._id, 'completed');
-                        setCompleteModal(null);
+                        try {
+                          await updateBookingStatus(completeModal._id, 'completed');
+                          setCompleteModal(null);
+                        } catch {
+                          // El aviso ya lo mostro updateBookingStatus; el modal
+                          // se queda abierto para poder reintentar.
+                        }
                       } finally {
                         setCompleting(false);
                       }

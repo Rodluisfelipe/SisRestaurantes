@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_ENDPOINTS } from '../config';
+import { toast } from 'sonner';
 
 export default function ComboGroupManager() {
   const [comboGroups, setComboGroups] = useState([]);
@@ -78,6 +79,7 @@ export default function ComboGroupManager() {
       });
     } catch (error) {
       console.error('Error al guardar combo:', error);
+      toast.error(error?.response?.data?.message || 'No se pudo guardar el combo.');
     }
   };
 

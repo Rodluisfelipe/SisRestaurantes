@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import superadminApi, { subscriptionApi } from '../../services/superadminApi';
 import { SAModal, SAButton, SABadge } from './ui';
+import { toast } from 'sonner';
 
 const PLAN_PRICING = {
   free: { monthly: 0, annual: 0 },
@@ -343,6 +344,7 @@ const SubscriptionManagement = () => {
       window.dispatchEvent(new CustomEvent('subscription-updated'));
     } catch (error) {
       console.error('Error deleting subscription:', error);
+      toast.error(error?.response?.data?.message || 'No se pudo eliminar la suscripcion.');
     } finally {
       setLoading(false);
     }

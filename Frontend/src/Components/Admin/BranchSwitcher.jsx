@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../Context/AuthContext';
 import api from '../../services/api';
+import { toast } from 'sonner';
 
 export default function BranchSwitcher() {
   const { user } = useAuth();
@@ -31,6 +32,9 @@ export default function BranchSwitcher() {
       window.location.reload();
     } catch (err) {
       console.error('Error switching branch', err);
+      // Critico: sin aviso, uno cree que cambio de sede y termina editando
+      // el menu de la sucursal equivocada.
+      toast.error(err?.response?.data?.message || 'No se pudo cambiar de sucursal.');
     } finally {
       setSwitching(false);
     }

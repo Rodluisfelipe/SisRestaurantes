@@ -7,6 +7,7 @@ import AI from './Admin/AdminIcons';
 import { getBusinessSlug } from '../utils/getBusinessId';
 import { logSystem } from '../utils/systemLogger';
 import { formatCurrency as fmtCurrency } from '../utils/currency';
+import { toast } from 'sonner';
 
 /**
  * `busquedaInicial` llega desde los chats de WhatsApp: al abrir la ficha de
@@ -199,6 +200,7 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
       fetchCustomerNotes(selectedCustomer._id);
     } catch (err) {
       console.error('Error adding note:', err);
+      toast.error(err?.response?.data?.message || 'No se pudo guardar la nota del cliente.');
     }
     setSavingNote(false);
   };
@@ -213,6 +215,7 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
       setCustomerTags(res.data.tags || []);
     } catch (err) {
       console.error('Error saving tags:', err);
+      toast.error(err?.response?.data?.message || 'No se pudieron guardar las etiquetas.');
     }
     setSavingTags(false);
   };

@@ -8,6 +8,7 @@ import { generateDailyReportPDF } from './DailyReportPDF';
 import { TIME_INTERVALS, SOCKET_EVENTS, ORDER_STATUS } from '../utils/constants';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { toast } from 'sonner';
 
 function OrdersDashboard() {
   const [orders, setOrders] = useState([]);
@@ -340,6 +341,9 @@ function OrdersDashboard() {
       console.log('Completed orders have been cleaned up');
     } catch (err) {
       console.error('Error cleaning up completed orders:', err);
+      // Los pedidos siguen ahi: si no se avisa, uno cierra el reporte creyendo
+      // que quedaron archivados.
+      toast.error('No se pudieron archivar los pedidos completados.');
     }
   };
   

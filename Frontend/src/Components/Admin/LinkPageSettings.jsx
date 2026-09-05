@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
+import { toast } from 'sonner';
 
 export default function LinkPageSettings({ businessId }) {
   const [config, setConfig] = useState(null);
@@ -46,8 +47,10 @@ export default function LinkPageSettings({ businessId }) {
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
-    } catch {
-      // silently fail — user sees no change
+    } catch (err) {
+      // Antes fallaba en silencio a proposito y el usuario no veia ningun
+      // cambio: creia haber guardado su pagina de enlaces.
+      toast.error(err?.response?.data?.message || 'No se pudo guardar la pagina de enlaces.');
     } finally {
       setSaving(false);
     }

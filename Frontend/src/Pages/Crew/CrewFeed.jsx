@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import crewApi from '../../services/crewApi';
 import { useCrew } from './useCrew';
-import { Toaster } from 'sonner';
 import { crewToast } from './components/crewToast';
 import { cannon } from './components/confettiBurst';
 import TiltCard from './components/TiltCard';
@@ -213,8 +212,8 @@ export default function CrewFeed({ onDetailOpen }) {
         </>
         )}
       </main>
-
-      <Toaster position="top-center" closeButton={false} />
+      {/* El Toaster ahora vive en App.jsx, para toda la aplicacion. Tenerlo
+          tambien aca haria que cada aviso saliera dos veces en esta pantalla. */}
     </div>
   );
 }

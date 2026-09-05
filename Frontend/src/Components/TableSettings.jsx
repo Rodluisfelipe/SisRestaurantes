@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import api from '../services/api';
 import TableMapEditor from './TableMapEditor';
+import { toast } from 'sonner';
 
 const TableSettings = () => {
   const { businessId, businessConfig } = useBusinessConfig();
@@ -109,7 +110,11 @@ const TableSettings = () => {
         const table = tables.find(t => t._id === tableId);
         if (!table) return;
         await api.put(`/tables/${tableId}`, { businessId, posX, posY });
-      } catch {}
+      } catch (err) {
+        // La mesa se ve movida en pantalla pero la posicion no quedo guardada:
+        // sin aviso, al recargar vuelve a su sitio sin explicacion.
+        toast.error(err?.response?.data?.message || 'No se pudo guardar la posicion de la mesa.');
+      }
     }, 500);
     setSaveTimer(timer);
   }, [tables, businessId, saveTimer]);

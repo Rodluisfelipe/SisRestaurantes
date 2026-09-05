@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../Context/AuthContext';
+import { toast } from 'sonner';
 
 const EMPTY_FORM = { businessName: '', slug: '', branchLabel: '', whatsappNumber: '', useSharedMenu: false, cloneMenu: true };
 
@@ -116,7 +117,9 @@ export default function BranchManager({ businessId }) {
                       localStorage.setItem('user', JSON.stringify(updatedUser));
                       navigate(`/${branch.slug}/admin`, { replace: true });
                       window.location.reload();
-                    } catch {}
+                    } catch (err) {
+                      toast.error(err?.response?.data?.message || 'No se pudo cambiar de sucursal.');
+                    }
                   }}
                   className="text-xs font-medium text-indigo-600 hover:text-indigo-800 whitespace-nowrap"
                 >

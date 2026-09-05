@@ -63,6 +63,36 @@ export default function useProductHandlers({ businessId, products, setProducts, 
     setTimeout(() => setErrorMessage(''), 5000);
   };
 
+  /**
+   * Traduce un error de axios al mensaje que de verdad le sirve al negocio.
+   *
+   * Antes todo terminaba en "verifica que los campos esten completos", incluso
+   * cuando el problema era que la sesion vencio o que el plan llego a su tope.
+   * El dueño revisaba el formulario una y otra vez buscando un error que no
+   * estaba ahi. El backend ya manda el motivo; solo habia que mostrarlo.
+   */
+  const mensajeDeError = (error, porDefecto) => {
+    if (error?.code === 'ECONNABORTED') {
+      return 'La conexion tardo demasiado. Revisa tu internet e intentalo de nuevo.';
+    }
+    if (!error?.response) {
+      return 'No se pudo conectar con el servidor. Revisa tu internet.';
+    }
+
+    const { status, data } = error.response;
+
+    if (status === 401) {
+      return 'Tu sesion vencio. Vuelve a iniciar sesion para continuar.';
+    }
+    if (status === 403 && data?.code === 'PLAN_LIMIT_REACHED') {
+      return data.message || 'Llegaste al limite de productos de tu plan.';
+    }
+    if (Array.isArray(data?.errors) && data.errors.length) {
+      return data.errors.map(e => e.message || e).join(', ');
+    }
+    return data?.message || porDefecto;
+  };
+
   // --- Formulario ---
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -134,7 +164,7 @@ export default function useProductHandlers({ businessId, products, setProducts, 
       }
     } catch (error) {
       console.error('Error:', error);
-      showErrorMessage('Error al crear el producto. Verifica que todos los campos estén completos.');
+      showErrorMessage(mensajeDeError(error, 'No se pudo crear el producto. Revisa los datos e intentalo de nuevo.'));
     }
   };
 
@@ -172,6 +202,10 @@ export default function useProductHandlers({ businessId, products, setProducts, 
       setTimeout(() => loadData(), 800);
     } catch (error) {
       console.error('Error al actualizar producto:', error);
+      // Antes esto fallaba en silencio: el usuario daba "Actualizar" y no
+      // pasaba nada en pantalla, sin saber si habia guardado o no.
+      showErrorMessage(mensajeDeError(error, 'No se pudo actualizar el producto.'));
+      setShowConfirmModal(false);
     }
   };
 
@@ -213,6 +247,8 @@ export default function useProductHandlers({ businessId, products, setProducts, 
       setTimeout(() => loadData(), 500);
     } catch (error) {
       console.error('Error al eliminar el producto:', error);
+      showErrorMessage(mensajeDeError(error, 'No se pudo eliminar el producto.'));
+      setShowDeleteModal(false);
     }
   };
 
@@ -225,7 +261,7 @@ export default function useProductHandlers({ businessId, products, setProducts, 
       showSuccessMessage(updatedProduct.active ? 'Producto activado correctamente' : 'Producto pausado correctamente');
     } catch (error) {
       console.error('Error al cambiar estado del producto:', error);
-      showErrorMessage('Error al cambiar el estado del producto');
+      showErrorMessage(mensajeDeError(error, 'No se pudo cambiar el estado del producto.'));
     }
   };
 

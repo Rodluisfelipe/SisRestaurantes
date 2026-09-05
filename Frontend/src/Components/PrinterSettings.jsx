@@ -5,6 +5,7 @@ import { useBusinessConfig } from '../Context/BusinessContext';
 import {
   FaPrint, FaSave, FaSyncAlt, FaCheckCircle, FaQrcode, FaRuler, FaEye
 } from 'react-icons/fa';
+import { toast } from 'sonner';
 
 // Inline ticket preview styles
 const previewStyles = (paperWidth) => ({
@@ -43,6 +44,8 @@ export default function PrinterSettings() {
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       console.error('Error saving printer settings:', err);
+      // Sin esto no mostraba ni exito ni error: uno creia haber guardado.
+      toast.error(err?.response?.data?.message || 'No se pudo guardar la configuracion de impresora.');
     } finally {
       setSaving(false);
     }

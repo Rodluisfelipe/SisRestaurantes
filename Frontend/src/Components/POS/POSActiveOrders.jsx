@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../../services/api';
 import { socket } from '../../services/socket';
+import { toast } from 'sonner';
 
 const STATUS_CONFIG = {
   pending: { label: 'Pendiente', bg: 'bg-yellow-100', text: 'text-yellow-800', dot: 'bg-yellow-400', next: 'inProgress', nextLabel: 'Iniciar' },
@@ -196,6 +197,7 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
       });
     } catch (err) {
       console.error('Error updating order:', err);
+      toast.error(err?.response?.data?.message || 'No se pudo cambiar el estado del pedido.');
     } finally {
       setUpdatingId(null);
     }

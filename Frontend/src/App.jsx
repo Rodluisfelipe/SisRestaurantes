@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useCallback } from "react";
 import { Routes, Route, Navigate, useParams, useLocation } from "react-router-dom";
+import { Toaster } from "sonner";
 import { useAuth } from "./Context/AuthContext";
 import { useState } from "react";
 
@@ -158,6 +159,11 @@ const RESERVED_PATHS = ['login', 'register', 'features', 'demo', 'contact', 'pri
 function App() {
   return (
     <LazyMotion features={domAnimation}>
+      {/* sonner solo pinta los avisos si este componente esta montado. Estaba
+          unicamente dentro de CrewFeed, asi que los ~49 toast.error del modulo
+          de domicilios y del superadmin nunca se veian: el codigo avisaba del
+          error y la pantalla se quedaba muda. Montado aca cubre toda la app. */}
+      <Toaster position="top-center" richColors />
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:bg-white focus:text-red-600 focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lg focus:font-semibold">Ir al contenido principal</a>
       <Routes>
         {/* Rutas de administración - SuperAdmin */}
