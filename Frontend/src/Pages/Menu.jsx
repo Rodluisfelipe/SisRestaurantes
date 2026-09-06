@@ -9,7 +9,6 @@ import BusinessHeader from "../Components/BusinessHeader";
 // Import directo (no lazy): es el primer render del menú, un chunk aparte
 // castigaría el LCP y haría parpadear la cabecera.
 import ProfileHeader from "../Components/ProfileHeader";
-import SonandoAhora from '../Components/SonandoAhora';
 import useTipoDeEnlace from '../hooks/useTipoDeEnlace';
 import MenuStructuredData from "../Components/MenuStructuredData";
 import DiscoverMore from "../Components/DiscoverMore";
@@ -1595,11 +1594,9 @@ export default function Menu() {
       }}
     >
       <MenuStructuredData businessConfig={businessConfig} products={products} categories={categories} />
-      {mostrarMusica && (
-        <SonandoAhora businessId={businessId} />
-      )}
       {menuV2 ? (
         <ProfileHeader
+          mostrarMusica={mostrarMusica}
           onShowFavorites={() => setShowFavorites(true)}
           onShowHistory={() => setShowHistory(true)}
           onShowReviews={(src) => { setReviewsInitialSource(typeof src === 'string' ? src : 'internal'); setShowReviewsSheet(true); }}

@@ -4,6 +4,7 @@ import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import AccountManagementModal from './AccountManagementModal';
 import { useCustomerData } from '../hooks/useCustomerData';
+import SonandoAhora from './SonandoAhora';
 
 /* ── Iconos SVG (mismo patrón que el resto del menú) ── */
 const PH = {
@@ -39,6 +40,7 @@ const DEFAULT_LOGO = 'https://placehold.co/150x150?text=Logo';
  * Solo presentación: toda la lógica (carrito, sheets, lealtad) sigue en Menu.jsx.
  */
 export default function ProfileHeader({
+  mostrarMusica = false,
   onShowFavorites,
   onShowHistory,
   onShowReviews,
@@ -246,6 +248,9 @@ export default function ProfileHeader({
             <span style={{ color: 'var(--mb-accent)' }} title="Negocio verificado">{PH.verified()}</span>
           )}
         </div>
+
+        {/* Qué suena en el local — solo si entró por el enlace de "en sitio" */}
+        {mostrarMusica && <SonandoAhora businessId={businessId} />}
 
         {/* Tagline / descripción */}
         {(businessConfig?.tagline || businessConfig?.description) && (
