@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
-import { origenActual } from '../utils/origenVisita';
+import { registrarOrigen } from '../utils/origenVisita';
 
 /**
  * Qué tipo de pedido impone el enlace por el que entró el cliente.
@@ -35,7 +35,13 @@ export default function useTipoDeEnlace(businessId) {
   const [tipo, setTipo] = useState(null);
 
   useEffect(() => {
-    const origen = origenActual();
+    /* `registrarOrigen` y no `origenActual`: lee el `?source=` de la URL y de
+       paso lo guarda. Antes esto solo miraba sessionStorage, y en la PRIMERA
+       visita todavía estaba vacío —el menú lo llenaba en un efecto declarado
+       más abajo, o sea después de este—, así que el hook se rendía y el banner
+       no salía hasta recargar la página. Leyendo la URL, ya no depende de que
+       otro efecto le prepare el terreno. */
+    const origen = registrarOrigen();
     if (!origen || !businessId) { setTipo(null); return; }
 
     let vivo = true;
