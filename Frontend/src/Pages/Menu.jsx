@@ -93,11 +93,6 @@ export default function Menu() {
   const { tableNumber: tableFromUrl } = useParams();
   const isQRMode = !!tableFromUrl;
 
-  /* El banner de música solo tiene sentido para quien está DENTRO del local:
-     a alguien pidiendo un domicilio desde su casa no le sirve saber qué suena
-     en el restaurante. */
-  const tipoDeEnlace = useTipoDeEnlace(businessConfig?.businessId || businessConfig?._id);
-  const mostrarMusica = tipoDeEnlace === 'inSite' || isQRMode;
   const navigate = useNavigate();
 
   const [products, setProducts] = useState([]);
@@ -113,6 +108,15 @@ export default function Menu() {
   const { businessConfig, businessId, businessStatus, error: businessError, networkError: bizNetworkError, retryFetch: retryBizFetch } = useBusinessConfig();
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const isHotel = businessConfig?.businessType === 'hotel';
+
+  /* El banner de música solo tiene sentido para quien está DENTRO del local:
+     a alguien pidiendo un domicilio desde su casa no le sirve saber qué suena
+     en el restaurante.
+     Va DESPUÉS de `businessConfig` a propósito: leerlo más arriba lo tocaba
+     antes de su `const` y reventaba el menú entero con "Cannot access before
+     initialization". */
+  const tipoDeEnlace = useTipoDeEnlace(businessId);
+  const mostrarMusica = tipoDeEnlace === 'inSite' || isQRMode;
   const statusLoading = false; // status now derived from businessConfig synchronously
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [menuNetworkError, setMenuNetworkError] = useState(false);
