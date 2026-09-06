@@ -1596,10 +1596,7 @@ export default function Menu() {
     >
       <MenuStructuredData businessConfig={businessConfig} products={products} categories={categories} />
       {mostrarMusica && (
-        <SonandoAhora
-          businessId={businessConfig?.businessId || businessConfig?._id}
-          theme={businessConfig?.theme}
-        />
+        <SonandoAhora businessId={businessId} />
       )}
       {menuV2 ? (
         <ProfileHeader
