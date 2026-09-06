@@ -9,6 +9,8 @@ import BusinessHeader from "../Components/BusinessHeader";
 // Import directo (no lazy): es el primer render del menú, un chunk aparte
 // castigaría el LCP y haría parpadear la cabecera.
 import ProfileHeader from "../Components/ProfileHeader";
+import SonandoAhora from '../Components/SonandoAhora';
+import useTipoDeEnlace from '../hooks/useTipoDeEnlace';
 import MenuStructuredData from "../Components/MenuStructuredData";
 import DiscoverMore from "../Components/DiscoverMore";
 import MenuPopup from "../Components/MenuPopup";
@@ -90,6 +92,12 @@ const isValidSession = () => {
 export default function Menu() {
   const { tableNumber: tableFromUrl } = useParams();
   const isQRMode = !!tableFromUrl;
+
+  /* El banner de música solo tiene sentido para quien está DENTRO del local:
+     a alguien pidiendo un domicilio desde su casa no le sirve saber qué suena
+     en el restaurante. */
+  const tipoDeEnlace = useTipoDeEnlace(businessConfig?.businessId || businessConfig?._id);
+  const mostrarMusica = tipoDeEnlace === 'inSite' || isQRMode;
   const navigate = useNavigate();
 
   const [products, setProducts] = useState([]);
@@ -1583,6 +1591,12 @@ export default function Menu() {
       }}
     >
       <MenuStructuredData businessConfig={businessConfig} products={products} categories={categories} />
+      {mostrarMusica && (
+        <SonandoAhora
+          businessId={businessConfig?.businessId || businessConfig?._id}
+          theme={businessConfig?.theme}
+        />
+      )}
       {menuV2 ? (
         <ProfileHeader
           onShowFavorites={() => setShowFavorites(true)}

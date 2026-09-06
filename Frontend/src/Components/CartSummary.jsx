@@ -10,6 +10,7 @@ import { formatCurrency } from '../utils/currency';
 import BusinessClosedModal from './BusinessClosedModal';
 import { Gift, UtensilsCrossed, ShoppingBag, Bike } from 'lucide-react';
 import api from '../services/api';
+import useTipoDeEnlace from '../hooks/useTipoDeEnlace';
 import DeliveryZoneSelector from './DeliveryZoneSelector';
 import SuggestedProducts from './SuggestedProducts';
 import LoyaltyWidget from './LoyaltyWidget';
@@ -195,6 +196,11 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
 
   // Determinar si el pedido viene de un QR de mesa basado en la URL
   const isFromTableQR = window.location.pathname.includes('/mesa/');
+
+  /* Tipo de pedido que impone el enlace por el que entró el cliente.
+     Se pregunta al servidor —y no se lee de la URL— para que el negocio pueda
+     cambiar la regla desde el panel sin reimprimir los QR ya pegados. */
+  const tipoDelEnlace = useTipoDeEnlace(businessConfig?.businessId || businessConfig?._id);
   
   // Comprobar si el usuario eligió inicialmente "En sitio" o "Para llevar" desde el QR de mesa
   // O si ya completó el modal y tiene toda la información necesaria
@@ -740,14 +746,14 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                 <div className="space-y-1.5">
                   <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Tipo de pedido</p>
                   <div className={`relative p-1 rounded-2xl bg-slate-100`} style={{ display: 'grid', gridTemplateColumns: `repeat(${[
-                    businessConfig?.orderTypes?.inSite !== false ? 1 : 0,
-                    businessConfig?.orderTypes?.takeaway !== false ? 1 : 0,
-                    !isFromTableQR && businessConfig?.orderTypes?.delivery !== false ? 1 : 0
+                    (!tipoDelEnlace || tipoDelEnlace === 'inSite') && businessConfig?.orderTypes?.inSite !== false ? 1 : 0,
+                    (!tipoDelEnlace || tipoDelEnlace === 'takeaway') && businessConfig?.orderTypes?.takeaway !== false ? 1 : 0,
+                    (!tipoDelEnlace || tipoDelEnlace === 'delivery') && !isFromTableQR && businessConfig?.orderTypes?.delivery !== false ? 1 : 0
                   ].reduce((a, b) => a + b, 0) || 1}, 1fr)` }}>
                     {[
-                      ...(businessConfig?.orderTypes?.inSite !== false ? [{ id: 'inSite', label: 'En Sitio', Icon: UtensilsCrossed }] : []),
-                      ...(businessConfig?.orderTypes?.takeaway !== false ? [{ id: 'takeaway', label: 'Llevar', Icon: ShoppingBag }] : []),
-                      ...(!isFromTableQR && businessConfig?.orderTypes?.delivery !== false ? [{ id: 'delivery', label: 'Domicilio', Icon: Bike }] : [])
+                      ...((!tipoDelEnlace || tipoDelEnlace === 'inSite') && businessConfig?.orderTypes?.inSite !== false ? [{ id: 'inSite', label: 'En Sitio', Icon: UtensilsCrossed }] : []),
+                      ...((!tipoDelEnlace || tipoDelEnlace === 'takeaway') && businessConfig?.orderTypes?.takeaway !== false ? [{ id: 'takeaway', label: 'Llevar', Icon: ShoppingBag }] : []),
+                      ...((!tipoDelEnlace || tipoDelEnlace === 'delivery') && !isFromTableQR && businessConfig?.orderTypes?.delivery !== false ? [{ id: 'delivery', label: 'Domicilio', Icon: Bike }] : [])
                     ].map(opt => {
                       const isActive = orderType === opt.id;
                       return (

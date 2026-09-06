@@ -83,9 +83,20 @@ function OrderCard({
                   <TypeIcon className="text-white text-xs" />
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <h3 className="font-bold text-slate-800 text-sm leading-tight">#{order.orderNumber}</h3>
                     <span className="text-[10px] text-slate-400 font-medium">{orderTypeInfo.label}</span>
+                    {/* De qué enlace llegó el cliente. El dato ya venía guardado
+                        en cada pedido; sin mostrarlo, el negocio no podía saber
+                        qué canal le trajo ESE pedido, solo el total del mes. */}
+                    {order.source && (
+                      <span
+                        title={`Llegó por: ${order.source}`}
+                        className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 max-w-[110px] truncate"
+                      >
+                        {order.source}
+                      </span>
+                    )}
                     {order.isGift && (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-pink-100 text-pink-700 border border-pink-200">🎁 Regalo</span>
                     )}

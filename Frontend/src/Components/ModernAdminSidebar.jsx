@@ -13,7 +13,7 @@ import {
   FaShoppingBag, FaStore, FaTools, FaCog, FaMoneyBillWave, FaStar, FaGift,
   FaQuestionCircle, FaExternalLinkAlt, FaChartBar, FaPrint, FaCashRegister,
   FaCalendarAlt, FaShareAlt, FaCodeBranch, FaLink, FaCalculator, FaBoxOpen,
-  FaChevronLeft, FaChrome
+  FaChevronLeft, FaChrome, FaChartLine
 } from 'react-icons/fa';
 
 const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, whatsappSinLeer, subscriptionData, onboarding, userRole, colapsado = false, onAlternar }) => {
@@ -102,6 +102,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       id: 'marketing',
       label: 'Marketing',
       items: [
+        { id: 'sales-tracking', label: 'Sigue tus ventas', Icon: FaChartLine, badge: null },
         { id: 'wa-campaign', label: 'Campaña WA', Icon: FaWhatsapp, badge: null },
         { id: 'referrals', label: 'Referidos', Icon: FaShareAlt, badge: null },
         { id: 'popups', label: 'Anuncios', Icon: FaBullhorn, badge: null },

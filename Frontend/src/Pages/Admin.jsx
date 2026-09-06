@@ -57,6 +57,7 @@ const BookingsManager = lazy(() => import("../Components/Admin/BookingsManager")
 const CashClosings = lazy(() => import("../Components/Admin/CashClosings"));
 const MonthlyClosing = lazy(() => import("../Components/Admin/MonthlyClosing"));
 const ReferralsPanel = lazy(() => import("../Components/Admin/ReferralsPanel"));
+const SalesTracking = lazy(() => import("../Components/Admin/SalesTracking"));
 const CrewPanel = lazy(() => import("../Components/Admin/CrewPanel"));
 const DashboardMetrics = lazy(() => import("../Components/Admin/DashboardMetrics"));
 const Marketplace = lazy(() => import("../Components/Admin/Marketplace"));
@@ -681,6 +682,13 @@ function Admin() {
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Agenda" onGoBack={() => setActiveTab('dashboard')}>
                       <BookingsManager businessId={businessId} businessConfig={businessConfig} />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'sales-tracking' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Sigue tus ventas" onGoBack={() => setActiveTab('dashboard')}>
+                      <SalesTracking businessId={businessId} />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}
