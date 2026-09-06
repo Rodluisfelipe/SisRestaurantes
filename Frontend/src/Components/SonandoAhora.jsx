@@ -64,24 +64,33 @@ export default function SonandoAhora({ businessId }) {
         />
       )}
 
-      {/* Tres barritas: dicen "esto suena ahora" sin gastar una palabra. */}
-      <span className="flex items-end gap-[2px] h-2 flex-shrink-0" aria-hidden="true">
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            className="w-[2px] rounded-full animate-pulse"
-            style={{
-              background: 'var(--mb-accent)',
-              height: `${[70, 100, 45][i]}%`,
-              animationDelay: `${i * 180}ms`,
-              animationDuration: '900ms',
-            }}
-          />
-        ))}
+      {/* Tres barritas + la etiqueta. Las barras solas se leen como adorno;
+          con el texto al lado queda claro que es lo que suena AHORA. */}
+      <span className="flex items-center gap-1.5 flex-shrink-0">
+        <span className="flex items-end gap-[2px] h-2" aria-hidden="true">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="w-[2px] rounded-full animate-pulse"
+              style={{
+                background: 'var(--mb-accent)',
+                height: `${[70, 100, 45][i]}%`,
+                animationDelay: `${i * 180}ms`,
+                animationDuration: '900ms',
+              }}
+            />
+          ))}
+        </span>
+        <span
+          className="text-[10px] font-bold uppercase tracking-wide whitespace-nowrap"
+          style={{ color: 'var(--mb-accent)' }}
+        >
+          Sonando ahora
+        </span>
       </span>
 
-      {/* Todo en una línea que se recorta: el nombre del negocio manda, esto
-          no puede empujarlo ni robarle una segunda línea. */}
+      {/* La canción cede el espacio: si no cabe se recorta ella, nunca la
+          etiqueta ni el nombre del negocio de arriba. */}
       <p className="text-[12px] leading-tight truncate min-w-0" style={{ color: 'var(--mb-ink-2)' }}>
         <span className="font-semibold" style={{ color: 'var(--mb-ink)' }}>{cancion.titulo}</span>
         {cancion.artista && (
