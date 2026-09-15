@@ -8,6 +8,7 @@ const logger = require("../utils/logger");
 const { formatHttpError } = require("../utils/errorFormatter");
 const { tenantAuth } = require("../middleware/tenantAuth");
 const { audit } = require("../utils/auditLog");
+const { filtroVisible, conProductos } = require("../utils/marketplace");
 const {
   validateUpdateConfig,
   validateUpdateStatus,
@@ -545,8 +546,9 @@ router.put("/:businessId", tenantAuth, validateUpdateConfigById, async (req, res
 // GET /api/business-config/catalog - Listar todos los negocios activos (para sitemap/SEO)
 router.get("/catalog", async (req, res) => {
   try {
+    // Mismas reglas que el catálogo: un negocio oculto o de prueba no va al sitemap.
     const businesses = await BusinessConfig.find(
-      { isActive: true },
+      filtroVisible(),
       'slug businessName logo description city department updatedAt'
     ).sort({ updatedAt: -1 }).lean();
     
@@ -584,10 +586,10 @@ router.get("/discover", async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit) || 12, 30);
     const hasGeo = lat != null && lng != null && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng));
 
-    const businesses = await BusinessConfig.find(
-      { isActive: true, menuStatus: { $ne: 'paused' }, showInMarketplace: { $ne: false } },
-      'slug businessName logo coverImage description businessType city department location.coordinates google.rating google.reviewCount businessHours updatedAt'
-    ).lean();
+    const businesses = await conProductos(await BusinessConfig.find(
+      filtroVisible(),
+      'slug businessName logo coverImage description businessType city department location.coordinates google.rating google.reviewCount businessHours updatedAt useSharedMenu mainBranchId'
+    ).lean());
 
     const cLat = hasGeo ? parseFloat(lat) : null;
     const cLng = hasGeo ? parseFloat(lng) : null;

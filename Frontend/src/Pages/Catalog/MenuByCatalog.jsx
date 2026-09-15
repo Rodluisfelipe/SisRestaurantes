@@ -52,7 +52,7 @@ const MenuByCatalog = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('todo');
-  const [sortBy, setSortBy] = useState('popularity');
+  const [sortBy, setSortBy] = useState('distance');
   const [categories, setCategories] = useState([]);
   const [onlyOpen, setOnlyOpen] = useState(false);
   const [onlyFreeDelivery, setOnlyFreeDelivery] = useState(false);
@@ -72,7 +72,7 @@ const MenuByCatalog = () => {
   const { isFav } = useFavorites();
 
   // Hook de ubicación dinámica
-  const { location, updateLocation, setManualLocation, hasLocation, isLoading: locationLoading } = useUserLocation();
+  const { location, updateLocation, setManualLocation, isLoading: locationLoading } = useUserLocation();
   const [showLocationPicker, setShowLocationPicker] = useState(false);
 
   // Usar primitivos como dependencias para evitar comparación por referencia de objeto
@@ -127,12 +127,8 @@ const MenuByCatalog = () => {
           params.set('lon', location.coordinates.lng);
         }
         const res = await api.get(`/businesses/search/products?${params}`);
+        // Ya vienen ordenados por cercanía, con la distancia calculada en el servidor.
         const results = res.data?.data || [];
-        if (location.coordinates && results.length > 0) {
-          results.forEach(r => {
-            if (r.coordinates) r.distance = calculateDistance(location.coordinates, r.coordinates);
-          });
-        }
         setProductSearchResults(results);
         // Generar sugerencias de búsqueda a partir de productos encontrados
         const productNames = new Set();
@@ -161,26 +157,6 @@ const MenuByCatalog = () => {
   // Reset visible count on filter change
   useEffect(() => { setVisibleCount(ITEMS_PER_PAGE); }, [searchTerm, selectedCategory, sortBy, onlyOpen, onlyFreeDelivery]);
   
-  // Función para calcular distancia usando fórmula Haversine
-  const calculateDistance = (from, to) => {
-    if (!from || !to) return null;
-    
-    const R = 6371; // Radio de la Tierra en km
-    const dLat = toRad(to.lat - from.lat);
-    const dLon = toRad(to.lng - from.lng);
-    
-    const a = 
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(from.lat)) * Math.cos(toRad(to.lat)) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c;
-    
-    return Math.round(distance * 10) / 10; // Redondear a 1 decimal
-  };
-  
-  const toRad = (degrees) => degrees * (Math.PI / 180);
 
   const loadRestaurants = async () => {
     try {
@@ -197,19 +173,8 @@ const MenuByCatalog = () => {
       const response = await api.get(url);
       
       // Manejar nuevo formato {data, total} o array legacy
-      let data = Array.isArray(response.data) ? response.data : (response.data?.data || []);
+      const data = Array.isArray(response.data) ? response.data : (response.data?.data || []);
       setTotalCount(response.data?.total ?? data.length);
-      
-      // Calcular distancias client-side si hay ubicación
-      if (location.coordinates) {
-        data = data.map(restaurant => {
-          if (restaurant.coordinates) {
-            const distance = calculateDistance(location.coordinates, restaurant.coordinates);
-            return { ...restaurant, distance };
-          }
-          return { ...restaurant, distance: null };
-        });
-      }
       
       // Generar categorías dinámicas
       const categoriesWithRestaurants = new Set();
@@ -280,14 +245,12 @@ const MenuByCatalog = () => {
     // Ordenar
     switch (sortBy) {
       case 'distance':
-        // Ordenar por cercanía (solo si hay ubicación)
-        if (hasLocation) {
-          filtered.sort((a, b) => {
-            const distA = a.distance !== null ? a.distance : 999;
-            const distB = b.distance !== null ? b.distance : 999;
-            return distA - distB;
-          });
-        }
+        // Del más cercano al más lejano; los que no tienen ubicación, al final.
+        filtered.sort((a, b) => {
+          const distA = a.distance ?? Infinity;
+          const distB = b.distance ?? Infinity;
+          return distA === distB ? 0 : distA - distB;
+        });
         break;
       case 'popularity':
         // Ordenar por popularidad real: abiertos primero, luego por popularityScore del backend
@@ -304,10 +267,11 @@ const MenuByCatalog = () => {
         break;
       case 'delivery_time':
         // Ordenar por tiempo estimado de entrega
+        // Solo cuentan los tiempos que el negocio configuró; sin envío a tu dirección, al final.
         filtered.sort((a, b) => {
-          const timeA = a.distance ? Math.round(15 + (a.distance * 2)) : 30;
-          const timeB = b.distance ? Math.round(15 + (b.distance * 2)) : 30;
-          return timeA - timeB;
+          const timeA = a.deliveryZone?.estimatedTime?.min ?? Infinity;
+          const timeB = b.deliveryZone?.estimatedTime?.min ?? Infinity;
+          return timeA === timeB ? 0 : timeA - timeB;
         });
         break;
       case 'delivery_price':
@@ -420,7 +384,7 @@ const MenuByCatalog = () => {
                 <div className="flex flex-col items-start min-w-0">
                   {location.city && !locationLoading && (
                     <span className={`text-[10px] font-semibold uppercase tracking-wide leading-none mb-0.5 transition-colors ${headerCompact ? 'text-gray-400' : 'text-white/60'}`}>
-                      Entregando en
+                      Cerca de
                     </span>
                   )}
                   <span className={`text-[13px] font-bold truncate max-w-[180px] transition-colors leading-none ${headerCompact ? 'text-gray-900' : 'text-white'}`}>
@@ -580,10 +544,10 @@ const MenuByCatalog = () => {
         <div className="mb-5 -mx-4 px-4">
           <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-hide">
             {[
+              { id: 'distance', label: '📍 Cercanos', isSort: true },
               { id: 'popularity', label: '🔥 Populares', isSort: true },
               { id: 'open', label: '🟢 Abierto', isToggle: true, active: onlyOpen, onClick: () => setOnlyOpen(!onlyOpen) },
               { id: 'free', label: '🛵 Envío gratis', isToggle: true, active: onlyFreeDelivery, onClick: () => setOnlyFreeDelivery(!onlyFreeDelivery) },
-              ...(hasLocation ? [{ id: 'distance', label: '📍 Cercanos', isSort: true }] : []),
               { id: 'delivery_time', label: '⚡ Rápido', isSort: true },
               { id: 'min_price', label: '💰 Precio ↓', isSort: true },
             ].map(f => {
@@ -634,9 +598,9 @@ const MenuByCatalog = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
               </svg>
             </div>
-            <p className="text-[17px] font-extrabold text-gray-900 mb-1.5 tracking-tight">¿Dónde te entregamos?</p>
+            <p className="text-[17px] font-extrabold text-gray-900 mb-1.5 tracking-tight">¿Dónde estás?</p>
             <p className="text-[13px] text-gray-500 mb-6 max-w-[240px] mx-auto leading-relaxed">
-              Necesitamos tu ubicación para mostrarte los restaurantes disponibles en tu zona
+              Con tu ubicación te mostramos primero los restaurantes más cercanos
             </p>
             <div className="flex flex-col gap-2.5 items-center">
               <button onClick={updateLocation}
@@ -687,12 +651,12 @@ const MenuByCatalog = () => {
             ? 'Sin envío gratis disponible'
             : selectedCategory !== 'todo'
             ? `Sin restaurantes en "${getCategoryName(selectedCategory)}"`
-            : 'Sin cobertura en tu zona';
+            : 'Aún no hay restaurantes';
           const emptyDesc = searchTerm
             ? 'Intenta con otro nombre o revisa la ortografía.'
             : onlyOpen || onlyFreeDelivery || selectedCategory !== 'todo'
             ? 'Prueba quitando algún filtro para ver más opciones.'
-            : 'No hay restaurantes con cobertura en tu ubicación actual. Prueba otra dirección.';
+            : 'Todavía no hay restaurantes disponibles en MenuBy. Vuelve pronto.';
           return (
             <div className="text-center py-20">
               <div className="w-20 h-20 rounded-3xl bg-red-50 flex items-center justify-center mx-auto mb-4">

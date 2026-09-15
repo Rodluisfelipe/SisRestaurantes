@@ -3,16 +3,23 @@ const router = express.Router();
 const rateLimit = require('express-rate-limit');
 const BusinessConfig = require('../Models/BusinessConfig');
 const Product = require('../Models/Product');
-const Category = require('../Models/Category');
-const DeliveryZone = require('../Models/DeliveryZone');
 const Order = require('../Models/Order');
 const { validateAndResolveBusinessId } = require('../utils/businessValidator');
 const { ORDER_STATUS } = require('../utils/constants');
-const { SALES, DELIVERY, TIPS } = require('../utils/revenue');
+const { SALES } = require('../utils/revenue');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
-const { pointInPolygon, pointInRadius } = require('../utils/geospatial');
 const { protectSuperAdmin: authSuperAdmin } = require('../middleware/authSuperAdmin');
+const { ahoraCOL } = require('../services/whatsappAgent/horario');
+const {
+  RADIO_CERCANO_KM,
+  CAMPOS_VITRINA,
+  filtroVisible,
+  idDelMenu,
+  leerUbicacion,
+  ordenarPorCercania,
+  decorarParaVitrina,
+} = require('../utils/marketplace');
 
 // Rate limiter for public business listing/search endpoints (heavy aggregation)
 const businessesLimiter = rateLimit({
@@ -23,23 +30,13 @@ const businessesLimiter = rateLimit({
   message: { success: false, error: 'Too many requests, try again later' }
 });
 
-/**
- * Compute whether a business is currently open based on its hours schedule.
- * Needed because .lean() strips Mongoose virtuals from documents.
- */
-function computeIsCurrentlyOpen(business) {
-  if (!business?.isOpen) return false;
-  if (!business.businessHours) return business.isOpen;
-  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const todayHours = business.businessHours[dayNames[new Date().getDay()]];
-  if (!todayHours?.isOpen) return false;
-  if (!todayHours.open || !todayHours.close) return business.isOpen;
-  const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + (m || 0); };
-  const now = new Date().getHours() * 60 + new Date().getMinutes();
-  const open = toMin(todayHours.open);
-  const close = toMin(todayHours.close);
-  return close < open ? (now >= open || now <= close) : (now >= open && now <= close);
-}
+/* Tope de la lista completa. El catálogo la pide entera y pagina en el
+   navegador; antes el servidor cortaba en 50 sin ordenar, así que desde el
+   negocio 51 —siempre los más nuevos— no aparecían nunca. */
+const MAX_LISTA = 300;
+
+const escaparRegex = (texto) => texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const entero = (valor, porDefecto, min, max) => Math.min(Math.max(parseInt(valor) || porDefecto, min), max);
 
 // Simple in-memory cache for getBatchBusinessInfo (5-min TTL)
 const _batchCache = new Map();
@@ -73,11 +70,17 @@ const categoryKeywords = {
 /**
  * Obtener categorías + productCount + minPrice + topProducts + popularityScore
  * para MULTIPLES negocios. Elimina el problema N+1.
+ *
+ * Recibe los negocios (no solo sus ids) porque una sucursal con menú
+ * compartido lee los productos de la principal: contados por su propio id
+ * quedaba en cero. Devuelve null si falla, para que quien llama no confunda
+ * "no pude contar" con "no tiene productos" y deje el catálogo vacío.
  */
-const getBatchBusinessInfo = async (businessIds) => {
+const getBatchBusinessInfo = async (negocios) => {
   try {
-    if (!businessIds.length) return {};
-    const cacheKey = businessIds.map(id => id.toString()).sort().join(',');
+    if (!negocios.length) return {};
+    const menuDe = new Map(negocios.map(b => [b._id.toString(), idDelMenu(b)]));
+    const cacheKey = [...menuDe].map(([id, menu]) => `${id}:${menu}`).sort().join(',');
     const cached = _getCached(cacheKey);
     if (cached) return cached;
 
@@ -85,13 +88,13 @@ const getBatchBusinessInfo = async (businessIds) => {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const [products, orderCounts] = await Promise.all([
       Product.find({
-        businessId: { $in: businessIds },
+        businessId: { $in: [...new Set(menuDe.values())] },
         active: true
       }).select('businessId name description price image isFeatured').lean(),
       Order.aggregate([
         {
           $match: {
-            businessId: { $in: businessIds },
+            businessId: { $in: negocios.map(b => b._id) },
             status: { $in: [ORDER_STATUS.COMPLETED, ORDER_STATUS.DELIVERED] },
             createdAt: { $gte: thirtyDaysAgo }
           }
@@ -107,215 +110,121 @@ const getBatchBusinessInfo = async (businessIds) => {
       ])
     ]);
 
-    // Map de order stats
-    const orderStats = {};
-    for (const stat of orderCounts) {
-      orderStats[stat._id.toString()] = stat;
-    }
-
-    const byBusiness = {};
-    for (const id of businessIds) {
-      byBusiness[id.toString()] = {
-        categories: new Set(),
-        productCount: 0,
-        minPrice: Infinity,
-        topProducts: [],
-        orderCount: 0,
-        avgOrderValue: 0,
-        popularityScore: 0
-      };
-    }
-
+    const porMenu = {};
     for (const product of products) {
-      const bid = product.businessId.toString();
-      if (!byBusiness[bid]) continue;
-      const entry = byBusiness[bid];
+      const menu = product.businessId.toString();
+      if (!porMenu[menu]) porMenu[menu] = { categories: new Set(), productCount: 0, minPrice: Infinity, topProducts: [] };
+      const entry = porMenu[menu];
       entry.productCount++;
-
-      if (product.price < entry.minPrice) {
-        entry.minPrice = product.price;
+      if (product.price < entry.minPrice) entry.minPrice = product.price;
+      if (entry.topProducts.length < 3 && (product.isFeatured || product.image)) {
+        entry.topProducts.push({ name: product.name, price: product.price, image: product.image || null });
       }
-
-      if (entry.topProducts.length < 3) {
-        if (product.isFeatured || product.image) {
-          entry.topProducts.push({
-            name: product.name,
-            price: product.price,
-            image: product.image || null
-          });
-        }
-      }
-
       const text = `${product.name} ${product.description || ''}`.toLowerCase();
       for (const [category, keywords] of Object.entries(categoryKeywords)) {
-        if (keywords.some(kw => text.includes(kw))) {
-          entry.categories.add(category);
-        }
+        if (keywords.some(kw => text.includes(kw))) entry.categories.add(category);
       }
     }
 
-    for (const bid of Object.keys(byBusiness)) {
-      byBusiness[bid].categories = Array.from(byBusiness[bid].categories);
-      if (byBusiness[bid].minPrice === Infinity) byBusiness[bid].minPrice = 0;
-      // Calcular popularidad real
+    const orderStats = Object.fromEntries(orderCounts.map(stat => [stat._id.toString(), stat]));
+
+    const byBusiness = {};
+    for (const [bid, menu] of menuDe) {
+      const m = porMenu[menu];
       const stats = orderStats[bid];
-      if (stats) {
-        byBusiness[bid].orderCount = stats.orderCount;
-        byBusiness[bid].avgOrderValue = Math.round(stats.avgOrderValue || 0);
+      const productCount = m?.productCount || 0;
+      const orderCount = stats?.orderCount || 0;
+      byBusiness[bid] = {
+        categories: m ? Array.from(m.categories) : [],
+        productCount,
+        minPrice: m && m.minPrice !== Infinity ? m.minPrice : 0,
+        topProducts: m ? m.topProducts : [],
+        orderCount,
+        avgOrderValue: Math.round(stats?.avgOrderValue || 0),
         // Score: órdenes * 10 + productos * 2 (ponderado)
-        byBusiness[bid].popularityScore = stats.orderCount * 10 + byBusiness[bid].productCount * 2;
-      } else {
-        byBusiness[bid].popularityScore = byBusiness[bid].productCount * 2;
-      }
+        popularityScore: orderCount * 10 + productCount * 2
+      };
     }
 
     _setCached(cacheKey, byBusiness);
     return byBusiness;
   } catch (error) {
     logger.error('Error in getBatchBusinessInfo:', error);
-    return {};
+    return null;
   }
 };
 
-/**
- * Filtra una lista de negocios según cobertura de zona de entrega para un punto dado.
- * Añade `deliveryZone` a cada negocio que cubre el punto.
- * Devuelve solo los negocios con cobertura.
- */
-async function filterByDeliveryCoverage(businesses, lat, lon) {
-  const userPoint = { lat: parseFloat(lat), lon: parseFloat(lon) };
-  const allBusinessIds = businesses.map(b => b._id);
-  const allZones = await DeliveryZone.find({ businessId: { $in: allBusinessIds }, isActive: true }).lean();
+const INFO_VACIA = { categories: [], productCount: 0, minPrice: 0, topProducts: [], orderCount: 0, popularityScore: 0 };
 
-  const zonesByBusiness = {};
-  for (const zone of allZones) {
-    const bid = zone.businessId.toString();
-    if (!zonesByBusiness[bid]) zonesByBusiness[bid] = [];
-    zonesByBusiness[bid].push(zone);
-  }
-
-  return businesses.filter(business => {
-    const zones = zonesByBusiness[business._id.toString()] || [];
-    if (zones.length === 0) return false;
-    for (const zone of zones.sort((a, b) => (b.priority || 0) - (a.priority || 0))) {
-      let inZone = false;
-      if (zone.type === 'polygon') {
-        inZone = pointInPolygon(userPoint, zone.geometry.coordinates[0]);
-      } else if (zone.type === 'circle') {
-        const center = { lat: zone.geometry.center.coordinates[1], lon: zone.geometry.center.coordinates[0] };
-        inZone = pointInRadius(userPoint, center, zone.geometry.radius);
-      }
-      if (inZone) {
-        business.deliveryZone = { name: zone.name, estimatedTime: zone.estimatedTime, pricing: zone.pricing };
-        return true;
-      }
-    }
-    return false;
-  });
+/** La forma que consume el catálogo, igual en todos los endpoints. */
+function formatear(b, info) {
+  const i = info?.[b._id.toString()] || INFO_VACIA;
+  const c = b.location?.coordinates;
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  return {
+    _id: b._id,
+    businessName: b.businessName,
+    slug: b.slug,
+    logo: b.logo,
+    coverImage: b.coverImage,
+    description: b.description,
+    theme: b.theme,
+    address: b.address,
+    whatsappNumber: b.whatsappNumber,
+    socialMedia: b.socialMedia,
+    department: b.department,
+    city: b.city,
+    coordinates: c && Number.isFinite(c.lat) && Number.isFinite(c.lng) ? { lat: c.lat, lng: c.lng } : null,
+    createdAt: b.createdAt,
+    updatedAt: b.updatedAt,
+    isOpen: b.isOpen,
+    isCurrentlyOpen: b.isCurrentlyOpen,
+    businessHours: b.businessHours,
+    todayHours: b.businessHours?.[ahoraCOL().dia] || null,
+    distance: b.distance,
+    tieneDomicilio: b.tieneDomicilio,
+    deliveryZone: b.deliveryZone,
+    recibePedidos: b.recibePedidos,
+    isNew: b.createdAt >= thirtyDaysAgo,
+    productCount: i.productCount,
+    minPrice: i.minPrice,
+    topProducts: i.topProducts,
+    popularityScore: i.popularityScore,
+    orderCount: i.orderCount,
+    categories: i.categories,
+    reviewStats: b.reviewStats || { averageRating: 0, totalReviews: 0 }
+  };
 }
+
+const conMenu = (negocios, info) => (info ? negocios.filter(b => info[b._id.toString()]?.productCount > 0) : negocios);
 
 /**
  * GET /api/businesses
- * Obtener todos los negocios activos para el catálogo
- * Query params: lat, lon, limit, offset, open (filtro abierto ahora)
+ * Todos los negocios visibles, del más cercano al más lejano.
+ * Query params: lat, lon|lng, limit, offset, open (filtro abierto ahora)
  */
 router.get('/', businessesLimiter, async (req, res) => {
   try {
-    const { lat, lon, limit = 50, offset = 0, open } = req.query;
-    const hasLocation = lat && lon && !isNaN(lat) && !isNaN(lon);
-    
-    logger.info('GET /api/businesses', { withLocation: hasLocation, lat, lon, limit, offset, open });
+    const origen = leerUbicacion(req.query);
+    const limit = entero(req.query.limit, MAX_LISTA, 1, MAX_LISTA);
+    const offset = entero(req.query.offset, 0, 0, Number.MAX_SAFE_INTEGER);
 
-    // Obtener todos los negocios activos
-    const businesses = await BusinessConfig.find({ 
-      isActive: true,
-      // El superadmin puede sacar a un negocio del catalogo publico
-      showInMarketplace: { $ne: false }
-    }).select('businessName slug logo coverImage description theme isActive isOpen address whatsappNumber socialMedia department city location businessHours reviewStats createdAt updatedAt').lean();
+    logger.info('GET /api/businesses', { withLocation: !!origen, limit, offset, open: req.query.open });
 
-    // Si hay ubicación, filtrar por cobertura
-    let businessesToShow = businesses;
-    if (hasLocation) {
-      businessesToShow = await filterByDeliveryCoverage(businesses, lat, lon);
-    }
+    const negocios = await BusinessConfig.find(filtroVisible()).select(CAMPOS_VITRINA).lean();
+    const info = await getBatchBusinessInfo(negocios);
 
-    // Filtro "abierto ahora" — usa horarios reales calculados desde businessHours
-    if (open === 'true') {
-      businessesToShow = businessesToShow.filter(b => computeIsCurrentlyOpen(b));
-    }
+    let lista = await decorarParaVitrina(conMenu(negocios, info), origen);
+    if (req.query.open === 'true') lista = lista.filter(b => b.isCurrentlyOpen);
 
-    // Paginar PRIMERO, luego enriquecer solo la página actual (no todos los negocios)
-    const total = businessesToShow.length;
-    const paginatedBusinesses = businessesToShow.slice(
-      parseInt(offset),
-      parseInt(offset) + parseInt(limit)
-    );
+    const popularidad = (b) => info?.[b._id.toString()]?.popularityScore || 0;
+    ordenarPorCercania(lista, (a, b) => popularidad(b) - popularidad(a));
 
-    // Batch: obtener categorías + productCount solo para los negocios de esta página
-    const businessIds = paginatedBusinesses.map(b => b._id);
-    const batchInfo = await getBatchBusinessInfo(businessIds);
+    const data = lista.slice(offset, offset + limit).map(b => formatear(b, info));
 
-    // Formatear respuesta
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    logger.info(`Found ${data.length} businesses (total: ${lista.length})`, { count: data.length, total: lista.length });
 
-    const formattedBusinesses = paginatedBusinesses.map(business => {
-      const bid = business._id.toString();
-      const info = batchInfo[bid] || { categories: [], productCount: 0, minPrice: 0, topProducts: [] };
-      
-      let coordinates = null;
-      if (business.location && business.location.coordinates) {
-        coordinates = {
-          lat: business.location.coordinates.lat,
-          lng: business.location.coordinates.lng
-        };
-      }
-
-      // Obtener horario de hoy
-      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-      const todayKey = dayNames[now.getDay()];
-      const todayHours = business.businessHours?.[todayKey] || null;
-      
-      return {
-        _id: business._id,
-        businessName: business.businessName,
-        slug: business.slug,
-        logo: business.logo,
-        coverImage: business.coverImage,
-        description: business.description,
-        theme: business.theme,
-        address: business.address,
-        whatsappNumber: business.whatsappNumber,
-        socialMedia: business.socialMedia,
-        department: business.department,
-        city: business.city,
-        coordinates,
-        createdAt: business.createdAt,
-        updatedAt: business.updatedAt,
-        isOpen: business.isOpen,
-        isCurrentlyOpen: computeIsCurrentlyOpen(business),
-        businessHours: business.businessHours,
-        todayHours,
-        productCount: info.productCount,
-        minPrice: info.minPrice,
-        topProducts: info.topProducts,
-        isNew: business.createdAt >= thirtyDaysAgo,
-        popularityScore: info.popularityScore || 0,
-        orderCount: info.orderCount || 0,
-        categories: info.categories,
-        reviewStats: business.reviewStats || { averageRating: 0, totalReviews: 0 },
-        deliveryZone: business.deliveryZone || null
-      };
-    });
-
-    logger.info(`Found ${formattedBusinesses.length} businesses (total: ${total})`, { count: formattedBusinesses.length, total });
-    
-    res.json({
-      data: formattedBusinesses,
-      total,
-      limit: parseInt(limit),
-      offset: parseInt(offset)
-    });
+    res.json({ data, total: lista.length, limit, offset });
   } catch (error) {
     logger.error('GET /api/businesses - Error', error, req);
     res.status(500).json(formatHttpError(req, 'Error interno del servidor', 500));
@@ -324,59 +233,21 @@ router.get('/', businessesLimiter, async (req, res) => {
 
 /**
  * GET /api/businesses/featured
- * Secciones curadas: trending, envio gratis, precio bajo, mejor valorados
+ * Secciones curadas: trending, precio bajo, recién llegados, menús grandes
  */
 router.get('/featured', businessesLimiter, async (req, res) => {
   try {
-    const { lat, lon } = req.query;
-    const hasLocation = lat && lon && !isNaN(lat) && !isNaN(lon);
+    const origen = leerUbicacion(req.query);
 
-    const allBusinesses = await BusinessConfig.find({ isActive: true, showInMarketplace: { $ne: false } })
-      .select('businessName slug logo coverImage description isOpen businessHours location department city reviewStats createdAt')
-      .lean();
+    const negocios = await BusinessConfig.find(filtroVisible()).select(CAMPOS_VITRINA).lean();
+    let lista = await decorarParaVitrina(negocios, origen);
 
-    // Filtrar por cobertura de zona si hay ubicación
-    const businesses = hasLocation
-      ? await filterByDeliveryCoverage(allBusinesses, lat, lon)
-      : allBusinesses;
+    /* Las secciones son "lo bueno cerca de ti": un "Popular" de otra ciudad no
+       le sirve a nadie. La lista completa sí trae a todos. */
+    if (origen) lista = lista.filter(b => b.distance != null && b.distance <= RADIO_CERCANO_KM);
 
-    const businessIds = businesses.map(b => b._id);
-    const batchInfo = await getBatchBusinessInfo(businessIds);
-
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const todayKey = dayNames[now.getDay()];
-
-    // Formatear todos
-    let allFormatted = businesses.map(b => {
-      const bid = b._id.toString();
-      const info = batchInfo[bid] || { categories: [], productCount: 0, minPrice: 0, topProducts: [], popularityScore: 0, orderCount: 0 };
-      let coordinates = null;
-      if (b.location?.coordinates) {
-        coordinates = { lat: b.location.coordinates.lat, lng: b.location.coordinates.lng };
-      }
-      return {
-        _id: b._id,
-        businessName: b.businessName,
-        slug: b.slug,
-        logo: b.logo,
-        coverImage: b.coverImage,
-        description: b.description,
-        isOpen: b.isOpen,
-        isCurrentlyOpen: computeIsCurrentlyOpen(b),
-        todayHours: b.businessHours?.[todayKey] || null,
-        coordinates,
-        isNew: b.createdAt >= thirtyDaysAgo,
-        productCount: info.productCount,
-        minPrice: info.minPrice,
-        topProducts: info.topProducts,
-        popularityScore: info.popularityScore,
-        orderCount: info.orderCount,
-        categories: info.categories,
-        reviewStats: b.reviewStats || { averageRating: 0, totalReviews: 0 }
-      };
-    });
+    const info = await getBatchBusinessInfo(lista);
+    const allFormatted = ordenarPorCercania(conMenu(lista, info)).map(b => formatear(b, info));
 
     // Threshold relativo para cheapEats: negocios cuyo precio mínimo está por debajo
     // del promedio — funciona independientemente de la moneda del negocio.
@@ -384,14 +255,14 @@ router.get('/featured', businessesLimiter, async (req, res) => {
     const avgPrice = validPrices.length > 0 ? validPrices.reduce((a, b) => a + b, 0) / validPrices.length : 0;
     const cheapThreshold = avgPrice * 0.75;
 
-    // Secciones
-    const trending = [...allFormatted]
+    // Solo con pedidos reales: sin ese filtro el puntaje de productos metía a cualquiera.
+    const trending = allFormatted
+      .filter(b => b.orderCount > 0)
       .sort((a, b) => b.popularityScore - a.popularityScore)
-      .filter(b => b.popularityScore > 0)
       .slice(0, 8);
 
     const cheapEats = cheapThreshold > 0
-      ? [...allFormatted]
+      ? allFormatted
           .filter(b => b.minPrice > 0 && b.minPrice <= cheapThreshold)
           .sort((a, b) => a.minPrice - b.minPrice)
           .slice(0, 8)
@@ -399,7 +270,7 @@ router.get('/featured', businessesLimiter, async (req, res) => {
 
     const newOnes = allFormatted.filter(b => b.isNew).slice(0, 8);
 
-    const bigMenus = [...allFormatted]
+    const bigMenus = allFormatted
       .filter(b => b.productCount >= 5)
       .sort((a, b) => b.productCount - a.productCount)
       .slice(0, 8);
@@ -407,8 +278,8 @@ router.get('/featured', businessesLimiter, async (req, res) => {
     res.json({
       success: true,
       sections: {
-        trending: { title: '🔥 Trending', subtitle: 'Los más pedidos esta semana', data: trending },
-        cheapEats: { title: '💰 Comer barato', subtitle: 'Precios desde $5.000', data: cheapEats },
+        trending: { title: '🔥 Trending', subtitle: 'Los más pedidos este mes', data: trending },
+        cheapEats: { title: '💰 Comer barato', subtitle: 'Por debajo del precio promedio', data: cheapEats },
         newOnes: { title: '✨ Recién llegados', subtitle: 'Nuevos en MenuBy', data: newOnes },
         bigMenus: { title: '📋 Menús grandes', subtitle: 'Más variedad para elegir', data: bigMenus }
       }
@@ -422,80 +293,56 @@ router.get('/featured', businessesLimiter, async (req, res) => {
 /**
  * GET /api/businesses/search/products
  * Buscar restaurantes por nombre de PRODUCTO (ej: "hamburguesa" → restaurantes que la venden)
- * Retorna restaurantes + los productos que matchearon
+ * Retorna restaurantes + los productos que matchearon, del más cercano al más lejano
  */
 router.get('/search/products', businessesLimiter, async (req, res) => {
   try {
-    const { q, limit = 20 } = req.query;
+    const { q } = req.query;
+    const limit = entero(req.query.limit, 20, 1, 50);
     if (!q || q.trim().length < 2) {
       return res.json({ success: true, data: [], total: 0 });
     }
 
-    const escapedQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const negocios = await BusinessConfig.find(filtroVisible()).select(CAMPOS_VITRINA).lean();
+    if (!negocios.length) return res.json({ success: true, data: [], total: 0, query: q });
 
-    // Buscar productos que matcheen
+    /* Se busca solo dentro de los menús de negocios visibles. Antes se tomaban
+       los primeros 200 productos de toda la base —incluidos los de negocios
+       ocultos o de prueba— y esos se comían el cupo. */
+    const escapedQ = escaparRegex(q.trim());
     const matchingProducts = await Product.find({
+      businessId: { $in: [...new Set(negocios.map(idDelMenu))] },
       active: true,
       $or: [
         { name: { $regex: escapedQ, $options: 'i' } },
         { description: { $regex: escapedQ, $options: 'i' } }
       ]
-    }).select('businessId name price image').limit(200).lean();
+    }).select('businessId name price image').limit(500).lean();
 
     if (matchingProducts.length === 0) {
       return res.json({ success: true, data: [], total: 0, query: q });
     }
 
-    // Agrupar productos por negocio
-    const productsByBusiness = {};
+    const porMenu = {};
     for (const p of matchingProducts) {
-      const bid = p.businessId.toString();
-      if (!productsByBusiness[bid]) productsByBusiness[bid] = [];
-      if (productsByBusiness[bid].length < 4) {
-        productsByBusiness[bid].push({ name: p.name, price: p.price, image: p.image || null });
+      const menu = p.businessId.toString();
+      if (!porMenu[menu]) porMenu[menu] = { productos: [], total: 0 };
+      porMenu[menu].total++;
+      if (porMenu[menu].productos.length < 4) {
+        porMenu[menu].productos.push({ name: p.name, price: p.price, image: p.image || null });
       }
     }
 
-    const businessIds = Object.keys(productsByBusiness);
+    const conCoincidencias = negocios.filter(b => porMenu[idDelMenu(b)]);
+    const decorados = await decorarParaVitrina(conCoincidencias, leerUbicacion(req.query));
 
-    // Obtener datos de los negocios
-    const businesses = await BusinessConfig.find({
-      _id: { $in: businessIds },
-      isActive: true
-    }).select('businessName slug logo coverImage description theme isOpen address department city location businessHours reviewStats createdAt').lean();
-
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const todayKey = dayNames[now.getDay()];
-
-    const results = businesses.map(b => {
-      const bid = b._id.toString();
-      let coordinates = null;
-      if (b.location?.coordinates) {
-        coordinates = { lat: b.location.coordinates.lat, lng: b.location.coordinates.lng };
-      }
-      return {
-        _id: b._id,
-        businessName: b.businessName,
-        slug: b.slug,
-        logo: b.logo,
-        coverImage: b.coverImage,
-        description: b.description,
-        theme: b.theme,
-        address: b.address,
-        department: b.department,
-        city: b.city,
-        coordinates,
-        isOpen: b.isOpen,
-        todayHours: b.businessHours?.[todayKey] || null,
-        isNew: b.createdAt >= thirtyDaysAgo,
-        createdAt: b.createdAt,
-        reviewStats: b.reviewStats || { averageRating: 0, totalReviews: 0 },
-        matchingProducts: productsByBusiness[bid] || [],
-        matchCount: (productsByBusiness[bid] || []).length
-      };
-    }).sort((a, b) => b.matchCount - a.matchCount).slice(0, parseInt(limit));
+    const results = ordenarPorCercania(
+      decorados.map(b => {
+        const m = porMenu[idDelMenu(b)];
+        return { ...formatear(b), matchingProducts: m.productos, matchCount: m.total };
+      }),
+      (a, b) => b.matchCount - a.matchCount
+    ).slice(0, limit);
 
     res.json({ success: true, data: results, total: results.length, query: q });
   } catch (error) {
@@ -511,69 +358,35 @@ router.get('/search/products', businessesLimiter, async (req, res) => {
  */
 router.get('/search', businessesLimiter, async (req, res) => {
   try {
-    const { q, limit = 20, offset = 0 } = req.query;
+    const { q } = req.query;
+    const limit = entero(req.query.limit, 20, 1, 50);
+    const offset = entero(req.query.offset, 0, 0, Number.MAX_SAFE_INTEGER);
     logger.debug('Searching businesses', { query: q }, req);
 
-    const filters = { isActive: true };
-    
+    const extra = {};
     if (q) {
-      const escapedQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      filters.$or = [
+      const escapedQ = escaparRegex(q);
+      extra.$or = [
         { businessName: { $regex: escapedQ, $options: 'i' } },
         { description: { $regex: escapedQ, $options: 'i' } }
       ];
     }
 
-    const [businesses, total] = await Promise.all([
-      BusinessConfig.find(filters)
-        .select('businessName slug logo coverImage description theme isOpen address whatsappNumber socialMedia department city location businessHours reviewStats createdAt')
-        .limit(parseInt(limit))
-        .skip(parseInt(offset))
-        .sort({ createdAt: -1 })
-        .lean(),
-      BusinessConfig.countDocuments(filters)
-    ]);
+    const negocios = await BusinessConfig.find(filtroVisible(extra))
+      .select(CAMPOS_VITRINA)
+      .sort({ createdAt: -1 })
+      .lean();
 
-    const businessIds = businesses.map(b => b._id);
-    const batchInfo = await getBatchBusinessInfo(businessIds);
-
-    const formattedBusinesses = businesses.map(business => {
-      const bid = business._id.toString();
-      const info = batchInfo[bid] || { categories: [], productCount: 0 };
-      let coordinates = null;
-      if (business.location?.coordinates) {
-        coordinates = { lat: business.location.coordinates.lat, lng: business.location.coordinates.lng };
-      }
-      return {
-        _id: business._id,
-        businessName: business.businessName,
-        slug: business.slug,
-        logo: business.logo,
-        coverImage: business.coverImage,
-        description: business.description,
-        theme: business.theme,
-        address: business.address,
-        whatsappNumber: business.whatsappNumber,
-        socialMedia: business.socialMedia,
-        department: business.department,
-        city: business.city,
-        coordinates,
-        createdAt: business.createdAt,
-        isOpen: business.isOpen,
-        isCurrentlyOpen: computeIsCurrentlyOpen(business),
-        businessHours: business.businessHours,
-        productCount: info.productCount,
-        categories: info.categories,
-        reviewStats: business.reviewStats || { averageRating: 0, totalReviews: 0 }
-      };
-    });
+    const decorados = ordenarPorCercania(await decorarParaVitrina(negocios, leerUbicacion(req.query)));
+    const pagina = decorados.slice(offset, offset + limit);
+    const info = await getBatchBusinessInfo(pagina);
 
     res.json({
       success: true,
-      data: formattedBusinesses,
-      total,
-      limit: parseInt(limit),
-      offset: parseInt(offset)
+      data: pagina.map(b => formatear(b, info)),
+      total: decorados.length,
+      limit,
+      offset
     });
   } catch (error) {
     logger.error('GET /api/businesses/search - Error', error, req);
@@ -600,7 +413,9 @@ router.get('/debug/all', authSuperAdmin, async (req, res) => {
 
 /**
  * GET /api/businesses/:id
- * Obtener un negocio específico por ID o slug — con datos completos
+ * Obtener un negocio específico por ID o slug — con datos completos.
+ * No aplica las reglas del marketplace: quien tiene el enlace llega igual que
+ * al menú, que sigue accesible aunque el negocio no se recomiende.
  */
 router.get('/:id', businessesLimiter, async (req, res) => {
   try {
@@ -611,53 +426,21 @@ router.get('/:id', businessesLimiter, async (req, res) => {
       return res.status(404).json(formatHttpError(req, 'Negocio no encontrado', 404));
     }
 
-    const businessId = businessResult.businessId;
-
-    const business = await BusinessConfig.findOne({ 
-      _id: businessId,
-      isActive: true 
-    }).select('businessName slug logo coverImage description theme isOpen address whatsappNumber socialMedia department city location businessHours reviewStats createdAt updatedAt');
+    const business = await BusinessConfig.findOne({
+      _id: businessResult.businessId,
+      isActive: true
+    }).select(CAMPOS_VITRINA).lean();
 
     if (!business) {
       return res.status(404).json(formatHttpError(req, 'Negocio no encontrado', 404));
     }
 
-    // Obtener categorías y productCount
-    const batchInfo = await getBatchBusinessInfo([business._id]);
-    const info = batchInfo[business._id.toString()] || { categories: [], productCount: 0 };
-
-    let coordinates = null;
-    if (business.location?.coordinates) {
-      coordinates = { lat: business.location.coordinates.lat, lng: business.location.coordinates.lng };
-    }
-
-    const formattedBusiness = {
-      _id: business._id,
-      businessName: business.businessName,
-      slug: business.slug,
-      logo: business.logo,
-      coverImage: business.coverImage,
-      description: business.description,
-      theme: business.theme,
-      address: business.address,
-      whatsappNumber: business.whatsappNumber,
-      socialMedia: business.socialMedia,
-      department: business.department,
-      city: business.city,
-      coordinates,
-      createdAt: business.createdAt,
-      updatedAt: business.updatedAt,
-      isOpen: business.isOpen,
-      isCurrentlyOpen: typeof business.isCurrentlyOpen === 'function' ? business.isCurrentlyOpen() : business.isOpen,
-      businessHours: business.businessHours,
-      productCount: info.productCount,
-      categories: info.categories,
-      reviewStats: business.reviewStats || { averageRating: 0, totalReviews: 0 }
-    };
+    const [decorado] = await decorarParaVitrina([business], leerUbicacion(req.query));
+    const info = await getBatchBusinessInfo([business]);
 
     logger.info(`Business found`, { id: business._id, name: business.businessName }, req);
-    
-    res.json(formattedBusiness);
+
+    res.json(formatear(decorado, info));
   } catch (error) {
     logger.error(`GET /api/businesses/${req.params.id} - Error`, error, req);
     res.status(500).json(formatHttpError(req, 'Error interno del servidor', 500));

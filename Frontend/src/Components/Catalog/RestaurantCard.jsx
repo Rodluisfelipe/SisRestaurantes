@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { useBusinessStatus } from '../../hooks/useBusinessStatus';
 
 // ── Favorites hook ──
 const useFavorites = () => {
@@ -27,7 +26,6 @@ const useFavorites = () => {
 export { useFavorites };
 
 const RestaurantCard = ({ restaurant, userLocation, variant = 'default' }) => {
-  const { businessStatus } = useBusinessStatus(restaurant._id);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [favBounce, setFavBounce] = useState(false);
@@ -52,10 +50,12 @@ const RestaurantCard = ({ restaurant, userLocation, variant = 'default' }) => {
     toggle(restaurant._id);
   };
 
+  /* Solo el tiempo que el negocio configuró en la zona que cubre tu dirección.
+     Antes se inventaba uno con la distancia —o "25-35" sin datos— incluso para
+     negocios que no envían hasta ahí. */
   const deliveryTime = (() => {
-    if (restaurant.deliveryZone?.estimatedTime) { const { min, max } = restaurant.deliveryZone.estimatedTime; return `${min}-${max}`; }
-    if (restaurant.distance != null) { const est = Math.round(15 + (restaurant.distance * 2)); return `${est}-${est + 10}`; }
-    return '25-35';
+    const t = restaurant.deliveryZone?.estimatedTime;
+    return t?.min != null && t?.max ? `${t.min}-${t.max}` : null;
   })();
 
   const delivery = (() => {
@@ -68,18 +68,28 @@ const RestaurantCard = ({ restaurant, userLocation, variant = 'default' }) => {
     return { text: `$${price.toLocaleString('es-CO')}`, free: false };
   })();
 
-  const isOpen = restaurant.isCurrentlyOpen ?? businessStatus?.isOpen ?? restaurant.isOpen;
+  const isOpen = restaurant.isCurrentlyOpen ?? restaurant.isOpen;
+  // Suscripción vencida: el menú abre, pero el pedido se rechaza al final.
+  const sinPedidos = restaurant.recibePedidos === false;
+  const deliveryNote = restaurant.deliveryZone
+    ? null
+    : restaurant.tieneDomicilio === false
+    ? 'Solo recoger en tienda'
+    : restaurant.tieneDomicilio && userLocation
+    ? 'No envía a tu dirección'
+    : null;
   const distanceText = restaurant.distance != null ? (restaurant.distance < 1 ? `${Math.round(restaurant.distance * 1000)} m` : `${restaurant.distance.toFixed(1)} km`) : null;
 
+  // Solo calificaciones reales: antes se inventaba una a partir de la popularidad.
   const rating = restaurant.reviewStats?.averageRating > 0
     ? restaurant.reviewStats.averageRating.toFixed(1)
-    : (restaurant.popularityScore ? Math.min(5, 3.5 + (restaurant.popularityScore / 100) * 1.5).toFixed(1) : null);
+    : null;
 
   // ═══ COMPACT ═══
   if (variant === 'compact') {
     return (
       <Link to={`/${restaurant.slug}`} onClick={handleClick} className="flex-shrink-0 w-[160px] snap-start group">
-        <div className={`${!isOpen ? 'opacity-50' : ''}`}>
+        <div className={`${!isOpen || sinPedidos ? 'opacity-50' : ''}`}>
           <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-gray-100 shadow-sm border border-gray-100/80">
             {/* Cover as background */}
             {restaurant.coverImage && !imgError ? (
@@ -105,15 +115,17 @@ const RestaurantCard = ({ restaurant, userLocation, variant = 'default' }) => {
             </div>
 
             {/* Time badge */}
-            <div className="absolute bottom-2 left-2 bg-white/95 backdrop-blur-sm rounded-lg px-2 py-0.5 shadow-sm">
-              <span className="text-[10px] font-bold text-gray-800">{deliveryTime} min</span>
-            </div>
+            {deliveryTime && (
+              <div className="absolute bottom-2 left-2 bg-white/95 backdrop-blur-sm rounded-lg px-2 py-0.5 shadow-sm">
+                <span className="text-[10px] font-bold text-gray-800">{deliveryTime} min</span>
+              </div>
+            )}
             {delivery?.free && (
               <div className="absolute top-2 left-2 bg-red-500 rounded-lg px-1.5 py-0.5">
                 <span className="text-[9px] font-bold text-white">GRATIS</span>
               </div>
             )}
-            {!isOpen && <div className="absolute inset-0 bg-white/60 flex items-center justify-center"><span className="text-[10px] font-bold text-gray-500 bg-white px-2 py-0.5 rounded-full">Cerrado</span></div>}
+            {(sinPedidos || !isOpen) && <div className="absolute inset-0 bg-white/60 flex items-center justify-center"><span className="text-[10px] font-bold text-gray-500 bg-white px-2 py-0.5 rounded-full">{sinPedidos ? 'Sin pedidos' : 'Cerrado'}</span></div>}
           </div>
           <div className="mt-2 px-0.5">
             <p className="text-[13px] font-bold text-gray-900 truncate leading-tight">{restaurant.businessName}</p>
@@ -131,7 +143,7 @@ const RestaurantCard = ({ restaurant, userLocation, variant = 'default' }) => {
   // ═══ DEFAULT ═══
   return (
     <Link to={`/${restaurant.slug}`} onClick={handleClick} className="block group">
-      <div className={`bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm transition-all duration-200 hover:shadow-lg hover:shadow-black/5 hover:-translate-y-0.5 ${!isOpen ? 'opacity-60' : ''}`}>
+      <div className={`bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm transition-all duration-200 hover:shadow-lg hover:shadow-black/5 hover:-translate-y-0.5 ${!isOpen || sinPedidos ? 'opacity-60' : ''}`}>
         {/* Image */}
         <div className="relative aspect-[16/9] overflow-hidden bg-gray-100">
           {restaurant.coverImage && !imgError ? (
@@ -168,9 +180,11 @@ const RestaurantCard = ({ restaurant, userLocation, variant = 'default' }) => {
           {/* Bottom bar */}
           <div className="absolute bottom-0 left-0 right-0 p-3 flex items-end justify-between">
             {/* Time badge */}
-            <div className="bg-white rounded-xl px-2.5 py-1 shadow-lg">
-              <span className="text-[12px] font-bold text-gray-900">{deliveryTime} min</span>
-            </div>
+            {deliveryTime ? (
+              <div className="bg-white rounded-xl px-2.5 py-1 shadow-lg">
+                <span className="text-[12px] font-bold text-gray-900">{deliveryTime} min</span>
+              </div>
+            ) : <div />}
             {/* Rating badge */}
             {rating && (
               <div className="bg-white rounded-xl px-2 py-1 shadow-lg flex items-center gap-1">
@@ -180,10 +194,10 @@ const RestaurantCard = ({ restaurant, userLocation, variant = 'default' }) => {
             )}
           </div>
 
-          {/* Closed overlay */}
-          {!isOpen && (
+          {/* Closed / sin pedidos overlay */}
+          {(sinPedidos || !isOpen) && (
             <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center">
-              <span className="bg-white px-4 py-1.5 rounded-full text-[13px] font-bold text-gray-600 shadow-md">Cerrado ahora</span>
+              <span className="bg-white px-4 py-1.5 rounded-full text-[13px] font-bold text-gray-600 shadow-md">{sinPedidos ? 'No recibe pedidos por ahora' : 'Cerrado ahora'}</span>
             </div>
           )}
         </div>
@@ -204,11 +218,15 @@ const RestaurantCard = ({ restaurant, userLocation, variant = 'default' }) => {
 
               {/* Meta */}
               <div className="flex items-center gap-1 mt-0.5 text-[12px] text-gray-500 flex-wrap">
-                <span className="font-medium text-gray-700">{deliveryTime} min</span>
-                {(delivery || distanceText) && <span className="text-gray-300">·</span>}
-                {delivery && !delivery.free && <span>Envío {delivery.text}</span>}
-                {delivery?.free && <span className="text-green-600 font-semibold">Envío gratis</span>}
-                {distanceText && <><span className="text-gray-300">·</span><span>{distanceText}</span></>}
+                {[
+                  deliveryTime && <span className="font-medium text-gray-700">{deliveryTime} min</span>,
+                  delivery && !delivery.free && <span>Envío {delivery.text}</span>,
+                  delivery?.free && <span className="text-green-600 font-semibold">Envío gratis</span>,
+                  deliveryNote && <span>{deliveryNote}</span>,
+                  distanceText && <span>{distanceText}</span>,
+                ].filter(Boolean).map((parte, i) => (
+                  <React.Fragment key={i}>{i > 0 && <span className="text-gray-300">·</span>}{parte}</React.Fragment>
+                ))}
               </div>
             </div>
           </div>

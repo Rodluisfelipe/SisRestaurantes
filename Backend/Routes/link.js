@@ -6,19 +6,7 @@ const Product = require('../Models/Product');
 const Review = require('../Models/Review');
 const mongoose = require('mongoose');
 
-const DAY_NAMES = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-
-function computeIsOpen(biz) {
-  if (!biz.isOpen) return false;
-  if (!biz.businessHours) return true;
-  const now = new Date();
-  const day = biz.businessHours[DAY_NAMES[now.getDay()]];
-  if (!day?.isOpen) return false;
-  const [oh, om] = (day.openTime || '00:00').split(':').map(Number);
-  const [ch, cm] = (day.closeTime || '23:59').split(':').map(Number);
-  const cur = now.getHours() * 60 + now.getMinutes();
-  return cur >= oh * 60 + om && cur <= ch * 60 + cm;
-}
+const { estaAbiertoAhora } = require('../utils/marketplace');
 
 const BIZ_FIELDS = 'businessName tagline description logo coverImage slug address googleMapsUrl whatsappNumber socialMedia extraLink theme businessHours isOpen menuStatus branchLabel isMainBranch brandId location';
 
@@ -52,11 +40,11 @@ router.get('/:slug', async (req, res) => {
         brand: { name: brand.name, slug: brand.slug, logoUrl: brand.logoUrl },
         mainBranch: mainBranch ? {
           ...mainBranch,
-          isCurrentlyOpen: computeIsOpen(mainBranch),
+          isCurrentlyOpen: estaAbiertoAhora(mainBranch),
         } : null,
         branches: branches.map(b => ({
           ...b,
-          isCurrentlyOpen: computeIsOpen(b),
+          isCurrentlyOpen: estaAbiertoAhora(b),
         })),
         featuredProducts,
         avgRating: reviewStats[0]?.avg ? Math.round(reviewStats[0].avg * 10) / 10 : null,
@@ -79,7 +67,7 @@ router.get('/:slug', async (req, res) => {
 
     res.json({
       type: 'single',
-      business: { ...biz, isCurrentlyOpen: computeIsOpen(biz) },
+      business: { ...biz, isCurrentlyOpen: estaAbiertoAhora(biz) },
       featuredProducts,
       avgRating: reviewStats[0]?.avg ? Math.round(reviewStats[0].avg * 10) / 10 : null,
       reviewCount: reviewStats[0]?.count || 0,

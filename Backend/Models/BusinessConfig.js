@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { estadoDeHoy } = require('../services/whatsappAgent/horario');
 
 // Esquema para redes sociales
 const socialMediaItemSchema = new mongoose.Schema({
@@ -541,31 +542,11 @@ businessConfigSchema.statics.getConfig = async function() {
 
 // Método para verificar si el negocio está abierto según horarios
 businessConfigSchema.methods.isCurrentlyOpen = function() {
-  const now = new Date();
-  const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-  const currentTime = now.toTimeString().substring(0, 5); // 'HH:MM'
-  
-  const dayMap = {
-    'monday': 'monday',
-    'tuesday': 'tuesday', 
-    'wednesday': 'wednesday',
-    'thursday': 'thursday',
-    'friday': 'friday',
-    'saturday': 'saturday',
-    'sunday': 'sunday'
-  };
-  
-  const dayKey = dayMap[currentDay];
-  if (!dayKey || !this.businessHours[dayKey]) {
-    return false;
-  }
-  
-  const dayHours = this.businessHours[dayKey];
-  if (!dayHours.isOpen) {
-    return false;
-  }
-  
-  return currentTime >= dayHours.openTime && currentTime <= dayHours.closeTime;
+  /* Por horario y en hora de Colombia: el servidor corre en UTC y comparar con
+     su reloj corría la apertura cinco horas. Ignora el interruptor manual a
+     propósito; getBusinessStatus lo combina aparte. */
+  const hoy = estadoDeHoy({ businessHours: this.businessHours });
+  return hoy ? hoy.abierto : false;
 };
 
 // Método para obtener el estado completo del negocio
