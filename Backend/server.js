@@ -250,6 +250,8 @@ app.use("/api/link", require("./Routes/link"));
 app.use("/api/branches", require("./Routes/branches"));
 // Brands (multi-sucursal) — SuperAdmin
 app.use("/api/superadmin/brands", require("./Routes/brands"));
+// Accesos al Panel LIVE (servicio aparte que lee la misma colección)
+app.use("/api/superadmin/panel-live", require("./Routes/panelLive"));
 
 // Rutas específicas para superadmin (integradas desde BackendSA)
 app.use("/api/superadmin/auth", require("./Routes/authSuperAdmin"));
