@@ -9,7 +9,7 @@
 //! como llave de idempotencia.
 
 use crate::dinero::Pesos;
-use rusqlite::{params, Connection, Result};
+use rusqlite::{params, Connection, OptionalExtension, Result};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -225,6 +225,88 @@ pub fn registrar(
     Ok(VentaRegistrada { id, consecutivo, total, iva, vuelto, creada_en: ahora.to_string() })
 }
 
+/// Una venta ya guardada, con todo lo que hace falta para reimprimirla.
+///
+/// Reimprimir no puede reconstruirse desde la pantalla: el carrito ya se
+/// limpió y el cliente puede volver media hora después pidiendo su tirilla. Se
+/// relee de la base, que es donde está lo que de verdad se cobró.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VentaCompleta {
+    pub id: String,
+    pub consecutivo: i64,
+    pub total: Pesos,
+    pub iva: Pesos,
+    pub recibido: Pesos,
+    pub vuelto: Pesos,
+    pub medio_pago: String,
+    pub cajero: String,
+    pub creada_en: String,
+    pub items: Vec<LineaVenta>,
+    pub pago_autorizacion: String,
+    pub pago_ultimos4: String,
+}
+
+/// Relee una venta con sus líneas.
+pub fn detalle(conexion: &Connection, venta_id: &str) -> Result<Option<VentaCompleta>> {
+    let base = conexion.query_row(
+        "SELECT id, consecutivo, total, iva, recibido, vuelto, medio_pago, cajero, creada_en,
+                pago_autorizacion, pago_ultimos4
+         FROM ventas WHERE id = ?1",
+        [venta_id],
+        |f| {
+            Ok(VentaCompleta {
+                id: f.get(0)?,
+                consecutivo: f.get(1)?,
+                total: Pesos(f.get(2)?),
+                iva: Pesos(f.get(3)?),
+                recibido: Pesos(f.get(4)?),
+                vuelto: Pesos(f.get(5)?),
+                medio_pago: f.get(6)?,
+                cajero: f.get(7)?,
+                creada_en: f.get(8)?,
+                items: vec![],
+                pago_autorizacion: f.get(9)?,
+                pago_ultimos4: f.get(10)?,
+            })
+        },
+    );
+
+    let mut completa = match base {
+        Ok(v) => v,
+        Err(rusqlite::Error::QueryReturnedNoRows) => return Ok(None),
+        Err(e) => return Err(e),
+    };
+
+    let mut consulta = conexion.prepare(
+        "SELECT producto_id, nombre, variante, precio, cantidad
+         FROM venta_items WHERE venta_id = ?1 ORDER BY linea",
+    )?;
+    let filas = consulta.query_map([venta_id], |f| {
+        Ok(LineaVenta {
+            producto_id: f.get(0)?,
+            nombre: f.get(1)?,
+            variante: f.get(2)?,
+            precio: Pesos(f.get(3)?),
+            cantidad: f.get(4)?,
+        })
+    })?;
+
+    completa.items = filas.collect::<Result<Vec<_>>>()?;
+    Ok(Some(completa))
+}
+
+/// La última venta del turno. Es la que el cajero quiere reimprimir el 99% de
+/// las veces: acabó de cobrar y la impresora no tenía papel.
+pub fn ultima_del_turno(conexion: &Connection, turno_id: &str) -> Result<Option<String>> {
+    conexion
+        .query_row(
+            "SELECT id FROM ventas WHERE turno_id = ?1 ORDER BY consecutivo DESC LIMIT 1",
+            [turno_id],
+            |f| f.get(0),
+        )
+        .optional()
+}
+
 /// Lo que falta por subir, en orden de llegada.
 pub fn pendientes(conexion: &Connection, limite: i64) -> Result<Vec<(i64, String)>> {
     let mut consulta = conexion.prepare(
@@ -367,6 +449,38 @@ mod pruebas {
         let r = registrar(&mut c, &venta_de(vec![item("Café", 10_000, 1)], &t), AHORA).unwrap();
         assert_eq!(r.iva, Pesos(1_597));
         assert_eq!(r.total, Pesos(10_000));
+    }
+
+    #[test]
+    fn una_venta_se_puede_releer_entera_para_reimprimirla() {
+        /* El carrito ya se limpió y el cliente vuelve media hora después
+           pidiendo su tirilla: lo que se imprime sale de la base. */
+        let (mut c, t) = caja();
+        let r = registrar(&mut c, &venta_de(vec![item("Café", 5_000, 2), item("Pan", 1_500, 1)], &t), AHORA).unwrap();
+
+        let completa = detalle(&c, &r.id).unwrap().unwrap();
+        assert_eq!(completa.consecutivo, r.consecutivo);
+        assert_eq!(completa.total, r.total);
+        assert_eq!(completa.items.len(), 2);
+        assert_eq!(completa.items[0].nombre, "Café");
+        assert_eq!(completa.items[0].cantidad, 2);
+        assert_eq!(completa.cajero, "Ana");
+    }
+
+    #[test]
+    fn releer_una_venta_que_no_existe_no_revienta() {
+        let (c, _) = caja();
+        assert!(detalle(&c, "no-existe").unwrap().is_none());
+    }
+
+    #[test]
+    fn la_ultima_del_turno_es_la_que_se_acaba_de_cobrar() {
+        // Es la que el cajero quiere reimprimir cuando la impresora falló.
+        let (mut c, t) = caja();
+        registrar(&mut c, &venta_de(vec![item("A", 1_000, 1)], &t), AHORA).unwrap();
+        let segunda = registrar(&mut c, &venta_de(vec![item("B", 2_000, 1)], &t), AHORA).unwrap();
+
+        assert_eq!(ultima_del_turno(&c, &t).unwrap().as_deref(), Some(segunda.id.as_str()));
     }
 
     #[test]

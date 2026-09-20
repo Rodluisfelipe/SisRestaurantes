@@ -2,12 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   abrirCajon, abrirPantallaCliente, anularItem, catalogo, cerrarPantallaCliente, cobrar,
   descartarPausada, enTauri, estadoSync, hayPantallaCliente, infoTerminal, listarPausadas,
-  mostrarAlCliente, pausarVenta, pesos, retomarVenta, salir, sincronizar, turnoActivo,
+  mostrarAlCliente, pausarVenta, pesos, reimprimir, retomarVenta, salir, sincronizar, turnoActivo,
   type CierreTurno, type Cobro, type EnEspera, type LineaVenta, type Producto, type Turno,
   type Usuario, type Voucher,
 } from './nativo';
 import PantallaPin from './PantallaPin';
 import CobroTarjeta from './CobroTarjeta';
+import Impresoras from './Impresoras';
 import Autorizar from './Autorizar';
 import { AbrirTurno, PanelTurno, ResumenCierre } from './Turno';
 
@@ -123,6 +124,12 @@ function Caja({
      La venta todavía no existe: primero el banco, después el registro. */
   const [pidiendoVoucher, setPidiendoVoucher] = useState(false);
   const [digitaVoucher, setDigitaVoucher] = useState(true);
+  const [verImpresoras, setVerImpresoras] = useState(false);
+  /* El aviso de que la tirilla no salió. Va como toast y no como bloqueo: la
+     venta ya está cobrada y guardada, y el cajero tiene que poder seguir
+     atendiendo mientras alguien le pone papel a la impresora. */
+  const [falloImpresion, setFalloImpresion] = useState('');
+  const [reimprimiendo, setReimprimiendo] = useState(false);
 
   useEffect(() => { infoTerminal().then((t) => setDigitaVoucher(t.requiere_digitacion)).catch(() => {}); }, []);
   const buscador = useRef<HTMLInputElement>(null);
@@ -299,6 +306,7 @@ function Caja({
       setRecibido('');
       setMedioPago('efectivo');
       setPidiendoVoucher(false);
+      setFalloImpresion(r.impresion ?? '');
       refrescarEspera();
 
       /* El cambio, gigante y del otro lado: es lo que el cliente está a punto
@@ -404,6 +412,20 @@ function Caja({
           Pantalla cliente
         </button>
         <button
+          onClick={() => reimprimir().catch((e) => setFalloImpresion(String(e)))}
+          title="Reimprimir la última venta del turno"
+          className="text-[12px] font-semibold px-3 h-8 rounded-lg bg-slate-700 hover:bg-slate-600"
+        >
+          Reimprimir
+        </button>
+        <button
+          onClick={() => setVerImpresoras(true)}
+          title="Configurar las impresoras"
+          className="text-[12px] font-semibold px-3 h-8 rounded-lg bg-slate-700 hover:bg-slate-600"
+        >
+          Impresoras
+        </button>
+        <button
           onClick={() => {
             const motivo = window.prompt('¿Para qué se abre la gaveta?');
             if (motivo) abrirCajon(motivo);
@@ -414,6 +436,41 @@ function Caja({
           Abrir cajón
         </button>
       </header>
+
+      {falloImpresion && (
+        <div className="absolute bottom-4 left-4 z-40 max-w-md rounded-2xl bg-slate-900 text-white shadow-xl px-4 py-3 flex items-center gap-3">
+          <div className="min-w-0">
+            <p className="text-[13px] font-bold">Venta guardada, pero la tirilla no salió</p>
+            <p className="text-[11.5px] text-slate-400 truncate">{falloImpresion}</p>
+          </div>
+          <button
+            onClick={async () => {
+              setReimprimiendo(true);
+              try {
+                await reimprimir();
+                setFalloImpresion('');
+              } catch (e) {
+                setFalloImpresion(String(e).replace(/^Error:\s*/, ''));
+              } finally {
+                setReimprimiendo(false);
+              }
+            }}
+            disabled={reimprimiendo}
+            className="flex-shrink-0 h-9 px-3 rounded-lg bg-white text-slate-900 text-[12px] font-bold disabled:opacity-50"
+          >
+            {reimprimiendo ? '…' : 'Reintentar'}
+          </button>
+          <button
+            onClick={() => setFalloImpresion('')}
+            className="flex-shrink-0 text-slate-500 hover:text-white text-lg leading-none"
+            aria-label="Cerrar aviso"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {verImpresoras && <Impresoras onCerrar={() => setVerImpresoras(false)} />}
 
       {pidiendoVoucher && (
         <CobroTarjeta
@@ -528,11 +585,7 @@ function Caja({
                     Cambio {pesos(ultimo.venta.vuelto)}
                   </p>
                 )}
-                {ultimo.impresion && (
-                  <p className="mt-1 text-[11.5px] text-amber-700">
-                    La venta quedó guardada, pero la tirilla no salió: {ultimo.impresion}
-                  </p>
-                )}
+
               </div>
             )}
 

@@ -28,8 +28,6 @@ pub struct Estado {
     /// tiene un cajero: la contención no existe y así no hay dos escrituras
     /// compitiendo por el mismo archivo.
     pub base: Mutex<rusqlite::Connection>,
-    pub impresora: Mutex<Impresora>,
-    pub ancho_tirilla: Mutex<usize>,
     pub negocio: Mutex<String>,
     /// Quién tiene la caja ahora mismo. Se cierra sola por inactividad.
     pub sesion: Mutex<Option<usuarios::Usuario>>,
@@ -96,6 +94,11 @@ fn terminal(base: &rusqlite::Connection) -> Box<dyn Terminal> {
     }
 
     Box::new(pagos::DatafonoManual)
+}
+
+/// 80 mm es lo que trae casi toda impresora de mostrador que se vende aquí.
+pub(crate) fn escpos_ancho_por_defecto() -> usize {
+    escpos::ANCHO_80MM
 }
 
 fn ahora_epoch() -> i64 {
@@ -226,15 +229,27 @@ async fn cobrar(
         venta::registrar(&mut base, &nueva, &ahora).map_err(|e| e.to_string())?
     };
 
-    // Guardada. De aquí en adelante, nada puede perder la venta.
-    let bytes = {
-        let ancho = *estado.ancho_tirilla.lock().unwrap();
-        let negocio = estado.negocio.lock().unwrap().clone();
-        tirilla(&negocio, ancho, &nueva, &registrada)
+    /* Guardada. De aquí en adelante nada puede perder la venta: lo que sigue
+       es papel, y el papel se reimprime. */
+    let (caja, cocina, negocio) = {
+        let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+        (
+            perifericos::leer_config(&base, "caja"),
+            perifericos::leer_config(&base, "cocina"),
+            estado.negocio.lock().unwrap().clone(),
+        )
     };
 
-    let destino = estado.impresora.lock().unwrap().clone();
-    let impresion = perifericos::enviar(&destino, &bytes).err();
+    let bytes = tirilla(&negocio, caja.ancho, &nueva, &registrada);
+    let impresion = perifericos::enviar(&caja.impresora, &bytes).err();
+
+    /* La comanda va aparte y sin precios: en la cocina no se cobra, se prepara,
+       y un papel con plata encima solo estorba. Que falle no se le reporta al
+       cajero como un problema de la venta. */
+    if !matches!(cocina.impresora, Impresora::Ninguna) {
+        let comanda = comanda(cocina.ancho, &nueva, &registrada);
+        let _ = perifericos::enviar(&cocina.impresora, &comanda);
+    }
 
     Ok(Cobro { venta: registrada, impresion })
 }
@@ -248,11 +263,15 @@ async fn cobrar(
 fn abrir_cajon(estado: State<Estado>, motivo: String) -> Result<(), String> {
     anotar_excepcion(&estado, auditoria::TipoExcepcion::AbrirCajon, "", 0, &motivo, "");
 
-    let ancho = *estado.ancho_tirilla.lock().unwrap();
-    let mut t = escpos::Tirilla::nueva(ancho);
+    /* El pulso viaja por el mismo cable que la tirilla: el cajón cuelga del
+       conector RJ11 de la impresora, no del computador. */
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    let config = perifericos::leer_config(&base, "caja");
+    drop(base);
+
+    let mut t = escpos::Tirilla::nueva(config.ancho);
     t.abrir_cajon();
-    let destino = estado.impresora.lock().unwrap().clone();
-    perifericos::enviar(&destino, &t.terminar())
+    perifericos::enviar(&config.impresora, &t.terminar())
 }
 
 /// Deja constancia de una excepción con el cajero y el turno de verdad.
@@ -525,11 +544,10 @@ fn mover_efectivo(
         .map_err(|e| e.to_string())?;
 
     // La gaveta se abre sola: el cajero va a meter o sacar plata de ahí mismo.
-    let ancho = *estado.ancho_tirilla.lock().unwrap();
-    let mut t = escpos::Tirilla::nueva(ancho);
+    let config = perifericos::leer_config(&base, "caja");
+    let mut t = escpos::Tirilla::nueva(config.ancho);
     t.abrir_cajon();
-    let destino = estado.impresora.lock().unwrap().clone();
-    let _ = perifericos::enviar(&destino, &t.terminar());
+    let _ = perifericos::enviar(&config.impresora, &t.terminar());
 
     Ok(())
 }
@@ -580,6 +598,104 @@ fn configurar_nube(estado: State<Estado>, url: String, token: String) -> Result<
 #[tauri::command]
 fn desconectar_nube() -> Result<(), String> {
     credenciales::borrar()
+}
+
+/* ── Las impresoras ────────────────────────────────────────────────────── */
+
+#[tauri::command]
+fn impresoras(estado: State<Estado>) -> Result<serde_json::Value, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    Ok(serde_json::json!({
+        "caja": perifericos::leer_config(&base, "caja"),
+        "cocina": perifericos::leer_config(&base, "cocina"),
+        "puertos": perifericos::puertos_serie(),
+    }))
+}
+
+#[tauri::command]
+fn configurar_impresora(
+    estado: State<Estado>,
+    rol: String,
+    config: perifericos::Config,
+) -> Result<(), String> {
+    if rol != "caja" && rol != "cocina" {
+        return Err("Solo hay impresora de caja y de cocina".into());
+    }
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    perifericos::guardar_config(&base, &rol, &config)
+}
+
+/// Imprime una prueba. Es lo que se usa al configurar: si no sale el papel, el
+/// problema es la impresora y no la venta que todavía no se ha hecho.
+#[tauri::command]
+async fn probar_impresora(estado: State<'_, Estado>, rol: String) -> Result<(), String> {
+    let config = {
+        let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+        perifericos::leer_config(&base, &rol)
+    };
+
+    if matches!(config.impresora, Impresora::Ninguna) {
+        return Err("Esa impresora no está configurada".into());
+    }
+
+    let mut t = escpos::Tirilla::nueva(config.ancho);
+    t.alinear(escpos::Alineacion::Centro)
+        .negrita(true)
+        .linea("PRUEBA DE IMPRESIÓN")
+        .negrita(false)
+        .linea(&format!("Impresora de {rol}"))
+        .alinear(escpos::Alineacion::Izquierda)
+        .separador()
+        // Con tildes y Ñ a propósito: es la prueba de que la tabla de
+        // caracteres quedó bien.
+        .linea("Áéíóú Ññ ¿? ¡!")
+        .par("Ancho del papel", &format!("{} caracteres", config.ancho))
+        .separador()
+        .cortar();
+
+    let bytes = t.terminar();
+    tauri::async_runtime::spawn_blocking(move || perifericos::enviar(&config.impresora, &bytes))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// Reimprime una venta ya cobrada.
+///
+/// Sin id, la última del turno: es el caso real, el cajero acaba de cobrar y la
+/// impresora no tenía papel. **No vuelve a cobrar nada** y no abre el cajón: la
+/// venta ya ocurrió y la gaveta ya se abrió una vez.
+#[tauri::command]
+async fn reimprimir(estado: State<'_, Estado>, venta_id: Option<String>) -> Result<(), String> {
+    let (completa, config, negocio) = {
+        let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+
+        let id = match venta_id {
+            Some(id) => id,
+            None => {
+                let turno = turnos::activo(&base)
+                    .map_err(|e| e.to_string())?
+                    .ok_or("No hay turno abierto")?;
+                venta::ultima_del_turno(&base, &turno.id)
+                    .map_err(|e| e.to_string())?
+                    .ok_or("Todavía no hay ventas en este turno")?
+            }
+        };
+
+        let completa = venta::detalle(&base, &id)
+            .map_err(|e| e.to_string())?
+            .ok_or("Esa venta no está en esta caja")?;
+
+        (
+            completa,
+            perifericos::leer_config(&base, "caja"),
+            estado.negocio.lock().unwrap().clone(),
+        )
+    };
+
+    let bytes = tirilla_de(&negocio, config.ancho, &completa, true);
+    tauri::async_runtime::spawn_blocking(move || perifericos::enviar(&config.impresora, &bytes))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 /* ── El datáfono ───────────────────────────────────────────────────────── */
@@ -692,6 +808,95 @@ fn sincronizar(estado: State<Estado>) -> ResumenSync {
     }
 }
 
+/// La tirilla de una venta releída de la base. Es la que se reimprime.
+///
+/// Una reimpresión va marcada: un segundo papel idéntico al original es un
+/// comprobante duplicado, y con eso se devuelve mercancía dos veces.
+fn tirilla_de(negocio: &str, ancho: usize, v: &venta::VentaCompleta, copia: bool) -> Vec<u8> {
+    let mut t = escpos::Tirilla::nueva(ancho);
+
+    t.alinear(escpos::Alineacion::Centro)
+        .negrita(true)
+        .linea(negocio)
+        .negrita(false)
+        .linea(&format!("Venta #{}", v.consecutivo))
+        .linea(&v.creada_en);
+
+    if copia {
+        t.negrita(true).linea("*** COPIA ***").negrita(false);
+    }
+
+    t.alinear(escpos::Alineacion::Izquierda).separador();
+
+    for item in &v.items {
+        let nombre = if item.variante.is_empty() {
+            item.nombre.clone()
+        } else {
+            format!("{} ({})", item.nombre, item.variante)
+        };
+        let total_linea = item.total().unwrap_or(Pesos::CERO);
+        t.par(&format!("{} x{}", nombre, item.cantidad), &total_linea.to_string());
+    }
+
+    t.separador();
+
+    if v.iva > Pesos::CERO {
+        t.par("IVA incluido", &v.iva.to_string());
+    }
+
+    t.doble(true).par("TOTAL", &v.total.to_string()).doble(false);
+
+    if v.medio_pago == "efectivo" && v.recibido > Pesos::CERO {
+        t.par("Recibido", &v.recibido.to_string());
+        t.par("Cambio", &v.vuelto.to_string());
+    } else {
+        t.par("Pago", &v.medio_pago);
+        if !v.pago_ultimos4.is_empty() {
+            t.par("Tarjeta", &format!("**** {}", v.pago_ultimos4));
+        }
+        if !v.pago_autorizacion.is_empty() {
+            t.par("Aprobación", &v.pago_autorizacion);
+        }
+    }
+
+    t.salto()
+        .alinear(escpos::Alineacion::Centro)
+        .linea(&format!("Le atendió {}", v.cajero))
+        .linea("¡Gracias por tu compra!")
+        // Una copia no abre el cajón: la gaveta ya se abrió cuando se cobró.
+        .cortar();
+
+    t.terminar()
+}
+
+/// La comanda de cocina: qué preparar, sin un solo precio.
+///
+/// Letra grande y una línea por producto. Quien la lee está de pie frente a una
+/// plancha, no sentado revisando una cuenta.
+fn comanda(ancho: usize, nueva: &venta::NuevaVenta, registrada: &venta::VentaRegistrada) -> Vec<u8> {
+    let mut t = escpos::Tirilla::nueva(ancho);
+
+    t.alinear(escpos::Alineacion::Centro)
+        .doble(true)
+        .linea(&format!("PEDIDO #{}", registrada.consecutivo))
+        .doble(false)
+        .linea(&registrada.creada_en)
+        .alinear(escpos::Alineacion::Izquierda)
+        .separador();
+
+    for item in &nueva.items {
+        let nombre = if item.variante.is_empty() {
+            item.nombre.clone()
+        } else {
+            format!("{} ({})", item.nombre, item.variante)
+        };
+        t.doble(true).linea(&format!("{} x{}", item.cantidad, nombre)).doble(false);
+    }
+
+    t.separador().cortar();
+    t.terminar()
+}
+
 /// Arma la tirilla. Vive aquí y no en el núcleo porque es presentación: qué se
 /// imprime y en qué orden es una decisión del negocio, no del dominio.
 fn tirilla(
@@ -778,8 +983,6 @@ pub fn run() {
 
             app.manage(Estado {
                 base: Mutex::new(base),
-                impresora: Mutex::new(Impresora::Ninguna),
-                ancho_tirilla: Mutex::new(escpos::ANCHO_80MM),
                 negocio: Mutex::new("MenuBy POS".into()),
                 sesion: Mutex::new(None),
             });
@@ -808,6 +1011,10 @@ pub fn run() {
             configurar_nube,
             desconectar_nube,
             conectada,
+            impresoras,
+            configurar_impresora,
+            probar_impresora,
+            reimprimir,
             info_terminal,
             configurar_datafono,
             abrir_pantalla_cliente,

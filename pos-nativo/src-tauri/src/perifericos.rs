@@ -78,6 +78,52 @@ pub fn enviar(destino: &Impresora, bytes: &[u8]) -> Result<(), String> {
     }
 }
 
+/* ── Qué impresoras tiene este mostrador ──────────────────────────────── */
+
+/// Dónde vive cada impresora y de qué ancho es su papel.
+///
+/// Dos roles, que son los dos que existen en un local: **caja**, donde sale la
+/// tirilla del cliente, y **cocina**, donde sale la comanda. La de cocina es
+/// opcional y casi siempre de red, porque está a diez metros de la caja.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct Config {
+    pub impresora: Impresora,
+    /// 48 para papel de 80 mm, 32 para 58 mm. Si se equivoca, la tirilla sale
+    /// descuadrada entera: por eso se configura y no se adivina.
+    pub ancho: usize,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Config { impresora: Impresora::Ninguna, ancho: crate::escpos_ancho_por_defecto() }
+    }
+}
+
+fn clave(rol: &str) -> String {
+    format!("impresora_{rol}")
+}
+
+/// Lee la configuración guardada. Sin configurar = sin impresora, y la caja
+/// sigue vendiendo: la tirilla es un comprobante, no la venta.
+pub fn leer_config(base: &rusqlite::Connection, rol: &str) -> Config {
+    let guardado: String = base
+        .query_row("SELECT valor FROM ajustes WHERE clave = ?1", [clave(rol)], |f| f.get(0))
+        .unwrap_or_default();
+
+    serde_json::from_str(&guardado).unwrap_or_default()
+}
+
+pub fn guardar_config(base: &rusqlite::Connection, rol: &str, config: &Config) -> Result<(), String> {
+    let json = serde_json::to_string(config).map_err(|e| e.to_string())?;
+    base.execute(
+        "INSERT INTO ajustes (clave, valor) VALUES (?1, ?2)
+         ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor",
+        rusqlite::params![clave(rol), json],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// Los puertos serie que ve el sistema, para que el negocio elija de una lista
 /// en vez de adivinar si su impresora es COM3 o COM7.
 pub fn puertos_serie() -> Vec<String> {

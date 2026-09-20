@@ -396,3 +396,57 @@ export async function mostrarAlCliente(estado: EstadoCliente): Promise<void> {
     /* La pantalla del cliente es un extra: que falle no puede frenar un cobro. */
   }
 }
+
+/* ── Impresoras ───────────────────────────────────────────────────────── */
+
+export type Impresora =
+  | { tipo: 'red'; host: string; puerto: number }
+  | { tipo: 'serie'; puerto: string; baudios: number }
+  | { tipo: 'archivo'; ruta: string }
+  | { tipo: 'ninguna' };
+
+export interface ConfigImpresora {
+  impresora: Impresora;
+  /** 48 = papel de 80 mm, 32 = 58 mm. Si se equivoca, la tirilla sale torcida. */
+  ancho: number;
+}
+
+export interface Impresoras {
+  caja: ConfigImpresora;
+  cocina: ConfigImpresora;
+  /** Los puertos COM que ve el sistema, para elegir de una lista. */
+  puertos: string[];
+}
+
+export async function impresoras(): Promise<Impresoras> {
+  if (!enTauri) {
+    return {
+      caja: { impresora: { tipo: 'ninguna' }, ancho: 48 },
+      cocina: { impresora: { tipo: 'ninguna' }, ancho: 48 },
+      puertos: [],
+    };
+  }
+  return invoke<Impresoras>('impresoras');
+}
+
+export async function configurarImpresora(rol: 'caja' | 'cocina', config: ConfigImpresora): Promise<void> {
+  if (!enTauri) return;
+  await invoke('configurar_impresora', { rol, config });
+}
+
+/** Saca un papel de prueba, con tildes y Ñ para verificar la tabla de caracteres. */
+export async function probarImpresora(rol: 'caja' | 'cocina'): Promise<void> {
+  if (!enTauri) throw new Error('Solo en la app instalada');
+  await invoke('probar_impresora', { rol });
+}
+
+/**
+ * Reimprime una venta ya cobrada. Sin id, la última del turno.
+ *
+ * No vuelve a cobrar nada ni abre el cajón: la venta ya ocurrió. La copia sale
+ * marcada como tal, para que un segundo papel no pase por un comprobante nuevo.
+ */
+export async function reimprimir(ventaId?: string): Promise<void> {
+  if (!enTauri) return;
+  await invoke('reimprimir', { ventaId: ventaId ?? null });
+}
