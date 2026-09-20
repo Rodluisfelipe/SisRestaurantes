@@ -51,6 +51,7 @@ import LeadCapturePage from './LeadCapturePage';
 import useSEO from '../hooks/useSEO';
 import useCart from '../hooks/useCart';
 import useMenuData from '../hooks/useMenuData';
+import { esTienda } from '../utils/tienda';
 // useOrderTracking hook removed — logic is inline
 
 /**
@@ -737,6 +738,9 @@ export default function Menu() {
      Conmuta SOLO la capa de presentación: hooks, carrito, sheets, tracking y
      lealtad son los mismos en ambas versiones. */
   const menuV2 = !!businessConfig?.features?.menuV2;
+  /* El tope de 900px es para una carta: leerla es una columna. Un catálogo se
+     recorre con los ojos en rejilla, así que en tienda se suelta el ancho. */
+  const tienda = esTienda(businessConfig);
 
   useEffect(() => {
     // Usar isValidBusinessIdentifier en lugar de isValidObjectId para aceptar tanto slugs como ObjectIDs
@@ -1726,7 +1730,7 @@ export default function Menu() {
 
       {/* En V2 el menú se acota en escritorio: a pantalla completa las tarjetas
           se estiraban hasta verse gigantes. */}
-      <div className={menuV2 ? 'max-w-[900px] mx-auto w-full' : ''}>
+      <div className={menuV2 && !tienda ? 'max-w-[900px] mx-auto w-full' : ''}>
       <FilterableMenu
         products={products}
         categories={categories}

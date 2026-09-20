@@ -446,7 +446,7 @@ const FilterableMenu = ({
   const visualActive = spyCategory;
   
   return (
-    <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-2">
+    <div className={`mx-auto px-3 sm:px-4 lg:px-6 py-2 ${tienda ? 'w-full max-w-[1800px] xl:px-8' : 'container'}`}>
       {/* Active Order Banner — Rappi style, above search */}
       <AnimatePresence>
         {hasActiveOrder && (() => {
@@ -640,7 +640,7 @@ const FilterableMenu = ({
       {!collapsedMenu && (
       <div
         ref={pillBarRef}
-        className={`z-40 py-2.5 mb-4 sm:mb-5 ${
+        className={`z-40 py-2.5 mb-4 sm:mb-5 ${tienda ? 'lg:hidden ' : ''}${
           isSticky
             ? 'sticky bg-white/95 shadow-sm -mx-3 px-3 sm:-mx-4 sm:px-4 lg:-mx-6 lg:px-6'
             : ''
@@ -745,10 +745,46 @@ const FilterableMenu = ({
         />
       )}
 
+      {/* En PC la tienda usa todo el ancho: las categorías pasan a una
+          columna fija —como en cualquier catálogo— y la rejilla se queda con
+          el resto. En celular no hay barra lateral y todo sigue en vertical. */}
+      <div className={tienda ? 'lg:flex lg:items-start lg:gap-7' : ''}>
+        {tienda && categoriesWithProducts.length > 0 && (
+          <aside
+            className="hidden lg:block w-52 xl:w-60 flex-shrink-0 sticky self-start"
+            style={{ top: 'calc(var(--mb-header-h, 0px) + 16px)' }}
+          >
+            <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+              Categorías
+            </p>
+            <nav className="space-y-0.5">
+              {[{ _id: 'all', name: 'Todos', count: totalProductCount }, ...categoriesWithProducts].map((c) => {
+                const activo = visualActive === c._id;
+                return (
+                  <button
+                    key={c._id}
+                    onClick={() => handlePillClick(c._id)}
+                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-[13.5px] font-semibold transition-colors ${
+                      activo ? '' : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                    style={activo ? { backgroundColor: `${themeColor}14`, color: themeColor } : undefined}
+                  >
+                    <span className="truncate text-left">{c.name}</span>
+                    <span className={`flex-shrink-0 text-[11px] font-bold tabular-nums ${activo ? '' : 'text-slate-400'}`}>
+                      {c.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </nav>
+          </aside>
+        )}
+
+        <div className={tienda ? 'lg:flex-1 lg:min-w-0' : ''}>
       {/* Tienda: ordenar es parte de comprar. En un restaurante el orden lo
           decide la carta, así que esta barra no existe. */}
       {tienda && filteredProducts.length > 1 && (
-        <div className="px-3 sm:px-4 lg:px-6 mb-3 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+        <div className="px-3 sm:px-4 lg:px-0 mb-3 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
           <span className="flex-shrink-0 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Ordenar</span>
           {[
             { id: 'destacados', label: 'Destacados' },
@@ -770,6 +806,9 @@ const FilterableMenu = ({
               </button>
             );
           })}
+          <span className="ml-auto hidden lg:inline flex-shrink-0 pl-4 text-[12px] font-medium text-slate-400 tabular-nums">
+            {filteredProducts.length} {filteredProducts.length === 1 ? 'producto' : 'productos'}
+          </span>
         </div>
       )}
 
@@ -924,7 +963,7 @@ const FilterableMenu = ({
                       />
                     </div>
                     <motion.div 
-                      className={`grid gap-3 sm:gap-4 ${tienda ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4'}`}
+                      className={`grid gap-3 sm:gap-4 ${tienda ? 'lg:gap-5 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4'}`}
                       variants={containerVariants}
                       initial="hidden"
                       animate="visible"
@@ -1014,7 +1053,7 @@ const FilterableMenu = ({
                 })}
                 
                 <motion.div 
-                  className={`grid gap-3 sm:gap-4 ${tienda ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4'}`}
+                  className={`grid gap-3 sm:gap-4 ${tienda ? 'lg:gap-5 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4'}`}
                   variants={containerVariants}
                   initial="hidden"
                   animate="visible"
@@ -1053,6 +1092,8 @@ const FilterableMenu = ({
           </motion.div>
         )}
       </AnimatePresence>
+        </div>
+      </div>
 
       {/* Toppings Selector Modal */}
       {showToppings && selectedProduct && (

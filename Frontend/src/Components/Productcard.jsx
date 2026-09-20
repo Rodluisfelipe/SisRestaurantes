@@ -71,6 +71,12 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
      cuadrada, limpia, sin degradado encima, y el precio y el botón bajan a la
      ficha. En un restaurante la card sigue idéntica a la de siempre. */
   const tienda = esTienda(businessConfig);
+  /* La segunda foto de la galería aparece al pasar el mouse, que es como se
+     mira la ropa en cualquier catálogo. Solo en PC: en táctil no hay hover y
+     bajarla sería peso muerto en datos móviles. */
+  const segundaFoto = tienda && Array.isArray(product.images) && product.images.length > 1
+    ? product.images[1]
+    : null;
 
   const flashAdded = useCallback(() => {
     setJustAdded(true);
@@ -177,6 +183,18 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
                 </span>
               )}
             </div>
+          )}
+
+          {segundaFoto && (
+            <img
+              src={imageAt(segundaFoto, 400)}
+              alt=""
+              aria-hidden="true"
+              loading="lazy"
+              decoding="async"
+              className="hidden lg:block absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
           )}
 
           {/* Cinematic gradient overlay — always on for price/button readability.
