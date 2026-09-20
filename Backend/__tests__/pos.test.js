@@ -305,3 +305,40 @@ describe('el voucher del datáfono', () => {
     expect(validarVenta(VENTA).venta.pago).toBeNull();
   });
 });
+
+describe('el id compuesto del catálogo aplanado', () => {
+  /* La caja vende la fila que bajó: "<producto>:M|Negro". El inventario vive
+     en el producto y su variante, así que el id hay que volver a partirlo. */
+  it('separa el producto de su variante', () => {
+    const r = validarVenta({
+      ...VENTA,
+      total: 40000,
+      items: [{ producto_id: '68f1a2b3c4d5e6f708192a3b:M|Negro', nombre: 'Camiseta', variante: 'M · Negro', precio: 40000, cantidad: 1 }],
+    });
+
+    expect(r.ok).toBe(true);
+    expect(r.venta.items[0].productId).toBe('68f1a2b3c4d5e6f708192a3b');
+    // Valor por valor, no el texto con separadores de la tirilla.
+    expect(r.venta.items[0].variante.valores).toEqual(['M', 'Negro']);
+  });
+
+  it('un producto sin variantes deja su id intacto', () => {
+    const r = validarVenta({
+      ...VENTA,
+      total: 4500,
+      items: [{ producto_id: '68f1a2b3c4d5e6f708192a3b', nombre: 'Café', variante: '', precio: 4500, cantidad: 1 }],
+    });
+    expect(r.venta.items[0].productId).toBe('68f1a2b3c4d5e6f708192a3b');
+    expect(r.venta.items[0].variante).toBeUndefined();
+  });
+
+  it('sin id compuesto, la variante sale del texto', () => {
+    // Compatibilidad con cualquier caja vieja que mande solo el nombre.
+    const r = validarVenta({
+      ...VENTA,
+      total: 40000,
+      items: [{ producto_id: '68f1a2b3c4d5e6f708192a3b', nombre: 'Camiseta', variante: 'M', precio: 40000, cantidad: 1 }],
+    });
+    expect(r.venta.items[0].variante.valores).toEqual(['M']);
+  });
+});

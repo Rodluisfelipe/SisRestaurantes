@@ -18,7 +18,9 @@ export default function Nube({ onCerrar }: { onCerrar: () => void }) {
   const [url, setUrl] = useState('https://api.menuby.tech/api');
   const [codigo, setCodigo] = useState('');
   const [token, setToken] = useState('');
-  const [caja, setCaja] = useState('Caja principal');
+  /* Solo lo usa la vía de soporte: con código, el nombre lo puso el dueño en
+     el panel y pedirlo aquí otra vez sería un campo que no hace nada. */
+  const caja = 'Caja';
   /* La vía de soporte, escondida: cambiar una sesión del panel por el token.
      Sirve cuando alguien ya tiene el token y no puede entrar al panel, y no
      tiene por qué estorbar al 99% que solo va a escribir un código. */
@@ -39,7 +41,7 @@ export default function Nube({ onCerrar }: { onCerrar: () => void }) {
     setError('');
     setAviso('');
     try {
-      const r = await vincular(url, codigo, caja);
+      const r = await vincular(url, codigo);
       setNegocio(r.negocio);
       setYaConectada(true);
       setCodigo('');
@@ -134,17 +136,6 @@ export default function Nube({ onCerrar }: { onCerrar: () => void }) {
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                Nombre de esta caja
-              </label>
-              <input
-                value={caja}
-                onChange={(e) => setCaja(e.target.value)}
-                placeholder="Caja principal"
-                className="w-full h-11 px-3 rounded-xl border-2 border-slate-200 text-[13px] outline-none focus:border-slate-900"
-              />
-            </div>
           </>
         ) : (
           <>

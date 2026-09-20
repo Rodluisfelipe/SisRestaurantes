@@ -56,10 +56,32 @@ function validarVenta(cuerpo) {
     if (!nombre) return { ok: false, error: 'Hay una línea sin nombre de producto' };
 
     suma += precio * cantidad;
+
+    /* El catálogo baja aplanado y cada fila vendible trae un id compuesto:
+       el id del producto, dos puntos, y los valores de la variante separados
+       por barra. Aquí se vuelve a partir, porque el inventario vive en el
+       producto y en su variante, no en esa fila.
+
+       Sin esto, el id compuesto llegaba entero a Product.findById, reventaba
+       como ObjectId inválido y —al estar dentro del try de moverStock— el
+       error se tragaba: la venta entraba bien y el stock de esa talla no
+       bajaba nunca. */
+    const compuesto = String(linea.producto_id || '');
+    const corte = compuesto.indexOf(':');
+    const productId = corte > 0 ? compuesto.slice(0, corte) : (compuesto || null);
+    const valoresDelId = corte > 0 ? compuesto.slice(corte + 1).split('|').filter(Boolean) : [];
+
+    /* Los valores salen del id y no del texto que se imprime en la tirilla:
+       ese lleva separadores para leerse ("M · Negro") y el inventario compara
+       valor por valor. */
+    const valores = valoresDelId.length
+      ? valoresDelId
+      : (linea.variante ? [String(linea.variante)] : []);
+
     items.push({
-      productId: linea.producto_id || null,
+      productId,
       name: nombre,
-      variante: linea.variante ? { valores: [String(linea.variante)], sku: '' } : undefined,
+      variante: valores.length ? { valores, sku: '' } : undefined,
       price: precio,
       quantity: cantidad,
     });

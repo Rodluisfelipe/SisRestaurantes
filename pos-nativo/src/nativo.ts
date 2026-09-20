@@ -470,9 +470,9 @@ export interface Emparejada {
  * Es la vía normal: ocho caracteres que se pueden dictar por teléfono. Nadie
  * tiene que abrir las herramientas del navegador ni saber qué es un token.
  */
-export async function vincular(url: string, codigo: string, caja: string): Promise<Emparejada> {
+export async function vincular(url: string, codigo: string): Promise<Emparejada> {
   if (!enTauri) throw new Error('Solo en la app instalada');
-  return invoke<Emparejada>('vincular', { url, codigo, caja });
+  return invoke<Emparejada>('vincular', { url, codigo });
 }
 
 /** La vía de soporte: cambiar una sesión del panel por el token de la caja. */

@@ -604,13 +604,12 @@ async fn vincular(
     estado: State<'_, Estado>,
     url: String,
     codigo: String,
-    caja: String,
 ) -> Result<Emparejada, String> {
     let base = url.trim_end_matches('/').to_string();
     let limpia = base.clone();
 
     let resultado = tauri::async_runtime::spawn_blocking(move || {
-        nube::vincular(&limpia, &codigo, &caja)
+        nube::vincular(&limpia, &codigo)
     })
     .await
     .map_err(|e| e.to_string())??;

@@ -93,12 +93,12 @@ pub struct Emparejamiento {
 /// Es la vía normal: ocho caracteres que alguien puede dictar por teléfono. La
 /// otra —cambiar la sesión del panel— sigue existiendo para soporte, pero exige
 /// saber qué es un token y dónde vive.
-pub fn vincular(base_url: &str, codigo: &str, caja: &str) -> Result<Emparejamiento, String> {
+pub fn vincular(base_url: &str, codigo: &str) -> Result<Emparejamiento, String> {
     let url = format!("{}/pos/vincular", base_url.trim_end_matches('/'));
 
     ureq::post(&url)
         .timeout(ESPERA)
-        .send_json(serde_json::json!({ "codigo": codigo.trim(), "caja": caja }))
+        .send_json(serde_json::json!({ "codigo": codigo.trim() }))
         .map_err(|e| match Nube::clasificar(e) {
             sync::FalloEnvio::Red(m) => format!("No se pudo llegar a MenuBy: {m}"),
             sync::FalloEnvio::Servidor(c, _) => format!("El servidor falló ({c}). Intenta más tarde"),

@@ -457,7 +457,15 @@ router.post('/audit', tenantAuth, cajaVigente, async (req, res) => {
 });
 
 /* GET /api/pos/audit — lo ocurrido, para el panel del dueño. */
-router.get('/audit', tenantAuth, async (req, res) => {
+/* Esta la lee el panel, no la caja. Vive bajo /api/pos por vecindad temática,
+   pero un token de terminal no tiene por qué poder leerse quién anuló qué:
+   sin esto, una caja robada sirve para auditar al negocio. */
+router.get('/audit', tenantAuth, (req, res, next) => {
+  if (req.caja?.tokenId) {
+    return res.status(403).json({ message: 'Esta consulta es del panel', motivo: 'fuera_de_alcance' });
+  }
+  next();
+}, async (req, res) => {
   const businessId = req.user?.businessId || req.query.businessId;
   if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
 
