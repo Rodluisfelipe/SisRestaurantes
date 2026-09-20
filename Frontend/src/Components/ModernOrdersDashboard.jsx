@@ -21,6 +21,7 @@ const PAYMENT_LABELS = {
 import { socket, socketDiagnostic, forceReconnect } from '../services/socket';
 import AssignDeliveryModal from './Delivery/AssignDeliveryModal';
 import ModalDespacho from './Admin/ModalDespacho';
+import RastreoEnvio from './RastreoEnvio';
 import { esTienda } from '../utils/tienda';
 import AddItemsModal from './AddItemsModal';
 import QuickOrderModal from './QuickOrderModal';
@@ -981,6 +982,17 @@ function ModernOrdersDashboard() {
                     ))}
                   </div>
                 </div>
+
+                {/* Dónde va el paquete. Es el pedido EN CURSO: justo el que
+                    el cliente pregunta por WhatsApp mientras espera. */}
+                {orderDetails.envio?.guia && (
+                  <RastreoEnvio
+                    guia={orderDetails.envio.guia}
+                    transportadora={orderDetails.envio.transportadora}
+                    urlRastreo={orderDetails.envio.urlRastreo}
+                    compacto
+                  />
+                )}
 
                 {/* ── Total ── */}
                 <div className="bg-slate-800 rounded-xl px-4 py-3 space-y-1">

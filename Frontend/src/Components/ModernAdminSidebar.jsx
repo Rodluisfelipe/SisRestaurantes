@@ -2,12 +2,13 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
+import { esTienda } from '../utils/tienda';
 import SubscriptionStatus from './SubscriptionStatus';
 import GuideOverlay from './Admin/GuideOverlay';
 import BranchSwitcher from './Admin/BranchSwitcher';
 import {
   FaClipboardList, FaHamburger, FaSortAmountDown, FaFolderOpen,
-  FaCheese, FaUsers, FaTicketAlt, FaChair, FaMapMarkedAlt, FaMotorcycle,
+  FaCheese, FaUsers, FaTicketAlt, FaChair, FaMapMarkedAlt, FaMotorcycle, FaUndo,
   FaCheckCircle, FaBullhorn, FaWhatsapp, FaCreditCard,
   FaPalette, FaMapMarkerAlt, FaLock, FaSignOutAlt, FaChevronDown,
   FaShoppingBag, FaStore, FaTools, FaCog, FaMoneyBillWave, FaStar, FaGift,
@@ -21,6 +22,8 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
   const isStaff = userRole === 'staff';
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const isHotel = businessConfig?.businessType === 'hotel';
+  // Una tienda devuelve todos los días y no tiene mesas que numerar.
+  const tienda = esTienda(businessConfig);
   // Guide overlay state
   const [guideSection, setGuideSection] = useState(null);
 
@@ -56,6 +59,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
         { id: 'orders', label: isService ? 'Citas' : 'Pedidos', Icon: isService ? FaCalendarAlt : FaClipboardList, badge: pendingOrdersCount },
         ...(businessConfig?.features?.posBetaEnabled ? [{ id: 'cash-closings', label: 'Cierres de Caja', Icon: FaCashRegister, badge: null }] : []),
         { id: 'completed_orders', label: 'Completados', Icon: FaCheckCircle, badge: null },
+        ...(tienda ? [{ id: 'devoluciones', label: 'Devoluciones', Icon: FaUndo, badge: null }] : []),
         ...(businessConfig?.enableBookings ? [{ id: 'bookings', label: 'Agenda', Icon: FaCalendarAlt, badge: null }] : []),
         /* El cierre mensual no depende del POS: todo negocio cierra su mes,
            tenga o no punto de venta. Va al final: es mensual, no diario. */
@@ -82,7 +86,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
         { id: 'coupons', label: 'Cupones', Icon: FaTicketAlt, badge: null },
         { id: 'loyalty', label: 'Fidelidad', Icon: FaGift, badge: null, beta: true },
         ...(!isService && !isHotel ? [{ id: 'delivery-zones', label: 'Zonas', Icon: FaMapMarkedAlt, badge: null }] : []),
-        ...(!isService ? [{ id: 'tables', label: isHotel ? 'Habitaciones' : 'Mesas', Icon: FaChair, badge: null }] : []),
+        ...(!isService && !tienda ? [{ id: 'tables', label: isHotel ? 'Habitaciones' : 'Mesas', Icon: FaChair, badge: null }] : []),
       ]
     },
     {

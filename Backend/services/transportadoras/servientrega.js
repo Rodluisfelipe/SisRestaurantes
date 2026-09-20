@@ -14,6 +14,14 @@
  * disponible" y el pedido sigue mostrando su guía igual.
  *
  * Solo servidor: desde el navegador fallan por CORS.
+ *
+ * Verificado el 19/09/2026 con una guía real:
+ *   · A y B responden JSON y contestan en camelCase (numeroGuia, estadoActual,
+ *     movimientos[].movimiento). El sobre de B sí es PascalCase (Results, Code).
+ *   · C devuelve HTML con status 200 — la página de rastreo, no el servicio.
+ *     Falla limpio y el combinador la ignora. Se deja porque puede volver, y
+ *     mientras tanto no cuesta: revienta antes de parsear.
+ * Exactamente por esto se consultan los tres: hoy dos de tres alcanzan.
  */
 
 const EP_A = 'https://mobile.servientrega.com/Services/ShipmentTracking/api/envio';
@@ -213,9 +221,15 @@ async function estrategiaC(guia, signal) {
   });
   if (!r.ok) throw new Error(`C ${r.status}`);
 
+  /* Hoy este endpoint contesta la página de rastreo en HTML con status 200. Se
+     detecta antes de parsear para que el log diga "C devolvió HTML" y no un
+     SyntaxError que parezca un error nuestro. */
+  const cuerpo = await r.text();
+  if (/^\s*</.test(cuerpo)) throw new Error('C devolvió HTML, no JSON');
+
   /* ASMX envuelve la respuesta en `d`, que a veces trae el JSON doblemente
      serializado (un string con JSON adentro). */
-  const sobre = JSON.parse(await r.text());
+  const sobre = JSON.parse(cuerpo);
   const d = sobre && sobre.d !== undefined ? sobre.d : sobre;
   const payload = typeof d === 'string' ? JSON.parse(d) : d;
   return normalizar(desenvolver(payload), guia, 'C');

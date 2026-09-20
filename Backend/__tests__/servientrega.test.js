@@ -75,6 +75,28 @@ describe('leer la respuesta venga como venga', () => {
     expect(desenvolver({ Results: [] })).toEqual({ Results: [] });
   });
 
+  /* Forma real de un movimiento de Servientrega (guía 297261703). Trae dos
+     campos que compiten: `estado` dice "Cerrado" —jerga interna suya— y
+     `movimiento` dice lo que el cliente necesita leer. */
+  it('muestra la descripción del movimiento, no la jerga interna', () => {
+    const r = normalizar({
+      numeroGuia: '297261703',
+      estadoActual: 'ENTREGADO',
+      movimientos: [{
+        estado: 'Cerrado',
+        movimiento: 'Ingreso al centro logistico',
+        fecha: '15/12/2017 18:17 ',
+        ubicacion: 'Pasto (Nariño)',
+        fechaDatetime: '0001-01-01T00:00:00',
+      }],
+    }, '297261703', 'B');
+
+    expect(r.movimientos[0].descripcion).toBe('Ingreso al centro logistico');
+    // La fecha viene con un espacio de más; se limpia o no ordena.
+    expect(r.movimientos[0].fecha).toBe('15/12/2017 18:17');
+    expect(r.movimientos[0].fechaISO).toBe('2017-12-15T18:17:00.000Z');
+  });
+
   it('pick ignora vacíos y prueba los alias en orden', () => {
     expect(pick({ movimiento: '', estado: 'Recibido' }, 'movimiento', 'estado')).toBe('Recibido');
     expect(pick(null, 'lo que sea')).toBeUndefined();
