@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "label": "principal",
         "title": "MenuBy POS",
         "width": 1280,
         "height": 800,

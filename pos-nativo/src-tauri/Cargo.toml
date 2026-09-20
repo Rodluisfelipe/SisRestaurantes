@@ -26,3 +26,6 @@ serialport = "4"
 # Cliente HTTP de bloqueo, sin runtime async: la sincronización corre en su
 # propio hilo y no vale la pena arrastrar tokio para un POST cada 30 segundos.
 ureq = { version = "2", features = ["json"] }
+# El token del negocio va al llavero del sistema, no a un archivo: DPAPI en
+# Windows, Secret Service en Linux, llavero en macOS.
+keyring = { version = "3", features = ["windows-native", "sync-secret-service", "crypto-rust", "apple-native"] }

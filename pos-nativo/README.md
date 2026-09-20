@@ -127,8 +127,24 @@ arqueo (`CashRegister` con `origen: 'pos-nativo'`), con su hora real aunque la
 caja haya estado sin internet todo el día. Un descuadre distinto de cero avisa
 al panel en vivo.
 
+## Credenciales y pantalla del cliente
+
+El token del negocio vive en el **llavero del sistema** —Credential Manager con
+DPAPI en Windows, Secret Service en Linux, llavero en macOS—, no en SQLite. Las
+cajas que ya lo tenían en la base lo migran solas al arrancar y la fila se
+borra: un token que se migra pero deja copia no migró nada. La URL de la nube sí
+se queda en SQLite, porque es configuración y no credencial, y tenerla a la
+vista ayuda a diagnosticar una caja que apunta a donde no debe.
+
+La **pantalla del cliente** es una segunda ventana sin bordes en el otro
+monitor, con el mismo bundle (`index.html#cliente`): un solo instalador y una
+sola actualización. Muestra el pedido mientras se arma, el cambio en grande al
+cobrar, y vuelve sola a la pantalla de bienvenida. Si hay un solo monitor no se
+abre —superponerla sobre la caja dejaría al cajero sin poder trabajar— y si
+falla, la caja sigue cobrando igual.
+
 ## Lo que todavía no existe
 
-Devoluciones desde el POS, descuentos y propina, pausar una venta para atender
-al siguiente de la fila, pantalla de cliente, datáfono integrado y conteo por
-denominaciones (hoy se digita el total contado, no billete por billete).
+Devoluciones desde el POS, propina, datáfono integrado y multicaja. Los
+descuentos a mano quedan registrados y autorizados, pero todavía no hay una
+pantalla para aplicarlos: hoy la excepción se registra desde el comando.

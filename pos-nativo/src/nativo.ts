@@ -318,3 +318,57 @@ export async function registrarDescuento(
   if (!enTauri) return;
   await invoke('registrar_descuento', { detalle, monto, motivo, autorizo });
 }
+
+/* ── La pantalla del cliente ──────────────────────────────────────────── */
+
+export interface ItemCliente {
+  nombre: string;
+  cantidad: number;
+  total: number;
+}
+
+/**
+ * Lo que se le muestra al cliente. Un solo objeto y un solo evento: la pantalla
+ * de allá no calcula nada ni consulta nada, solo pinta lo que le llega.
+ */
+export interface EstadoCliente {
+  modo: 'espera' | 'venta' | 'pago' | 'gracias';
+  negocio?: string;
+  mensaje?: string;
+  items?: ItemCliente[];
+  total?: number;
+  recibido?: number;
+  vuelto?: number;
+}
+
+export async function abrirPantallaCliente(): Promise<void> {
+  if (!enTauri) throw new Error('Solo en la app instalada');
+  await invoke('abrir_pantalla_cliente');
+}
+
+export async function cerrarPantallaCliente(): Promise<void> {
+  if (!enTauri) return;
+  await invoke('cerrar_pantalla_cliente');
+}
+
+export async function hayPantallaCliente(): Promise<boolean> {
+  if (!enTauri) return false;
+  return invoke<boolean>('hay_pantalla_cliente');
+}
+
+/**
+ * Manda el estado a la pantalla del cliente.
+ *
+ * Se llama en cada cambio del carrito. Si la segunda pantalla no está abierta,
+ * el evento no lo escucha nadie y no pasa nada: por eso esto nunca falla ni
+ * bloquea, y la caja no tiene que saber si hay monitor o no.
+ */
+export async function mostrarAlCliente(estado: EstadoCliente): Promise<void> {
+  if (!enTauri) return;
+  try {
+    const { emit } = await import('@tauri-apps/api/event');
+    await emit('cliente:estado', estado);
+  } catch {
+    /* La pantalla del cliente es un extra: que falle no puede frenar un cobro. */
+  }
+}

@@ -13,6 +13,8 @@ use pos_core::{auditoria, db, dinero::Pesos, escpos, pausadas, sync, turnos, usu
 use std::sync::Mutex;
 use tauri::{Manager, State};
 
+mod cliente;
+mod credenciales;
 mod nube;
 mod perifericos;
 use nube::Nube;
@@ -32,12 +34,15 @@ pub struct Estado {
 }
 
 /// A dónde sincronizar. Vacío = caja sin configurar: vende igual, pero no sube.
+///
+/// La URL sale de SQLite —es configuración— y el token del llavero del
+/// sistema, que es donde va lo que no puede leerse abriendo un archivo.
 fn leer_nube(base: &rusqlite::Connection) -> Option<Nube> {
-    let leer = |clave: &str| -> String {
-        base.query_row("SELECT valor FROM ajustes WHERE clave = ?1", [clave], |f| f.get(0))
-            .unwrap_or_default()
-    };
-    let (url, token) = (leer("nube_url"), leer("nube_token"));
+    let url: String = base
+        .query_row("SELECT valor FROM ajustes WHERE clave = 'nube_url'", [], |f| f.get(0))
+        .unwrap_or_default();
+    let token = credenciales::leer()?;
+
     if url.is_empty() || token.is_empty() {
         return None;
     }
@@ -456,18 +461,56 @@ fn cerrar_turno(estado: State<Estado>, contado: i64) -> Result<turnos::CierreTur
 }
 
 /// Guarda contra qué MenuBy trabaja esta caja.
+///
+/// La URL en la base y el token en el llavero. El token **nunca** vuelve a
+/// pasar por SQLite, ni siquiera de paso.
 #[tauri::command]
 fn configurar_nube(estado: State<Estado>, url: String, token: String) -> Result<(), String> {
+    credenciales::guardar(token.trim())?;
+
     let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
-    for (clave, valor) in [("nube_url", url.trim_end_matches('/')), ("nube_token", token.as_str())] {
-        base.execute(
-            "INSERT INTO ajustes (clave, valor) VALUES (?1, ?2)
-             ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor",
-            rusqlite::params![clave, valor],
-        )
-        .map_err(|e| e.to_string())?;
-    }
+    base.execute(
+        "INSERT INTO ajustes (clave, valor) VALUES ('nube_url', ?1)
+         ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor",
+        rusqlite::params![url.trim_end_matches('/')],
+    )
+    .map_err(|e| e.to_string())?;
+
     Ok(())
+}
+
+/// Desconecta la caja de MenuBy: borra la credencial del llavero.
+///
+/// No toca ventas ni turnos. Es para cuando el equipo cambia de dueño o sale a
+/// reparación: lo que se va es la llave, no la historia.
+#[tauri::command]
+fn desconectar_nube() -> Result<(), String> {
+    credenciales::borrar()
+}
+
+/* ── La pantalla del cliente ───────────────────────────────────────────── */
+
+/// Abre la segunda pantalla. Si no hay, lo dice y la caja sigue igual.
+#[tauri::command]
+fn abrir_pantalla_cliente(app: tauri::AppHandle) -> Result<(), String> {
+    cliente::abrir(&app)
+}
+
+#[tauri::command]
+fn cerrar_pantalla_cliente(app: tauri::AppHandle) {
+    cliente::cerrar(&app);
+}
+
+#[tauri::command]
+fn hay_pantalla_cliente(app: tauri::AppHandle) -> bool {
+    cliente::esta_abierta(&app)
+}
+
+/// ¿Esta caja ya está emparejada con un negocio?
+#[tauri::command]
+fn conectada(estado: State<Estado>) -> bool {
+    let Ok(base) = estado.base.lock() else { return false };
+    leer_nube(&base).is_some()
 }
 
 #[derive(serde::Serialize, Default)]
@@ -589,6 +632,13 @@ pub fn run() {
             std::fs::create_dir_all(&carpeta).ok();
             let base = db::abrir(&carpeta.join("pos.db")).expect("no se pudo abrir la base local");
 
+            /* Cajas que ya venían con el token en SQLite: se mueve al llavero y
+               se borra de la base. De una sola vía y en cada arranque, porque
+               una caja puede estar días sin actualizarse. */
+            if credenciales::migrar_desde_sqlite(&base) {
+                println!("El token del negocio se movió al llavero del sistema");
+            }
+
             app.manage(Estado {
                 base: Mutex::new(base),
                 impresora: Mutex::new(Impresora::Ninguna),
@@ -619,6 +669,11 @@ pub fn run() {
             abrir_cajon,
             estado_sync,
             configurar_nube,
+            desconectar_nube,
+            conectada,
+            abrir_pantalla_cliente,
+            cerrar_pantalla_cliente,
+            hay_pantalla_cliente,
             sincronizar,
             puertos_serie,
             entrar,

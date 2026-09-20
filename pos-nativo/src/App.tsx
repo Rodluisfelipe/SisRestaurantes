@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  abrirCajon, anularItem, catalogo, cobrar, descartarPausada, enTauri, estadoSync,
-  listarPausadas, pausarVenta, pesos, retomarVenta, salir, sincronizar, turnoActivo,
+  abrirCajon, abrirPantallaCliente, anularItem, catalogo, cerrarPantallaCliente, cobrar,
+  descartarPausada, enTauri, estadoSync, hayPantallaCliente, listarPausadas, mostrarAlCliente,
+  pausarVenta, pesos, retomarVenta, salir, sincronizar, turnoActivo,
   type CierreTurno, type Cobro, type EnEspera, type LineaVenta, type Producto, type Turno, type Usuario,
 } from './nativo';
 import PantallaPin from './PantallaPin';
@@ -114,7 +115,10 @@ function Caja({
      esperando el PIN de un supervisor: quitarla sin autorización es el vector
      número uno de robo hormiga. */
   const [anulando, setAnulando] = useState<{ indice: number; linea: LineaVenta } | null>(null);
+  const [conCliente, setConCliente] = useState(false);
   const buscador = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { hayPantallaCliente().then(setConCliente).catch(() => {}); }, []);
 
   const refrescarEspera = () => listarPausadas().then(setEnEspera).catch(() => {});
   useEffect(() => { refrescarEspera(); }, []);
@@ -149,6 +153,25 @@ function Caja({
     [carrito],
   );
   const vuelto = Math.max(0, (parseInt(recibido || '0', 10) || 0) - total);
+
+  /* Lo que se marca aparece al instante del otro lado del mostrador. Es lo que
+     evita el "yo no pedí eso" cuando ya está cobrado: el cliente ve su pedido
+     mientras se arma, no después. */
+  useEffect(() => {
+    const recibidoNum = parseInt(recibido || '0', 10) || 0;
+    mostrarAlCliente({
+      modo: carrito.length === 0 ? 'espera' : recibidoNum > 0 ? 'pago' : 'venta',
+      negocio: 'MenuBy',
+      items: carrito.map((i) => ({
+        nombre: `${i.nombre}${i.variante ? ` · ${i.variante}` : ''}`,
+        cantidad: i.cantidad,
+        total: i.precio * i.cantidad,
+      })),
+      total,
+      recibido: recibidoNum,
+      vuelto,
+    });
+  }, [carrito, recibido, total, vuelto]);
 
   const agregar = (p: Producto) => {
     setCarrito((c) => {
@@ -258,6 +281,11 @@ function Caja({
       setCarrito([]);
       setRecibido('');
       refrescarEspera();
+
+      /* El cambio, gigante y del otro lado: es lo que el cliente está a punto
+         de contar con la mano. Vuelve a la pantalla de espera solo después. */
+      mostrarAlCliente({ modo: 'gracias', negocio: 'MenuBy', vuelto: r.venta.vuelto });
+      window.setTimeout(() => mostrarAlCliente({ modo: 'espera', negocio: 'MenuBy' }), 8000);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -333,6 +361,29 @@ function Caja({
             {cola.apartadas} sin subir
           </span>
         )}
+        <button
+          onClick={async () => {
+            try {
+              if (conCliente) {
+                await cerrarPantallaCliente();
+                setConCliente(false);
+              } else {
+                await abrirPantallaCliente();
+                setConCliente(true);
+              }
+              setError('');
+            } catch (e) {
+              // Sin segunda pantalla no pasa nada: se avisa y la caja sigue igual.
+              setError(String(e).replace(/^Error:\s*/, ''));
+            }
+          }}
+          title="Mostrar el pedido en la pantalla del cliente"
+          className={`text-[12px] font-semibold px-3 h-8 rounded-lg ${
+            conCliente ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-700 hover:bg-slate-600'
+          }`}
+        >
+          Pantalla cliente
+        </button>
         <button
           onClick={() => {
             const motivo = window.prompt('¿Para qué se abre la gaveta?');
