@@ -60,6 +60,11 @@ const ProductSchema = new mongoose.Schema({
       message: `Un producto admite como máximo ${MAX_IMAGENES} imágenes`
     }
   },
+  /* Referencia del producto. Las variantes tienen la suya (CN-M, CN-L); esta
+     es la del producto entero, que es la que el negocio usa para buscarlo en
+     su propio sistema, en una factura o en un catálogo de proveedor. */
+  sku: { type: String, trim: true, maxlength: 40, default: '' },
+
   /* Solo en negocios tipoTienda = 'ecommerce'. Vacío en los restaurantes,
      que siguen con un precio y un stock por producto. */
   opciones: { type: [OpcionSchema], default: [] },

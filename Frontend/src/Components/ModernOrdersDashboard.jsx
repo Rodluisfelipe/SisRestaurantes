@@ -20,6 +20,8 @@ const PAYMENT_LABELS = {
 
 import { socket, socketDiagnostic, forceReconnect } from '../services/socket';
 import AssignDeliveryModal from './Delivery/AssignDeliveryModal';
+import ModalDespacho from './Admin/ModalDespacho';
+import { esTienda } from '../utils/tienda';
 import AddItemsModal from './AddItemsModal';
 import QuickOrderModal from './QuickOrderModal';
 import OrderCard from './OrderCard';
@@ -205,6 +207,8 @@ function ModernOrdersDashboard() {
   } = useOrdersDashboard();
 
   const [assignDomiOrder, setAssignDomiOrder] = useState(null);
+  // Tiendas: despachar con transportadora y guía en vez de asignar domiciliario.
+  const [despachando, setDespachando] = useState(null);
   const [addItemsOrder, setAddItemsOrder] = useState(null);
   const [showQuickOrder, setShowQuickOrder] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
@@ -631,6 +635,8 @@ function ModernOrdersDashboard() {
                     onConfirmPayment={confirmPayment}
                     onRejectPayment={rejectPayment}
                     onAssignDelivery={setAssignDomiOrder}
+                    tienda={esTienda(businessConfig)}
+                    onDespachar={setDespachando}
                     onOpenChat={(order) => { showOrderDetails(order); setTimeout(() => setShowChatModal(true), 100); }}
                   />
                 );
@@ -1109,6 +1115,13 @@ function ModernOrdersDashboard() {
           // Since it will be reflected via Socket anyway, doing nothing is also fine.
         }}
       />
+
+      {despachando && (
+        <ModalDespacho
+          pedido={despachando}
+          onClose={() => setDespachando(null)}
+        />
+      )}
 
       <AddItemsModal
         isOpen={!!addItemsOrder}

@@ -99,6 +99,14 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
      pasa a recogerlo. Lo demás del checkout es igual. */
   const tienda = esTienda(businessConfig);
   const copy = palabras(tienda);
+
+  /* Envío nacional: una tienda que despacha por transportadora no tiene
+     polígonos que verificar. Necesita la dirección, sí, pero la tarifa es
+     plana y el tiempo lo dice el negocio. Cuando está activo, todo el aparato
+     de zonas se salta: preguntarle al cliente por su barrio para luego mandar
+     el paquete a otra ciudad no tenía sentido. */
+  const envioN = tienda && businessConfig?.envioNacional?.activo ? businessConfig.envioNacional : null;
+  const envioGratis = !!envioN && envioN.gratisDesde > 0 && totalAmount >= envioN.gratisDesde;
   const themeColor = businessConfig?.theme?.buttonColor || '#f97316';
   const themeTextColor = businessConfig?.theme?.buttonTextColor || '#ffffff';
 
@@ -276,6 +284,14 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
   }, [orderInfo?.address]);
 
   // Cargar dirección cuando se selecciona delivery
+  useEffect(() => {
+    if (!envioN) return;
+    if (orderType === 'delivery' || orderInfo?.orderType === 'delivery') {
+      setDeliveryFee(envioGratis ? 0 : (Number(envioN.costo) || 0));
+      setDeliveryZoneInfo({ zoneName: 'Envío a todo el país', nacional: true });
+    }
+  }, [envioN, envioGratis, orderType, orderInfo?.orderType]);
+
   useEffect(() => {
     if (orderType === 'delivery' && deliveryAddressRef.current && orderInfo?.address) {
       deliveryAddressRef.current.value = orderInfo.address;
@@ -896,7 +912,19 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                       >Cambiar</button>
                     </div>
                   )}
-                  {deliverySelectedLocation && (
+                  {deliverySelectedLocation && envioN && (
+                    <div className="flex items-center justify-between p-2.5 bg-violet-50 border border-violet-200 rounded-xl">
+                      <div className="min-w-0">
+                        <p className="text-[11.5px] font-bold text-violet-800">Envío a todo el país</p>
+                        {envioN.demora && <p className="text-[10.5px] text-violet-500">{envioN.demora}</p>}
+                      </div>
+                      <span className="text-xs font-bold text-violet-800">
+                        {envioGratis ? 'Gratis' : formatCurrency(Number(envioN.costo) || 0, businessConfig?.currency)}
+                      </span>
+                    </div>
+                  )}
+
+                  {deliverySelectedLocation && !envioN && (
                     checkingLocation ? (
                       <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
                         <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
@@ -1269,7 +1297,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
             {/* Confirm button */}
             {(() => {
               const hasSelectedType = initialOrderTypeSelected || orderType || (hasServices && bookingSlot);
-              const isDeliveryWithoutCheck = orderType === 'delivery' && !initialOrderTypeSelected && !locationChecked;
+              const isDeliveryWithoutCheck = !envioN && orderType === 'delivery' && !initialOrderTypeSelected && !locationChecked;
               const showButton = hasSelectedType && !isDeliveryWithoutCheck;
               // Revisa si hay métodos de pago disponibles para decidir si es obligatorio
               const pmCfg = businessConfig?.paymentMethods;
@@ -1280,7 +1308,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               });
               const needsPayment = anyPaymentAvailable && !selectedPaymentMethod;
               // Delivery requires zone selection when GPS fails
-              const isDeliveryWithoutZone = orderType === 'delivery' && !initialOrderTypeSelected && locationChecked && !deliveryZoneInfo;
+              const isDeliveryWithoutZone = !envioN && orderType === 'delivery' && !initialOrderTypeSelected && locationChecked && !deliveryZoneInfo;
               // Booking requires slot when cart has services
               const needsBookingSlot = hasServices && businessConfig?.enableBookings && !bookingSlot;
               // Pedido mínimo (sobre el subtotal de productos, sin domicilio)

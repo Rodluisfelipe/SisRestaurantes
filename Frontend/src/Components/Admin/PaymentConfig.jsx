@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../services/api';
 import { useBusinessConfig } from '../../Context/BusinessContext';
+import { esTienda } from '../../utils/tienda';
 import AI from './AdminIcons';
 
 /**
@@ -35,6 +36,13 @@ const PaymentConfig = () => {
   const [orderTypes, setOrderTypes] = useState({ inSite: true, takeaway: true, delivery: true, viewOnly: false });
   const [requireDeliveryCode, setRequireDeliveryCode] = useState(true);
   const [minOrderAmount, setMinOrderAmount] = useState(0);
+  /* Envío nacional (solo tiendas). Las zonas de domicilio resuelven la ciudad;
+     esto es lo otro: una tarifa plana para mandar por transportadora a
+     cualquier parte, con un umbral de envío gratis si el negocio quiere. */
+  const [envioNacional, setEnvioNacional] = useState({
+    activo: false, costo: 0, gratisDesde: 0, transportadoras: [], demora: '',
+  });
+  const tienda = esTienda(businessConfig);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
@@ -52,6 +60,13 @@ const PaymentConfig = () => {
       });
       setRequireDeliveryCode(businessConfig.requireDeliveryCode ?? true);
       setMinOrderAmount(businessConfig.minOrderAmount ?? 0);
+      setEnvioNacional({
+        activo: businessConfig.envioNacional?.activo ?? false,
+        costo: businessConfig.envioNacional?.costo ?? 0,
+        gratisDesde: businessConfig.envioNacional?.gratisDesde ?? 0,
+        transportadoras: businessConfig.envioNacional?.transportadoras ?? [],
+        demora: businessConfig.envioNacional?.demora ?? '',
+      });
       setPaymentInfo({
         nequi: businessConfig.paymentInfo?.nequi || '',
         daviplata: businessConfig.paymentInfo?.daviplata || '',
@@ -149,6 +164,7 @@ const PaymentConfig = () => {
         orderTypes,
         requireDeliveryCode,
         minOrderAmount,
+        ...(tienda ? { envioNacional } : {}),
         paymentInfo,
         paymentMethods
       });
@@ -404,6 +420,98 @@ const PaymentConfig = () => {
                   />
                 </div>
               </button>
+            </div>
+          )}
+
+          {/* Envío nacional — solo tiendas */}
+          {tienda && (
+            <div className="mt-6 rounded-2xl border-2 border-violet-100 bg-violet-50/40 p-4">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={envioNacional.activo}
+                  onChange={(e) => { setEnvioNacional((v) => ({ ...v, activo: e.target.checked })); setHasChanges(true); }}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block text-sm font-bold text-gray-900">Envío a todo el país</span>
+                  <span className="block text-xs text-gray-500">
+                    Para mandar por transportadora fuera de tu ciudad. Tus zonas de domicilio
+                    siguen funcionando igual para lo local.
+                  </span>
+                </span>
+              </label>
+
+              {envioNacional.activo && (
+                <div className="mt-4 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wide text-gray-400 mb-1">
+                        Costo del envío
+                      </label>
+                      <input
+                        type="number" min="0" step="1000" inputMode="numeric"
+                        value={envioNacional.costo === 0 ? '' : envioNacional.costo}
+                        onChange={(e) => {
+                          const v = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
+                          setEnvioNacional((x) => ({ ...x, costo: v })); setHasChanges(true);
+                        }}
+                        placeholder="15.000"
+                        className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-200 focus:border-violet-400 outline-none font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-wide text-gray-400 mb-1">
+                        Gratis desde
+                      </label>
+                      <input
+                        type="number" min="0" step="1000" inputMode="numeric"
+                        value={envioNacional.gratisDesde === 0 ? '' : envioNacional.gratisDesde}
+                        onChange={(e) => {
+                          const v = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
+                          setEnvioNacional((x) => ({ ...x, gratisDesde: v })); setHasChanges(true);
+                        }}
+                        placeholder="0 (nunca)"
+                        className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-200 focus:border-violet-400 outline-none font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wide text-gray-400 mb-1">
+                      Transportadoras que usas
+                    </label>
+                    <input
+                      value={envioNacional.transportadoras.join(', ')}
+                      onChange={(e) => {
+                        const lista = e.target.value.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 10);
+                        setEnvioNacional((x) => ({ ...x, transportadoras: lista })); setHasChanges(true);
+                      }}
+                      placeholder="Servientrega, Interrapidísimo, Coordinadora"
+                      className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-200 focus:border-violet-400 outline-none text-sm"
+                    />
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      Separadas por coma. Salen como sugerencia al despachar un pedido.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wide text-gray-400 mb-1">
+                      Cuánto se demora
+                    </label>
+                    <input
+                      value={envioNacional.demora}
+                      onChange={(e) => { setEnvioNacional((x) => ({ ...x, demora: e.target.value.slice(0, 60) })); setHasChanges(true); }}
+                      placeholder="2 a 5 días hábiles"
+                      className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-200 focus:border-violet-400 outline-none text-sm"
+                    />
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      El cliente lo ve antes de pagar. Prometer menos de lo que cumples es la
+                      primera causa de reclamo.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

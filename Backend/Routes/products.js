@@ -393,7 +393,7 @@ router.get("/inventory", tenantAuth, async (req, res) => {
       /* Con variantes el stock no vive en el producto sino en cada talla o
          fragancia: sin traerlas, Inventario mostraría cero y el negocio no
          tendría dónde corregirlo. */
-      .select('name image price cost stock trackStock lowStockAlert active category opciones variantes')
+      .select('name image price cost stock trackStock lowStockAlert active category sku opciones variantes')
       .populate('category', 'name')
       .lean();
 
@@ -1021,7 +1021,7 @@ router.put("/:id/toggle-featured", tenantAuth, validateToggleFeatured, async (re
 router.put("/:id", tenantAuth, validateUpdateProductParam, validateProductInput, async (req, res) => {
   try {
     const productId = req.params.id;
-    const { name, description, price, category, image, images, opciones, variantes, toppingGroups, promo } = req.body;
+    const { name, description, price, category, image, images, sku, opciones, variantes, toppingGroups, promo } = req.body;
 
     /* Solo se toca la galería si el panel la envió. Un panel viejo manda solo
        `image`, y no debe borrar las fotos que el negocio ya tenía. */
@@ -1068,6 +1068,7 @@ router.put("/:id", tenantAuth, validateUpdateProductParam, validateProductInput,
         toppingGroupsOrder: toppingGroupsOrder,
         // Solo actualizar promo si el cliente la envió (no borrarla en clientes viejos)
         ...(promo !== undefined ? { promo } : {}),
+        ...(sku !== undefined ? { sku: String(sku).trim().slice(0, 40) } : {}),
         ...(galeria ? { images: galeria, image: galeria[0] || '' } : {}),
         ...(catalogo || {})
       },

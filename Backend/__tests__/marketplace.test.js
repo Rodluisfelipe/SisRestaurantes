@@ -101,6 +101,35 @@ describe('cercanía', () => {
     const lista = [{ n: 'a', distance: null, p: 1 }, { n: 'b', distance: null, p: 9 }];
     expect(ordenarPorCercania(lista, (x, y) => y.p - x.p).map(b => b.n)).toEqual(['b', 'a']);
   });
+
+  /* Una tienda que despacha a todo el país le llega igual al cliente esté
+     donde esté: enterrarla al final por quedar en otra ciudad es esconder algo
+     que sí puede vender. */
+  it('la tienda que envía a todo el país no se hunde por estar lejos', () => {
+    const lista = [
+      { businessName: 'restaurante lejos', distance: 400 },
+      { businessName: 'tienda lejos', distance: 400, tipoTienda: 'ecommerce', envioNacional: { activo: true } },
+      { businessName: 'restaurante cerca', distance: 2 },
+    ];
+    expect(ordenarPorCercania(lista).map(b => b.businessName))
+      .toEqual(['restaurante cerca', 'tienda lejos', 'restaurante lejos']);
+  });
+
+  it('pero no se cuela por encima de lo que está al lado', () => {
+    const lista = [
+      { businessName: 'tienda nacional', distance: 900, tipoTienda: 'ecommerce', envioNacional: { activo: true } },
+      { businessName: 'la de la esquina', distance: 0.4 },
+    ];
+    expect(ordenarPorCercania(lista)[0].businessName).toBe('la de la esquina');
+  });
+
+  it('una tienda sin envío nacional se ordena por distancia como todos', () => {
+    const lista = [
+      { businessName: 'tienda local lejos', distance: 400, tipoTienda: 'ecommerce' },
+      { businessName: 'restaurante cerca', distance: 30.5 },
+    ];
+    expect(ordenarPorCercania(lista)[0].businessName).toBe('restaurante cerca');
+  });
 });
 
 describe('zona de entrega', () => {

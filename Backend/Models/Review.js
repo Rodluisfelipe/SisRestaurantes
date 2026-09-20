@@ -77,6 +77,17 @@ const reviewSchema = new Schema({
   productIds: [{
     type: Schema.Types.ObjectId,
     ref: 'Product'
+  }],
+
+  /* La nota de un producto concreto, no la del negocio.
+     "El restaurante estuvo bien" y "esta camiseta encogió" son dos cosas
+     distintas, y en una tienda la segunda es la que decide si alguien compra.
+     Va aparte de `rating`, que sigue siendo la experiencia completa. */
+  productRatings: [{
+    productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
+    rating: { type: Number, required: true, min: 1, max: 5 },
+    comment: { type: String, trim: true, maxlength: 500, default: '' },
+    _id: false
   }]
 }, { timestamps: true });
 

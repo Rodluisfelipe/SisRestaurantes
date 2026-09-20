@@ -103,6 +103,12 @@ const completedOrderSchema = new mongoose.Schema({
       required: true,
       default: 1
     },
+    /* Qué talla o fragancia se vendió. Sin esto, al archivar el pedido se
+       perdía la variante y una devolución no sabía qué devolver a bodega. */
+    variante: {
+      valores: [{ type: String, trim: true, maxlength: 40 }],
+      sku: { type: String, trim: true, maxlength: 40, default: '' }
+    },
     selectedToppings: [{
       groupName: String,
       optionName: String,
@@ -116,6 +122,15 @@ const completedOrderSchema = new mongoose.Schema({
     }]
   }],
   
+  /* Con qué transportadora y guía salió, si fue envío nacional. Se archiva
+     con el pedido: es lo que el cliente pregunta meses después. */
+  envio: {
+    transportadora: { type: String, trim: true, maxlength: 40, default: '' },
+    guia: { type: String, trim: true, maxlength: 60, default: '' },
+    urlRastreo: { type: String, trim: true, maxlength: 400, default: '' },
+    despachadoAt: { type: Date, default: null }
+  },
+
   // Order totals
   totalAmount: {
     type: Number,

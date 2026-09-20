@@ -21,6 +21,7 @@ function OrderCard({
   orderTypeInfo, statusInfo, timeElapsed, isPending,
   onShowDetails, onPrint, onShowProof, onUpdateStatus,
   onConfirmPayment, onRejectPayment, onAssignDelivery, onOpenChat,
+  tienda = false, onDespachar,
 }) {
   const customerMsgCount = (order.messages || []).filter(m => m.sender === 'customer').length;
   const StatusIcon = statusInfo.Icon;
@@ -55,6 +56,12 @@ function OrderCard({
   const needsDelivery = order.orderType === 'delivery'
     && !order.deliveryToken && !order.deliveryPersonId && !order.confirmationCode
     && [S.CONFIRMED, S.PREPARING, S.IN_PROGRESS].includes(order.status);
+
+  /* Tiendas: un envío no se "asigna a un domiciliario", se entrega a una
+     transportadora y queda un número de guía. Mientras no lo tenga, despachar
+     es la acción que falta; cuando lo tiene, lo que importa es verlo. */
+  const despachado = !!order.envio?.guia;
+  const porDespachar = tienda && order.orderType === 'delivery' && !despachado && !isTerminal;
 
   return (
     <motion.div
@@ -263,10 +270,23 @@ function OrderCard({
                   </div>
                 )}
 
-                {needsDelivery && (
+                {needsDelivery && !tienda && (
                   <button onClick={() => onAssignDelivery(order)} className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl text-xs font-bold transition-colors active:scale-[0.97]">
                     <FaMotorcycle className="text-sm" /> Asignar domiciliario
                   </button>
+                )}
+
+                {porDespachar && (
+                  <button onClick={() => onDespachar?.(order)} className="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 text-white py-3 rounded-xl text-xs font-bold transition-colors active:scale-[0.97]">
+                    <FaTruck className="text-sm" /> Despachar con guía
+                  </button>
+                )}
+
+                {despachado && (
+                  <div className="w-full flex items-center justify-center gap-2 bg-violet-50 text-violet-700 py-2.5 rounded-xl text-[11.5px] font-bold">
+                    <FaTruck className="text-[11px]" />
+                    {order.envio.transportadora} · guía {order.envio.guia}
+                  </div>
                 )}
 
                 {nextSteps.map(({ to, label, Icon, primary }) => (
@@ -353,9 +373,15 @@ function OrderCard({
                 </>
               )}
 
-              {needsDelivery && (
+              {needsDelivery && !tienda && (
                 <button onClick={() => onAssignDelivery(order)} className="p-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors" title="Asignar domiciliario">
                   <FaMotorcycle className="text-xs" />
+                </button>
+              )}
+
+              {porDespachar && (
+                <button onClick={() => onDespachar?.(order)} className="p-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white transition-colors" title="Despachar con guía">
+                  <FaTruck className="text-xs" />
                 </button>
               )}
 

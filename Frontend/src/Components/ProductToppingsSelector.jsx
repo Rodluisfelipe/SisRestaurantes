@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useBusinessConfig } from "../Context/BusinessContext";
+import api from "../services/api";
 
 function ProductToppingsSelector({ product, onAddToCart, onClose, compact = false }) {
   const [selectedToppings, setSelectedToppings] = useState({});
@@ -44,6 +45,19 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
      "se acabó". */
   const controlaStock = product.trackStock === true;
 
+  /* Lo que opinó quien ya lo compró. Se pide al abrir la ficha y no con el
+     menú entero: son datos que solo importan cuando alguien se detiene en un
+     producto, y cargarlos para las 40 tarjetas sería pagar por nada. */
+  const [opiniones, setOpiniones] = useState(null);
+  useEffect(() => {
+    if (!businessId || !product?._id) return;
+    let vivo = true;
+    api.get(`/reviews/productos?businessId=${businessId}&productId=${product._id}`)
+      .then((res) => { if (vivo) setOpiniones(res.data?.[0] || null); })
+      .catch(() => {});
+    return () => { vivo = false; };
+  }, [businessId, product?._id]);
+
   /* Un valor se ve agotado si no queda ninguna variante con stock que lo
      incluya, contando lo que ya eligió el cliente en los otros ejes. */
   const valorDisponible = (indice, valor) => !controlaStock || variantesActivas.some(
@@ -73,7 +87,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
     return name.includes('gratis') || name.includes('gratuito') || name.includes('sin costo') || name.includes('incluido');
   };
   
-  const { businessConfig } = useBusinessConfig();
+  const { businessConfig, businessId } = useBusinessConfig();
   
   // Asegurarnos de que no haya grupos duplicados y que toppingGroups sea un array
   // Ordenar según el orden guardado en el backend
@@ -964,6 +978,34 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
 
         {/* ── Body: scrollable ── */}
         <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4 min-h-0">
+
+          {/* Lo que dijo quien ya lo compró. Arriba del todo a propósito: es lo
+              que decide la compra, sobre todo en ropa y perfumería, donde nadie
+              puede probarse nada antes de pagar. */}
+          {opiniones?.total > 0 && (
+            <div className="mb-4 rounded-xl border border-slate-100 bg-slate-50 p-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[15px] font-black text-slate-900 tabular-nums">{opiniones.promedio}</span>
+                <div className="flex items-center gap-0.5">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <svg key={n} className="w-3.5 h-3.5" viewBox="0 0 24 24"
+                      fill={opiniones.promedio >= n - 0.25 ? '#facc15' : '#e2e8f0'}>
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                  ))}
+                </div>
+                <span className="text-[11.5px] text-slate-400">
+                  {opiniones.total} {opiniones.total === 1 ? 'opinión' : 'opiniones'}
+                </span>
+              </div>
+
+              {(opiniones.comentarios || []).slice(0, 3).map((c, i) => (
+                <p key={i} className="mt-1.5 text-[12px] text-slate-600 leading-snug">
+                  <span className="font-semibold text-slate-700">{c.nombre || 'Alguien'}:</span> “{c.texto}”
+                </p>
+              ))}
+            </div>
+          )}
 
           {/* Quantity stepper */}
           <div className="flex items-center justify-between mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100">

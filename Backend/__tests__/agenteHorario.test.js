@@ -19,6 +19,19 @@ const hhmm = (min) => `${String(Math.floor(((min % 1440) + 1440) % 1440 / 60)).p
 /** Una semana entera con el mismo horario. */
 const semanaCon = (dia) => ({ businessHours: Object.fromEntries(DIAS.map((d) => [d, dia])) });
 
+/* El reloj se fija al mediodía de Colombia mientras corren estas pruebas.
+   Los casos se arman relativos a "ahora" (abre en una hora, cerró hace dos), y
+   corriendo de verdad cerca de medianoche esas horas se pasaban al día
+   siguiente: la prueba fallaba sola entre las 11 de la noche y las 12, sin que
+   nadie hubiera tocado nada. */
+beforeAll(() => {
+  jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+  jest.setSystemTime(new Date('2026-06-10T17:00:00Z'));   // 12:00 en Colombia
+});
+afterAll(() => {
+  jest.useRealTimers();
+});
+
 describe('si está abierto ahora mismo', () => {
   it('dentro del horario, contesta que sí y hasta cuándo', () => {
     const ahora = minutosCOL();

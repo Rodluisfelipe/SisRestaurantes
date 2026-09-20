@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
+import RastreoEnvio from './RastreoEnvio';
 import { formatCurrency } from '../utils/currency';
 import { API_URL } from '../config';
 import { socket } from '../services/socket';
@@ -524,6 +525,17 @@ const OrderTracker = ({
                      businessConfig?.businessType === 'hotel' ? 'Será entregado en tu habitación' : 'Será servido en tu mesa'}
                   </p>
                 </div>
+              )}
+
+              {/* Dónde va el paquete. Antes esto era un número de guía en un
+                  mensaje de WhatsApp; ahora es el recorrido, consultado a la
+                  transportadora, sin que el cliente tenga que salir de aquí. */}
+              {order.envio?.guia && (
+                <RastreoEnvio
+                  guia={order.envio.guia}
+                  transportadora={order.envio.transportadora}
+                  urlRastreo={order.envio.urlRastreo}
+                />
               )}
 
               {/* Order Items */}

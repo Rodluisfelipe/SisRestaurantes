@@ -298,6 +298,25 @@ const businessConfigSchema = new mongoose.Schema({
     delivery: { type: Boolean, default: true },
     viewOnly: { type: Boolean, default: false }
   },
+  /* Envío nacional (tiendas).
+     Las zonas de domicilio resuelven la ciudad: son polígonos y tarifas por
+     distancia, y no sirven para mandar un paquete a otro departamento. Esto es
+     lo otro: una tarifa plana, un umbral de envío gratis y las transportadoras
+     con las que el negocio trabaja.
+
+     El cálculo de la tarifa por transportadora, peso y destino no vive aquí:
+     esto guarda lo que el negocio decidió cobrar, y el día que se conecte una
+     transportadora de verdad, su cotización llena estos mismos campos. */
+  envioNacional: {
+    activo: { type: Boolean, default: false },
+    costo: { type: Number, default: 0, min: 0 },
+    // 0 = nunca gratis. Sirve para "envío gratis por compras sobre 150.000".
+    gratisDesde: { type: Number, default: 0, min: 0 },
+    transportadoras: [{ type: String, trim: true, maxlength: 40 }],
+    // Cuánto se demora, en palabras del negocio: "2 a 5 días hábiles".
+    demora: { type: String, trim: true, maxlength: 60, default: '' },
+  },
+
   // Código de confirmación obligatorio para domiciliarios
   requireDeliveryCode: {
     type: Boolean,

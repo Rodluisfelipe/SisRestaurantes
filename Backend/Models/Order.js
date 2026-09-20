@@ -180,6 +180,15 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  /* Envío nacional: con qué transportadora salió y con qué guía. Es lo único
+     que el cliente quiere saber después de pagar, y lo que hoy se resolvía
+     mandando una foto por WhatsApp que se perdía en la conversación. */
+  envio: {
+    transportadora: { type: String, trim: true, maxlength: 40, default: '' },
+    guia: { type: String, trim: true, maxlength: 60, default: '' },
+    urlRastreo: { type: String, trim: true, maxlength: 400, default: '' },
+    despachadoAt: { type: Date, default: null },
+  },
   deliveryCoordinates: {
     lat: {
       type: Number,

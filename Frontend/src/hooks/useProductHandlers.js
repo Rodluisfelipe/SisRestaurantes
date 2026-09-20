@@ -36,7 +36,7 @@ function buildPromoPayload(form) {
  */
 export default function useProductHandlers({ businessId, products, setProducts, toppingGroups, loadData }) {
   const [form, setForm] = useState({
-    name: '', description: '', price: '', category: '', image: '', images: [], opciones: [], variantes: [], toppingGroups: [],
+    name: '', description: '', price: '', category: '', image: '', images: [], sku: '', opciones: [], variantes: [], toppingGroups: [],
     itemType: 'product', durationMinutes: ''
   });
   const [touchedFields, setTouchedFields] = useState({});
@@ -119,7 +119,7 @@ export default function useProductHandlers({ businessId, products, setProducts, 
   };
 
   const resetForm = () => {
-    setForm({ name: '', description: '', price: '', category: '', image: '', images: [], opciones: [], variantes: [], toppingGroups: [], itemType: 'product', durationMinutes: '', trackStock: false, stock: '', lowStockAlert: '5' });
+    setForm({ name: '', description: '', price: '', category: '', image: '', images: [], sku: '', opciones: [], variantes: [], toppingGroups: [], itemType: 'product', durationMinutes: '', trackStock: false, stock: '', lowStockAlert: '5' });
     setTouchedFields({});
     setEditingId(null);
     setEditingProduct(null);
@@ -150,6 +150,7 @@ export default function useProductHandlers({ businessId, products, setProducts, 
     /* Variantes (solo tiendas). Se mandan siempre que el formulario las
        traiga, aunque vengan vacías: así quitar la última opción también se
        guarda. */
+    if (form.sku !== undefined) payload.sku = form.sku;
     if (Array.isArray(form.opciones)) payload.opciones = form.opciones;
     if (Array.isArray(form.variantes)) payload.variantes = form.variantes;
 
@@ -190,6 +191,7 @@ export default function useProductHandlers({ businessId, products, setProducts, 
         price: parseFloat(form.price.replace(/\./g, '')),
         category: form.category,
         images: Array.isArray(form.images) ? form.images.filter(Boolean) : [],
+        sku: form.sku || '',
         opciones: Array.isArray(form.opciones) ? form.opciones : [],
         variantes: Array.isArray(form.variantes) ? form.variantes : [],
         image: (Array.isArray(form.images) && form.images.filter(Boolean)[0]) || form.image || '',
@@ -248,6 +250,7 @@ export default function useProductHandlers({ businessId, products, setProducts, 
       images: Array.isArray(product.images) && product.images.length
         ? product.images.filter(Boolean)
         : (product.image ? [product.image] : []),
+      sku: product.sku || '',
       opciones: Array.isArray(product.opciones) ? product.opciones : [],
       variantes: Array.isArray(product.variantes) ? product.variantes : [],
       toppingGroups: processedToppingGroups
@@ -353,6 +356,7 @@ export default function useProductHandlers({ businessId, products, setProducts, 
       images: Array.isArray(product.images) && product.images.length
         ? product.images.filter(Boolean)
         : (product.image ? [product.image] : []),
+      sku: product.sku || '',
       opciones: Array.isArray(product.opciones) ? product.opciones : [],
       variantes: Array.isArray(product.variantes) ? product.variantes : [],
       toppingGroups: product.toppingGroups || [],

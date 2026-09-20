@@ -11,6 +11,10 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
   const [thumbsUp, setThumbsUp] = useState(null); // null | true | false
+  /* La nota del producto que compró. "El negocio estuvo bien" y "esta camiseta
+     encogió" son cosas distintas, y en una tienda la segunda es la que decide
+     si el siguiente compra. Es opcional: quien no quiera, no la toca. */
+  const [notaProducto, setNotaProducto] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState(null);
@@ -33,6 +37,7 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
       setHoverRating(0);
       setComment('');
       setThumbsUp(null);
+      setNotaProducto(0);
       setSubmitted(false);
       setError(null);
       setProductImageError(false);
@@ -61,6 +66,9 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
       };
       if (thumbsUp !== null) {
         payload.thumbsUp = thumbsUp;
+      }
+      if (notaProducto > 0 && topProduct?.productId) {
+        payload.productRatings = [{ productId: topProduct.productId, rating: notaProducto }];
       }
       await api.post('/reviews', payload);
       setSubmitted(true);
@@ -282,7 +290,28 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-gray-700 truncate">{topProduct.name}</p>
-                            {topProduct.price > 0 && (
+                            {topProduct.productId ? (
+                              <div className="flex items-center gap-0.5 mt-0.5">
+                                {[1, 2, 3, 4, 5].map((n) => (
+                                  <button
+                                    key={n}
+                                    type="button"
+                                    onClick={() => setNotaProducto(notaProducto === n ? 0 : n)}
+                                    className="p-0.5 active:scale-90 transition-transform"
+                                    aria-label={`Calificar ${topProduct.name} con ${n}`}
+                                  >
+                                    <svg className="w-4 h-4" viewBox="0 0 24 24"
+                                      fill={notaProducto >= n ? '#facc15' : '#e5e7eb'}
+                                      stroke={notaProducto >= n ? '#eab308' : '#d1d5db'} strokeWidth={1.5}>
+                                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                    </svg>
+                                  </button>
+                                ))}
+                                <span className="ml-1 text-[10.5px] text-gray-400">
+                                  {notaProducto > 0 ? 'Gracias' : 'Califica este producto'}
+                                </span>
+                              </div>
+                            ) : topProduct.price > 0 && (
                               <p className="text-xs text-gray-400">
                                 ${Number(topProduct.price).toLocaleString('es-CO')}
                               </p>

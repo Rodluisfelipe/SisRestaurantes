@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const Review = require('../Models/Review');
 const Customer = require('../Models/Customer');
@@ -161,6 +162,20 @@ router.post('/', createReviewLimiter, validateCreateReview, async (req, res) => 
       }
     }
 
+    /* Las notas por producto llegan del modal, pero solo se guardan las de
+       productos que de verdad estaban en el pedido: si no, cualquiera podría
+       calificar el catálogo entero desde una sola compra. */
+    const idsDelPedido = new Set(productIds.map((p) => p.toString()));
+    const productRatings = (Array.isArray(req.body.productRatings) ? req.body.productRatings : [])
+      .filter((r) => r && r.productId && idsDelPedido.has(r.productId.toString()))
+      .map((r) => ({
+        productId: r.productId,
+        rating: Math.min(5, Math.max(1, parseInt(r.rating, 10) || 0)),
+        comment: r.comment ? stripHtml(String(r.comment).trim()).slice(0, 500) : '',
+      }))
+      .filter((r) => r.rating >= 1)
+      .slice(0, 20);
+
     // Create the review
     const review = await Review.create({
       businessId,
@@ -173,7 +188,8 @@ router.post('/', createReviewLimiter, validateCreateReview, async (req, res) => 
       comment: comment ? stripHtml(comment.trim()) : '',
       orderType: orderType || orderDoc.orderType,
       orderTotal: orderTotal || orderDoc.total,
-      productIds
+      productIds,
+      productRatings
     });
 
     // Recalculate stats
@@ -199,6 +215,66 @@ router.post('/', createReviewLimiter, validateCreateReview, async (req, res) => 
     }
     logger.error('Error creating review', error, req);
     res.status(500).json(formatHttpError(req, 'Error al crear reseña', 500));
+  }
+});
+
+/**
+ * GET /api/reviews/productos
+ * La nota de cada producto, para mostrarla en su ficha.
+ *
+ * Público: es justo lo que el cliente quiere ver antes de comprar. Solo
+ * cuenta reseñas visibles, así una reseña ocultada por el negocio deja de
+ * pesar también aquí.
+ *
+ * Query: businessId, productId (opcional, para pedir una sola)
+ */
+router.get('/productos', async (req, res) => {
+  try {
+    const { businessId, productId } = req.query;
+    if (!businessId || !isValidObjectId(businessId)) {
+      return res.status(400).json({ message: 'businessId es requerido' });
+    }
+
+    const emparejar = { businessId: new mongoose.Types.ObjectId(businessId), isVisible: { $ne: false } };
+    const etapas = [
+      { $match: emparejar },
+      { $unwind: '$productRatings' },
+      ...(productId && isValidObjectId(productId)
+        ? [{ $match: { 'productRatings.productId': new mongoose.Types.ObjectId(productId) } }]
+        : []),
+      {
+        $group: {
+          _id: '$productRatings.productId',
+          promedio: { $avg: '$productRatings.rating' },
+          total: { $sum: 1 },
+          /* Los comentarios más recientes, que es lo que la gente lee. Sin
+             teléfono ni nada que identifique a quien lo escribió. */
+          comentarios: {
+            $push: {
+              $cond: [
+                { $gt: [{ $strLenCP: { $ifNull: ['$productRatings.comment', ''] } }, 0] },
+                { texto: '$productRatings.comment', rating: '$productRatings.rating', nombre: '$customerName', fecha: '$createdAt' },
+                '$$REMOVE',
+              ],
+            },
+          },
+        },
+      },
+      { $sort: { total: -1 } },
+      { $limit: 300 },
+    ];
+
+    const filas = await Review.aggregate(etapas);
+
+    res.json(filas.map((f) => ({
+      productId: String(f._id),
+      promedio: Math.round(f.promedio * 10) / 10,
+      total: f.total,
+      comentarios: (f.comentarios || []).slice(-5).reverse(),
+    })));
+  } catch (error) {
+    logger.error('Error obteniendo las notas por producto', error, req);
+    res.status(500).json({ message: 'Error al obtener las reseñas de productos' });
   }
 });
 
@@ -332,6 +408,8 @@ router.get('/pending', async (req, res) => {
       const sorted = [...lastOrder.items].sort((a, b) => (b.price || 0) - (a.price || 0));
       const top = sorted[0];
       topProduct = {
+        // Sin el id no se le puede pegar la calificación al producto.
+        productId: top.productId || null,
         name: top.name || top.productName || '',
         image: top.image || top.productImage || null,
         price: top.price || 0

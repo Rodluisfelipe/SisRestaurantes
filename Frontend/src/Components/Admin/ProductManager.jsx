@@ -98,7 +98,7 @@ export default function ProductManager({
   const openCreate = () => {
     setShowProductModal(true);
     setEditingProduct(null);
-    setForm({ name: '', description: '', price: '', category: '', image: '', toppingGroups: [], itemType: 'product', durationMinutes: '', trackStock: false, stock: '', lowStockAlert: '5' });
+    setForm({ name: '', description: '', price: '', category: '', image: '', images: [], sku: '', opciones: [], variantes: [], toppingGroups: [], itemType: 'product', durationMinutes: '', trackStock: false, stock: '', lowStockAlert: '5' });
     setTouchedFields({});
     setCurrentStep(1);
     setShowToppingsSection(false);
@@ -504,6 +504,25 @@ export default function ProductManager({
                       {esTienda && (
                         <div className="space-y-1">
                           <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                            Referencia del producto
+                          </label>
+                          <input
+                            name="sku"
+                            value={form.sku || ''}
+                            onChange={handleChange}
+                            placeholder="CAM-NEG-001"
+                            maxLength={40}
+                            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                          <p className="text-[11px] text-slate-400">
+                            La tuya, para buscarlo en tu sistema o en una factura. Cada talla o color puede tener además la suya abajo.
+                          </p>
+                        </div>
+                      )}
+
+                      {esTienda && (
+                        <div className="space-y-1">
+                          <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
                             Variantes (talla, color, fragancia…)
                           </label>
                           <EditorVariantes
@@ -610,7 +629,7 @@ export default function ProductManager({
                            lo obligatorio y se marca el campo en rojo en vez de
                            dejar que el envío falle sin explicación. */
                         if (enPc) {
-                          const sinPrecio = !form.price || parseFloat(String(form.price).replace(/./g, '')) <= 0;
+                          const sinPrecio = !form.price || parseFloat(String(form.price).replace(/\./g, '')) <= 0;
                           if (!form.name.trim() || !form.category || sinPrecio) {
                             setTouchedFields(prev => ({ ...prev, name: true, category: true, price: true }));
                             return;

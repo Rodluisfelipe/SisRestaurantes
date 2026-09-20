@@ -223,7 +223,9 @@ const RestaurantCard = ({ restaurant, userLocation, variant = 'default' }) => {
               {/* Meta */}
               <div className="flex items-center gap-1 mt-0.5 text-[12px] text-gray-500 flex-wrap">
                 {[
-                  deliveryTime && <span className="font-medium text-gray-700">{deliveryTime} min</span>,
+                  // Una tienda que despacha por transportadora no promete minutos.
+                  restaurant.enviaATodoElPais && <span className="font-semibold text-violet-600">Envía a todo el país</span>,
+                  deliveryTime && !restaurant.enviaATodoElPais && <span className="font-medium text-gray-700">{deliveryTime} min</span>,
                   delivery && !delivery.free && <span>Envío {delivery.text}</span>,
                   delivery?.free && <span className="text-green-600 font-semibold">Envío gratis</span>,
                   deliveryNote && <span>{deliveryNote}</span>,

@@ -18,7 +18,7 @@ const { estadoDeHoy } = require('../services/whatsappAgent/horario');
    metropolitana sin llegar a la ciudad vecina. La lista completa no se corta. */
 const RADIO_CERCANO_KM = 30;
 
-const CAMPOS_VITRINA = 'businessName slug logo coverImage description theme isOpen menuStatus tipoTienda address whatsappNumber socialMedia department city location businessHours reviewStats createdAt updatedAt useSharedMenu mainBranchId';
+const CAMPOS_VITRINA = 'businessName slug logo coverImage description theme isOpen menuStatus tipoTienda envioNacional address whatsappNumber socialMedia department city location businessHours reviewStats createdAt updatedAt useSharedMenu mainBranchId';
 
 /* Aparece quien está activo, no fue ocultado por el superadmin, no pausó su
    menú y es un restaurante: los proveedores tienen su propio marketplace B2B.
@@ -77,11 +77,27 @@ function estaAbiertoAhora(negocio) {
   return hoy ? hoy.abierto : true;
 }
 
+/** ¿Le llega a cualquiera, esté donde esté? */
+function enviaATodoElPais(negocio) {
+  return negocio?.tipoTienda === 'ecommerce' && !!negocio?.envioNacional?.activo;
+}
+
+/* Para ordenar, una tienda que despacha a todo el país está tan "cerca" como
+   la que queda en el barrio: el paquete llega igual. Se le pone el borde del
+   radio cercano en vez de su distancia real, así no encabeza la lista por
+   encima de los de al lado, pero tampoco termina enterrada al final por estar
+   en otra ciudad. */
+function distanciaEfectiva(negocio) {
+  const real = negocio?.distance ?? Infinity;
+  if (!enviaATodoElPais(negocio)) return real;
+  return Math.min(real, RADIO_CERCANO_KM);
+}
+
 /** Del más cercano al más lejano; los que no tienen ubicación, al final. */
 function ordenarPorCercania(lista, desempate = () => 0) {
   return lista.sort((a, b) => {
-    const da = a.distance ?? Infinity;
-    const db = b.distance ?? Infinity;
+    const da = distanciaEfectiva(a);
+    const db = distanciaEfectiva(b);
     return da === db ? desempate(a, b) : da - db;
   });
 }
@@ -151,6 +167,7 @@ async function decorarParaVitrina(negocios, origen) {
       ...b,
       distance: distanciaKm(origen, b),
       isCurrentlyOpen: estaAbiertoAhora(b),
+      enviaATodoElPais: enviaATodoElPais(b),
       tieneDomicilio: propias.length > 0,
       deliveryZone: punto && propias.length ? zonaQueCubre(propias, punto) : null,
       recibePedidos: !sinPedidos.has(id),

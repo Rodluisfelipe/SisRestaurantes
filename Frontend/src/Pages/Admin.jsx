@@ -47,6 +47,7 @@ const PrintAgentConfig = lazy(() => import("../Components/Admin/PrintAgentConfig
 const DomiStats = lazy(() => import("../Components/Delivery/DomiStats"));
 const ProductManager = lazy(() => import("../Components/Admin/ProductManager"));
 const InventoryManager = lazy(() => import("../Components/Admin/InventoryManager"));
+const Devoluciones = lazy(() => import("../Components/Admin/Devoluciones"));
 const WhatsAppInbox = lazy(() => import("../Components/Admin/WhatsAppInbox"));
 const FeaturedProductsManager = lazy(() => import("../Components/Admin/FeaturedProductsManager"));
 const SubscriptionPayment = lazy(() => import("./SubscriptionPayment"));
@@ -520,6 +521,13 @@ function Admin() {
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Inventario" onGoBack={() => setActiveTab('dashboard')}>
                       <InventoryManager />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'devoluciones' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Devoluciones" onGoBack={() => setActiveTab('dashboard')}>
+                      <Devoluciones />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}

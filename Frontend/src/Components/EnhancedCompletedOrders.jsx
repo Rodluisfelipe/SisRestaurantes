@@ -2,6 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import { esTienda } from '../utils/tienda';
+import ModalDevolucion from './Admin/ModalDevolucion';
+import RastreoEnvio from './RastreoEnvio';
 import { socket } from '../services/socket';
 import AI from './Admin/AdminIcons';
 import { logSystem } from '../utils/systemLogger';
@@ -36,6 +39,10 @@ function EnhancedCompletedOrders() {
   const [orderDetails, setOrderDetails] = useState(null);
   const { businessConfig, businessId } = useBusinessConfig();
   const isHotel = businessConfig?.businessType === 'hotel';
+  /* En una tienda devolver es rutina, y el sitio natural para registrarlo es
+     el pedido: ahí están las tallas que se vendieron y a qué precio. */
+  const tienda = esTienda(businessConfig);
+  const [devolviendo, setDevolviendo] = useState(null);
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const [stats, setStats] = useState({
     totalOrders: 0,
@@ -916,6 +923,26 @@ function EnhancedCompletedOrders() {
                   </span>
                 </div>
               </div>
+
+              {/* Cuando el cliente escribe "¿dónde va lo mío?", la respuesta
+                  está en el pedido y no en la página de la transportadora. */}
+              {selectedOrder.envio?.guia && (
+                <RastreoEnvio
+                  guia={selectedOrder.envio.guia}
+                  transportadora={selectedOrder.envio.transportadora}
+                  urlRastreo={selectedOrder.envio.urlRastreo}
+                  compacto
+                />
+              )}
+
+              {tienda && (
+                <button
+                  onClick={() => setDevolviendo(selectedOrder)}
+                  className="w-full py-2.5 rounded-xl border border-slate-200 text-[13px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  Registrar devolución o cambio
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1561,6 +1588,13 @@ function EnhancedCompletedOrders() {
       {/* Modals */}
       <AnimatePresence>
         {selectedOrder && <OrderDetailsModal />}
+        {devolviendo && (
+          <ModalDevolucion
+            pedido={devolviendo}
+            onClose={() => setDevolviendo(null)}
+            onListo={() => { setSelectedOrder(null); setOrderDetails(null); }}
+          />
+        )}
       </AnimatePresence>
       
       {showNoOrdersModal && (
