@@ -10,7 +10,10 @@
 //! que no existe.
 
 use pos_core::pagos::{self, Terminal};
-use pos_core::{auditoria, cuentas, db, dinero::Pesos, escpos, pausadas, sync, turnos, usuarios, venta};
+use pos_core::{
+    auditoria, cuentas, db, devoluciones, dinero::Pesos, escpos, pausadas, sync, turnos, usuarios,
+    venta,
+};
 use std::sync::Mutex;
 use tauri::{Manager, State};
 
@@ -701,6 +704,120 @@ fn registrar_descuento(
     Ok(())
 }
 
+/* ── Devoluciones ──────────────────────────────────────────────────────────
+   Plata que sale de la gaveta sin nada vendido a cambio. Por eso pasa por PIN
+   de supervisor, deja motivo escrito y no borra la venta original. */
+
+/// Una venta de esta caja, para encontrar la que hay que devolver.
+#[derive(serde::Serialize)]
+struct VentaBuscada {
+    id: String,
+    consecutivo: i64,
+    total: i64,
+    creada_en: String,
+}
+
+/// Las últimas ventas, la más reciente primero.
+///
+/// El cliente que vuelve casi siempre acaba de salir, y el número que trae en
+/// la mano es el consecutivo.
+#[tauri::command]
+fn ventas_recientes(estado: State<Estado>) -> Result<Vec<VentaBuscada>, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    let filas = devoluciones::ultimas_ventas(&base, 40).map_err(|e| e.to_string())?;
+
+    Ok(filas
+        .into_iter()
+        .map(|(id, consecutivo, total, creada_en)| VentaBuscada { id, consecutivo, total, creada_en })
+        .collect())
+}
+
+/// Una línea de la venta con lo que todavía se puede devolver de ella.
+#[derive(serde::Serialize)]
+struct LineaDevolvible {
+    producto_id: String,
+    nombre: String,
+    variante: String,
+    precio: i64,
+    /// Cuántas se vendieron.
+    cantidad: i64,
+    /// Cuántas quedan por devolver, ya descontando devoluciones anteriores.
+    quedan: i64,
+}
+
+#[tauri::command]
+fn lineas_devolvibles(estado: State<Estado>, venta_id: String) -> Result<Vec<LineaDevolvible>, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+
+    Ok(devoluciones::devolubles(&base, &venta_id)
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .map(|(l, quedan)| LineaDevolvible {
+            producto_id: l.producto_id,
+            nombre: l.nombre,
+            variante: l.variante,
+            precio: l.precio.0,
+            cantidad: l.cantidad,
+            quedan,
+        })
+        .collect())
+}
+
+/// Devuelve parte o todo de una venta.
+///
+/// El cajero llega aquí con el PIN de un supervisor ya validado. Quién autoriza
+/// y el motivo quedan escritos, y el precio lo pone la venta original: devolver
+/// a un precio distinto del que se cobró es la forma silenciosa de sacar plata
+/// de la caja.
+#[tauri::command]
+fn devolver(
+    estado: State<Estado>,
+    venta_id: String,
+    items: Vec<venta::LineaVenta>,
+    medio: String,
+    motivo: String,
+    autorizo: String,
+) -> Result<devoluciones::Devolucion, String> {
+    let cajero = estado
+        .sesion
+        .lock()
+        .ok()
+        .and_then(|s| s.clone())
+        .map(|u| u.nombre)
+        .unwrap_or_default();
+
+    let ahora = ahora_local();
+    let registrada = {
+        let mut base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+        devoluciones::registrar(&mut base, &venta_id, &items, &medio, &motivo, &cajero, &autorizo, &ahora)
+            .map_err(|e| e.to_string())?
+    };
+
+    /* Queda también en la auditoría del turno, junto a las anulaciones y los
+       descuentos: quien revise las excepciones del día tiene que verlas todas
+       en la misma lista, no en tres sitios distintos. */
+    anotar_excepcion(
+        &estado,
+        auditoria::TipoExcepcion::Descuento,
+        &format!("Devolución de la venta #{}", registrada.consecutivo),
+        registrada.total.0,
+        &motivo,
+        &autorizo,
+    );
+
+    /* El papel de la devolución. Se imprime después de registrarla, igual que
+       la venta: si falla la impresora, la devolución ya está hecha. */
+    {
+        let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+        let caja = perifericos::leer_config(&base, "caja");
+        let negocio = estado.negocio.lock().map(|n| n.clone()).unwrap_or_default();
+        let bytes = comprobante_devolucion(&negocio, caja.ancho, &registrada, &items);
+        let _ = perifericos::enviar(&caja.impresora, &bytes);
+    }
+
+    Ok(registrada)
+}
+
 /* ── El turno ──────────────────────────────────────────────────────────── */
 
 #[tauri::command]
@@ -1384,6 +1501,61 @@ fn tirilla_de(negocio: &str, ancho: usize, v: &venta::VentaCompleta, copia: bool
 ///
 /// Letra grande y una línea por producto. Quien la lee está de pie frente a una
 /// plancha, no sentado revisando una cuenta.
+/// El papel de una devolución.
+///
+/// Lleva el número de la venta original en grande: es lo que permite emparejar
+/// este papel con la tirilla que el cliente trajo, y lo primero que busca quien
+/// revise la caja al final del día.
+///
+/// Lleva también quién autorizó. Una devolución sin nombre encima es una salida
+/// de efectivo que nadie firmó.
+fn comprobante_devolucion(
+    negocio: &str,
+    ancho: usize,
+    d: &devoluciones::Devolucion,
+    items: &[venta::LineaVenta],
+) -> Vec<u8> {
+    let mut t = escpos::Tirilla::nueva(ancho);
+
+    t.alinear(escpos::Alineacion::Centro)
+        .negrita(true)
+        .linea(negocio)
+        .doble(true)
+        .linea("DEVOLUCION")
+        .doble(false)
+        .negrita(false)
+        .linea(&format!("De la venta #{}", d.consecutivo))
+        .linea(&d.creada_en)
+        .alinear(escpos::Alineacion::Izquierda)
+        .separador();
+
+    for item in items {
+        let nombre = if item.variante.is_empty() {
+            item.nombre.clone()
+        } else {
+            format!("{} ({})", item.nombre, item.variante)
+        };
+        let linea = item.precio.por(item.cantidad).unwrap_or(Pesos::CERO);
+        t.par(&format!("{} x{}", nombre, item.cantidad), &linea.to_string());
+    }
+
+    t.separador()
+        .doble(true)
+        .par("DEVUELTO", &d.total.to_string())
+        .doble(false)
+        .par("En", &d.medio)
+        .salto()
+        .linea(&format!("Motivo: {}", d.motivo))
+        .linea(&format!("Atendió: {}", d.cajero))
+        .linea(&format!("Autorizó: {}", d.autorizo))
+        .salto()
+        .alinear(escpos::Alineacion::Centro)
+        .linea("Conserve este comprobante")
+        .cortar();
+
+    t.terminar()
+}
+
 /// La comanda de una ronda de mesa.
 ///
 /// Lleva el nombre de la mesa en grande y arriba, porque en una cocina con seis
@@ -1683,6 +1855,9 @@ pub fn run() {
             descartar_pausada,
             autorizar,
             anular_item,
+            ventas_recientes,
+            lineas_devolvibles,
+            devolver,
             registrar_descuento
         ])
         .run(tauri::generate_context!())

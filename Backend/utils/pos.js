@@ -379,11 +379,112 @@ function validarExcepcion(cuerpo) {
   };
 }
 
+/**
+ * Valida una devolución que sube la caja.
+ *
+ * Igual que con la venta, la decisión ya se tomó en el mostrador: un supervisor
+ * la autorizó y la plata ya salió de la gaveta. Aquí no se aprueba ni se
+ * rechaza el hecho, se comprueba que el mensaje sea coherente antes de mover el
+ * inventario del negocio con él.
+ */
+function validarDevolucion(cuerpo) {
+  if (!cuerpo || typeof cuerpo !== 'object') {
+    return { ok: false, error: 'Devolución vacía' };
+  }
+
+  /* El id lo genera la caja (UUIDv7) y es la llave de idempotencia: la cola
+     reintenta hasta que le confirmemos, y sin él una devolución reintentada
+     sumaría el inventario dos veces. */
+  const id = String(cuerpo.id || '').trim();
+  if (id.length < 8 || id.length > 64) {
+    return { ok: false, error: 'La devolución no trae un id válido' };
+  }
+
+  const ventaId = String(cuerpo.venta_id || '').trim();
+  if (!ventaId) return { ok: false, error: 'No dice de qué venta es' };
+
+  /* Sin autorización no entra, aunque la caja ya la haya registrado. Es la
+     misma regla del mostrador repetida aquí: una devolución sin nombre encima
+     es una salida de efectivo que nadie firmó. */
+  const autorizo = String(cuerpo.autorizo || '').trim().slice(0, 80);
+  if (!autorizo) return { ok: false, error: 'La devolución no trae quién la autorizó' };
+
+  const motivo = String(cuerpo.motivo || '').trim().slice(0, 200);
+  if (motivo.length < 3) return { ok: false, error: 'La devolución no trae motivo' };
+
+  const lineas = Array.isArray(cuerpo.items) ? cuerpo.items : [];
+  if (!lineas.length) return { ok: false, error: 'La devolución no trae líneas' };
+  if (lineas.length > MAX_LINEAS) return { ok: false, error: 'Demasiadas líneas en una devolución' };
+
+  const items = [];
+  let suma = 0;
+
+  for (const linea of lineas) {
+    const cantidad = Number(linea?.cantidad);
+    const precio = Number(linea?.precio);
+    const nombre = String(linea?.nombre || '').trim();
+
+    if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > MAX_CANTIDAD) {
+      return { ok: false, error: `Cantidad inválida en "${nombre || 'una línea'}"` };
+    }
+    if (!Number.isFinite(precio) || precio < 0) {
+      return { ok: false, error: `Precio inválido en "${nombre || 'una línea'}"` };
+    }
+    if (!nombre) return { ok: false, error: 'Hay una línea sin nombre de producto' };
+
+    suma += precio * cantidad;
+
+    /* El mismo id compuesto que en la venta: el inventario vive en el producto
+       y en su variante, no en la fila aplanada del catálogo. */
+    const compuesto = String(linea.producto_id || '');
+    const corte = compuesto.indexOf(':');
+    const productId = corte > 0 ? compuesto.slice(0, corte) : (compuesto || null);
+    const valoresDelId = corte > 0 ? compuesto.slice(corte + 1).split('|').filter(Boolean) : [];
+    const valores = valoresDelId.length
+      ? valoresDelId
+      : (linea.variante ? [String(linea.variante)] : []);
+
+    items.push({
+      productId,
+      name: nombre,
+      variante: valores.length ? { valores, sku: '' } : undefined,
+      price: precio,
+      quantity: cantidad,
+    });
+  }
+
+  const total = Number(cuerpo.total);
+  if (!Number.isFinite(total) || total < 0) {
+    return { ok: false, error: 'La devolución no trae un total válido' };
+  }
+  if (Math.round(suma) !== Math.round(total)) {
+    return { ok: false, error: `El total (${total}) no cuadra con las líneas (${suma})` };
+  }
+
+  return {
+    ok: true,
+    devolucion: {
+      id,
+      ventaId,
+      consecutivo: Number(cuerpo.consecutivo) || 0,
+      total,
+      medio: String(cuerpo.medio || 'efectivo').slice(0, 30),
+      motivo,
+      cajero: String(cuerpo.cajero || '').slice(0, 80),
+      autorizo,
+      turnoId: String(cuerpo.turno_id || '').slice(0, 64),
+      creadaEn: cuerpo.creada_en ? new Date(cuerpo.creada_en) : new Date(),
+      items,
+    },
+  };
+}
+
 module.exports = {
   validarVenta,
   validarCierre,
   validarExcepcion,
   aplanarCatalogo,
+  validarDevolucion,
   TIPOS_EXCEPCION,
   MAX_LINEAS,
   MAX_CANTIDAD,

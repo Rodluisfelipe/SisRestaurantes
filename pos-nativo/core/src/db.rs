@@ -343,6 +343,48 @@ const MIGRACIONES: &[&str] = &[
     ALTER TABLE ventas ADD COLUMN propina INTEGER NOT NULL DEFAULT 0;
     CREATE INDEX idx_ventas_propina ON ventas(turno_id) WHERE propina > 0;
     "#,
+    // 12 — devolver lo que ya se cobró.
+    r#"
+    /* Una devolución **no borra la venta**. Es una operación aparte que apunta
+       a la original, y esa es la diferencia entre un registro contable y un
+       registro que se puede alterar: si devolver borrara la venta, no quedaría
+       rastro de que se cobró, y el turno donde se cobró cerraría distinto cada
+       vez que alguien devuelve algo del día anterior.
+
+       El turno que se anota es el turno en el que se **devuelve**, no el de la
+       venta. Ese billete sale de la gaveta de hoy, aunque la venta fuera de
+       ayer. */
+    CREATE TABLE devoluciones (
+        id             TEXT PRIMARY KEY,
+        venta_id       TEXT NOT NULL REFERENCES ventas(id),
+        turno_id       TEXT NOT NULL REFERENCES turnos(id),
+        -- Quién la hizo y quién la autorizó. Nunca la misma persona por accidente.
+        cajero         TEXT NOT NULL,
+        autorizo       TEXT NOT NULL,
+        total          INTEGER NOT NULL,
+        /* Cómo salió la plata. En efectivo sale de la gaveta y el arqueo tiene
+           que saberlo; por datáfono la reversa la hace el banco y la gaveta no
+           se entera. */
+        medio          TEXT NOT NULL DEFAULT 'efectivo',
+        motivo         TEXT NOT NULL,
+        creada_en      TEXT NOT NULL
+    );
+    CREATE INDEX idx_devoluciones_turno ON devoluciones(turno_id);
+    CREATE INDEX idx_devoluciones_venta ON devoluciones(venta_id);
+
+    /* Qué se devolvió. Por línea, porque casi nunca se devuelve la venta
+       entera: de cuatro platos vuelve uno. */
+    CREATE TABLE devolucion_items (
+        devolucion_id  TEXT NOT NULL REFERENCES devoluciones(id) ON DELETE CASCADE,
+        linea          INTEGER NOT NULL,
+        producto_id    TEXT NOT NULL,
+        nombre         TEXT NOT NULL,
+        variante       TEXT NOT NULL DEFAULT '',
+        precio         INTEGER NOT NULL,
+        cantidad       INTEGER NOT NULL,
+        PRIMARY KEY (devolucion_id, linea)
+    );
+    "#,
 ];
 
 /// Abre (o crea) la base y la deja lista para operar.

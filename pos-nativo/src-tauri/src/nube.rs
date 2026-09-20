@@ -58,6 +58,7 @@ impl sync::Transporte for Nube {
         let ruta = match entidad {
             "venta" => format!("{}/pos/sync-sale", self.base),
             "turno" => format!("{}/pos/shifts/close", self.base),
+            "devolucion" => format!("{}/pos/sync-refund", self.base),
             "excepcion" => format!("{}/pos/audit", self.base),
             otro => {
                 return Err(sync::FalloEnvio::Rechazado(

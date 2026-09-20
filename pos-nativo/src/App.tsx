@@ -2,16 +2,16 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CircleUser, CloudCheck, CloudOff, Inbox, Minus, Monitor,
   LayoutGrid, MessageSquarePlus, PauseCircle, Percent, Plus, Printer, RefreshCw, ScanLine,
-  Trash2, UtensilsCrossed, Volume2, VolumeX, Wallet, X,
+  Trash2, Undo2, UtensilsCrossed, Volume2, VolumeX, Wallet, X,
 } from 'lucide-react';
 import {
   abrirCajon, abrirPantallaCliente, anularItem, aplicarMarca, catalogo, cerrarPantallaCliente,
-  abrirCuenta, carpetaFotos, categorias, cerrarCuenta, cobrar, descartarPausada, enTauri, estadoSync,
+  abrirCuenta, carpetaFotos, categorias, cerrarCuenta, cobrar, descartarPausada, devolver, enTauri, estadoSync,
   guardarEnCuenta, hayPantallaCliente, identidad, imprimirPrecuenta, infoTerminal, listarCuentas,
   listarPausadas, mostrarAlCliente, pausarVenta, pesos, reimprimir, retomarVenta, salir,
   registrarDescuento, repartir, sincronizar, turnoActivo,
-  type CierreTurno, type Cobro, type Cuenta, type EnEspera, type LineaVenta, type PagoDetalle,
-  type Producto, type Turno, type Usuario,
+  type CierreTurno, type Cobro, type Cuenta, type EnEspera, type LineaDevolvible, type LineaVenta,
+  type PagoDetalle, type Producto, type Turno, type Usuario, type VentaBuscada,
 } from './nativo';
 import ModalMotivo from './ModalMotivo';
 import CobroMixto from './CobroMixto';
@@ -19,6 +19,7 @@ import NotaItem from './NotaItem';
 import Descuento from './Descuento';
 import Cuentas from './Cuentas';
 import FotoProducto from './FotoProducto';
+import Devolucion from './Devolucion';
 import { activarSonido, bip, error as bipError, sonidoActivo } from './sonido';
 import PantallaPin from './PantallaPin';
 import Impresoras from './Impresoras';
@@ -236,6 +237,13 @@ function Caja({
      mientras la app corre. */
   const [carpeta, setCarpeta] = useState('');
   const [conSonido, setConSonido] = useState(sonidoActivo);
+  /* La devolución va en dos pasos, igual que el descuento: primero se arma —qué
+     venta, qué líneas, con qué se devuelve— y después la autoriza un
+     supervisor. Entre los dos vive aquí, sin haberse ejecutado. */
+  const [pidiendoDevolucion, setPidiendoDevolucion] = useState(false);
+  const [devolucionPorAutorizar, setDevolucionPorAutorizar] = useState<
+    { venta: VentaBuscada; items: LineaVenta[]; medio: string; total: number } | null
+  >(null);
 
   useEffect(() => { infoTerminal().then((t) => setDigitaVoucher(t.requiere_digitacion)).catch(() => {}); }, []);
   const buscador = useRef<HTMLInputElement>(null);
@@ -690,6 +698,14 @@ function Caja({
           Gaveta
         </BotonBarra>
 
+        <BotonBarra
+          icono={Undo2}
+          onClick={() => setPidiendoDevolucion(true)}
+          title="Devolver una venta ya cobrada. Lo autoriza un supervisor."
+        >
+          Devolver
+        </BotonBarra>
+
         <BotonBarra icono={Printer} onClick={() => setVerImpresoras(true)} title="Configurar las impresoras">
           Impresoras
         </BotonBarra>
@@ -767,6 +783,53 @@ function Caja({
             buscador.current?.focus();
           }}
           onCancelar={() => { setPidiendoGaveta(false); buscador.current?.focus(); }}
+        />
+      )}
+
+      {pidiendoDevolucion && (
+        <Devolucion
+          onListo={(venta, lineas: LineaDevolvible[], cantidades, medio) => {
+            /* Solo viajan las líneas con cantidad. El precio se manda pero Rust
+               lo ignora y usa el de la venta: esta pantalla no puede decidir
+               cuánta plata sale de la gaveta. */
+            const items: LineaVenta[] = lineas
+              .map((l, i) => ({
+                producto_id: l.producto_id,
+                nombre: l.nombre,
+                variante: l.variante,
+                precio: l.precio,
+                cantidad: cantidades[i],
+                nota: '',
+              }))
+              .filter((l) => l.cantidad > 0);
+
+            const total = items.reduce((t, l) => t + l.precio * l.cantidad, 0);
+            setPidiendoDevolucion(false);
+            setDevolucionPorAutorizar({ venta, items, medio, total });
+          }}
+          onCancelar={() => { setPidiendoDevolucion(false); buscador.current?.focus(); }}
+        />
+      )}
+
+      {devolucionPorAutorizar && (
+        <Autorizar
+          titulo="Autorizar devolución"
+          detalle={`Venta #${devolucionPorAutorizar.venta.consecutivo} · salen ${pesos(devolucionPorAutorizar.total)}`}
+          onListo={async (motivo, autorizo) => {
+            const cual = devolucionPorAutorizar;
+            setDevolucionPorAutorizar(null);
+            try {
+              const d = await devolver(cual.venta.id, cual.items, cual.medio, motivo, autorizo);
+              setAvisoCuenta(`Devueltos ${pesos(d.total)} de la venta #${d.consecutivo}`);
+              window.setTimeout(() => setAvisoCuenta(''), 6000);
+            } catch (e) {
+              setError(String(e).replace(/^Error:\s*/, ''));
+              bipError();
+            } finally {
+              buscador.current?.focus();
+            }
+          }}
+          onCancelar={() => { setDevolucionPorAutorizar(null); buscador.current?.focus(); }}
         />
       )}
 

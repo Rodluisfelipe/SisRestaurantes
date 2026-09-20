@@ -412,6 +412,68 @@ export async function cerrarCuenta(id: string): Promise<void> {
   await invoke('cerrar_cuenta', { id });
 }
 
+/* ── Devoluciones ───────────────────────────────────────────────────────────
+   Plata que sale de la gaveta sin nada vendido a cambio. */
+
+export interface VentaBuscada {
+  id: string;
+  consecutivo: number;
+  total: number;
+  creada_en: string;
+}
+
+export interface LineaDevolvible {
+  producto_id: string;
+  nombre: string;
+  variante: string;
+  precio: number;
+  /** Cuántas se vendieron. */
+  cantidad: number;
+  /** Cuántas quedan por devolver, ya descontando devoluciones anteriores. */
+  quedan: number;
+}
+
+export interface DevolucionHecha {
+  id: string;
+  venta_id: string;
+  consecutivo: number;
+  total: number;
+  medio: string;
+  motivo: string;
+  cajero: string;
+  autorizo: string;
+  creada_en: string;
+}
+
+/** Las últimas ventas de esta caja, la más reciente primero. */
+export async function ventasRecientes(): Promise<VentaBuscada[]> {
+  if (!enTauri) return [];
+  return invoke<VentaBuscada[]>('ventas_recientes');
+}
+
+/** Qué queda por devolver de una venta, ya descontando lo devuelto antes. */
+export async function lineasDevolvibles(ventaId: string): Promise<LineaDevolvible[]> {
+  if (!enTauri) return [];
+  return invoke<LineaDevolvible[]>('lineas_devolvibles', { ventaId });
+}
+
+/**
+ * Devuelve parte o todo de una venta.
+ *
+ * El precio lo pone la venta original, no esta pantalla: devolver a un precio
+ * distinto del que se cobró es la forma silenciosa de sacar plata de la caja.
+ */
+export async function devolver(
+  ventaId: string,
+  items: LineaVenta[],
+  medio: string,
+  motivo: string,
+  autorizo: string,
+): Promise<DevolucionHecha> {
+  if (!enTauri) throw new Error('Solo en la app instalada');
+  return invoke<DevolucionHecha>('devolver', { ventaId, items, medio, motivo, autorizo });
+}
+
 /** Abrir la gaveta sin venta. No pide supervisor, pero queda registrado. */
 export async function abrirCajon(motivo: string): Promise<void> {
   if (!enTauri) return;

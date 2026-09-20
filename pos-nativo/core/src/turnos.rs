@@ -62,6 +62,8 @@ pub struct CierreTurno {
     pub propina_efectivo: Pesos,
     /// Propina cobrada con tarjeta o transferencia. No pasa por la gaveta.
     pub propina_otros: Pesos,
+    /// Lo devuelto en efectivo durante el turno. Sale de la gaveta.
+    pub devoluciones_efectivo: Pesos,
 }
 
 #[derive(Debug)]
@@ -246,7 +248,15 @@ fn esperado_de(conexion: &Connection, turno: &Turno) -> Result<CierreTurno> {
         )
         .unwrap_or((0, 0));
 
-    let esperado = turno.fondo_inicial.0 + ventas_efectivo + entradas - salidas;
+    /* Lo devuelto en efectivo salió de la gaveta y hay que restarlo.
+
+       Solo lo devuelto en efectivo: por datáfono la reversa la hace el banco y
+       la gaveta no se entera. Restar esas también dejaría la caja con un
+       sobrante cada día que alguien devuelve una compra con tarjeta. */
+    let devuelto = crate::devoluciones::efectivo_del_turno(conexion, &turno.id)
+        .unwrap_or(Pesos::CERO);
+
+    let esperado = turno.fondo_inicial.0 + ventas_efectivo + entradas - salidas - devuelto.0;
 
     Ok(CierreTurno {
         turno_id: turno.id.clone(),
@@ -257,6 +267,7 @@ fn esperado_de(conexion: &Connection, turno: &Turno) -> Result<CierreTurno> {
         ventas_efectivo: Pesos(ventas_efectivo),
         propina_efectivo: Pesos(propina_efectivo),
         propina_otros: Pesos(propina_otros),
+        devoluciones_efectivo: devuelto,
         ventas_otros: Pesos(ventas_otros),
         entradas: Pesos(entradas),
         salidas: Pesos(salidas),
@@ -591,6 +602,47 @@ mod pruebas {
 
         assert_eq!(cierre.diferencia, Pesos::CERO, "la caja cuadra");
         assert_eq!(cierre.propina_efectivo, Pesos(3_000), "y se sabe cuánto sacar");
+    }
+
+
+    #[test]
+    fn lo_devuelto_en_efectivo_sale_del_esperado() {
+        /* Venta de 30.000 en efectivo, y después se devuelven 10.000. En la
+           gaveta quedan 20.000 sobre el fondo.
+
+           Sin restarlo, la caja cerraría con un faltante de 10.000 y el cajero
+           respondería por una plata que devolvió con autorización. */
+        let (mut c, t) = caja_con_turno();
+        vender(&mut c, &t, 30_000, "efectivo");
+
+        let venta_id: String = c
+            .query_row("SELECT id FROM ventas LIMIT 1", [], |f| f.get(0))
+            .unwrap();
+
+        crate::devoluciones::registrar(
+            &mut c,
+            &venta_id,
+            &[venta::LineaVenta {
+                producto_id: "p1".into(),
+                nombre: "Café".into(),
+                variante: String::new(),
+                precio: Pesos(30_000),
+                cantidad: 1,
+                nota: String::new(),
+            }],
+            "efectivo",
+            "Salió frío",
+            "Ana",
+            "Luis",
+            AHORA,
+        )
+        .unwrap();
+
+        // Fondo 100.000 + 30.000 vendidos − 30.000 devueltos.
+        let cierre = cerrar(&mut c, Pesos(100_000), AHORA).unwrap();
+
+        assert_eq!(cierre.devoluciones_efectivo, Pesos(30_000));
+        assert_eq!(cierre.diferencia, Pesos::CERO, "la caja cuadra");
     }
 
 }

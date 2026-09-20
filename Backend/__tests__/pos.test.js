@@ -10,7 +10,9 @@
  *    bajaran los activos, un producto descontinuado se quedaría para siempre en
  *    la caja y se seguiría vendiendo.
  */
-const { validarVenta, validarCierre, validarExcepcion, aplanarCatalogo } = require('../utils/pos');
+const {
+  validarVenta, validarCierre, validarExcepcion, aplanarCatalogo, validarDevolucion,
+} = require('../utils/pos');
 
 const VENTA = {
   id: '0192f8a1-7c4e-7000-8000-abcdef123456',   // UUIDv7 de la caja
@@ -540,5 +542,97 @@ describe('la propina', () => {
     expect(r.venta.descuento).toBe(1500);
     expect(r.venta.total).toBe(13000);
     expect(r.venta.propina).toBe(1300);
+  });
+});
+
+describe('la devolución que sube la caja', () => {
+  /* Cuando esto llega, la plata **ya salió de la gaveta**: un supervisor la
+     autorizó frente al cliente, posiblemente sin internet y horas antes. Este
+     lado no aprueba el hecho; comprueba que el mensaje sea coherente antes de
+     mover el inventario del negocio con él. */
+
+  const DEVOLUCION = {
+    id: '0192f8a1-7c4e-7000-8000-fedcba654321',
+    venta_id: '0192f8a1-7c4e-7000-8000-abcdef123456',
+    consecutivo: 143,
+    turno_id: 't1',
+    total: 5000,
+    medio: 'efectivo',
+    motivo: 'Salió frío',
+    cajero: 'Ana',
+    autorizo: 'Luis',
+    creada_en: '2026-09-20T16:00:00-05:00',
+    items: [{ producto_id: 'p1', nombre: 'Café', variante: '', precio: 5000, cantidad: 1 }],
+  };
+
+  const devolucion = (cambios = {}) => ({ ...DEVOLUCION, ...cambios });
+
+  it('una devolución coherente pasa', () => {
+    const r = validarDevolucion(DEVOLUCION);
+
+    expect(r.ok).toBe(true);
+    expect(r.devolucion.total).toBe(5000);
+    expect(r.devolucion.autorizo).toBe('Luis');
+    expect(r.devolucion.items).toHaveLength(1);
+  });
+
+  it('sin id no hay idempotencia, así que no entra', () => {
+    /* La cola reintenta hasta que le confirmemos. Sin el id, un reintento
+       sumaría el inventario dos veces y el negocio creería tener unidades que
+       no tiene. */
+    expect(validarDevolucion(devolucion({ id: '' })).ok).toBe(false);
+  });
+
+  it('sin quién la autorizó, no entra', () => {
+    /* La misma regla del mostrador, repetida aquí: una devolución sin nombre
+       encima es una salida de efectivo que nadie firmó. */
+    const r = validarDevolucion(devolucion({ autorizo: '   ' }));
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/autoriz/i);
+  });
+
+  it('sin motivo tampoco', () => {
+    expect(validarDevolucion(devolucion({ motivo: 'x' })).ok).toBe(false);
+  });
+
+  it('el total tiene que cuadrar con sus líneas', () => {
+    // Un total inflado sería inventario devuelto que no corresponde.
+    expect(validarDevolucion(devolucion({ total: 50000 })).ok).toBe(false);
+  });
+
+  it('no acepta cantidades que no son cantidades', () => {
+    const r = validarDevolucion(devolucion({
+      items: [{ producto_id: 'p1', nombre: 'Café', variante: '', precio: 5000, cantidad: 0 }],
+    }));
+    expect(r.ok).toBe(false);
+  });
+
+  it('una devolución sin líneas no es una devolución', () => {
+    expect(validarDevolucion(devolucion({ items: [] })).ok).toBe(false);
+  });
+
+  it('la variante viaja para que el stock suba a la talla correcta', () => {
+    /* Mismo id compuesto que en la venta. Sin partirlo, la unidad volvería al
+       producto padre y la talla seguiría figurando agotada. */
+    const r = validarDevolucion(devolucion({
+      total: 40000,
+      items: [{ producto_id: '507f1f77bcf86cd799439011:M|Negro', nombre: 'Camiseta', variante: 'M · Negro', precio: 40000, cantidad: 1 }],
+    }));
+
+    expect(r.ok).toBe(true);
+    expect(r.devolucion.items[0].productId).toBe('507f1f77bcf86cd799439011');
+    expect(r.devolucion.items[0].variante.valores).toEqual(['M', 'Negro']);
+  });
+
+  it('respeta la hora de la caja, no la del servidor', () => {
+    // Una devolución hecha sin internet a las 4 no puede aparecer a las 9.
+    const r = validarDevolucion(DEVOLUCION);
+    expect(r.devolucion.creadaEn.toISOString()).toBe(new Date('2026-09-20T16:00:00-05:00').toISOString());
+  });
+
+  it('guarda con qué se devolvió la plata', () => {
+    /* En efectivo salió de la gaveta y el arqueo de ese turno ya lo restó; por
+       datáfono la reversa la hizo el banco. No son lo mismo al conciliar. */
+    expect(validarDevolucion(devolucion({ medio: 'tarjeta' })).devolucion.medio).toBe('tarjeta');
   });
 });

@@ -11,11 +11,14 @@ const { tenantAuth } = require('../middleware/tenantAuth');
 const CashRegister = require('../Models/CashRegister');
 const BusinessConfig = require('../Models/BusinessConfig');
 const PosCaja = require('../Models/PosCaja');
+const PosDevolucion = require('../Models/PosDevolucion');
 const PosVinculacion = require('../Models/PosVinculacion');
 const { normalizar } = require('../utils/codigoVinculacion');
 const rateLimit = require('express-rate-limit');
 const PosExcepcion = require('../Models/PosExcepcion');
-const { validarVenta, validarCierre, validarExcepcion, aplanarCatalogo } = require('../utils/pos');
+const {
+  validarVenta, validarCierre, validarExcepcion, aplanarCatalogo, validarDevolucion,
+} = require('../utils/pos');
 const { moverStock } = require('../services/inventario');
 const socketService = require('../services/socketService');
 const logger = require('../utils/logger');
@@ -327,6 +330,97 @@ router.post('/sync-sale', tenantAuth, cajaVigente, async (req, res) => {
     }
     logger.error('Error registrando la venta del POS', error, req);
     res.status(500).json({ message: 'No se pudo registrar la venta' });
+  }
+});
+
+/* POST /api/pos/sync-refund — una devolución hecha en el mostrador.
+ *
+ * Llega cuando la plata **ya salió de la gaveta**: un supervisor la autorizó
+ * frente al cliente, posiblemente sin internet y horas antes. Este lado no
+ * aprueba ni rechaza el hecho; lo registra y devuelve las unidades al
+ * inventario, que es lo único que la caja no puede hacer sola —el catálogo
+ * local no lleva existencias—. */
+router.post('/sync-refund', tenantAuth, cajaVigente, async (req, res) => {
+  const businessId = req.user?.businessId || req.body.businessId;
+  if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
+
+  const revisada = validarDevolucion(req.body);
+  if (!revisada.ok) {
+    // 400 y no 500: que la cola sepa que reintentar no va a servir.
+    return res.status(400).json({ message: revisada.error, motivo: 'payload_invalido' });
+  }
+
+  const dev = revisada.devolucion;
+
+  try {
+    /* Idempotencia, igual que en la venta. Sin esto, una devolución cuya
+       respuesta se perdió en el camino sumaría el inventario dos veces al
+       reintentarse, y el negocio creería tener unidades que no tiene. */
+    const yaEstaba = await PosDevolucion.findOne({ businessId, posRefundId: dev.id })
+      .select('_id')
+      .lean();
+
+    if (yaEstaba) {
+      return res.json({ ok: true, duplicada: true, id: yaEstaba._id });
+    }
+
+    /* La orden original, si esta caja la subió. Puede no estar: la venta pudo
+       hacerse en otra terminal, o seguir en su cola. La devolución se registra
+       igual —la plata ya salió— y queda con la referencia del consecutivo. */
+    const original = await CompletedOrder.findOne({ businessId, posSaleId: dev.ventaId })
+      .select('_id orderNumber')
+      .lean();
+
+    const guardada = await PosDevolucion.create({
+      businessId,
+      posRefundId: dev.id,
+      posSaleId: dev.ventaId,
+      orderId: original?._id || null,
+      orderNumber: original?.orderNumber || dev.consecutivo,
+      items: dev.items,
+      total: dev.total,
+      medio: dev.medio,
+      motivo: dev.motivo,
+      cajero: dev.cajero,
+      autorizo: dev.autorizo,
+      turnoId: dev.turnoId,
+      createdAt: dev.creadaEn,
+    });
+
+    /* El inventario vuelve a subir. Signo +1, la misma función que usa todo el
+       sistema: devolver por caja y devolver por el panel tienen que dar
+       exactamente lo mismo. */
+    await moverStock(dev.items, +1, {
+      businessId,
+      type: 'return',
+      orderId: original?._id,
+      orderNumber: original?.orderNumber || dev.consecutivo,
+      userName: dev.cajero,
+      note: `Devolución en caja: ${dev.motivo}`,
+    });
+
+    socketService.emitToBusiness(String(businessId), 'pos_refund_synced', {
+      id: String(guardada._id),
+      orderNumber: guardada.orderNumber,
+      total: dev.total,
+    });
+
+    logger.info('Devolución de caja registrada', {
+      posRefundId: dev.id,
+      businessId: String(businessId),
+      total: dev.total,
+    });
+    res.status(201).json({ ok: true, duplicada: false, id: guardada._id });
+  } catch (error) {
+    // Carrera entre dos reintentos: el índice único decide.
+    if (error.code === 11000) {
+      const existente = await PosDevolucion.findOne({ businessId, posRefundId: dev.id })
+        .select('_id')
+        .lean();
+      if (existente) return res.json({ ok: true, duplicada: true, id: existente._id });
+    }
+    logger.error('Error registrando la devolución del POS', error, req);
+    res.status(500).json({ message: 'No se pudo registrar la devolución' });
   }
 });
 

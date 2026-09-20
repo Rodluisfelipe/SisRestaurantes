@@ -12,6 +12,7 @@ pub mod auditoria;
 pub mod catalogo;
 pub mod cuentas;
 pub mod db;
+pub mod devoluciones;
 pub mod dinero;
 pub mod escpos;
 pub mod pagos;
