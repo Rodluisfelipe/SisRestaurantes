@@ -36,7 +36,7 @@ function buildPromoPayload(form) {
  */
 export default function useProductHandlers({ businessId, products, setProducts, toppingGroups, loadData }) {
   const [form, setForm] = useState({
-    name: '', description: '', price: '', category: '', image: '', toppingGroups: [],
+    name: '', description: '', price: '', category: '', image: '', images: [], opciones: [], variantes: [], toppingGroups: [],
     itemType: 'product', durationMinutes: ''
   });
   const [touchedFields, setTouchedFields] = useState({});
@@ -119,7 +119,7 @@ export default function useProductHandlers({ businessId, products, setProducts, 
   };
 
   const resetForm = () => {
-    setForm({ name: '', description: '', price: '', category: '', image: '', toppingGroups: [], itemType: 'product', durationMinutes: '', trackStock: false, stock: '', lowStockAlert: '5' });
+    setForm({ name: '', description: '', price: '', category: '', image: '', images: [], opciones: [], variantes: [], toppingGroups: [], itemType: 'product', durationMinutes: '', trackStock: false, stock: '', lowStockAlert: '5' });
     setTouchedFields({});
     setEditingId(null);
     setEditingProduct(null);
@@ -147,7 +147,20 @@ export default function useProductHandlers({ businessId, products, setProducts, 
       lowStockAlert: form.trackStock && form.lowStockAlert !== '' ? parseInt(form.lowStockAlert, 10) : 5,
       promo: buildPromoPayload(form),
     };
-    if (form.image) payload.image = form.image;
+    /* Variantes (solo tiendas). Se mandan siempre que el formulario las
+       traiga, aunque vengan vacías: así quitar la última opción también se
+       guarda. */
+    if (Array.isArray(form.opciones)) payload.opciones = form.opciones;
+    if (Array.isArray(form.variantes)) payload.variantes = form.variantes;
+
+    // La primera foto de la galería es la principal del producto.
+    const galeria = Array.isArray(form.images) ? form.images.filter(Boolean) : [];
+    if (galeria.length) {
+      payload.images = galeria;
+      payload.image = galeria[0];
+    } else if (form.image) {
+      payload.image = form.image;
+    }
     if (form.itemType) payload.itemType = form.itemType;
     if (form.itemType === 'service' && form.durationMinutes) payload.durationMinutes = parseInt(form.durationMinutes, 10);
 
@@ -176,7 +189,10 @@ export default function useProductHandlers({ businessId, products, setProducts, 
         description: form.description,
         price: parseFloat(form.price.replace(/\./g, '')),
         category: form.category,
-        image: form.image,
+        images: Array.isArray(form.images) ? form.images.filter(Boolean) : [],
+        opciones: Array.isArray(form.opciones) ? form.opciones : [],
+        variantes: Array.isArray(form.variantes) ? form.variantes : [],
+        image: (Array.isArray(form.images) && form.images.filter(Boolean)[0]) || form.image || '',
         toppingGroups: toppingGroupIds,
         businessId,
         itemType: form.itemType || 'product',
@@ -228,6 +244,12 @@ export default function useProductHandlers({ businessId, products, setProducts, 
       price: product.price.toString(),
       category: product.category || '',
       image: product.image || '',
+      // Productos de antes de la galería: su única foto pasa a ser la principal.
+      images: Array.isArray(product.images) && product.images.length
+        ? product.images.filter(Boolean)
+        : (product.image ? [product.image] : []),
+      opciones: Array.isArray(product.opciones) ? product.opciones : [],
+      variantes: Array.isArray(product.variantes) ? product.variantes : [],
       toppingGroups: processedToppingGroups
     });
   };

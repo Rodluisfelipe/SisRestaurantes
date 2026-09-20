@@ -30,6 +30,21 @@ const businessConfigSchema = new mongoose.Schema({
     enum: ['fast_food', 'restaurant', 'cafe', 'bakery', 'ice_cream', 'bar', 'food_truck', 'salon', 'spa', 'clinic', 'services', 'hotel', 'other'],
     default: 'restaurant'
   },
+  /**
+   * Cómo funciona la tienda. Lo pone el superadmin y no lo cambia el negocio.
+   *
+   * restaurante — MenuBy de siempre: carta, domicilio por zonas, mesas.
+   * ecommerce   — ropa, perfumería y demás: variantes (talla, color), stock
+   *               por variante, referencia y envío a otras ciudades.
+   *
+   * Por defecto todos siguen siendo restaurante: lo nuevo solo se enciende
+   * donde hace falta, sin tocar a los que ya están funcionando.
+   */
+  tipoTienda: {
+    type: String,
+    enum: ['restaurante', 'ecommerce'],
+    default: 'restaurante'
+  },
   // Booking / appointment system
   enableBookings: {
     type: Boolean,

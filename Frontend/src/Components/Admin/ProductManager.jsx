@@ -2,7 +2,8 @@ import { useState, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import ProductFormToppingSelector from '../ProductFormToppingSelector';
 import ProductToppingOrderSelector from '../ProductToppingOrderSelector';
-import ImageUploader from './ImageUploader';
+import GaleriaProducto from './GaleriaProducto';
+import EditorVariantes from './EditorVariantes';
 import api from '../../services/api';
 import { useBusinessConfig } from '../../Context/BusinessContext';
 import AI from './AdminIcons';
@@ -52,6 +53,9 @@ export default function ProductManager({
   const priceInputRef = useRef(null);
   const { businessConfig } = useBusinessConfig();
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
+  /* Las variantes (talla, color, fragancia…) solo existen en los negocios que
+     MenuBy marcó como tienda. Un restaurante no ve nada de esto. */
+  const esTienda = businessConfig?.tipoTienda === 'ecommerce';
 
   // Generate AI names
   const generateAiNames = async () => {
@@ -475,16 +479,27 @@ export default function ProductManager({
 
                       <div className="space-y-1">
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-                          <FaImage className="text-slate-400 text-[10px]" />{isService ? 'Imagen del servicio' : 'Imagen del producto'}
+                          <FaImage className="text-slate-400 text-[10px]" />{isService ? 'Fotos del servicio' : 'Fotos del producto'}
                         </label>
-                        <ImageUploader
-                          value={form.image}
-                          onChange={(url) => setForm(prev => ({ ...prev, image: url }))}
-                          folder="products"
-                          maxWidth={800}
-                          quality={80}
+                        <GaleriaProducto
+                          valor={form.images && form.images.length ? form.images : (form.image ? [form.image] : [])}
+                          onChange={(images) => setForm(prev => ({ ...prev, images, image: images[0] || '' }))}
                         />
                       </div>
+
+                      {esTienda && (
+                        <div className="space-y-1">
+                          <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                            Variantes (talla, color, fragancia…)
+                          </label>
+                          <EditorVariantes
+                            opciones={form.opciones || []}
+                            variantes={form.variantes || []}
+                            fotos={form.images && form.images.length ? form.images : (form.image ? [form.image] : [])}
+                            onChange={({ opciones, variantes }) => setForm(prev => ({ ...prev, opciones, variantes }))}
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
 

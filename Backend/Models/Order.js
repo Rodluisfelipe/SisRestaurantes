@@ -404,6 +404,12 @@ const orderSchema = new mongoose.Schema({
       required: true,
       default: 1
     },
+    /* Solo en tiendas: qué talla, color o fragancia se vendió. Sin esto no
+       se sabría qué despachar ni a qué variante devolverle el stock. */
+    variante: {
+      valores: [{ type: String, trim: true, maxlength: 40 }],
+      sku: { type: String, trim: true, maxlength: 40, default: '' }
+    },
     selectedToppings: [{
       groupName: String,
       optionName: String,

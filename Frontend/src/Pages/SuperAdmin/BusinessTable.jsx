@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
-import { fetchBusinesses, activateBusiness, deleteBusiness, togglePosBeta, toggleMenuV2, toggleMarketplace, toggleSupplier, getBusinessCredentials, resetBusinessCredentials, toggleAddon } from "../../services/superadminApi";
+import { fetchBusinesses, activateBusiness, deleteBusiness, togglePosBeta, toggleMenuV2, toggleMarketplace,
+  setTipoTienda, toggleSupplier, getBusinessCredentials, resetBusinessCredentials, toggleAddon } from "../../services/superadminApi";
 import { socket } from "../../services/socket";
 import { motion, AnimatePresence } from "framer-motion";
 import { SAToast } from "../../Components/SuperAdmin/ui";
@@ -345,6 +346,22 @@ export default function BusinessTable({ refreshTrigger }) {
     }
   };
 
+  /* Tipo de tienda. Lo decide MenuBy, no el negocio: enciende las funciones
+     de ecommerce (variantes, stock por talla/color, envíos) sin tocar a los
+     restaurantes, que siguen exactamente igual. */
+  const handleTipoTienda = async (b) => {
+    const actual = b.tipoTienda === 'ecommerce' ? 'ecommerce' : 'restaurante';
+    const nuevo = actual === 'ecommerce' ? 'restaurante' : 'ecommerce';
+    if (nuevo === 'ecommerce' && !confirm(`¿Pasar ${b.businessName} a tienda (ecommerce)? Verá variantes, stock por talla o color y envíos, en vez de la carta de restaurante.`)) return;
+    try {
+      await setTipoTienda(b._id, nuevo);
+      showMessage(`${b.businessName} ahora es ${nuevo === 'ecommerce' ? 'tienda (ecommerce)' : 'restaurante'}`);
+      loadBusinesses();
+    } catch (err) {
+      showMessage(err?.response?.data?.message || 'Error al cambiar el tipo de tienda', 'error');
+    }
+  };
+
   const handleToggleSupplier = async (b) => {
     const current = b.isSupplier || false;
     try {
@@ -621,6 +638,21 @@ export default function BusinessTable({ refreshTrigger }) {
                     >
                       <span className={`w-1.5 h-1.5 rounded-full ${b.showInMarketplace !== false ? 'bg-violet-400' : 'bg-slate-300'}`} />
                       {b.showInMarketplace !== false ? 'Visible ✓' : 'Oculto'}
+                    </button>
+                    {/* Restaurante o tienda: cambia qué funciones ve el negocio */}
+                    <button
+                      onClick={() => handleTipoTienda(b)}
+                      title={b.tipoTienda === 'ecommerce'
+                        ? 'Es una tienda: variantes, stock por talla o color y envíos. Pulsa para volverlo restaurante'
+                        : 'Es un restaurante (carta, mesas, domicilio por zonas). Pulsa para volverlo tienda'}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 ml-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                        b.tipoTienda === 'ecommerce'
+                          ? 'bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-200'
+                          : 'bg-slate-100 text-slate-500 border border-slate-200 hover:text-slate-900'
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${b.tipoTienda === 'ecommerce' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                      {b.tipoTienda === 'ecommerce' ? '🛍️ Tienda' : '🍔 Restaurante'}
                     </button>
                   </td>
                   <td className="py-3.5 px-4">

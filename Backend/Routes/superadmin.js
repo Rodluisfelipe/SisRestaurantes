@@ -54,6 +54,28 @@ router.patch('/business/:id/pos-beta', requireRole('admin'), async (req, res) =>
   }
 });
 
+// Tipo de tienda (restaurante o ecommerce) — admin+
+const TIPOS_DE_TIENDA = ['restaurante', 'ecommerce'];
+
+router.patch('/business/:id/tipo-tienda', requireRole('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tipo } = req.body;
+    if (!TIPOS_DE_TIENDA.includes(tipo)) {
+      return res.status(400).json({ message: 'Tipo de tienda inválido: usa restaurante o ecommerce' });
+    }
+    const negocio = await BusinessConfig.findByIdAndUpdate(id, { tipoTienda: tipo }, { new: true });
+    if (!negocio) return res.status(404).json({ message: 'Negocio no encontrado' });
+    const io = req.app.get('io');
+    if (io) io.emit('businesses-updated');
+    logger.info('Tipo de tienda cambiado', { businessId: id, tipo, por: req.user?.email });
+    res.json(negocio);
+  } catch (error) {
+    logger.error('Error cambiando el tipo de tienda', error);
+    res.status(500).json({ message: 'Error al cambiar el tipo de tienda' });
+  }
+});
+
 /* Aparecer o no en las recomendaciones — admin+
    Manda a la vez en la tira "Descubre más" de otros menús y en el catálogo
    público: son la misma pregunta. Apagarlo no toca el menú propio del

@@ -6,6 +6,8 @@ const mongoose = require("mongoose");
 const { validateAndResolveBusinessId, createBusinessFilter } = require("../utils/businessValidator");
 const { resolveBusinessId } = require("../utils/businessResolver");
 const logger = require("../utils/logger");
+const { normalizarImagenes } = require("../utils/imagenesProducto");
+const { normalizarOpciones, normalizarVariantes } = require("../utils/variantesProducto");
 const { formatHttpError } = require("../utils/errorFormatter");
 const { tenantAuth } = require("../middleware/tenantAuth");
 const { audit } = require('../utils/auditLog');
@@ -673,6 +675,19 @@ router.post("/", tenantAuth, validateProductInput, async (req, res) => {
     // Force businessId from authenticated user's token, fallback for superadmin
     productData.businessId = req.user.businessId || req.body.businessId;
 
+    // La galería manda: `image` queda siempre igual a la primera foto.
+    if (productData.images !== undefined || productData.image !== undefined) {
+      productData.images = normalizarImagenes(productData.images, productData.image);
+      productData.image = productData.images[0] || '';
+    }
+
+    // Variantes: mandan las opciones; una combinación sin eje que la respalde
+    // se descarta antes de guardarla.
+    if (productData.opciones !== undefined || productData.variantes !== undefined) {
+      productData.opciones = normalizarOpciones(productData.opciones);
+      productData.variantes = normalizarVariantes(productData.variantes, productData.opciones);
+    }
+
     const currentCount = await Product.countDocuments({ businessId: productData.businessId });
     const limitStatus = await getPlanLimitStatus({
       businessId: productData.businessId,
@@ -951,7 +966,19 @@ router.put("/:id/toggle-featured", tenantAuth, validateToggleFeatured, async (re
 router.put("/:id", tenantAuth, validateUpdateProductParam, validateProductInput, async (req, res) => {
   try {
     const productId = req.params.id;
-    const { name, description, price, category, image, toppingGroups, promo } = req.body;
+    const { name, description, price, category, image, images, opciones, variantes, toppingGroups, promo } = req.body;
+
+    /* Solo se toca la galería si el panel la envió. Un panel viejo manda solo
+       `image`, y no debe borrar las fotos que el negocio ya tenía. */
+    const galeria = images !== undefined ? normalizarImagenes(images, image) : null;
+
+    /* Igual con las variantes: si el panel no las envía, se dejan como están
+       (un panel viejo no debe borrar el catálogo de tallas de una tienda). */
+    let catalogo = null;
+    if (opciones !== undefined || variantes !== undefined) {
+      const ejes = normalizarOpciones(opciones);
+      catalogo = { opciones: ejes, variantes: normalizarVariantes(variantes, ejes) };
+    }
     
     // Force businessId from token, fallback to body for superadmin
     const finalBusinessId = req.user.businessId || req.body.businessId;
@@ -985,7 +1012,9 @@ router.put("/:id", tenantAuth, validateUpdateProductParam, validateProductInput,
         toppingGroups: toppingGroups || [],
         toppingGroupsOrder: toppingGroupsOrder,
         // Solo actualizar promo si el cliente la envió (no borrarla en clientes viejos)
-        ...(promo !== undefined ? { promo } : {})
+        ...(promo !== undefined ? { promo } : {}),
+        ...(galeria ? { images: galeria, image: galeria[0] || '' } : {}),
+        ...(catalogo || {})
       },
       { new: true }
     ).populate({

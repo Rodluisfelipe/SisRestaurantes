@@ -13,6 +13,52 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
   const [expandedDesc, setExpandedDesc] = useState(false);
   const [scrollToRequired, setScrollToRequired] = useState(false);
   const [imageExpanded, setImageExpanded] = useState(false);
+  /* Galería: la principal es `image` y las demás llegan en `images`. En el
+     menú solo se carga la principal; el resto llega al abrir el producto. */
+  const fotos = React.useMemo(() => {
+    const lista = [product.image, ...(Array.isArray(product.images) ? product.images : [])];
+    return [...new Set(lista.filter(Boolean))];
+  }, [product.image, product.images]);
+  const [fotoActual, setFotoActual] = useState(0);
+  const carruselRef = React.useRef(null);
+
+  /* Tiendas: el cliente elige talla, color o fragancia antes de agregar. Los
+     ejes los define el negocio, así que aquí no se asume ninguno. */
+  const ejes = (Array.isArray(product.opciones) ? product.opciones : [])
+    .filter((o) => o && o.nombre && Array.isArray(o.valores) && o.valores.length);
+  const variantesActivas = (Array.isArray(product.variantes) ? product.variantes : [])
+    .filter((v) => v && v.activo !== false && Array.isArray(v.valores));
+  const [eleccion, setEleccion] = useState(() => ejes.map(() => ''));
+
+  const varianteElegida = ejes.length
+    ? variantesActivas.find((v) => v.valores.length === ejes.length && v.valores.every((valor, i) => valor === eleccion[i]))
+    : null;
+  const precioBase = (varianteElegida && varianteElegida.precio != null) ? varianteElegida.precio : (product.price || 0);
+  const diferenciaVariante = precioBase - (product.price || 0);
+  const faltaElegir = ejes.length > 0 && !varianteElegida;
+  const sinStock = Boolean(varianteElegida) && Number(varianteElegida.stock) <= 0;
+
+  /* Un valor se ve agotado si no queda ninguna variante con stock que lo
+     incluya, contando lo que ya eligió el cliente en los otros ejes. */
+  const valorDisponible = (indice, valor) => variantesActivas.some(
+    (v) => v.valores[indice] === valor &&
+      Number(v.stock) > 0 &&
+      eleccion.every((sel, j) => j === indice || !sel || v.valores[j] === sel)
+  );
+
+  const elegirValor = (indice, valor) =>
+    setEleccion((previa) => previa.map((v, i) => (i === indice ? (v === valor ? '' : valor) : v)));
+
+  // Al elegir un color, se muestra su foto.
+  useEffect(() => {
+    const foto = varianteElegida && varianteElegida.imagen;
+    if (!foto) return;
+    const i = fotos.indexOf(foto);
+    if (i < 0) return;
+    setFotoActual(i);
+    const caja = carruselRef.current;
+    if (caja) caja.scrollTo({ left: i * caja.clientWidth, behavior: 'smooth' });
+  }, [varianteElegida, fotos]);
 
   // Función para verificar si una opción es gratis
   const isFreeOption = (optionName) => {
@@ -459,6 +505,15 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
 
   const handleAddToCart = () => {
     try {
+      if (faltaElegir) {
+        setError('Elige ' + ejes.map((e) => e.nombre.toLowerCase()).join(' y ') + ' antes de agregar');
+        return;
+      }
+      if (sinStock) {
+        setError('Esa combinación está agotada');
+        return;
+      }
+
       // Si no es válido, encontrar el siguiente grupo obligatorio que falte
       if (!isValid) {
         setError(null);
@@ -522,12 +577,18 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
       
       // Crear un objeto con los datos del producto y sus opciones seleccionadas
       // totalPrice debe ser el precio UNITARIO (producto + extras), sin multiplicar por cantidad
-      const unitPrice = (Number(product.price || 0) + (extraTotal || 0));
+      const unitPrice = (Number(precioBase || 0) + (extraTotal || 0));
       const productToAdd = {
         ...product,
         selectedToppings: selectedToppingsData,
         quantity: quantity,
-        totalPrice: unitPrice
+        totalPrice: unitPrice,
+        ...(varianteElegida ? {
+          // El precio de la variante manda sobre el del producto.
+          price: precioBase,
+          name: product.name + ' (' + varianteElegida.valores.join(' · ') + ')',
+          variante: { valores: varianteElegida.valores, sku: varianteElegida.sku || '' }
+        } : {})
       };
       
       // Llamar a la función de callback
@@ -745,7 +806,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
   return (
     <>
     {/* ── Fullscreen image lightbox ── */}
-    {imageExpanded && product.image && (
+    {imageExpanded && fotos[fotoActual] && (
       <div
         className="fixed inset-0 bg-black/90 backdrop-blur-md z-[140] flex items-center justify-center p-4"
         onClick={() => setImageExpanded(false)}
@@ -758,7 +819,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
         </button>
         <img
-          src={product.image}
+          src={fotos[fotoActual]}
           alt={product.name}
           className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
           onClick={(e) => e.stopPropagation()}
@@ -787,14 +848,42 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
             <div className="w-10 h-1 rounded-full bg-white/50" />
           </div>
 
-          {product.image ? (
+          {fotos.length > 0 ? (
             <div className="relative overflow-hidden rounded-t-3xl sm:rounded-t-2xl bg-slate-50">
-              <img
-                src={product.image}
-                alt={product.name}
-                className="w-full max-h-[50vh] object-contain"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10" />
+              {/* Se desliza con el dedo y cada foto encaja sola. */}
+              <div
+                ref={carruselRef}
+                className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+                onScroll={(e) => {
+                  const ancho = e.currentTarget.clientWidth || 1;
+                  setFotoActual(Math.round(e.currentTarget.scrollLeft / ancho));
+                }}
+              >
+                {fotos.map((foto, i) => (
+                  <img
+                    key={foto + i}
+                    src={foto}
+                    alt={fotos.length > 1 ? `${product.name} · foto ${i + 1} de ${fotos.length}` : product.name}
+                    loading={i === 0 ? 'eager' : 'lazy'}
+                    className="w-full flex-shrink-0 snap-center max-h-[50vh] object-contain"
+                  />
+                ))}
+              </div>
+
+              {/* Puntos arriba: abajo está el nombre y a los lados los botones. */}
+              {fotos.length > 1 && (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/35 backdrop-blur-md">
+                  {fotos.map((foto, i) => (
+                    <span
+                      key={'punto-' + foto + i}
+                      className={`rounded-full transition-all ${i === fotoActual ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/50'}`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* El degradado no debe comerse el gesto del carrusel. */}
+              <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/70 via-black/20 to-black/10" />
               {/* Expand image button */}
               <button
                 className="absolute top-3 left-3 w-8 h-8 rounded-xl bg-black/30 backdrop-blur-md text-white/90 hover:bg-black/50 transition-all flex items-center justify-center z-20"
@@ -1233,12 +1322,59 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
         
         {/* ── Footer: price + add button ── */}
         <div className="border-t border-slate-100 bg-white px-4 py-3 sm:py-4 flex-shrink-0 rounded-b-2xl">
+          {/* Tiendas: talla, color, fragancia… lo que el negocio haya definido */}
+          {ejes.length > 0 && (
+            <div className="mb-3 space-y-2.5">
+              {ejes.map((eje, i) => (
+                <div key={eje.nombre}>
+                  <p className="mb-1 text-[12px] font-semibold text-slate-600">
+                    {eje.nombre}
+                    {!eleccion[i] && <span className="ml-1 font-normal text-slate-400">· elige una opción</span>}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {eje.valores.map((valor) => {
+                      const elegido = eleccion[i] === valor;
+                      const hay = valorDisponible(i, valor);
+                      return (
+                        <button
+                          key={valor}
+                          type="button"
+                          onClick={() => elegirValor(i, valor)}
+                          disabled={!hay && !elegido}
+                          className={`px-3 py-1.5 rounded-full text-[13px] font-medium border transition-all ${
+                            elegido
+                              ? 'border-slate-900 bg-slate-900 text-white'
+                              : hay
+                                ? 'border-slate-200 text-slate-700 hover:border-slate-400'
+                                : 'border-slate-100 text-slate-300 line-through cursor-not-allowed'
+                          }`}
+                        >
+                          {valor}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              {varianteElegida && (
+                <p className="text-[11.5px] text-slate-400">
+                  {Number(varianteElegida.stock) > 0
+                    ? (Number(varianteElegida.stock) <= 5
+                        ? `Quedan ${varianteElegida.stock}`
+                        : 'Disponible')
+                    : 'Agotado'}
+                  {varianteElegida.sku ? ` · ${varianteElegida.sku}` : ''}
+                </p>
+              )}
+            </div>
+          )}
           {/* Add to cart button — full width capsule with price embedded */}
           <button
             onClick={handleAddToCart}
+            disabled={faltaElegir || sinStock}
             className={`w-full py-4 rounded-full font-bold text-[15px] flex items-center justify-center gap-3 transition-all duration-200 active:scale-[0.97] ${
-              isValid ? '' : 'opacity-60'
-            }`}
+              isValid && !faltaElegir && !sinStock ? '' : 'opacity-60'
+            } ${faltaElegir || sinStock ? 'cursor-not-allowed' : ''}`}
             style={{ 
               backgroundColor: themeBtn, 
               color: themeTxt,
@@ -1252,7 +1388,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
             </span>
             <span className="w-px h-5 bg-white/20" />
             <span className="font-extrabold tabular-nums text-base">
-              ${displayTotal.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              ${(displayTotal + diferenciaVariante * quantity).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </span>
             {extraTotal > 0 && (
               <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-white/15">

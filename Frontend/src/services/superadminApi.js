@@ -163,6 +163,17 @@ export const toggleMenuV2 = async (id, enabled) => {
   }
 };
 
+/* Tipo de tienda: 'restaurante' (MenuBy de siempre) o 'ecommerce' (ropa,
+   perfumería: variantes, stock por talla/color y envíos). */
+export const setTipoTienda = async (id, tipo) => {
+  try {
+    const response = await superadminApi.patch(`/business/${id}/tipo-tienda`, { tipo });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const toggleSupplier = async (id, enabled) => {
   try {
     const response = await superadminApi.patch(`/business/${id}/supplier`, { enabled });

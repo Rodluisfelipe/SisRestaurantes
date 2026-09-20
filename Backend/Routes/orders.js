@@ -1680,6 +1680,47 @@ async function moverStock(items, signo, contexto = {}) {
       const cantidad = (Number(item.quantity) || 1) * signo;
       if (!cantidad) return;
 
+      /* Tiendas: el stock vive en cada variante (talla, color, fragancia),
+         no en el producto. La combinación completa es lo único que identifica
+         a una variante, así que se compara valor por valor.
+
+         Se lee y luego se escribe, no en una sola operación atómica: dos
+         pedidos de la misma talla en el mismo instante podrían descontar uno
+         solo. Con el volumen de una tienda pequeña es asumible, y el conteo se
+         corrige desde Inventario; conviene revisarlo si el negocio crece. */
+      const combinacion = item && item.variante && item.variante.valores;
+      if (Array.isArray(combinacion) && combinacion.length) {
+        const producto = await Product.findById(item.productId)
+          .select('name businessId variantes')
+          .lean();
+        const i = (producto?.variantes || []).findIndex(
+          (v) => Array.isArray(v.valores) &&
+            v.valores.length === combinacion.length &&
+            v.valores.every((valor, k) => String(valor).toLowerCase() === String(combinacion[k]).toLowerCase())
+        );
+        if (!producto || i === -1) return;
+
+        const saldoAntes = Number(producto.variantes[i].stock) || 0;
+        const saldoDespues = Math.max(0, saldoAntes + cantidad);
+        await Product.updateOne({ _id: item.productId }, { $set: { ['variantes.' + i + '.stock']: saldoDespues } });
+
+        await StockMovement.create({
+          businessId: producto.businessId,
+          productId: item.productId,
+          productName: producto.name + ' (' + combinacion.join(' · ') + ')',
+          type: contexto.type || (signo < 0 ? 'sale' : 'return'),
+          quantity: saldoDespues - saldoAntes,
+          stockBefore: saldoAntes,
+          stockAfter: saldoDespues,
+          orderId: contexto.orderId || null,
+          orderNumber: contexto.orderNumber || '',
+          userId: contexto.userId || null,
+          userName: contexto.userName || '',
+          note: contexto.note || '',
+        }).catch(() => {});
+        return;
+      }
+
       /* Solo en avanzado: si el producto tiene receta, lo que se mueve son sus
          insumos y el contador del producto se deja quieto. Llevar los dos a la
          vez daría un doble descuento del mismo consumo. */
