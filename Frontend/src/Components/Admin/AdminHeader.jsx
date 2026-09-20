@@ -15,6 +15,7 @@ const TAB_CONFIG = {
   'coupons':          { title: 'Gestión de Cupones',      desc: 'Crea y gestiona cupones de descuento para tu negocio' },
   'tables':           { title: 'Configuración de Mesas',  desc: 'Administra mesas y códigos QR' },
   'devoluciones':     { title: 'Devoluciones',            desc: 'Cambios, reintegros y qué vuelve a bodega' },
+  'cajas':            { title: 'Cajas registradoras',     desc: 'Conecta o desvincula una terminal' },
   'delivery-zones':   { title: 'Zonas de Entrega',        desc: 'Define áreas de cobertura, precios y tiempos de entrega' },
   'theme':            { title: 'Personalización de Tema',  desc: 'Personaliza la apariencia de tu menú digital' },
   'location':         { title: 'Configuración de Ubicación', desc: 'Configura tu ubicación para el catálogo' },

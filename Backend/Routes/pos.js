@@ -11,6 +11,9 @@ const { tenantAuth } = require('../middleware/tenantAuth');
 const CashRegister = require('../Models/CashRegister');
 const BusinessConfig = require('../Models/BusinessConfig');
 const PosCaja = require('../Models/PosCaja');
+const PosVinculacion = require('../Models/PosVinculacion');
+const { normalizar } = require('../utils/codigoVinculacion');
+const rateLimit = require('express-rate-limit');
 const PosExcepcion = require('../Models/PosExcepcion');
 const { validarVenta, validarCierre, validarExcepcion, aplanarCatalogo } = require('../utils/pos');
 const { moverStock } = require('../services/inventario');
@@ -84,6 +87,87 @@ async function siguienteNumero(businessId) {
     return Date.now().toString();
   }
 }
+
+/* Adivinar un código de ocho caracteres son 2^39 intentos. Con esto, además,
+   hay que hacerlos de a diez por minuto desde la misma IP. */
+const limiteVinculacion = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { message: 'Demasiados intentos. Espera un minuto.', motivo: 'demasiados_intentos' },
+});
+
+/* POST /api/pos/vincular — canjear el código por el token de la caja.
+ *
+ * Es la única ruta del POS sin autenticación, y tiene que serlo: una caja
+ * recién instalada no tiene con qué autenticarse todavía. Lo que la protege es
+ * el código: ocho caracteres, diez minutos de vida, un solo uso y diez intentos
+ * por minuto.
+ */
+router.post('/vincular', limiteVinculacion, async (req, res) => {
+  const codigo = normalizar(req.body.codigo);
+  if (codigo.length < 6) {
+    return res.status(400).json({ message: 'Escribe el código completo', motivo: 'codigo_corto' });
+  }
+
+  try {
+    /* Se marca como usado en la misma operación que se busca: dos cajas que
+       canjeen el mismo código en el mismo segundo no pueden nacer las dos. */
+    const vinculacion = await PosVinculacion.findOneAndUpdate(
+      { codigo, usadoEn: null, expiraEn: { $gt: new Date() } },
+      { $set: { usadoEn: new Date() } },
+      { new: true },
+    );
+
+    if (!vinculacion) {
+      /* El mismo mensaje para "no existe", "ya se usó" y "venció": distinguirlos
+         le diría a quien prueba códigos al azar cuándo acertó uno. */
+      return res.status(404).json({
+        message: 'Ese código no sirve. Pide uno nuevo desde el panel.',
+        motivo: 'codigo_invalido',
+      });
+    }
+
+    const businessId = vinculacion.businessId;
+    const tokenId = crypto.randomUUID();
+    const dias = 90;
+
+    const token = jwt.sign(
+      {
+        id: String(businessId),
+        businessId: String(businessId),
+        role: 'admin',
+        scope: 'pos',
+        caja: vinculacion.nombre,
+        jti: tokenId,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: `${dias}d` },
+    );
+
+    const caja = await PosCaja.create({
+      businessId,
+      nombre: vinculacion.nombre,
+      tokenId,
+      vinculadaPor: vinculacion.creadaPor,
+      venceEn: new Date(Date.now() + dias * 24 * 60 * 60 * 1000),
+    });
+
+    await PosVinculacion.updateOne({ _id: vinculacion._id }, { $set: { usadoPorCaja: caja._id } });
+
+    const negocio = await BusinessConfig.findById(businessId).select('businessName').lean();
+
+    logger.info('Caja vinculada por código', { businessId: String(businessId), caja: vinculacion.nombre });
+    res.json({
+      token,
+      negocio: negocio?.businessName || '',
+      caja: vinculacion.nombre,
+      vence_en_dias: dias,
+    });
+  } catch (error) {
+    logger.error('Error vinculando la caja', error, req);
+    res.status(500).json({ message: 'No se pudo vincular la caja' });
+  }
+});
 
 /* POST /api/pos/pair — emparejar una caja con este negocio.
  *

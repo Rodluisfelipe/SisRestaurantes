@@ -598,6 +598,37 @@ pub struct Emparejada {
     vence_en_dias: i64,
 }
 
+/// Vincula esta caja con el código que el dueño sacó del panel.
+#[tauri::command]
+async fn vincular(
+    estado: State<'_, Estado>,
+    url: String,
+    codigo: String,
+    caja: String,
+) -> Result<Emparejada, String> {
+    let base = url.trim_end_matches('/').to_string();
+    let limpia = base.clone();
+
+    let resultado = tauri::async_runtime::spawn_blocking(move || {
+        nube::vincular(&limpia, &codigo, &caja)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+
+    credenciales::guardar(&resultado.token)?;
+
+    let conexion = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    conexion
+        .execute(
+            "INSERT INTO ajustes (clave, valor) VALUES ('nube_url', ?1)
+             ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor",
+            rusqlite::params![base],
+        )
+        .map_err(|e| e.to_string())?;
+
+    Ok(Emparejada { negocio: resultado.negocio, vence_en_dias: resultado.vence_en_dias })
+}
+
 /// Empareja esta caja con un negocio.
 ///
 /// Recibe la sesión del panel —la que el dueño copia una vez— y guarda a cambio
@@ -1075,6 +1106,7 @@ pub fn run() {
             desconectar_nube,
             conectada,
             emparejar,
+            vincular,
             probar_nube,
             url_nube,
             impresoras,

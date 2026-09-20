@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { conectada, desconectarNube, emparejar, probarNube, sincronizar, urlNube } from './nativo';
+import { conectada, desconectarNube, emparejar, probarNube, sincronizar, urlNube, vincular } from './nativo';
 
 /**
  * Conectar esta caja con MenuBy.
@@ -16,8 +16,13 @@ import { conectada, desconectarNube, emparejar, probarNube, sincronizar, urlNube
  */
 export default function Nube({ onCerrar }: { onCerrar: () => void }) {
   const [url, setUrl] = useState('https://api.menuby.tech/api');
+  const [codigo, setCodigo] = useState('');
   const [token, setToken] = useState('');
-  const [caja, setCaja] = useState('caja-1');
+  const [caja, setCaja] = useState('Caja principal');
+  /* La vía de soporte, escondida: cambiar una sesión del panel por el token.
+     Sirve cuando alguien ya tiene el token y no puede entrar al panel, y no
+     tiene por qué estorbar al 99% que solo va a escribir un código. */
+  const [modoSoporte, setModoSoporte] = useState(false);
   const [yaConectada, setYaConectada] = useState(false);
   const [negocio, setNegocio] = useState('');
   const [aviso, setAviso] = useState('');
@@ -28,6 +33,23 @@ export default function Nube({ onCerrar }: { onCerrar: () => void }) {
     conectada().then(setYaConectada).catch(() => {});
     urlNube().then((u) => u && setUrl(u)).catch(() => {});
   }, []);
+
+  const conectarConCodigo = async () => {
+    setOcupado(true);
+    setError('');
+    setAviso('');
+    try {
+      const r = await vincular(url, codigo, caja);
+      setNegocio(r.negocio);
+      setYaConectada(true);
+      setCodigo('');
+      setAviso(`Conectada a ${r.negocio || 'tu negocio'}. Ya puedes sincronizar.`);
+    } catch (e) {
+      setError(String(e).replace(/^Error:\s*/, ''));
+    } finally {
+      setOcupado(false);
+    }
+  };
 
   const conectar = async () => {
     setOcupado(true);
@@ -89,63 +111,79 @@ export default function Nube({ onCerrar }: { onCerrar: () => void }) {
           </p>
         </div>
 
-        <div className="space-y-1">
-          <label className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
-            Servidor de MenuBy
-          </label>
-          <input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            className="w-full h-11 px-3 rounded-xl border-2 border-slate-200 text-[13px] outline-none focus:border-slate-900"
-          />
-        </div>
+{!modoSoporte ? (
+          <>
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                Código de vinculación
+              </label>
+              {/* Grande y espaciado: se escribe mirando un papel o escuchando a
+                  alguien por teléfono, no copiando y pegando. */}
+              <input
+                autoFocus
+                value={codigo}
+                onChange={(e) => setCodigo(e.target.value.toUpperCase().slice(0, 12))}
+                onKeyDown={(e) => { if (e.key === 'Enter' && codigo.length >= 8) conectarConCodigo(); }}
+                placeholder="ABCD-EFGH"
+                className="w-full h-16 px-3 rounded-xl border-2 border-slate-200 text-center text-3xl font-black tracking-[0.25em] uppercase outline-none focus:border-slate-900"
+              />
+              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-[12px] text-slate-600 space-y-1">
+                <p className="font-bold text-slate-700">Dónde sale este código</p>
+                <p>En el panel de MenuBy: <b>Cajas</b> → <b>Vincular nueva caja</b>.</p>
+                <p className="text-slate-400">Dura diez minutos y sirve una sola vez.</p>
+              </div>
+            </div>
 
-        <div className="space-y-1">
-          <label className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
-            Nombre de esta caja
-          </label>
-          <input
-            value={caja}
-            onChange={(e) => setCaja(e.target.value)}
-            placeholder="caja-1"
-            className="w-full h-11 px-3 rounded-xl border-2 border-slate-200 text-[13px] outline-none focus:border-slate-900"
-          />
-          <p className="text-[11px] text-slate-400">
-            Para distinguirla el día que el negocio tenga dos.
-          </p>
-        </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                Nombre de esta caja
+              </label>
+              <input
+                value={caja}
+                onChange={(e) => setCaja(e.target.value)}
+                placeholder="Caja principal"
+                className="w-full h-11 px-3 rounded-xl border-2 border-slate-200 text-[13px] outline-none focus:border-slate-900"
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                Servidor de MenuBy
+              </label>
+              <input
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                className="w-full h-11 px-3 rounded-xl border-2 border-slate-200 text-[13px] outline-none focus:border-slate-900"
+              />
+            </div>
 
-        <div className="space-y-1">
-          <label className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
-            Sesión del panel
-          </label>
-          <textarea
-            value={token}
-            onChange={(e) => setToken(e.target.value.trim())}
-            rows={3}
-            placeholder="eyJhbGciOi…"
-            className="w-full px-3 py-2 rounded-xl border-2 border-slate-200 text-[11px] font-mono outline-none focus:border-slate-900"
-          />
-          {/* Las instrucciones exactas, porque esto lo va a hacer alguien que
-              nunca ha abierto las herramientas del navegador. */}
-          <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-[11.5px] text-slate-600 space-y-1">
-            <p className="font-bold text-slate-700">Cómo obtenerla</p>
-            <p>1. Entra al panel de MenuBy en este mismo equipo.</p>
-            <p>2. Presiona <b>F12</b> → pestaña <b>Application</b> (o Almacenamiento).</p>
-            <p>3. <b>Local Storage</b> → tu dominio → copia el valor de <b>accessToken</b>.</p>
-            <p className="text-slate-400 pt-1">
-              Se usa una sola vez y no se guarda: sirve para pedir el token largo de la caja.
-            </p>
-          </div>
-        </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                Sesión del panel
+              </label>
+              <textarea
+                value={token}
+                onChange={(e) => setToken(e.target.value.trim())}
+                rows={3}
+                placeholder="eyJhbGciOi…"
+                className="w-full px-3 py-2 rounded-xl border-2 border-slate-200 text-[11px] font-mono outline-none focus:border-slate-900"
+              />
+              <p className="text-[11px] text-slate-400">
+                Vía de soporte. En el panel: F12 → Application → Local Storage → accessToken.
+              </p>
+            </div>
+          </>
+        )}
 
         {aviso && <p className="text-[12.5px] font-semibold text-emerald-600">{aviso}</p>}
         {error && <p className="text-[12.5px] font-semibold text-red-600">{error}</p>}
 
         <div className="flex gap-2">
           <button
-            onClick={conectar}
-            disabled={ocupado || token.length < 20}
+            onClick={modoSoporte ? conectar : conectarConCodigo}
+            disabled={ocupado || (modoSoporte ? token.length < 20 : codigo.replace(/-/g, '').length < 8)}
             className="flex-1 h-12 rounded-xl bg-slate-900 text-white text-[13px] font-bold disabled:opacity-30"
           >
             {ocupado ? 'Conectando…' : yaConectada ? 'Volver a conectar' : 'Conectar'}
@@ -183,9 +221,17 @@ export default function Nube({ onCerrar }: { onCerrar: () => void }) {
           </button>
         )}
 
-        <button onClick={onCerrar} className="w-full h-10 text-[12.5px] font-semibold text-slate-500">
-          Cerrar
-        </button>
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => { setModoSoporte(!modoSoporte); setError(''); }}
+            className="text-[11.5px] font-semibold text-slate-400 hover:text-slate-700"
+          >
+            {modoSoporte ? '← Volver al código' : 'Conectar con una sesión del panel'}
+          </button>
+          <button onClick={onCerrar} className="h-10 px-3 text-[12.5px] font-semibold text-slate-500">
+            Cerrar
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -464,6 +464,18 @@ export interface Emparejada {
  * La del panel vence en 24 horas y no se guarda en ninguna parte: se usa una
  * vez y se descarta. El token de la caja va al llavero del sistema.
  */
+/**
+ * Vincula esta caja con el código que el dueño sacó del panel.
+ *
+ * Es la vía normal: ocho caracteres que se pueden dictar por teléfono. Nadie
+ * tiene que abrir las herramientas del navegador ni saber qué es un token.
+ */
+export async function vincular(url: string, codigo: string, caja: string): Promise<Emparejada> {
+  if (!enTauri) throw new Error('Solo en la app instalada');
+  return invoke<Emparejada>('vincular', { url, codigo, caja });
+}
+
+/** La vía de soporte: cambiar una sesión del panel por el token de la caja. */
 export async function emparejar(url: string, tokenPanel: string, caja: string): Promise<Emparejada> {
   if (!enTauri) throw new Error('Solo en la app instalada');
   return invoke<Emparejada>('emparejar', { url, tokenPanel, caja });

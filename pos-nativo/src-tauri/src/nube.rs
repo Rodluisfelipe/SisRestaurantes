@@ -88,6 +88,32 @@ pub struct Emparejamiento {
     pub vence_en_dias: i64,
 }
 
+/// Canjea el código que el dueño sacó del panel por el token de esta caja.
+///
+/// Es la vía normal: ocho caracteres que alguien puede dictar por teléfono. La
+/// otra —cambiar la sesión del panel— sigue existiendo para soporte, pero exige
+/// saber qué es un token y dónde vive.
+pub fn vincular(base_url: &str, codigo: &str, caja: &str) -> Result<Emparejamiento, String> {
+    let url = format!("{}/pos/vincular", base_url.trim_end_matches('/'));
+
+    ureq::post(&url)
+        .timeout(ESPERA)
+        .send_json(serde_json::json!({ "codigo": codigo.trim(), "caja": caja }))
+        .map_err(|e| match Nube::clasificar(e) {
+            sync::FalloEnvio::Red(m) => format!("No se pudo llegar a MenuBy: {m}"),
+            sync::FalloEnvio::Servidor(c, _) => format!("El servidor falló ({c}). Intenta más tarde"),
+            sync::FalloEnvio::Rechazado(404, _) => {
+                "Ese código no sirve o ya venció. Pide uno nuevo desde el panel".into()
+            }
+            sync::FalloEnvio::Rechazado(429, _) => {
+                "Demasiados intentos. Espera un minuto".into()
+            }
+            sync::FalloEnvio::Rechazado(c, m) => format!("Rechazado ({c}): {m}"),
+        })?
+        .into_json()
+        .map_err(|e| format!("Respuesta inesperada del servidor: {e}"))
+}
+
 /// Cambia la sesión del panel por el token de esta caja.
 ///
 /// El del panel vence en 24 horas: una caja que lo use deja de sincronizar al
