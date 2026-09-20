@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import ProductFormToppingSelector from '../ProductFormToppingSelector';
 import ProductToppingOrderSelector from '../ProductToppingOrderSelector';
@@ -45,6 +45,18 @@ export default function ProductManager({
   enableBookings,
 }) {
   const [currentStep, setCurrentStep] = useState(1);
+  /* En PC no hay razón para partir el formulario en tres pasos: cabe entero y
+     se llena de una sola pasada. En el celular sigue el asistente, porque ahí
+     sí hay que ir por partes. */
+  const [enPc, setEnPc] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+  );
+  useEffect(() => {
+    const consulta = window.matchMedia('(min-width: 1024px)');
+    const alCambiar = (e) => setEnPc(e.matches);
+    consulta.addEventListener('change', alCambiar);
+    return () => consulta.removeEventListener('change', alCambiar);
+  }, []);
   const [showToppingsSection, setShowToppingsSection] = useState(false);
   const [aiNames, setAiNames] = useState([]);
   const [aiNamesLoading, setAiNamesLoading] = useState(false);
@@ -123,7 +135,7 @@ export default function ProductManager({
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-t-2xl lg:rounded-xl shadow-xl border border-slate-100 lg:border-slate-200 max-w-2xl w-full max-h-[92vh] lg:max-h-[90vh] overflow-hidden flex flex-col"
+              className="bg-white rounded-t-2xl lg:rounded-xl shadow-xl border border-slate-100 lg:border-slate-200 max-w-2xl lg:max-w-5xl w-full max-h-[92vh] lg:max-h-[92vh] overflow-hidden flex flex-col"
             >
               {/* Modal Header */}
               <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 flex-shrink-0">
@@ -143,7 +155,8 @@ export default function ProductManager({
                 </button>
               </div>
 
-              {/* Step Indicator */}
+              {/* Step Indicator — solo en móvil */}
+              {!enPc && (
               <div className="flex items-center justify-center gap-1.5 px-5 py-2.5 bg-slate-50 border-b border-slate-100 flex-shrink-0">
                 {[
                   { num: 1, label: 'Info' },
@@ -169,12 +182,13 @@ export default function ProductManager({
                   </div>
                 ))}
               </div>
+              )}
 
               {/* Form */}
               <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-                <div className="p-5 space-y-4">
+                <div className={`p-5 ${enPc ? 'grid grid-cols-[1.3fr_1fr] gap-x-6 gap-y-5 items-start' : 'space-y-4'}`}>
                   {/* Step 1 */}
-                  {currentStep === 1 && (
+                  {(enPc || currentStep === 1) && (
                     <div className="space-y-3">
                       <div className="space-y-1">
                         <div className="flex items-center justify-between">
@@ -321,7 +335,7 @@ export default function ProductManager({
                   )}
 
                   {/* Step 2 */}
-                  {currentStep === 2 && (
+                  {(enPc || currentStep === 2) && (
                     <div className="space-y-4">
                       <div className="space-y-1">
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
@@ -504,8 +518,8 @@ export default function ProductManager({
                   )}
 
                   {/* Step 3 */}
-                  {currentStep === 3 && (
-                    <div className="space-y-4">
+                  {(enPc || currentStep === 3) && (
+                    <div className={`space-y-4 ${enPc ? 'col-span-2' : ''}`}>
                       <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
                         <button type="button" onClick={() => setShowToppingsSection(!showToppingsSection)}
                           className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
@@ -558,21 +572,21 @@ export default function ProductManager({
               {/* Wizard Navigation */}
               <div className="border-t border-slate-100 bg-white px-5 py-3 flex-shrink-0">
                 <div className="flex gap-2">
-                  {currentStep > 1 && (
+                  {!enPc && currentStep > 1 && (
                     <button type="button"
                       onClick={() => setCurrentStep(prev => prev - 1)}
                       className="flex-1 px-3 py-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium flex items-center justify-center gap-1.5">
                       <FaChevronLeft className="text-[10px]" /><span>Anterior</span>
                     </button>
                   )}
-                  {editingProduct && currentStep === 1 && (
+                  {editingProduct && (enPc || currentStep === 1) && (
                     <button type="button"
                       onClick={() => { setEditingProduct(null); setForm({ name: '', description: '', price: '', category: '', image: '', toppingGroups: [] }); setTouchedFields({}); setCurrentStep(1); setShowToppingsSection(false); setShowProductModal(false); }}
                       className="flex-1 px-3 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium flex items-center justify-center gap-1.5">
                       <FaTimes className="text-[10px]" /><span>Cancelar</span>
                     </button>
                   )}
-                  {currentStep < 3 ? (
+                  {!enPc && currentStep < 3 ? (
                     <button type="button"
                       onClick={() => {
                         if (currentStep === 1 && (!form.name.trim() || !form.category)) {
@@ -592,6 +606,16 @@ export default function ProductManager({
                     <button type="button"
                       onClick={(e) => {
                         e.preventDefault();
+                        /* En PC nadie pasó por los pasos, así que aquí se revisa
+                           lo obligatorio y se marca el campo en rojo en vez de
+                           dejar que el envío falle sin explicación. */
+                        if (enPc) {
+                          const sinPrecio = !form.price || parseFloat(String(form.price).replace(/./g, '')) <= 0;
+                          if (!form.name.trim() || !form.category || sinPrecio) {
+                            setTouchedFields(prev => ({ ...prev, name: true, category: true, price: true }));
+                            return;
+                          }
+                        }
                         handleSubmit(e);
                       }}
                       className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-1.5">
