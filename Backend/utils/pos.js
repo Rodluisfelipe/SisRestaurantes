@@ -131,6 +131,27 @@ function validarVenta(cuerpo) {
     .filter((p) => p.metodo && p.monto > 0)
     .slice(0, 10);
 
+  /* Los pagos tienen que alcanzar para lo que se cobró.
+
+     Esta cuenta ya la hizo la caja antes de guardar la venta, y la de allá es
+     la que manda: aquí no se recalcula el vuelto ni se decide nada. Lo que
+     atrapa esta comprobación es una venta cuyo desglose de pagos no cuadra con
+     su propio total, que es un payload corrupto o una caja con un defecto —y
+     en cualquiera de los dos casos, plata que el cuadre del panel daría por
+     cobrada sin estarlo.
+
+     Se compara con "mayor o igual" porque en efectivo el cliente entrega de
+     más y recibe cambio: lo que no puede pasar es que sume de menos. */
+  if (pagos.length) {
+    const cobrado = pagos.reduce((t, p) => t + p.monto, 0);
+    if (Math.round(cobrado) < Math.round(total)) {
+      return {
+        ok: false,
+        error: `Los pagos (${cobrado}) no alcanzan para el total (${total})`,
+      };
+    }
+  }
+
   return {
     ok: true,
     venta: {

@@ -423,6 +423,40 @@ describe('el pago repartido entre varios medios', () => {
     expect(r.ok).toBe(true);
     expect(r.venta.pagos).toEqual([]);
   });
+
+  it('los pagos tienen que alcanzar para el total', () => {
+    /* Una venta cuyo desglose suma menos que su propio total es un payload
+       corrupto o una caja con un defecto. En los dos casos, el cuadre del
+       panel daría por cobrada plata que no entró. */
+    const r = validarVenta(venta({
+      pagos: [
+        { metodo: 'efectivo', monto: 5000 },
+        { metodo: 'tarjeta', monto: 4000 },
+      ],
+    }));
+
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/no alcanzan/);
+  });
+
+  it('en efectivo se puede entregar de más', () => {
+    // El cliente paga con un billete grande y recibe cambio: eso no es un error.
+    const r = validarVenta(venta({ pagos: [{ metodo: 'efectivo', monto: 20000 }] }));
+    expect(r.ok).toBe(true);
+  });
+
+  it('con descuento, los pagos se miden contra lo que se cobró', () => {
+    /* La cuenta que importa: con 13.000 alcanza para una venta de 14.500 que
+       tiene 1.500 de descuento. Si se midiera contra el bruto, toda venta con
+       descuento y pago exacto se rechazaría. */
+    const r = validarVenta(venta({
+      total: 13000,
+      descuento: 1500,
+      pagos: [{ metodo: 'efectivo', monto: 13000 }],
+    }));
+
+    expect(r.ok).toBe(true);
+  });
 });
 
 describe('la nota del cliente', () => {
