@@ -329,4 +329,61 @@ mod pruebas {
         );
     }
 
+
+    #[test]
+    fn ninguna_impresion_bloquea_el_hilo_que_dibuja() {
+        /* Un comando de Tauri que no es `async` corre en el hilo principal, y
+           abrir el socket de una impresora apagada tarda los tres segundos del
+           tiempo de espera. Eso es la ventana congelada con un cliente al
+           frente, y pasó con seis comandos a la vez.
+
+           La regla que fija esta prueba: `perifericos::enviar` —que bloquea—
+           solo se llama desde `imprimir`, que lo saca a `spawn_blocking`, o
+           desde `enviar_suelto`, que lo manda a un hilo propio. Cualquier
+           llamada directa desde un comando vuelve a traer el problema.
+
+           Se lee el código porque lo que hay que vigilar no se observa desde
+           dentro: que una función tarde no es un fallo, y ningún `assert`
+           detecta una ventana congelada. */
+        let fuente = codigo("src/lib.rs");
+
+        /* Se excluye `enviar_suelto`, que ya manda a un hilo propio. Lo que
+           se busca son las llamadas crudas: las que bloquean el hilo desde el
+           que se hagan. */
+        let directas: Vec<&str> = fuente
+            .lines()
+            .filter(|l| l.contains("perifericos::enviar(&"))
+            // La de dentro de `imprimir`, que es el sitio correcto.
+            .filter(|l| !l.contains("spawn_blocking"))
+            .map(|l| l.trim())
+            .collect();
+
+        assert!(
+            directas.is_empty(),
+            "estas llamadas bloquean el hilo desde el que se hagan; \
+             usa imprimir(...).await si el resultado importa, o \
+             perifericos::enviar_suelto(...) si no: {directas:?}",
+        );
+    }
+
+    #[test]
+    fn el_envio_suelto_no_espera_a_la_impresora() {
+        /* Es lo que hace que un aviso de anulación o un movimiento de caja no
+           frenen la caja: se manda y la función vuelve enseguida, aunque la
+           impresora esté apagada al otro lado. */
+        let inicio = std::time::Instant::now();
+
+        crate::perifericos::enviar_suelto(
+            // Una dirección que no existe: el intento agota su espera.
+            crate::perifericos::Impresora::Red { host: "192.0.2.1".into(), puerto: 9100 },
+            b"hola".to_vec(),
+        );
+
+        assert!(
+            inicio.elapsed() < std::time::Duration::from_millis(200),
+            "enviar_suelto tiene que volver de inmediato, tardó {:?}",
+            inicio.elapsed(),
+        );
+    }
+
 }

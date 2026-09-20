@@ -36,6 +36,26 @@ pub enum Impresora {
 
 const ESPERA: Duration = Duration::from_secs(3);
 
+/// Manda a imprimir sin esperar el resultado.
+///
+/// Abrir un socket a una impresora apagada tarda los tres segundos del tiempo
+/// de espera. Hecho desde el hilo que dibuja, eso es la ventana congelada tres
+/// segundos con un cliente al frente; y hay papeles —la comanda de cocina, el
+/// aviso de una anulación, el comprobante de un movimiento de caja— cuyo
+/// resultado nadie mira de todos modos.
+///
+/// Para esos, un hilo suelto: la caja sigue respondiendo y el papel sale
+/// cuando salga. Los que sí necesitan saber si salió —la tirilla de la venta,
+/// la precuenta— se resuelven con `spawn_blocking` desde un comando async.
+pub fn enviar_suelto(destino: Impresora, bytes: Vec<u8>) {
+    if matches!(destino, Impresora::Ninguna) {
+        return;
+    }
+    std::thread::spawn(move || {
+        let _ = enviar(&destino, &bytes);
+    });
+}
+
 pub fn enviar(destino: &Impresora, bytes: &[u8]) -> Result<(), String> {
     match destino {
         Impresora::Ninguna => Ok(()),

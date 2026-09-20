@@ -40,6 +40,7 @@ export default function CobroMixto({
   conPropina,
   pidiendoVoucher,
   onCambio,
+  onMedio,
   onCobrar,
   onCancelar,
 }: {
@@ -50,6 +51,9 @@ export default function CobroMixto({
   pidiendoVoucher: boolean;
   /** Avisa lo que lleva cobrado, para la pantalla del cliente. */
   onCambio: (pagos: PagoDetalle[]) => void;
+  /** Con qué se está por pagar. La pantalla del cliente muestra el QR si es
+   *  transferencia y el negocio tiene código configurado. */
+  onMedio: (metodo: string) => void;
   onCobrar: (pagos: PagoDetalle[], propina: number) => void;
   onCancelar: () => void;
 }) {
@@ -85,6 +89,11 @@ export default function CobroMixto({
   /* El cliente ve su saldo bajar en la pantalla de enfrente a medida que el
      cajero registra cada parte. */
   useEffect(() => { onCambio(pagos); }, [pagos, onCambio]);
+
+  /* Y ve el código de cobro en cuanto el cajero elige transferencia, sin
+     tener que pedirlo: para cuando el cajero dice "escanea", el cliente ya
+     está sacando el teléfono. */
+  useEffect(() => { onMedio(metodo); }, [metodo, onMedio]);
 
   useEffect(() => {
     const tecla = (e: KeyboardEvent) => {

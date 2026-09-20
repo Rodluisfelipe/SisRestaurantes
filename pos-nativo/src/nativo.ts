@@ -764,6 +764,43 @@ export interface ItemCliente {
  * Lo que se le muestra al cliente. Un solo objeto y un solo evento: la pantalla
  * de allá no calcula nada ni consulta nada, solo pinta lo que le llega.
  */
+export interface CobroQr {
+  /** Si esta caja muestra el código en la pantalla del cliente. */
+  activo: boolean;
+  /** La cadena que pegó el negocio, sin interpretar. */
+  plantilla: string;
+}
+
+export async function cobroQr(): Promise<CobroQr> {
+  if (!enTauri) return { activo: false, plantilla: '' };
+  return invoke<CobroQr>('cobro_qr');
+}
+
+/**
+ * El código que se le muestra al cliente para esta venta.
+ *
+ * Si la plantilla trae `{monto}` o `{ref}` —un enlace de pasarela— se
+ * reemplazan. Si no, **se devuelve tal cual**.
+ *
+ * Eso último no es pereza: los códigos EMVCo de los bancos colombianos
+ * (Bre-B, Redeban) van firmados. El campo de seguridad lo calcula el
+ * adquirente sobre el contenido, así que meterles el monto rompe la firma. El
+ * banco lo rechaza —con el cliente y su teléfono esperando frente a la caja—
+ * o lo acepta con los campos de impuesto que traía, y queda un cobro mal
+ * declarado. Un código estático se muestra como está y el monto va al lado, en
+ * letra que se lea desde el otro lado del mostrador.
+ */
+export function armarQr(plantilla: string, monto: number, referencia: string): string {
+  return plantilla
+    .replace(/\{monto\}/g, String(monto))
+    .replace(/\{ref\}/g, referencia);
+}
+
+/** ¿El código lleva el monto dentro, o hay que decírselo al cliente? */
+export function qrLlevaMonto(plantilla: string): boolean {
+  return plantilla.includes('{monto}');
+}
+
 export interface EstadoCliente {
   modo: 'espera' | 'venta' | 'pago' | 'gracias';
   negocio?: string;
@@ -774,6 +811,10 @@ export interface EstadoCliente {
   vuelto?: number;
   /** Lo que todavía falta por cubrir, cuando se está pagando por partes. */
   falta?: number;
+  /** El código de cobro ya armado. Vacío = no se muestra. */
+  qr?: string;
+  /** Si el código lleva el monto dentro. Si no, hay que digitarlo. */
+  qr_con_monto?: boolean;
 }
 
 export async function abrirPantallaCliente(): Promise<void> {

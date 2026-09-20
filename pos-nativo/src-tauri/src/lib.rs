@@ -340,14 +340,16 @@ async fn cobrar(
     };
 
     let bytes = tirilla(&negocio, caja.ancho, &nueva, &registrada);
-    let impresion = perifericos::enviar(&caja.impresora, &bytes).err();
+    /* La venta ya está guardada. Lo que sigue es papel, y el papel se
+       reimprime: por eso su fallo se reporta como aviso y no revierte nada. */
+    let impresion = imprimir(caja.impresora, bytes).await.err();
 
     /* La comanda va aparte y sin precios: en la cocina no se cobra, se prepara,
        y un papel con plata encima solo estorba. Que falle no se le reporta al
        cajero como un problema de la venta. */
     if !matches!(cocina.impresora, Impresora::Ninguna) {
         let comanda = comanda(cocina.ancho, &nueva, &registrada);
-        let _ = perifericos::enviar(&cocina.impresora, &comanda);
+        perifericos::enviar_suelto(cocina.impresora, comanda);
     }
 
     Ok(Cobro { venta: registrada, impresion })
@@ -359,18 +361,23 @@ async fn cobrar(
 /// cambio— pero **sí queda registrado**. Abrir el cajón de más es de las cosas
 /// que más se abusan, y el patrón solo se ve si cada apertura deja rastro.
 #[tauri::command]
-fn abrir_cajon(estado: State<Estado>, motivo: String) -> Result<(), String> {
+async fn abrir_cajon(estado: State<'_, Estado>, motivo: String) -> Result<(), String> {
     anotar_excepcion(&estado, auditoria::TipoExcepcion::AbrirCajon, "", 0, &motivo, "");
 
     /* El pulso viaja por el mismo cable que la tirilla: el cajón cuelga del
        conector RJ11 de la impresora, no del computador. */
-    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
-    let config = perifericos::leer_config(&base, "caja");
-    drop(base);
+    let config = {
+        let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+        perifericos::leer_config(&base, "caja")
+    };
 
     let mut t = escpos::Tirilla::nueva(config.ancho);
     t.abrir_cajon();
-    perifericos::enviar(&config.impresora, &t.terminar())
+
+    /* El cajero sí espera saber si abrió —si no, va a volver a tocar el botón
+       y a dejar dos aperturas en la auditoría por una sola intención— pero se
+       espera fuera del hilo que dibuja. */
+    imprimir(config.impresora, t.terminar()).await
 }
 
 /// Deja constancia de una excepción con el cajero y el turno de verdad.
@@ -529,8 +536,8 @@ struct RondaGuardada {
 /// núcleo y se prueba solo; aquí únicamente se imprime y, si el papel salió, se
 /// deja constancia.
 #[tauri::command]
-fn guardar_en_cuenta(
-    estado: State<Estado>,
+async fn guardar_en_cuenta(
+    estado: State<'_, Estado>,
     identificador: String,
     carrito: String,
     total: i64,
@@ -541,30 +548,55 @@ fn guardar_en_cuenta(
         return Err("Ponle un nombre a la cuenta, por ejemplo \"Mesa 3\"".into());
     }
 
+    /* Lo que toca la base, en un bloque: al salir, el candado está suelto y la
+       impresión puede tardar sus tres segundos sin trabar a nadie.
+
+       En bloque y no con `drop`: Rust tiene que **poder demostrar** que el
+       guardia no cruza el `await`, y un `drop` a mitad de función no se lo
+       demuestra. */
+    enum Siguiente {
+        Listo(RondaGuardada),
+        Imprimir(cuentas::Cuenta, perifericos::Impresora, Vec<u8>, usize),
+    }
+
+    let paso = {
+        let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+        let turno = turnos::activo(&base).map_err(|e| e.to_string())?.ok_or("No hay turno abierto")?;
+
+        let (cuenta, pendientes) =
+            cuentas::guardar(&base, &turno.id, &nombre, &carrito, total, items, &ahora_local())
+                .map_err(|e| e.to_string())?;
+
+        if pendientes.is_empty() {
+            Siguiente::Listo(RondaGuardada { cuenta, a_cocina: 0, impresion: None })
+        } else {
+            let cocina = perifericos::leer_config(&base, "cocina");
+            if matches!(cocina.impresora, Impresora::Ninguna) {
+                /* Sin impresora de cocina no hay comanda que mandar, pero la
+                   ronda sí se da por despachada: si no, cada vez que la mesa
+                   pidiera algo se volvería a contar lo anterior como
+                   pendiente. */
+                cuentas::marcar_comandado(&base, &cuenta.id, &carrito).map_err(|e| e.to_string())?;
+                Siguiente::Listo(RondaGuardada { cuenta, a_cocina: 0, impresion: None })
+            } else {
+                let bytes = comanda_de(cocina.ancho, &cuenta.identificador, &pendientes, &ahora_local());
+                Siguiente::Imprimir(cuenta, cocina.impresora, bytes, pendientes.len())
+            }
+        }
+    };
+
+    let (cuenta, impresora, bytes, cuantas) = match paso {
+        Siguiente::Listo(r) => return Ok(r),
+        Siguiente::Imprimir(c, i, b, n) => (c, i, b, n),
+    };
+
+    /* Esta impresión **sí** se espera: de que el papel haya salido depende que
+       la ronda se marque como comandada, y marcarla sin que saliera dejaría
+       esos platos sin cocinar para siempre. */
+    let salio = imprimir(impresora, bytes).await;
+
     let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
-    let turno = turnos::activo(&base).map_err(|e| e.to_string())?.ok_or("No hay turno abierto")?;
-
-    let (cuenta, pendientes) =
-        cuentas::guardar(&base, &turno.id, &nombre, &carrito, total, items, &ahora_local())
-            .map_err(|e| e.to_string())?;
-
-    if pendientes.is_empty() {
-        return Ok(RondaGuardada { cuenta, a_cocina: 0, impresion: None });
-    }
-
-    let cocina = perifericos::leer_config(&base, "cocina");
-    if matches!(cocina.impresora, Impresora::Ninguna) {
-        /* Sin impresora de cocina no hay comanda que mandar, pero la ronda sí
-           se da por despachada: si no, cada vez que la mesa pidiera algo se
-           volvería a contar lo anterior como pendiente. */
-        cuentas::marcar_comandado(&base, &cuenta.id, &carrito).map_err(|e| e.to_string())?;
-        return Ok(RondaGuardada { cuenta, a_cocina: 0, impresion: None });
-    }
-
-    let bytes = comanda_de(cocina.ancho, &cuenta.identificador, &pendientes, &ahora_local());
-    let cuantas = pendientes.len();
-
-    match perifericos::enviar(&cocina.impresora, &bytes) {
+    match salio {
         Ok(()) => {
             /* Se marca **después** de que el papel salió. Al revés, una
                impresora sin papel dejaría la ronda como enviada y esos platos
@@ -572,11 +604,7 @@ fn guardar_en_cuenta(
             cuentas::marcar_comandado(&base, &cuenta.id, &carrito).map_err(|e| e.to_string())?;
             Ok(RondaGuardada { cuenta, a_cocina: cuantas, impresion: None })
         }
-        Err(e) => Ok(RondaGuardada {
-            cuenta,
-            a_cocina: 0,
-            impresion: Some(e.to_string()),
-        }),
+        Err(e) => Ok(RondaGuardada { cuenta, a_cocina: 0, impresion: Some(e) }),
     }
 }
 
@@ -605,19 +633,30 @@ fn abrir_cuenta(estado: State<Estado>, id: String) -> Result<Option<String>, Str
 /// antes de pagar, y por eso va marcado como no válido como factura: si no lo
 /// dijera, sería un comprobante de una venta que todavía no existe.
 #[tauri::command]
-fn imprimir_precuenta(estado: State<Estado>, id: String) -> Result<(), String> {
-    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+async fn imprimir_precuenta(estado: State<'_, Estado>, id: String) -> Result<(), String> {
+    /* Todo lo que necesita la base, dentro del bloque. Al salir, los candados
+       están sueltos: la precuenta sí espera respuesta —el cajero tiene que
+       saber si salió— y esperarla con la base tomada trabaría cualquier venta
+       simultánea.
 
-    let cuenta = cuentas::por_id(&base, &id)
-        .map_err(|e| e.to_string())?
-        .ok_or("Esa cuenta ya no está abierta")?;
+       En bloque y no con `drop`: Rust tiene que **poder demostrar** que el
+       guardia no cruza el `await`, y un `drop` a mitad de función no se lo
+       demuestra. */
+    let (impresora, bytes) = {
+        let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
 
-    let items: Vec<venta::LineaVenta> = serde_json::from_str(&cuenta.carrito).unwrap_or_default();
-    let caja = perifericos::leer_config(&base, "caja");
-    let negocio = estado.negocio.lock().map(|n| n.clone()).unwrap_or_default();
+        let cuenta = cuentas::por_id(&base, &id)
+            .map_err(|e| e.to_string())?
+            .ok_or("Esa cuenta ya no está abierta")?;
 
-    let bytes = precuenta(&negocio, caja.ancho, &cuenta, &items, &ahora_local());
-    perifericos::enviar(&caja.impresora, &bytes).map_err(|e| e.to_string())
+        let items: Vec<venta::LineaVenta> = serde_json::from_str(&cuenta.carrito).unwrap_or_default();
+        let caja = perifericos::leer_config(&base, "caja");
+        let negocio = estado.negocio.lock().map(|n| n.clone()).unwrap_or_default();
+
+        (caja.impresora, precuenta(&negocio, caja.ancho, &cuenta, &items, &ahora_local()))
+    };
+
+    imprimir(impresora, bytes).await
 }
 
 /// Cierra la cuenta después de que su venta ya quedó registrada.
@@ -731,8 +770,12 @@ fn anular_item(
             let bytes = comanda_anulacion(cocina.ancho, &mesa, &detalle, &cajero, &autorizo, &motivo, &ahora_local());
             /* Que falle no revierte la anulación: la línea ya se quitó y el
                supervisor ya autorizó. Lo que se pierde es el aviso, y eso se
-               resuelve hablando, no deshaciendo una operación autorizada. */
-            let _ = perifericos::enviar(&cocina.impresora, &bytes);
+               resuelve hablando, no deshaciendo una operación autorizada.
+
+               Y por eso mismo va en un hilo suelto: nadie está esperando este
+               resultado, y esperarlo congelaría la caja tres segundos con la
+               impresora de cocina apagada. */
+            perifericos::enviar_suelto(cocina.impresora, bytes);
         }
     }
 
@@ -866,7 +909,8 @@ fn devolver(
         let caja = perifericos::leer_config(&base, "caja");
         let negocio = estado.negocio.lock().map(|n| n.clone()).unwrap_or_default();
         let bytes = comprobante_devolucion(&negocio, caja.ancho, &registrada, &items);
-        let _ = perifericos::enviar(&caja.impresora, &bytes);
+        // La devolución ya está hecha: el papel no la condiciona.
+        perifericos::enviar_suelto(caja.impresora, bytes);
     }
 
     Ok(registrada)
@@ -914,11 +958,15 @@ fn mover_efectivo(
     turnos::mover_efectivo(&base, &turno.id, entrada, Pesos(monto), &motivo, &quien, &ahora_local())
         .map_err(|e| e.to_string())?;
 
-    // La gaveta se abre sola: el cajero va a meter o sacar plata de ahí mismo.
+    /* La gaveta se abre sola: el cajero va a meter o sacar plata de ahí
+       mismo. Va en un hilo suelto porque este comando es síncrono —corre en
+       el hilo que dibuja— y con la impresora apagada el pulso tarda los tres
+       segundos del tiempo de espera. Tres segundos de ventana congelada por
+       un movimiento de caja que ya quedó registrado. */
     let config = perifericos::leer_config(&base, "caja");
     let mut t = escpos::Tirilla::nueva(config.ancho);
     t.abrir_cajon();
-    let _ = perifericos::enviar(&config.impresora, &t.terminar());
+    perifericos::enviar_suelto(config.impresora, t.terminar());
 
     Ok(())
 }
@@ -1132,9 +1180,7 @@ async fn probar_impresora(estado: State<'_, Estado>, rol: String) -> Result<(), 
         .cortar();
 
     let bytes = t.terminar();
-    tauri::async_runtime::spawn_blocking(move || perifericos::enviar(&config.impresora, &bytes))
-        .await
-        .map_err(|e| e.to_string())?
+    imprimir(config.impresora, bytes).await
 }
 
 /// Reimprime una venta ya cobrada.
@@ -1171,9 +1217,7 @@ async fn reimprimir(estado: State<'_, Estado>, venta_id: Option<String>) -> Resu
     };
 
     let bytes = tirilla_de(&negocio, config.ancho, &completa, true);
-    tauri::async_runtime::spawn_blocking(move || perifericos::enviar(&config.impresora, &bytes))
-        .await
-        .map_err(|e| e.to_string())?
+    imprimir(config.impresora, bytes).await
 }
 
 /* ── El datáfono ───────────────────────────────────────────────────────── */
@@ -1351,6 +1395,44 @@ fn devolver_hardware_al_panel(estado: State<Estado>) -> Result<(), String> {
     let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
     configuracion::devolver_al_panel(&base);
     Ok(())
+}
+
+/// El código de cobro por transferencia que configuró el negocio.
+#[derive(serde::Serialize, Default)]
+struct CobroQr {
+    /// Si esta caja lo muestra en la pantalla del cliente.
+    activo: bool,
+    /// La cadena tal como la pegó el negocio, sin interpretar.
+    ///
+    /// **La caja no la modifica.** Los códigos EMVCo que usan los bancos
+    /// colombianos —Bre-B, Redeban— van firmados: el campo de seguridad lo
+    /// calcula el adquirente sobre el contenido, y meterle el monto rompe esa
+    /// firma. Un QR alterado o lo rechaza el banco, con el cliente y su
+    /// teléfono esperando frente a la caja, o lo acepta con los campos de
+    /// impuesto que traía y queda un cobro mal declarado.
+    ///
+    /// Si la plantilla trae {monto} o {ref} —un enlace de pasarela, no un
+    /// EMVCo— la pantalla sí los reemplaza: ahí no hay firma que romper.
+    plantilla: String,
+}
+
+#[tauri::command]
+fn cobro_qr(estado: State<Estado>) -> Result<CobroQr, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    let leer = |clave: &str| -> String {
+        base.query_row("SELECT valor FROM ajustes WHERE clave = ?1", [clave], |f| f.get(0))
+            .unwrap_or_default()
+    };
+
+    let plantilla = leer("plantilla_qr");
+
+    Ok(CobroQr {
+        /* Sin plantilla no hay nada que mostrar, aunque el panel diga que sí:
+           un cuadro vacío en la pantalla del cliente es peor que no mostrar
+           nada, porque el cajero cree que el cliente puede pagar. */
+        activo: leer("mostrar_qr") == "1" && !plantilla.trim().is_empty(),
+        plantilla,
+    })
 }
 
 /* ── La pantalla del cliente ───────────────────────────────────────────── */
@@ -1639,6 +1721,18 @@ fn tirilla_de(negocio: &str, ancho: usize, v: &venta::VentaCompleta, copia: bool
 ///
 /// Letra grande y una línea por producto. Quien la lee está de pie frente a una
 /// plancha, no sentado revisando una cuenta.
+/// Imprime esperando el resultado, pero fuera del hilo que dibuja.
+///
+/// Para los papeles cuyo resultado sí importa: la tirilla de la venta, la
+/// precuenta, la comanda de una ronda. Abrir el socket a una impresora apagada
+/// tarda los tres segundos del tiempo de espera, y hacerlo en el hilo
+/// principal es la ventana congelada con un cliente al frente.
+async fn imprimir(destino: perifericos::Impresora, bytes: Vec<u8>) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || perifericos::enviar(&destino, &bytes))
+        .await
+        .unwrap_or_else(|e| Err(format!("la impresión se interrumpió: {e}")))
+}
+
 /// El papel de una devolución.
 ///
 /// Lleva el número de la venta original en grande: es lo que permite emparejar
@@ -2046,6 +2140,7 @@ pub fn run() {
             config_datafono,
             hardware_del_panel,
             devolver_hardware_al_panel,
+            cobro_qr,
             probar_datafono,
             abrir_pantalla_cliente,
             cerrar_pantalla_cliente,

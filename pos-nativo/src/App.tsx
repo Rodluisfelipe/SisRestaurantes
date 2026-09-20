@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CircleUser, CloudCheck, CloudOff, Inbox, Minus, Monitor,
-  LayoutGrid, MessageSquarePlus, PauseCircle, Percent, Plus, Printer, RefreshCw, ScanLine,
+  LayoutGrid, MessageSquarePlus, PauseCircle, Percent, Plus, Presentation, Printer, RefreshCw, ScanLine,
   Trash2, Undo2, UtensilsCrossed, Volume2, VolumeX, Wallet, X,
 } from 'lucide-react';
+import { type EstadoCliente } from './nativo';
 import {
   abrirCajon, abrirPantallaCliente, anularItem, aplicarMarca, catalogo, cerrarPantallaCliente,
-  abrirCuenta, carpetaFotos, categorias, cerrarCuenta, cobrar, descartarPausada, devolver, enTauri, estadoSync,
+  abrirCuenta, armarQr, carpetaFotos, categorias, cerrarCuenta, cobrar, cobroQr, descartarPausada,
+  devolver, enTauri, estadoSync, qrLlevaMonto,
   guardarEnCuenta, hayPantallaCliente, identidad, imprimirPrecuenta, infoTerminal, listarCuentas,
   listarPausadas, mostrarAlCliente, pausarVenta, pesos, reimprimir, retomarVenta, salir,
   registrarDescuento, repartir, sincronizar, turnoActivo,
@@ -20,6 +22,7 @@ import NotaItem from './NotaItem';
 import Descuento from './Descuento';
 import Cuentas from './Cuentas';
 import FotoProducto from './FotoProducto';
+import VistaCliente from './VistaCliente';
 import Devolucion from './Devolucion';
 import Extras from './Extras';
 import { activarSonido, bip, error as bipError, sonidoActivo } from './sonido';
@@ -195,6 +198,15 @@ function Caja({
   /* Lo que se lleva cobrado en la pantalla de cobro, solo para que el cliente
      vea su saldo bajar del otro lado del mostrador. */
   const [vistaPago, setVistaPago] = useState<PagoDetalle[]>([]);
+  /* El código de cobro del negocio y el medio que el cajero tiene elegido. De
+     los dos sale lo que ve el cliente en su pantalla. */
+  const [codigoQr, setCodigoQr] = useState({ activo: false, plantilla: '' });
+  const [medioElegido, setMedioElegido] = useState('efectivo');
+  /* Lo que se le está mostrando al cliente. Se guarda aquí además de mandarse
+     a la otra ventana porque en un local de una sola pantalla no hay otra
+     ventana: el cajero gira el monitor y esto es lo que el cliente ve. */
+  const [paraElCliente, setParaElCliente] = useState<EstadoCliente>({ modo: 'espera' });
+  const [girarPantalla, setGirarPantalla] = useState(false);
   const [verImpresoras, setVerImpresoras] = useState(false);
   const [verNube, setVerNube] = useState(false);
   /* El aviso de que la tirilla no salió. Va como toast y no como bloqueo: la
@@ -344,6 +356,8 @@ function Caja({
 
   useEffect(() => { carpetaFotos().then(setCarpeta).catch(() => {}); }, []);
 
+  useEffect(() => { cobroQr().then(setCodigoQr).catch(() => {}); }, []);
+
   /* Buscar por texto manda sobre la pestaña. Si alguien escanea un código
      estando en "Bebidas" y el producto es de "Postres", tiene que aparecer:
      el lector nunca se equivoca de categoría, el dedo sí. */
@@ -392,7 +406,7 @@ function Caja({
      evita el "yo no pedí eso" cuando ya está cobrado: el cliente ve su pedido
      mientras se arma, no después. */
   useEffect(() => {
-    mostrarAlCliente({
+    const paquete: EstadoCliente = {
       modo: carrito.length === 0 ? 'espera' : cobrandoAhora ? 'pago' : 'venta',
       negocio: negocio || 'MenuBy',
       items: carrito.map((i) => ({
@@ -404,8 +418,19 @@ function Caja({
       recibido: entregado,
       vuelto,
       falta,
-    });
-  }, [carrito, aCobrar, negocio, cobrandoAhora, entregado, vuelto, falta]);
+      /* El código solo mientras se está cobrando por transferencia. Fuera de
+         ese momento sobra: la pantalla tiene que mostrar el pedido, no un
+         cuadro que nadie va a escanear. */
+      qr:
+        cobrandoAhora && medioElegido === 'transferencia' && codigoQr.activo
+          ? armarQr(codigoQr.plantilla, aCobrar, String(ultimo?.venta.consecutivo ?? ''))
+          : '',
+      qr_con_monto: qrLlevaMonto(codigoQr.plantilla),
+    };
+
+    setParaElCliente(paquete);
+    mostrarAlCliente(paquete);
+  }, [carrito, aCobrar, negocio, cobrandoAhora, entregado, vuelto, falta, medioElegido, codigoQr, ultimo]);
 
   /* Un producto con extras no entra de una: primero hay que preguntar cómo lo
      quiere el cliente. Sin esto —que es como estaba— el cajero marcaba la
@@ -741,6 +766,19 @@ function Caja({
         {/* Separador: a partir de aquí son herramientas, no estado. */}
         <span className="w-px h-8 bg-slate-700 mx-1" />
 
+        {/* Sin segundo monitor, el cajero gira el suyo. Es lo que hace la
+            mitad de los locales pequeños, y hasta ahora no tenían forma:
+            abrir la pantalla del cliente fallaba y ahí se acababa. */}
+        {!conCliente && (
+          <BotonBarra
+            icono={Presentation}
+            onClick={() => setGirarPantalla(true)}
+            title="Mostrarle la cuenta al cliente en esta misma pantalla"
+          >
+            Mostrar
+          </BotonBarra>
+        )}
+
         <BotonBarra
           icono={Monitor}
           activo={conCliente}
@@ -866,6 +904,25 @@ function Caja({
           }}
           onCancelar={() => { setPidiendoGaveta(false); buscador.current?.focus(); }}
         />
+      )}
+
+      {/* La cuenta, a pantalla completa, sobre la caja.
+
+          Se cierra tocando en cualquier parte: el cajero vuelve a girar el
+          monitor y sigue cobrando. Nada de una X pequeña en una esquina, que
+          es lo que hay que buscar con el cliente esperando. */}
+      {girarPantalla && (
+        <div className="fixed inset-0 z-50 bg-black" onClick={() => setGirarPantalla(false)}>
+          <VistaCliente estado={paraElCliente} />
+
+          <button
+            onClick={() => setGirarPantalla(false)}
+            className="absolute top-4 right-4 flex items-center gap-2 px-4 h-toque rounded-xl bg-black/60 text-white text-[13px] font-bold backdrop-blur"
+          >
+            <X size={16} strokeWidth={2.5} />
+            Volver a la caja
+          </button>
+        </div>
       )}
 
       {conExtras && (
@@ -1004,8 +1061,14 @@ function Caja({
           conPropina={cuentas.length > 0 || enCuenta !== null}
           pidiendoVoucher={digitaVoucher}
           onCambio={setVistaPago}
+          onMedio={setMedioElegido}
           onCobrar={cobrarCon}
-          onCancelar={() => { setCobrandoAhora(false); setVistaPago([]); buscador.current?.focus(); }}
+          onCancelar={() => {
+            setCobrandoAhora(false);
+            setVistaPago([]);
+            setMedioElegido('efectivo');
+            buscador.current?.focus();
+          }}
         />
       )}
 
