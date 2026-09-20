@@ -4,6 +4,9 @@ import api from '../services/api';
 import logger from '../utils/logger';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import ProductCard from './Productcard';
+import { leerPresentaciones, enPesos } from '../utils/presentaciones';
+import Presentaciones from './Presentaciones';
+import { esTienda, palabras } from '../utils/tienda';
 import { isPromoActive } from '../utils/promo';
 import { FeaturedProductsSkeleton } from './MenuSkeletons';
 import { useFlyToCart } from './FlyToCart';
@@ -34,6 +37,8 @@ const FeaturedProducts = ({ businessId, products, onAddToCart, theme, onToppings
   const flyToCart = useFlyToCart();
   const { businessConfig } = useBusinessConfig();
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
+  const tienda = esTienda(businessConfig);
+  const copy = palabras(tienda);
 
   const buttonColor = theme?.buttonColor || '#f97316';
   const buttonTextColor = theme?.buttonTextColor || '#ffffff';
@@ -124,7 +129,7 @@ const FeaturedProducts = ({ businessId, products, onAddToCart, theme, onToppings
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight leading-tight">Destacados</h2>
-              <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium -mt-0.5">{isService ? 'Los más solicitados' : 'Selección del chef'}</p>
+              <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium -mt-0.5">{isService ? 'Los más solicitados' : copy.destacados}</p>
             </div>
           </div>
           <span className="text-[11px] font-semibold text-slate-400">{featuredToShow.length + promoProducts.length} {isService ? 'servicios' : 'productos'}</span>
@@ -148,6 +153,7 @@ const FeaturedProducts = ({ businessId, products, onAddToCart, theme, onToppings
           ))}
           {featuredToShow.map((product, index) => {
             const hasToppings = product.toppingGroups && product.toppingGroups.length > 0;
+            const presentaciones = leerPresentaciones(product);
             return (
               <motion.div
                 key={product._id}
@@ -160,7 +166,7 @@ const FeaturedProducts = ({ businessId, products, onAddToCart, theme, onToppings
                 style={{ width: 'min(calc(50% - 6px), 260px)', borderRadius: '20px', boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)' }}
               >
                 {/* Image — 4:3, igual que ProductCard */}
-                <div className="relative aspect-[4/3] bg-slate-50 overflow-hidden">
+                <div className={`relative overflow-hidden ${tienda ? 'aspect-square bg-white' : 'aspect-[4/3] bg-slate-50'}`}>
                   {product.image ? (
                     <img
                       src={product.image}
@@ -194,8 +200,10 @@ const FeaturedProducts = ({ businessId, products, onAddToCart, theme, onToppings
                     </div>
                   )}
 
-                  {/* Gradient overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent pointer-events-none" />
+                  {/* Gradient overlay — en tienda no hay texto sobre la foto */}
+                  {!tienda && (
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent pointer-events-none" />
+                  )}
 
                   {/* Featured badge — top left */}
                   <span 
@@ -210,11 +218,16 @@ const FeaturedProducts = ({ businessId, products, onAddToCart, theme, onToppings
                   </span>
 
                   {/* Price — bottom left */}
-                  <div className="absolute bottom-2.5 left-3 z-[2]">
+                  {!tienda && (
+                  <div className="absolute bottom-2.5 left-3 z-[2] flex items-end gap-1.5">
+                    {presentaciones.preciosDistintos && (
+                      <span className="text-white/75 drop-shadow font-semibold text-[10px] sm:text-[11px] mb-[3px]">Desde</span>
+                    )}
                     <span className="text-[17px] tabular-nums text-white drop-shadow-lg" style={{ fontWeight: 800 }}>
-                      ${product.price?.toLocaleString()}
+                      ${enPesos(presentaciones.preciosDistintos ? presentaciones.desde : product.price)}
                     </span>
                   </div>
+                  )}
 
                   {/* Add button — bottom right */}
                   <button
@@ -259,6 +272,17 @@ const FeaturedProducts = ({ businessId, products, onAddToCart, theme, onToppings
                     <p className="text-[10px] sm:text-[11px] text-slate-400 leading-relaxed mt-0.5 line-clamp-1">
                       {product.description}
                     </p>
+                  )}
+                  <Presentaciones datos={presentaciones} max={2} />
+                  {tienda && (
+                    <div className="mt-1.5 flex items-end gap-1.5">
+                      {presentaciones.preciosDistintos && (
+                        <span className="text-[10px] font-semibold text-slate-400 mb-[2px]">Desde</span>
+                      )}
+                      <span className="text-[16px] font-extrabold tabular-nums text-slate-900">
+                        ${enPesos(presentaciones.preciosDistintos ? presentaciones.desde : product.price)}
+                      </span>
+                    </div>
                   )}
                 </div>
               </motion.div>

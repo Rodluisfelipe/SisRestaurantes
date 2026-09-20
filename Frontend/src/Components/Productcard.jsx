@@ -9,6 +9,9 @@ import BusinessClosedModal from './BusinessClosedModal';
 import { useFlyToCart } from './FlyToCart';
 import ProductPeekWrapper from './ProductPeekWrapper';
 import { radii, shadows, productNameSize, alpha, TOUCH_TARGET } from '../utils/menuTokens';
+import { leerPresentaciones, enPesos } from '../utils/presentaciones';
+import Presentaciones from './Presentaciones';
+import { esTienda } from '../utils/tienda';
 
 /* ── SVG icons (stroke-based) ── */
 const PCI = {
@@ -57,6 +60,17 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
   const promoActive = isPromoActive(product);
   const effPrice = getEffectivePrice(product);
   const msLeft = promoMsLeft(product);
+
+  /* Tiendas: con una sola referencia va el precio de siempre; con varias
+     presentaciones el precio suelto no dice nada, así que arriba queda el
+     "Desde" y el detalle se lista bajo el nombre. */
+  const presentaciones = leerPresentaciones(product);
+  const varios = presentaciones.preciosDistintos;
+
+  /* En una tienda la foto ES el producto, no el fondo de un precio: va
+     cuadrada, limpia, sin degradado encima, y el precio y el botón bajan a la
+     ficha. En un restaurante la card sigue idéntica a la de siempre. */
+  const tienda = esTienda(businessConfig);
 
   const flashAdded = useCallback(() => {
     setJustAdded(true);
@@ -121,7 +135,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
         style={{ borderRadius: radii.card, boxShadow: shadows.card }}
       >
         {/* Product Image — ratio 4:3 (hero en panorámico) */}
-        <div className={`relative overflow-hidden bg-slate-50 ${isHero ? 'aspect-[2/1]' : 'aspect-[4/3]'}`}>
+        <div className={`relative overflow-hidden ${tienda ? 'bg-white aspect-square' : `bg-slate-50 ${isHero ? 'aspect-[2/1]' : 'aspect-[4/3]'}`}`}>
           {product.image ? (
             <motion.img
               src={imageAt(product.image, isHero ? 800 : 400)}
@@ -165,8 +179,11 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
             </div>
           )}
 
-          {/* Cinematic gradient overlay — always on for price/button readability */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent pointer-events-none" />
+          {/* Cinematic gradient overlay — always on for price/button readability.
+              En tienda no hay nada que leer sobre la foto, así que estorba. */}
+          {!tienda && (
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent pointer-events-none" />
+          )}
 
           {/* Promo / Producto del día con cuenta regresiva */}
           {promoActive && (
@@ -225,10 +242,16 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
           )}
 
           {/* Price — overlaid on image bottom-left (con precio promo tachado si aplica) */}
+          {!tienda && (
           <div className="absolute bottom-2.5 left-3 z-[2] flex items-end gap-1.5">
-            {promoActive && (
+            {promoActive && !varios && (
               <span className="text-white/70 line-through drop-shadow text-[11px] sm:text-xs mb-0.5">
                 ${Number(product.price).toLocaleString('es-CO', { maximumFractionDigits: 0 })}
+              </span>
+            )}
+            {varios && (
+              <span className="text-white/75 drop-shadow font-semibold text-[10px] sm:text-[11px] mb-[3px]">
+                Desde
               </span>
             )}
             {/* El precio nunca es tímido: 17px/800 tabular-nums */}
@@ -236,16 +259,17 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
               className={`font-extrabold tabular-nums drop-shadow-lg ${promoActive ? 'text-amber-300' : 'text-white'} ${isHero ? 'text-xl sm:text-2xl' : menuV2 ? 'text-[15.5px]' : 'text-[17px]'}`}
               style={{ fontWeight: 800 }}
             >
-              ${Number(promoActive ? effPrice : product.price).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              ${enPesos(varios ? presentaciones.desde : (promoActive ? effPrice : product.price))}
             </span>
           </div>
+          )}
 
           {/* Botón de agregar, flotando sobre la foto (oculto en modo solo-vista).
               Sin backdrop-blur: su fondo es opaco, así que el desenfoque no se
               veía y aun así obligaba al compositor a desenfocar la región bajo
               cada botón. Repetido en una rejilla de 29 tarjetas, era lo que
               hacía sentir pesado el menú en Android de gama media. */}
-          {!isViewOnly && (
+          {!isViewOnly && !tienda && (
             <motion.button
               onClick={(e) => {
                 e.stopPropagation();
@@ -305,7 +329,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
         </div>
 
         {/* Product Info — compact, name + description only */}
-        <div className={isHero ? 'px-3 py-2.5 sm:px-4 sm:py-3' : 'px-3 py-2 sm:px-3.5'}>
+        <div className={`${isHero ? 'px-3 py-2.5 sm:px-4 sm:py-3' : 'px-3 py-2 sm:px-3.5'}${tienda ? ' pb-3' : ''}`}>
           {/* El nombre no se trunca jamás: hasta 2 líneas y, si es muy largo,
               se reduce el tamaño antes que cortar con "…". */}
           <h3
@@ -319,6 +343,58 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
             <p className={`text-slate-400 leading-relaxed mt-0.5 line-clamp-1 ${isHero ? 'text-xs' : 'text-[10px] sm:text-[11px]'}`}>
               {product.description}
             </p>
+          )}
+          <Presentaciones datos={presentaciones} />
+
+          {/* Tienda: precio en negro bajo el nombre y un botón que dice lo que
+              hace. El "+" flotante funciona para un plato que se agrega de un
+              toque; una camiseta primero se elige. */}
+          {tienda && (
+            <>
+              <div className="mt-1.5 flex items-end gap-1.5">
+                {promoActive && !varios && (
+                  <span className="text-[11px] text-slate-400 line-through mb-[1px] tabular-nums">
+                    ${enPesos(product.price)}
+                  </span>
+                )}
+                {varios && (
+                  <span className="text-[10px] font-semibold text-slate-400 mb-[2px]">Desde</span>
+                )}
+                <span className={`font-extrabold tabular-nums ${isHero ? 'text-lg' : 'text-[16px] sm:text-[17px]'} ${promoActive && !varios ? 'text-rose-600' : 'text-slate-900'}`}>
+                  ${enPesos(varios ? presentaciones.desde : (promoActive ? effPrice : product.price))}
+                </span>
+              </div>
+
+              {!isViewOnly && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (flyToCart?.triggerFly && !hasToppings && !presentaciones.varias) {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      flyToCart.triggerFly({
+                        x: rect.left + rect.width / 2,
+                        y: rect.top + rect.height / 2,
+                        image: product.image,
+                        color: buttonColor
+                      });
+                    }
+                    handleShowToppings();
+                  }}
+                  disabled={isDisabled}
+                  className={`mt-2 w-full py-2 text-[12.5px] font-bold transition-all ${isDisabled ? 'cursor-not-allowed' : 'active:scale-[0.97]'}`}
+                  style={{
+                    borderRadius: radii.button,
+                    backgroundColor: isDisabled ? '#e2e8f0' : accentBg,
+                    color: isDisabled ? '#94a3b8' : accentFg,
+                  }}
+                >
+                  {isOutOfStock
+                    ? 'Agotado'
+                    : (presentaciones.varias || hasToppings) ? 'Elegir opciones' : 'Agregar'}
+                </button>
+              )}
+            </>
           )}
         </div>
       </motion.div>

@@ -4,6 +4,9 @@ import api from '../services/api';
 import logger from '../utils/logger';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import ProductCard from './Productcard';
+import { leerPresentaciones, enPesos } from '../utils/presentaciones';
+import Presentaciones from './Presentaciones';
+import { esTienda, palabras } from '../utils/tienda';
 import { isPromoActive } from '../utils/promo';
 import { FeaturedProductsSkeleton } from './MenuSkeletons';
 import { useFlyToCart } from './FlyToCart';
@@ -43,6 +46,8 @@ const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, t
   const { businessConfig } = useBusinessConfig();
   const menuV2 = !!businessConfig?.features?.menuV2;
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
+  const tienda = esTienda(businessConfig);
+  const copy = palabras(tienda);
 
   const buttonColor = theme?.buttonColor || '#f97316';
   const buttonTextColor = theme?.buttonTextColor || '#ffffff';
@@ -105,7 +110,7 @@ const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, t
 
   const showBadges = data.showBadges !== false;
   const showCounts = data.showOrderCounts !== false;
-  const title = data.title || 'Los más pedidos';
+  const title = data.title || copy.masPedidos;
 
   return (
     <motion.div
@@ -159,6 +164,7 @@ const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, t
           {popularToShow.map((product, index) => {
             const hasToppings = product.toppingGroups && product.toppingGroups.length > 0;
             const pop = product.popular || {};
+            const presentaciones = leerPresentaciones(product);
             const medal = pop.rank && MEDALS[pop.rank];
             return (
               <motion.div
@@ -172,7 +178,7 @@ const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, t
                 style={{ width: 'min(calc(50% - 6px), 260px)', borderRadius: radii.card, boxShadow: shadows.card }}
               >
                 {/* Image — 4:3, igual que ProductCard */}
-                <div className="relative aspect-[4/3] bg-slate-50 overflow-hidden">
+                <div className={`relative overflow-hidden ${tienda ? 'aspect-square bg-white' : 'aspect-[4/3] bg-slate-50'}`}>
                   {product.image ? (
                     <img
                       src={product.image}
@@ -206,7 +212,10 @@ const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, t
                     </div>
                   )}
 
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent pointer-events-none" />
+                  {/* En tienda no hay texto sobre la foto: el degradado solo la ensucia */}
+                  {!tienda && (
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent pointer-events-none" />
+                  )}
 
                   {/* Rank medal — top left */}
                   {medal ? (
@@ -233,11 +242,16 @@ const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, t
                   )}
 
                   {/* Price — bottom left */}
-                  <div className="absolute bottom-2.5 left-3 z-[2]">
+                  {!tienda && (
+                  <div className="absolute bottom-2.5 left-3 z-[2] flex items-end gap-1.5">
+                    {presentaciones.preciosDistintos && (
+                      <span className="text-white/75 drop-shadow font-semibold text-[10px] sm:text-[11px] mb-[3px]">Desde</span>
+                    )}
                     <span className="text-[17px] tabular-nums text-white drop-shadow-lg" style={{ fontWeight: 800 }}>
-                      ${product.price?.toLocaleString()}
+                      ${enPesos(presentaciones.preciosDistintos ? presentaciones.desde : product.price)}
                     </span>
                   </div>
+                  )}
 
                   {/* Add button — bottom right */}
                   <button
@@ -275,19 +289,30 @@ const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, t
                       Por debajo del umbral, un sello cualitativo vende más. */}
                   {showCounts && pop.weeklyCount >= SOCIAL_PROOF_MIN ? (
                     <p className="text-[10px] sm:text-[11px] font-semibold mt-0.5 line-clamp-1 flex items-center gap-1" style={{ color: buttonColor }}>
-                      {PI.flame('w-2.5 h-2.5')} {pop.weeklyCount} pedidos esta semana
+                      {PI.flame('w-2.5 h-2.5')} {pop.weeklyCount} {copy.estaSemana}
                     </p>
                   ) : (menuV2 ? index === 0 : (medal || pop.isTopSeller)) ? (
                     /* En V2 el sello es exclusivo del #1: repetirlo en tres
                        productos lo vuelve ruido y deja de significar algo. */
                     <p className="text-[10px] sm:text-[11px] font-semibold mt-0.5 line-clamp-1 flex items-center gap-1" style={{ color: buttonColor }}>
-                      {PI.trophy('w-2.5 h-2.5')} El favorito de la casa
+                      {PI.trophy('w-2.5 h-2.5')} {copy.favorito}
                     </p>
                   ) : product.description ? (
                     <p className="text-[10px] sm:text-[11px] text-slate-400 leading-relaxed mt-0.5 line-clamp-1">
                       {product.description}
                     </p>
                   ) : null}
+                  <Presentaciones datos={presentaciones} max={2} />
+                  {tienda && (
+                    <div className="mt-1.5 flex items-end gap-1.5">
+                      {presentaciones.preciosDistintos && (
+                        <span className="text-[10px] font-semibold text-slate-400 mb-[2px]">Desde</span>
+                      )}
+                      <span className="text-[16px] font-extrabold tabular-nums text-slate-900">
+                        ${enPesos(presentaciones.preciosDistintos ? presentaciones.desde : product.price)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             );

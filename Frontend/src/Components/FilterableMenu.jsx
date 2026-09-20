@@ -7,6 +7,9 @@ import FeaturedProducts from './FeaturedProducts';
 import PopularProducts from './PopularProducts';
 import PendingReviewCard from './PendingReviewCard';
 import { NoSearchResultsIllustration, EmptyMenuIllustration } from './EmptyStates';
+import { esTienda } from '../utils/tienda';
+import { leerPresentaciones } from '../utils/presentaciones';
+import { getEffectivePrice } from '../utils/promo';
 import {
   Hamburger, Pizza, CupSoda, Coffee, CakeSlice, Ham, Salad, Soup, Drumstick,
   CookingPot, Fish, Croissant, Sandwich, EggFried, UtensilsCrossed, Gift,
@@ -124,6 +127,10 @@ const FilterableMenu = ({
   const businessConfig = businessConfigProp || businessConfigContext;
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const isHotel = businessConfig?.businessType === 'hotel';
+  /* Tienda: rejilla pareja (nada de cards panorámicas), más columnas en PC y
+     una barra para ordenar, que es como se compra. El restaurante no cambia. */
+  const tienda = esTienda(businessConfig);
+  const [orden, setOrden] = useState('destacados');
 
   // ── Scroll-spy + sticky state ──
   const [spyCategory, setSpyCategory] = useState('all');  // category visible by scroll
@@ -342,8 +349,22 @@ const FilterableMenu = ({
       filtered = filtered.filter(product => product.category === activeCategory);
     }
 
+    /* En tienda el cliente puede reordenar. "Destacados" es el orden que armó
+       el negocio (displayOrder), así que ahí no se toca nada. */
+    if (tienda && orden !== 'destacados') {
+      const precio = (p) => {
+        const pres = leerPresentaciones(p);
+        return pres.varias ? pres.desde : (Number(getEffectivePrice(p)) || 0);
+      };
+      filtered = [...filtered].sort((a, b) => {
+        if (orden === 'precio-asc') return precio(a) - precio(b);
+        if (orden === 'precio-desc') return precio(b) - precio(a);
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      });
+    }
+
     setFilteredProducts(filtered);
-  }, [products, searchTerm, activeCategory]);
+  }, [products, searchTerm, activeCategory, tienda, orden]);
 
   // Handle search input
   const handleSearchChange = (e) => {
@@ -724,6 +745,34 @@ const FilterableMenu = ({
         />
       )}
 
+      {/* Tienda: ordenar es parte de comprar. En un restaurante el orden lo
+          decide la carta, así que esta barra no existe. */}
+      {tienda && filteredProducts.length > 1 && (
+        <div className="px-3 sm:px-4 lg:px-6 mb-3 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+          <span className="flex-shrink-0 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Ordenar</span>
+          {[
+            { id: 'destacados', label: 'Destacados' },
+            { id: 'precio-asc', label: 'Menor precio' },
+            { id: 'precio-desc', label: 'Mayor precio' },
+            { id: 'nuevos', label: 'Novedades' },
+          ].map((o) => {
+            const activo = orden === o.id;
+            return (
+              <button
+                key={o.id}
+                onClick={() => setOrden(o.id)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors ${
+                  activo ? 'text-white border-transparent' : 'text-slate-500 border-slate-200 bg-white active:bg-slate-50'
+                }`}
+                style={activo ? { backgroundColor: themeColor } : undefined}
+              >
+                {o.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Products Display */}
       <AnimatePresence mode="wait">
         {/* ── No results state ── */}
@@ -875,13 +924,14 @@ const FilterableMenu = ({
                       />
                     </div>
                     <motion.div 
-                      className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4"
+                      className={`grid gap-3 sm:gap-4 ${tienda ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4'}`}
                       variants={containerVariants}
                       initial="hidden"
                       animate="visible"
                     >
                       {categoryProducts.map((product, productIndex) => {
-                        const isFirstHero = productIndex === 0 && product.image && categoryProducts.length !== 2;
+                        // En tienda la rejilla es pareja: una card gigante rompe la comparación.
+                        const isFirstHero = !tienda && productIndex === 0 && product.image && categoryProducts.length !== 2;
                         return isFirstHero ? (
                           <div key={product._id} className="col-span-2">
                             <ProductCard
@@ -964,13 +1014,13 @@ const FilterableMenu = ({
                 })}
                 
                 <motion.div 
-                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4"
+                  className={`grid gap-3 sm:gap-4 ${tienda ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4'}`}
                   variants={containerVariants}
                   initial="hidden"
                   animate="visible"
                 >
                   {filteredProducts.map((product, productIndex) => {
-                    const isFirstHero = productIndex === 0 && product.image && filteredProducts.length !== 2;
+                    const isFirstHero = !tienda && productIndex === 0 && product.image && filteredProducts.length !== 2;
                     return isFirstHero ? (
                       <div key={product._id} className="col-span-2">
                         <ProductCard

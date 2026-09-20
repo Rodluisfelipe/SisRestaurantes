@@ -86,6 +86,7 @@ router.put("/", tenantAuth, validateUpdateConfig, async (req, res) => {
     delete updateData._id;
     delete updateData.isActive;       // Only SA can activate/deactivate
     delete updateData.slug;           // Prevent slug squatting
+    delete updateData.tipoTienda;     // Restaurante o tienda lo decide MenuBy, no el negocio
     delete updateData.reviewStats;    // Calculated server-side only
     delete updateData.subscriptionStatus; // Only payment webhooks can change
     delete updateData.subscriptionPlan;   // Only payment webhooks can change
@@ -482,6 +483,7 @@ router.put("/:businessId", tenantAuth, validateUpdateConfigById, async (req, res
     delete updateData._id;
     delete updateData.isActive;       // Only SA can activate/deactivate
     delete updateData.slug;           // Prevent slug squatting
+    delete updateData.tipoTienda;     // Restaurante o tienda lo decide MenuBy, no el negocio
     delete updateData.reviewStats;    // Calculated server-side only
     delete updateData.subscriptionStatus; // Only payment webhooks can change
     delete updateData.subscriptionPlan;   // Only payment webhooks can change
