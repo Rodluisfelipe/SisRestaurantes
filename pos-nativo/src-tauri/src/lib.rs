@@ -9,7 +9,7 @@
 //! tirilla se reimprime; al revés, se entregaría un comprobante de una venta
 //! que no existe.
 
-use pos_core::{db, dinero::Pesos, escpos, sync, turnos, usuarios, venta};
+use pos_core::{auditoria, db, dinero::Pesos, escpos, pausadas, sync, turnos, usuarios, venta};
 use std::sync::Mutex;
 use tauri::{Manager, State};
 
@@ -140,14 +140,52 @@ fn cobrar(estado: State<Estado>, nueva: venta::NuevaVenta) -> Result<Cobro, Stri
     Ok(Cobro { venta: registrada, impresion })
 }
 
-/// Reimprimir no vuelve a cobrar: es el caso de "se acabó el papel".
+/// Abre la gaveta sin venta de por medio.
+///
+/// No pide supervisor —hacerlo paralizaría la fila cada vez que hay que dar un
+/// cambio— pero **sí queda registrado**. Abrir el cajón de más es de las cosas
+/// que más se abusan, y el patrón solo se ve si cada apertura deja rastro.
 #[tauri::command]
-fn abrir_cajon(estado: State<Estado>) -> Result<(), String> {
+fn abrir_cajon(estado: State<Estado>, motivo: String) -> Result<(), String> {
+    anotar_excepcion(&estado, auditoria::TipoExcepcion::AbrirCajon, "", 0, &motivo, "");
+
     let ancho = *estado.ancho_tirilla.lock().unwrap();
     let mut t = escpos::Tirilla::nueva(ancho);
     t.abrir_cajon();
     let destino = estado.impresora.lock().unwrap().clone();
     perifericos::enviar(&destino, &t.terminar())
+}
+
+/// Deja constancia de una excepción con el cajero y el turno de verdad.
+///
+/// Que falle el registro no puede impedir la operación —el cliente está ahí
+/// esperando— pero tampoco puede pasar inadvertido: queda en el log de la app.
+fn anotar_excepcion(
+    estado: &State<Estado>,
+    tipo: auditoria::TipoExcepcion,
+    detalle: &str,
+    monto: i64,
+    motivo: &str,
+    autorizo: &str,
+) {
+    let Ok(mut base) = estado.base.lock() else { return };
+    let turno = match turnos::activo(&base) {
+        Ok(Some(t)) => t,
+        _ => return,
+    };
+    let cajero = estado
+        .sesion
+        .lock()
+        .ok()
+        .and_then(|s| s.clone())
+        .map(|u| u.nombre)
+        .unwrap_or_else(|| turno.cajero.clone());
+
+    if let Err(e) = auditoria::registrar(
+        &mut base, &turno.id, tipo, detalle, monto, motivo, &cajero, autorizo, &ahora_local(),
+    ) {
+        eprintln!("no se pudo registrar la excepción: {e}");
+    }
 }
 
 #[derive(serde::Serialize)]
@@ -232,6 +270,117 @@ fn crear_usuario(
 
     let rol = if supervisor || primeros { usuarios::Rol::Supervisor } else { usuarios::Rol::Cajero };
     usuarios::guardar(&base, &nombre, &pin, rol).map_err(|e| e.to_string())
+}
+
+/* ── La fila de la hora pico ───────────────────────────────────────────── */
+
+/// Aparta el carrito para cobrarle al siguiente.
+#[tauri::command]
+fn pausar_venta(
+    estado: State<Estado>,
+    carrito: String,
+    etiqueta: String,
+    total: i64,
+    items: i64,
+) -> Result<pausadas::EnEspera, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    let turno = turnos::activo(&base).map_err(|e| e.to_string())?.ok_or("No hay turno abierto")?;
+    pausadas::pausar(&base, &turno.id, &carrito, &etiqueta, total, items, &ahora_local())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn listar_pausadas(estado: State<Estado>) -> Result<Vec<pausadas::EnEspera>, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    let Some(turno) = turnos::activo(&base).map_err(|e| e.to_string())? else {
+        return Ok(vec![]);
+    };
+    pausadas::listar(&base, &turno.id).map_err(|e| e.to_string())
+}
+
+/// Devuelve el carrito y lo saca de la lista: retomar no deja copia.
+#[tauri::command]
+fn retomar_venta(estado: State<Estado>, id: String) -> Result<Option<String>, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    pausadas::retomar(&base, &id).map_err(|e| e.to_string())
+}
+
+/// Descarta una venta en espera. Queda registrada: es plata que no se cobró.
+#[tauri::command]
+fn descartar_pausada(estado: State<Estado>, id: String, motivo: String) -> Result<(), String> {
+    let (detalle, monto) = {
+        let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+        let turno = turnos::activo(&base).map_err(|e| e.to_string())?.ok_or("No hay turno abierto")?;
+        let ficha = pausadas::listar(&base, &turno.id)
+            .map_err(|e| e.to_string())?
+            .into_iter()
+            .find(|p| p.id == id);
+        match ficha {
+            Some(f) => (f.etiqueta, f.total),
+            None => return Ok(()),
+        }
+    };
+
+    anotar_excepcion(&estado, auditoria::TipoExcepcion::DescartarPausada, &detalle, monto, &motivo, "");
+
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    pausadas::descartar(&base, &id).map_err(|e| e.to_string())
+}
+
+/* ── Autorizaciones ────────────────────────────────────────────────────── */
+
+/// Verifica el PIN de un supervisor **sin cambiar la sesión**.
+///
+/// Es la diferencia entre "el supervisor autoriza y se va" y "el supervisor
+/// queda logueado y el cajero sigue vendiendo con su usuario". Lo segundo
+/// borraría de un plumazo toda la trazabilidad del turno.
+#[tauri::command]
+fn autorizar(estado: State<Estado>, pin: String) -> Result<String, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    let quien = usuarios::entrar(&base, &pin, ahora_epoch()).map_err(|e| e.to_string())?;
+
+    if quien.rol != usuarios::Rol::Supervisor {
+        return Err("Ese PIN no es de un supervisor".into());
+    }
+    Ok(quien.nombre)
+}
+
+/// Anula una línea ya marcada. Exige el nombre de quien autorizó.
+#[tauri::command]
+fn anular_item(
+    estado: State<Estado>,
+    detalle: String,
+    monto: i64,
+    motivo: String,
+    autorizo: String,
+) -> Result<(), String> {
+    if autorizo.trim().is_empty() {
+        return Err("Falta la autorización de un supervisor".into());
+    }
+    if motivo.trim().len() < 3 {
+        return Err("Dile por qué se anula".into());
+    }
+    anotar_excepcion(&estado, auditoria::TipoExcepcion::AnularItem, &detalle, monto, &motivo, &autorizo);
+    Ok(())
+}
+
+/// Registra un descuento puesto a mano.
+#[tauri::command]
+fn registrar_descuento(
+    estado: State<Estado>,
+    detalle: String,
+    monto: i64,
+    motivo: String,
+    autorizo: String,
+) -> Result<(), String> {
+    if autorizo.trim().is_empty() {
+        return Err("Falta la autorización de un supervisor".into());
+    }
+    if motivo.trim().len() < 3 {
+        return Err("Dile por qué se descuenta".into());
+    }
+    anotar_excepcion(&estado, auditoria::TipoExcepcion::Descuento, &detalle, monto, &motivo, &autorizo);
+    Ok(())
 }
 
 /* ── El turno ──────────────────────────────────────────────────────────── */
@@ -480,7 +629,14 @@ pub fn run() {
             turno_activo,
             abrir_turno,
             mover_efectivo,
-            cerrar_turno
+            cerrar_turno,
+            pausar_venta,
+            listar_pausadas,
+            retomar_venta,
+            descartar_pausada,
+            autorizar,
+            anular_item,
+            registrar_descuento
         ])
         .run(tauri::generate_context!())
         .expect("error arrancando el POS");

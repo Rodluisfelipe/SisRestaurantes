@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { abrirTurno, cerrarTurno, moverEfectivo, pesos, type CierreTurno, type Turno, type Usuario } from './nativo';
 
 /**
@@ -60,6 +60,12 @@ export function AbrirTurno({ usuario, onAbierto }: { usuario: Usuario; onAbierto
   );
 }
 
+/* Lo que circula en Colombia. Los billetes primero, que es como se cuenta una
+   gaveta: se apilan por denominación de mayor a menor y después las monedas.
+   El de 1.000 existe como billete y como moneda; se cuenta junto, porque para
+   el arqueo vale lo mismo y separarlo solo invita a equivocarse. */
+const DENOMINACIONES = [100_000, 50_000, 20_000, 10_000, 5_000, 2_000, 1_000, 500, 200, 100, 50];
+
 /**
  * El panel del turno: mover plata y cerrar.
  *
@@ -82,8 +88,19 @@ export function PanelTurno({
   const [monto, setMonto] = useState('');
   const [motivo, setMotivo] = useState('');
   const [contado, setContado] = useState('');
+  /* El conteo por denominaciones: cuántos billetes de cada uno. Sumar de
+     cabeza o con una calculadora aparte es el origen clásico del descuadre
+     involuntario, ese que no es robo sino cansancio a las diez de la noche. */
+  const [cuantos, setCuantos] = useState<Record<number, string>>({});
+  const [aMano, setAMano] = useState(false);
   const [error, setError] = useState('');
   const [ocupado, setOcupado] = useState(false);
+
+  const totalContado = useMemo(
+    () => DENOMINACIONES.reduce((t, d) => t + d * (parseInt(cuantos[d] || '0', 10) || 0), 0),
+    [cuantos],
+  );
+  const aEntregar = aMano ? parseInt(contado || '0', 10) || 0 : totalContado;
 
   const guardarMovimiento = async () => {
     setOcupado(true);
@@ -104,7 +121,7 @@ export function PanelTurno({
     setOcupado(true);
     setError('');
     try {
-      onCerrado(await cerrarTurno(parseInt(contado || '0', 10) || 0));
+      onCerrado(await cerrarTurno(aEntregar));
     } catch (e) {
       setError(String(e).replace(/^Error:\s*/, ''));
       setOcupado(false);
@@ -188,16 +205,57 @@ export function PanelTurno({
       {vista === 'cierre' && (
         <div className="space-y-2">
           <p className="text-[13px] font-semibold text-slate-700">
-            Cuenta el efectivo de la gaveta y escribe el total.
+            Cuenta la gaveta por denominación. Nosotros sumamos.
           </p>
-          <input
-            autoFocus
-            value={contado}
-            onChange={(e) => setContado(e.target.value.replace(/\D/g, ''))}
-            inputMode="numeric"
-            placeholder="0"
-            className="w-full h-16 px-3 rounded-xl border-2 border-slate-200 text-center text-3xl font-black tabular-nums outline-none focus:border-slate-900"
-          />
+
+          {!aMano ? (
+            <div className="space-y-1">
+              {DENOMINACIONES.map((d) => {
+                const n = parseInt(cuantos[d] || '0', 10) || 0;
+                return (
+                  <div key={d} className="flex items-center gap-2">
+                    <span className="w-20 text-right text-[13px] font-semibold text-slate-600 tabular-nums">
+                      {pesos(d)}
+                    </span>
+                    <span className="text-slate-300">×</span>
+                    <input
+                      value={cuantos[d] || ''}
+                      onChange={(e) => setCuantos((c) => ({ ...c, [d]: e.target.value.replace(/\D/g, '') }))}
+                      inputMode="numeric"
+                      placeholder="0"
+                      className="w-16 h-10 px-2 rounded-lg border-2 border-slate-200 text-center text-[14px] font-bold tabular-nums outline-none focus:border-slate-900"
+                    />
+                    {/* El subtotal a la vista: el cajero detecta el dedazo en el momento. */}
+                    <span className="flex-1 text-right text-[13px] tabular-nums text-slate-400">
+                      {n > 0 ? pesos(d * n) : ''}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <input
+              autoFocus
+              value={contado}
+              onChange={(e) => setContado(e.target.value.replace(/\D/g, ''))}
+              inputMode="numeric"
+              placeholder="0"
+              className="w-full h-16 px-3 rounded-xl border-2 border-slate-200 text-center text-3xl font-black tabular-nums outline-none focus:border-slate-900"
+            />
+          )}
+
+          <div className="flex items-baseline justify-between pt-2 border-t border-slate-100">
+            <span className="text-[13px] font-semibold text-slate-500">Vas a entregar</span>
+            <span className="text-2xl font-black tabular-nums">{pesos(aEntregar)}</span>
+          </div>
+
+          <button
+            onClick={() => setAMano(!aMano)}
+            className="text-[11.5px] font-semibold text-slate-400 hover:text-slate-700"
+          >
+            {aMano ? 'Contar por denominaciones' : 'Escribir el total directamente'}
+          </button>
+
           <p className="text-[11.5px] text-slate-400">
             No te decimos cuánto debería haber: por eso el conteo sirve. La
             diferencia aparece después de guardar.
@@ -209,7 +267,7 @@ export function PanelTurno({
             </button>
             <button
               onClick={cerrar}
-              disabled={ocupado || contado === ''}
+              disabled={ocupado || (aMano && contado === '')}
               className="flex-1 h-12 rounded-xl bg-slate-900 text-white text-[13px] font-bold disabled:opacity-40"
             >
               {ocupado ? 'Cerrando…' : 'Cerrar turno'}

@@ -52,11 +52,13 @@ impl Nube {
 
 impl sync::Transporte for Nube {
     fn enviar(&self, entidad: &str, _operacion: &str, payload: &str) -> Result<(), sync::FalloEnvio> {
-        /* Hoy la cola solo lleva ventas. Cuando lleve turnos o arqueos, cada
-           entidad tendrá su ruta y esto deja de ser un `match` de un solo brazo. */
+        /* Cada entidad de la cola tiene su ruta. La cola no sabe de HTTP y esto
+           no sabe de reintentos: por eso agregar una entidad nueva es agregar
+           una línea aquí y nada más. */
         let ruta = match entidad {
             "venta" => format!("{}/pos/sync-sale", self.base),
             "turno" => format!("{}/pos/shifts/close", self.base),
+            "excepcion" => format!("{}/pos/audit", self.base),
             otro => {
                 return Err(sync::FalloEnvio::Rechazado(
                     422,

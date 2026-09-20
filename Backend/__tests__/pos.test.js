@@ -10,7 +10,7 @@
  *    bajaran los activos, un producto descontinuado se quedaría para siempre en
  *    la caja y se seguiría vendiendo.
  */
-const { validarVenta, validarCierre, aplanarCatalogo } = require('../utils/pos');
+const { validarVenta, validarCierre, validarExcepcion, aplanarCatalogo } = require('../utils/pos');
 
 const VENTA = {
   id: '0192f8a1-7c4e-7000-8000-abcdef123456',   // UUIDv7 de la caja
@@ -220,5 +220,62 @@ describe('el arqueo que sube la caja', () => {
 
   it('no acepta un fondo o un conteo negativo', () => {
     expect(validarCierre(cierre({ contado: -1, diferencia: -170001 })).ok).toBe(false);
+  });
+});
+
+describe('las excepciones del mostrador', () => {
+  const BASE = {
+    id: '0192f8a1-7c4e-7000-8000-000000000009',
+    turno_id: '0192f8a1-7c4e-7000-8000-000000000001',
+    tipo: 'anular_item',
+    detalle: 'Café x2',
+    monto: 10000,
+    motivo: 'el cliente se arrepintió',
+    cajero: 'Ana',
+    autorizo: 'Felipe',
+    creada_en: '2026-09-20T15:00:00-05:00',
+  };
+  const exc = (cambios = {}) => ({ ...BASE, ...cambios });
+
+  it('una anulación con motivo y autorización pasa', () => {
+    const r = validarExcepcion(BASE);
+    expect(r.ok).toBe(true);
+    expect(r.excepcion.cajero).toBe('Ana');
+    expect(r.excepcion.autorizo).toBe('Felipe');
+  });
+
+  it('una anulación sin motivo no es un registro, es una línea que desapareció', () => {
+    expect(validarExcepcion(exc({ motivo: '' })).ok).toBe(false);
+    expect(validarExcepcion(exc({ motivo: 'ok' })).ok).toBe(false);
+  });
+
+  it('una anulación sin quién la autorizó no entra', () => {
+    expect(validarExcepcion(exc({ autorizo: '' })).ok).toBe(false);
+  });
+
+  it('un descuento se exige igual de estricto que una anulación', () => {
+    expect(validarExcepcion(exc({ tipo: 'descuento', autorizo: '' })).ok).toBe(false);
+    expect(validarExcepcion(exc({ tipo: 'descuento' })).ok).toBe(true);
+  });
+
+  it('abrir el cajón se registra sin pedir supervisor', () => {
+    // Pedir autorización para dar un cambio paraliza la fila en hora pico.
+    const r = validarExcepcion({ id: BASE.id, tipo: 'abrir_cajon', cajero: 'Ana', creada_en: BASE.creada_en });
+    expect(r.ok).toBe(true);
+    expect(r.excepcion.autorizo).toBe('');
+  });
+
+  it('un tipo inventado no entra', () => {
+    expect(validarExcepcion(exc({ tipo: 'lo_que_sea' })).ok).toBe(false);
+  });
+
+  it('sin id no hay idempotencia', () => {
+    expect(validarExcepcion(exc({ id: '' })).ok).toBe(false);
+  });
+
+  it('guarda la hora del mostrador, no la del servidor', () => {
+    // Puede llegar dos días tarde si la caja estuvo sin internet.
+    const r = validarExcepcion(BASE);
+    expect(r.excepcion.ocurridaEn.toISOString()).toBe('2026-09-20T20:00:00.000Z');
   });
 });

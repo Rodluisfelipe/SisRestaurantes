@@ -114,9 +114,10 @@ export async function sincronizar(): Promise<ResumenSync> {
   return invoke<ResumenSync>('sincronizar');
 }
 
-export async function abrirCajon(): Promise<void> {
+/** Abrir la gaveta sin venta. No pide supervisor, pero queda registrado. */
+export async function abrirCajon(motivo: string): Promise<void> {
   if (!enTauri) return;
-  await invoke('abrir_cajon');
+  await invoke('abrir_cajon', { motivo });
 }
 
 /** Pesos colombianos, sin decimales. */
@@ -222,4 +223,98 @@ export async function cerrarTurno(contado: number): Promise<CierreTurno> {
     };
   }
   return invoke<CierreTurno>('cerrar_turno', { contado });
+}
+
+/* ── La fila de la hora pico ──────────────────────────────────────────── */
+
+export interface EnEspera {
+  id: string;
+  turno_id: string;
+  etiqueta: string;
+  total: number;
+  items: number;
+  creada_en: string;
+  carrito: string;
+}
+
+let demoEspera: EnEspera[] = [];
+
+/** Aparta el carrito para cobrarle al siguiente de la fila. */
+export async function pausarVenta(
+  carrito: LineaVenta[],
+  etiqueta: string,
+  total: number,
+): Promise<EnEspera> {
+  const payload = JSON.stringify(carrito);
+  const items = carrito.reduce((t, i) => t + i.cantidad, 0);
+
+  if (!enTauri) {
+    const ficha: EnEspera = {
+      id: String(Date.now()), turno_id: 'demo', etiqueta, total, items,
+      creada_en: new Date().toISOString(), carrito: payload,
+    };
+    demoEspera = [...demoEspera, ficha];
+    return ficha;
+  }
+  return invoke<EnEspera>('pausar_venta', { carrito: payload, etiqueta, total, items });
+}
+
+export async function listarPausadas(): Promise<EnEspera[]> {
+  if (!enTauri) return demoEspera;
+  return invoke<EnEspera[]>('listar_pausadas');
+}
+
+/** Devuelve el carrito y lo saca de la lista: retomar no deja copia. */
+export async function retomarVenta(id: string): Promise<LineaVenta[] | null> {
+  if (!enTauri) {
+    const ficha = demoEspera.find((p) => p.id === id);
+    demoEspera = demoEspera.filter((p) => p.id !== id);
+    return ficha ? (JSON.parse(ficha.carrito) as LineaVenta[]) : null;
+  }
+  const carrito = await invoke<string | null>('retomar_venta', { id });
+  return carrito ? (JSON.parse(carrito) as LineaVenta[]) : null;
+}
+
+export async function descartarPausada(id: string, motivo: string): Promise<void> {
+  if (!enTauri) {
+    demoEspera = demoEspera.filter((p) => p.id !== id);
+    return;
+  }
+  await invoke('descartar_pausada', { id, motivo });
+}
+
+/* ── Autorizaciones de supervisor ─────────────────────────────────────── */
+
+/**
+ * Verifica el PIN de un supervisor **sin cambiar la sesión**.
+ *
+ * El supervisor autoriza y se va; el turno sigue siendo del cajero. Si la
+ * sesión cambiara, la trazabilidad del turno se borraría de un plumazo.
+ */
+export async function autorizar(pin: string): Promise<string> {
+  if (!enTauri) {
+    if (pin.length < 4) throw new Error('PIN incorrecto');
+    return 'Supervisor demo';
+  }
+  return invoke<string>('autorizar', { pin });
+}
+
+export async function anularItem(
+  detalle: string,
+  monto: number,
+  motivo: string,
+  autorizo: string,
+): Promise<void> {
+  if (!enTauri) return;
+  await invoke('anular_item', { detalle, monto, motivo, autorizo });
+}
+
+export async function registrarDescuento(
+  detalle: string,
+  monto: number,
+  motivo: string,
+  autorizo: string,
+): Promise<void> {
+  if (!enTauri) return;
+  await invoke('registrar_descuento', { detalle, monto, motivo, autorizo });
 }

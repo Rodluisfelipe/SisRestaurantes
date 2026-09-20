@@ -8,10 +8,12 @@
 //! estos comandos al webview y habla con los puertos. Si mañana el POS deja de
 //! ser Tauri, esto se queda igual.
 
+pub mod auditoria;
 pub mod catalogo;
 pub mod db;
 pub mod dinero;
 pub mod escpos;
+pub mod pausadas;
 pub mod sync;
 pub mod turnos;
 pub mod usuarios;

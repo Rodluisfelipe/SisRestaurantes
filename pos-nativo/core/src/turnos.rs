@@ -58,6 +58,9 @@ pub struct CierreTurno {
 #[derive(Debug)]
 pub enum ErrorTurno {
     YaHayUnoAbierto(String),
+    /// Quedan ventas apartadas. Cerrar con ellas sueltas las pierde sin que
+    /// nadie decida si se cobran o se descartan.
+    QuedanPausadas(i64),
     NoHayTurnoAbierto,
     MotivoRequerido,
     MontoInvalido,
@@ -68,6 +71,9 @@ impl std::fmt::Display for ErrorTurno {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ErrorTurno::YaHayUnoAbierto(quien) => write!(f, "Ya hay un turno abierto de {quien}"),
+            ErrorTurno::QuedanPausadas(n) => {
+                write!(f, "Quedan {n} venta(s) en espera. Cóbralas o descártalas antes de cerrar")
+            }
             ErrorTurno::NoHayTurnoAbierto => write!(f, "No hay un turno abierto en esta caja"),
             ErrorTurno::MotivoRequerido => write!(f, "Dile por qué sale o entra la plata"),
             ErrorTurno::MontoInvalido => write!(f, "El monto no es válido"),
@@ -233,6 +239,13 @@ pub fn cerrar(
         return Err(ErrorTurno::MontoInvalido);
     }
 
+    /* Una venta apartada al cerrar es un carrito que nadie va a reclamar y una
+       decisión que nadie tomó. Se obliga a resolverla antes. */
+    let pendientes = crate::pausadas::cuantas(conexion, &turno.id)?;
+    if pendientes > 0 {
+        return Err(ErrorTurno::QuedanPausadas(pendientes));
+    }
+
     let mut cierre = esperado_de(conexion, &turno)?;
     cierre.contado = contado;
     cierre.diferencia = Pesos(contado.0 - cierre.esperado.0);
@@ -353,6 +366,20 @@ mod pruebas {
         let json: serde_json::Value = serde_json::from_str(&cola[0].1).unwrap();
         assert_eq!(json["diferencia"], -5_000);
         assert_eq!(json["cajero"], "Ana");
+    }
+
+    #[test]
+    fn no_se_cierra_con_ventas_en_espera() {
+        // Cerrar con carritos sueltos los pierde sin que nadie decida nada.
+        let (mut c, t) = caja_con_turno();
+        crate::pausadas::pausar(&c, &t.id, "[]", "x", 10_000, 1, AHORA).unwrap();
+
+        assert!(matches!(cerrar(&mut c, Pesos(100_000), AHORA), Err(ErrorTurno::QuedanPausadas(1))));
+
+        // Resuelta la espera, el cierre pasa.
+        let apartada = crate::pausadas::listar(&c, &t.id).unwrap().remove(0);
+        crate::pausadas::descartar(&c, &apartada.id).unwrap();
+        assert!(cerrar(&mut c, Pesos(100_000), AHORA).is_ok());
     }
 
     #[test]

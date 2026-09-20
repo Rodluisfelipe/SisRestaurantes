@@ -7,7 +7,8 @@ const Category = require('../Models/Category');
 const Counter = require('../Models/Counter');
 const { tenantAuth } = require('../middleware/tenantAuth');
 const CashRegister = require('../Models/CashRegister');
-const { validarVenta, validarCierre, aplanarCatalogo } = require('../utils/pos');
+const PosExcepcion = require('../Models/PosExcepcion');
+const { validarVenta, validarCierre, validarExcepcion, aplanarCatalogo } = require('../utils/pos');
 const { moverStock } = require('../services/inventario');
 const socketService = require('../services/socketService');
 const logger = require('../utils/logger');
@@ -200,6 +201,100 @@ router.post('/shifts/close', tenantAuth, async (req, res) => {
     }
     logger.error('Error registrando el arqueo del POS', error, req);
     res.status(500).json({ message: 'No se pudo registrar el cierre de turno' });
+  }
+});
+
+/* POST /api/pos/audit — una anulación, un descuento o una apertura de cajón.
+ *
+ * Es el registro que el dueño mira cuando la caja no cuadra. Llega por la cola,
+ * así que puede aparecer dos días después si esa caja estuvo sin internet: la
+ * fecha que vale es la del mostrador. */
+router.post('/audit', tenantAuth, async (req, res) => {
+  const businessId = req.user?.businessId || req.body.businessId;
+  if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
+
+  const revisada = validarExcepcion(req.body);
+  if (!revisada.ok) {
+    return res.status(400).json({ message: revisada.error, motivo: 'payload_invalido' });
+  }
+
+  const e = revisada.excepcion;
+
+  try {
+    const yaEstaba = await PosExcepcion.findOne({ businessId, posExcepcionId: e.id }).select('_id').lean();
+    if (yaEstaba) return res.json({ ok: true, duplicada: true, id: yaEstaba._id });
+
+    const guardada = await PosExcepcion.create({
+      businessId,
+      posExcepcionId: e.id,
+      turnoId: e.turnoId,
+      tipo: e.tipo,
+      detalle: e.detalle,
+      monto: e.monto,
+      motivo: e.motivo,
+      cajero: e.cajero,
+      autorizo: e.autorizo,
+      ocurridaEn: e.ocurridaEn,
+    });
+
+    /* Una anulación con plata de por medio se avisa en vivo. No es alarmismo:
+       el momento de preguntar "¿qué pasó con esos ocho cafés?" es hoy, no
+       cuando el contador cierre el mes. */
+    if (e.tipo === 'anular_item' || e.tipo === 'descuento') {
+      socketService.emitToBusiness(String(businessId), 'pos_excepcion', {
+        id: String(guardada._id),
+        tipo: e.tipo,
+        cajero: e.cajero,
+        autorizo: e.autorizo,
+        monto: e.monto,
+        detalle: e.detalle,
+      });
+    }
+
+    res.status(201).json({ ok: true, duplicada: false, id: guardada._id });
+  } catch (error) {
+    if (error.code === 11000) {
+      const existente = await PosExcepcion.findOne({ businessId, posExcepcionId: e.id }).select('_id').lean();
+      if (existente) return res.json({ ok: true, duplicada: true, id: existente._id });
+    }
+    logger.error('Error registrando la excepción del POS', error, req);
+    res.status(500).json({ message: 'No se pudo registrar la excepción' });
+  }
+});
+
+/* GET /api/pos/audit — lo ocurrido, para el panel del dueño. */
+router.get('/audit', tenantAuth, async (req, res) => {
+  const businessId = req.user?.businessId || req.query.businessId;
+  if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
+
+  try {
+    const filtro = { businessId };
+    if (req.query.turnoId) filtro.turnoId = String(req.query.turnoId);
+    if (req.query.tipo) filtro.tipo = String(req.query.tipo);
+
+    const excepciones = await PosExcepcion.find(filtro)
+      .sort({ ocurridaEn: -1 })
+      .limit(Math.min(parseInt(req.query.limit, 10) || 100, 500))
+      .lean();
+
+    /* El resumen por cajero es lo que convierte una lista larga en una señal:
+       "Ana anuló 8 veces por 120.000" se lee de un vistazo. */
+    const porCajero = {};
+    for (const x of excepciones) {
+      if (x.tipo !== 'anular_item' && x.tipo !== 'descuento') continue;
+      const fila = porCajero[x.cajero] || { cajero: x.cajero, veces: 0, monto: 0 };
+      fila.veces += 1;
+      fila.monto += x.monto || 0;
+      porCajero[x.cajero] = fila;
+    }
+
+    res.json({
+      excepciones,
+      porCajero: Object.values(porCajero).sort((a, b) => b.monto - a.monto),
+    });
+  } catch (error) {
+    logger.error('Error listando excepciones del POS', error, req);
+    res.status(500).json({ message: 'No se pudieron cargar las excepciones' });
   }
 });
 

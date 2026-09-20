@@ -154,6 +154,39 @@ const MIGRACIONES: &[&str] = &[
     );
     CREATE INDEX idx_movimientos_turno ON movimientos_caja(turno_id);
     "#,
+    // 4 — la fila de la hora pico: ventas en espera y excepciones.
+    r#"
+    /* El carrito apartado mientras el cliente busca la plata. No es una venta:
+       no tiene consecutivo, no toca inventario y no sube a la nube. Vive en
+       disco y no en la memoria del webview, para que sobreviva a un apagón. */
+    CREATE TABLE ventas_pausadas (
+        id         TEXT PRIMARY KEY,
+        turno_id   TEXT NOT NULL,
+        etiqueta   TEXT NOT NULL DEFAULT '',
+        total      INTEGER NOT NULL DEFAULT 0,
+        items      INTEGER NOT NULL DEFAULT 0,
+        carrito    TEXT NOT NULL,
+        creada_en  TEXT NOT NULL
+    );
+    CREATE INDEX idx_pausadas_turno ON ventas_pausadas(turno_id, creada_en);
+
+    /* Anulaciones, descuentos y aperturas de cajón. Solo se agrega: no hay
+       borrado ni edición a propósito, porque un log de excepciones que se
+       puede limpiar no sirve para nada. */
+    CREATE TABLE auditoria_operaciones (
+        id         TEXT PRIMARY KEY,
+        turno_id   TEXT NOT NULL,
+        tipo       TEXT NOT NULL,
+        detalle    TEXT NOT NULL DEFAULT '',
+        monto      INTEGER NOT NULL DEFAULT 0,
+        motivo     TEXT NOT NULL DEFAULT '',
+        -- Quién tenía la caja y quién autorizó. Los dos, siempre.
+        cajero     TEXT NOT NULL DEFAULT '',
+        autorizo   TEXT NOT NULL DEFAULT '',
+        creada_en  TEXT NOT NULL
+    );
+    CREATE INDEX idx_auditoria_turno ON auditoria_operaciones(turno_id, creada_en);
+    "#,
 ];
 
 /// Abre (o crea) la base y la deja lista para operar.

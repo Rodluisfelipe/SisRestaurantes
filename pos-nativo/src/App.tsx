@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  abrirCajon, catalogo, cobrar, enTauri, estadoSync, pesos, salir, sincronizar, turnoActivo,
-  type CierreTurno, type Cobro, type LineaVenta, type Producto, type Turno, type Usuario,
+  abrirCajon, anularItem, catalogo, cobrar, descartarPausada, enTauri, estadoSync,
+  listarPausadas, pausarVenta, pesos, retomarVenta, salir, sincronizar, turnoActivo,
+  type CierreTurno, type Cobro, type EnEspera, type LineaVenta, type Producto, type Turno, type Usuario,
 } from './nativo';
 import PantallaPin from './PantallaPin';
+import Autorizar from './Autorizar';
 import { AbrirTurno, PanelTurno, ResumenCierre } from './Turno';
 
 /** A los 90 segundos sin tocar nada, la caja se bloquea sola. */
@@ -106,7 +108,16 @@ function Caja({
   const [cola, setCola] = useState({ pendientes: 0, apartadas: 0 });
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState('');
+  const [enEspera, setEnEspera] = useState<EnEspera[]>([]);
+  const [verEspera, setVerEspera] = useState(false);
+  /* La línea que el cajero quiere quitar. Mientras esté aquí, la caja está
+     esperando el PIN de un supervisor: quitarla sin autorización es el vector
+     número uno de robo hormiga. */
+  const [anulando, setAnulando] = useState<{ indice: number; linea: LineaVenta } | null>(null);
   const buscador = useRef<HTMLInputElement>(null);
+
+  const refrescarEspera = () => listarPausadas().then(setEnEspera).catch(() => {});
+  useEffect(() => { refrescarEspera(); }, []);
 
   useEffect(() => {
     catalogo(busqueda).then(setProductos).catch(() => setProductos([]));
@@ -156,10 +167,75 @@ function Caja({
     buscador.current?.focus();
   };
 
+  /* Bajar de 1 es quitar la línea, y quitar una línea ya marcada necesita
+     supervisor. Subir o bajar dentro de lo marcado, no: en hora pico eso sería
+     insostenible. */
   const cambiarCantidad = (indice: number, delta: number) => {
-    setCarrito((c) => c
-      .map((x, i) => (i === indice ? { ...x, cantidad: x.cantidad + delta } : x))
-      .filter((x) => x.cantidad > 0));
+    const linea = carrito[indice];
+    if (delta < 0 && linea.cantidad <= 1) {
+      setAnulando({ indice, linea });
+      return;
+    }
+    setCarrito((c) => c.map((x, i) => (i === indice ? { ...x, cantidad: x.cantidad + delta } : x)));
+  };
+
+  const confirmarAnulacion = async (motivo: string, autorizo: string) => {
+    if (!anulando) return;
+    const { indice, linea } = anulando;
+    try {
+      await anularItem(
+        `${linea.nombre}${linea.variante ? ` (${linea.variante})` : ''} x${linea.cantidad}`,
+        linea.precio * linea.cantidad,
+        motivo,
+        autorizo,
+      );
+      setCarrito((c) => c.filter((_, i) => i !== indice));
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setAnulando(null);
+      buscador.current?.focus();
+    }
+  };
+
+  /* Pausar: el carrito se va a disco y la pantalla queda limpia en el mismo
+     gesto. El cliente que buscaba la plata no puede frenar a los cuatro que
+     tiene detrás. */
+  const pausar = async () => {
+    if (!carrito.length) return;
+    const etiqueta = `${carrito[0].nombre}${carrito.length > 1 ? ` +${carrito.length - 1}` : ''}`;
+    try {
+      await pausarVenta(carrito, etiqueta, total);
+      setCarrito([]);
+      setRecibido('');
+      await refrescarEspera();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      buscador.current?.focus();
+    }
+  };
+
+  const retomar = async (id: string) => {
+    const guardado = await retomarVenta(id);
+    if (guardado) {
+      // Lo que hubiera en pantalla se aparta también: nada se pierde por retomar.
+      if (carrito.length) {
+        const etiqueta = `${carrito[0].nombre}${carrito.length > 1 ? ` +${carrito.length - 1}` : ''}`;
+        await pausarVenta(carrito, etiqueta, total);
+      }
+      setCarrito(guardado);
+    }
+    setVerEspera(false);
+    await refrescarEspera();
+    buscador.current?.focus();
+  };
+
+  const descartar = async (p: EnEspera) => {
+    const motivo = window.prompt(`¿Por qué se descarta "${p.etiqueta}" (${pesos(p.total)})?`);
+    if (!motivo) return;
+    await descartarPausada(p.id, motivo);
+    await refrescarEspera();
   };
 
   const finalizar = async () => {
@@ -181,6 +257,7 @@ function Caja({
       setUltimo(r);
       setCarrito([]);
       setRecibido('');
+      refrescarEspera();
     } catch (e) {
       setError(String(e));
     } finally {
@@ -194,6 +271,7 @@ function Caja({
   useEffect(() => {
     const tecla = (e: KeyboardEvent) => {
       if (e.key === 'F2') { e.preventDefault(); finalizar(); }
+      if (e.key === 'F4') { e.preventDefault(); pausar(); }
       if (e.key === 'Escape') { setCarrito([]); setRecibido(''); setError(''); }
     };
     window.addEventListener('keydown', tecla);
@@ -239,6 +317,14 @@ function Caja({
               ? `${cola.pendientes} venta(s) por subir`
               : 'Todo sincronizado'}
         </button>
+        {enEspera.length > 0 && (
+          <button
+            onClick={() => setVerEspera(true)}
+            className="text-[11px] font-bold px-2 py-0.5 rounded bg-amber-400 text-amber-950"
+          >
+            {enEspera.length} en espera
+          </button>
+        )}
         {cola.apartadas > 0 && (
           <span
             title="La nube rechazó estas ventas. Están guardadas, pero necesitan revisión."
@@ -248,12 +334,51 @@ function Caja({
           </span>
         )}
         <button
-          onClick={() => abrirCajon()}
+          onClick={() => {
+            const motivo = window.prompt('¿Para qué se abre la gaveta?');
+            if (motivo) abrirCajon(motivo);
+          }}
+          title="Queda registrado quién la abre y para qué"
           className="text-[12px] font-semibold px-3 h-8 rounded-lg bg-slate-700 hover:bg-slate-600"
         >
           Abrir cajón
         </button>
       </header>
+
+      {anulando && (
+        <Autorizar
+          titulo="Quitar del pedido"
+          detalle={`${anulando.linea.nombre} · ${pesos(anulando.linea.precio * anulando.linea.cantidad)}`}
+          onListo={confirmarAnulacion}
+          onCancelar={() => setAnulando(null)}
+        />
+      )}
+
+      {verEspera && (
+        <div className="absolute inset-0 z-20 bg-black/40 flex items-center justify-center" onClick={() => setVerEspera(false)}>
+          <div className="w-[460px] max-h-[70vh] overflow-y-auto bg-white rounded-2xl p-4 space-y-2" onClick={(e) => e.stopPropagation()}>
+            <p className="text-[15px] font-black">Ventas en espera</p>
+            {enEspera.map((p) => (
+              <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13.5px] font-semibold truncate">{p.etiqueta}</p>
+                  <p className="text-[11.5px] text-slate-400">
+                    {new Date(p.creada_en).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+                    {' · '}{p.items} ítem(s) · {pesos(p.total)}
+                  </p>
+                </div>
+                <button onClick={() => descartar(p)} className="h-9 px-3 rounded-lg text-[12px] font-semibold text-slate-400 hover:text-red-600">
+                  Descartar
+                </button>
+                <button onClick={() => retomar(p.id)} className="h-9 px-4 rounded-lg bg-slate-900 text-white text-[12.5px] font-bold">
+                  Retomar
+                </button>
+              </div>
+            ))}
+            {enEspera.length === 0 && <p className="text-[13px] text-slate-400 py-4 text-center">Nada en espera</p>}
+          </div>
+        </div>
+      )}
 
       {verTurno && (
         <div className="absolute inset-0 z-20 bg-black/40 flex justify-end" onClick={() => setVerTurno(false)}>
@@ -359,13 +484,24 @@ function Caja({
 
             {error && <p className="text-[12.5px] font-semibold text-red-600">{error}</p>}
 
-            <button
-              onClick={finalizar}
-              disabled={!carrito.length || cobrando}
-              className="w-full h-14 rounded-xl bg-slate-900 text-white text-lg font-black disabled:opacity-30 active:scale-[0.99]"
-            >
-              {cobrando ? 'Cobrando…' : 'Cobrar · F2'}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={pausar}
+                disabled={!carrito.length}
+                title="Aparta este pedido y atiende al siguiente"
+                className="w-32 h-14 rounded-xl border-2 border-slate-200 text-[13px] font-bold text-slate-600 disabled:opacity-30 active:scale-[0.99]"
+              >
+                En espera
+                <span className="block text-[10px] font-semibold text-slate-400">F4</span>
+              </button>
+              <button
+                onClick={finalizar}
+                disabled={!carrito.length || cobrando}
+                className="flex-1 h-14 rounded-xl bg-slate-900 text-white text-lg font-black disabled:opacity-30 active:scale-[0.99]"
+              >
+                {cobrando ? 'Cobrando…' : 'Cobrar · F2'}
+              </button>
+            </div>
           </div>
         </aside>
       </div>
