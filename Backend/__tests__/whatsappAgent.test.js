@@ -15,6 +15,16 @@ const CATALOGO = [
   { _id: 'a2', name: 'Papas Francesas', price: 8000, trackStock: true, stock: 3 },
   { _id: 'a3', name: 'Hamburguesa Sencilla', price: 14000, trackStock: false },
   { _id: 'a4', name: 'Limonada de Coco', price: 9000, trackStock: true, stock: 0 },
+  /* Tienda: el mismo producto en varias presentaciones. El precio y el stock
+     viven en la variante, no en el producto. */
+  {
+    _id: 'b1', name: 'Perfume Azul', price: 80000, trackStock: true, stock: 0,
+    opciones: [{ nombre: 'Tamaño', valores: ['50 ml', '100 ml'] }],
+    variantes: [
+      { valores: ['50 ml'], sku: 'AZ-50', precio: 50000, stock: 4, activo: true },
+      { valores: ['100 ml'], sku: 'AZ-100', precio: 80000, stock: 0, activo: true },
+    ],
+  },
 ];
 
 const sesionVacia = () => ({
@@ -176,6 +186,49 @@ describe('el precio y el stock salen de la base, no del modelo', () => {
   });
 });
 
+describe('en tienda, el agente pregunta la variante antes de anotar', () => {
+  it('sin decir el tamaño, no agrega nada y pregunta', async () => {
+    const s = sesionVacia();
+    const r = await acciones.agregar(s, CATALOGO, { producto: 'perfume azul', cantidad: 1 });
+    expect(r.ok).toBe(false);
+    expect(r.motivo).toBe('variante');
+    expect(r.falta[0].valores).toEqual(['50 ml', '100 ml']);
+    expect(s.items).toHaveLength(0);   // un pedido sin tamaño no se puede despachar
+  });
+
+  it('si el cliente ya lo dijo, cobra el precio de esa variante', async () => {
+    const s = sesionVacia();
+    const r = await acciones.agregar(s, CATALOGO, { producto: 'perfume azul 50 ml', cantidad: 1 });
+    expect(r.ok).toBe(true);
+    expect(s.items[0].price).toBe(50000);            // el de la variante, no los 80000 del producto
+    expect(s.items[0].variante.valores).toEqual(['50 ml']);
+    expect(s.items[0].name).toContain('50 ml');
+  });
+
+  it('lo escrito sin espacios también se entiende', async () => {
+    const s = sesionVacia();
+    const r = await acciones.agregar(s, CATALOGO, { producto: 'perfume azul 100ml', cantidad: 1 });
+    expect(r.ok).toBe(false);
+    expect(r.motivo).toBe('sin_stock');   // lo reconoció: esa presentación está agotada
+    expect(r.disponible).toBe(0);
+  });
+
+  it('el stock que manda es el de la variante, no el del producto', async () => {
+    const s = sesionVacia();
+    const r = await acciones.agregar(s, CATALOGO, { producto: 'perfume azul 50 ml', cantidad: 9 });
+    expect(r.ok).toBe(false);
+    expect(r.disponible).toBe(4);
+  });
+
+  it('dos tamaños del mismo producto son dos líneas', async () => {
+    const s = sesionVacia();
+    await acciones.agregar(s, CATALOGO, { producto: 'perfume azul 50 ml', cantidad: 1 });
+    await acciones.agregar(s, CATALOGO, { producto: 'perfume azul 50 ml', cantidad: 1 });
+    expect(s.items).toHaveLength(1);
+    expect(s.items[0].quantity).toBe(2);
+  });
+});
+
 describe('qué falta para poder cerrar el pedido', () => {
   it('un pedido vacío no está listo', () => {
     expect(acciones.queFalta(sesionVacia())).toContain('productos');
@@ -249,7 +302,10 @@ describe('la frontera entre el modelo y el código', () => {
     const firma = srcAcc.match(/async function agregar\(sesion, catalogo, \{([^}]*)\}\)/);
     expect(firma).not.toBeNull();
     expect(firma[1]).not.toMatch(/precio|price|valor|total/i);
-    expect(srcAcc).toContain('price: Number(p.price) || 0');
+    /* El precio de la línea sale del producto o de su variante; ambos de la
+       base de datos, nunca de lo que escribió el modelo. */
+    expect(srcAcc).toContain('const precioLinea = variante && variante.precio != null ? Number(variante.precio) : (Number(p.price) || 0);');
+    expect(srcAcc).toContain('price: precioLinea,');
   });
 
   it('el total y la carta los escribe el código', () => {
@@ -260,7 +316,7 @@ describe('la frontera entre el modelo y el código', () => {
   it('los precios se releen de la base antes de crear el pedido', () => {
     const fn = srcAcc.slice(srcAcc.indexOf('async function crearPedido'));
     expect(fn).toMatch(/Product\.find\(\{ _id: \{ \$in: ids \}, businessId \}\)/);
-    expect(fn).toMatch(/const precio = Number\(p\.price\) \|\| 0/);
+    expect(fn).toMatch(/const precio = variante && variante\.precio != null \? Number\(variante\.precio\) : \(Number\(p\.price\) \|\| 0\)/);
   });
 
   it('el agente no calcula el domicilio', () => {

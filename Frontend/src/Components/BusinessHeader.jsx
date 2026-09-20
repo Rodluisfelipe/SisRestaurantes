@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import { esTienda } from '../utils/tienda';
 import AccountManagementModal from './AccountManagementModal';
 import { useCustomerData } from '../hooks/useCustomerData';
 
@@ -37,6 +38,9 @@ const BusinessHeader = ({
   const [activeOrderType, setActiveOrderType] = useState('');
   const [loyaltyPoints, setLoyaltyPoints] = useState(null);
   const { businessId, businessConfig, businessStatus, getStatusDisplay } = useBusinessConfig();
+  /* Una tienda no abre ni cierra: se compra a cualquier hora y el negocio
+     despacha cuando puede. Decir "Abierto" ahí no informa nada. */
+  const tienda = esTienda(businessConfig);
   const { customerData, customerOrders, reloadCustomerData } = useCustomerData();
 
   // Detectar pedidos activos
@@ -200,7 +204,7 @@ const BusinessHeader = ({
               <span className={`w-1.5 h-1.5 rounded-full ${
                 businessStatus?.isOpen ? 'bg-emerald-400' : 'bg-red-400'
               } ${businessStatus?.isOpen ? 'animate-pulse' : ''}`} />
-              {getStatusDisplay().text}
+              {tienda && businessStatus?.isOpen ? 'Compra a cualquier hora' : getStatusDisplay().text}
             </span>
 
             {/* Frosted Action Pill */}
@@ -408,7 +412,7 @@ const BusinessHeader = ({
                 }`}
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${businessStatus?.isOpen ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                {businessStatus?.isOpen ? 'Abierto' : 'Cerrado'}
+                {businessStatus?.isOpen ? (tienda ? 'En línea' : 'Abierto') : 'Cerrado'}
               </span>
               {/* Acciones compactas (mismas del hero) */}
               <div className="flex items-center gap-1 shrink-0">

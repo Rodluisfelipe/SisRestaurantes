@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useSpring } from 'framer-motion';
 import api from '../services/api';
 import { socket } from '../services/socket';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import { esTienda } from '../utils/tienda';
 import { useNavigate } from 'react-router-dom';
 import { generateDailyReportPDF } from './DailyReportPDF';
 import { TIME_INTERVALS, SOCKET_EVENTS, ORDER_STATUS } from '../utils/constants';
@@ -18,6 +19,9 @@ function OrdersDashboard() {
   const [orderDetails, setOrderDetails] = useState(null);
   const { businessConfig, businessId } = useBusinessConfig();
   const isHotel = businessConfig?.businessType === 'hotel';
+  /* Tienda: lo que en un restaurante es "en preparación" aquí es "alistando el
+     envío", y no hay pedidos "en sitio". */
+  const tienda = esTienda(businessConfig);
   const [pendingNotifications, setPendingNotifications] = useState([]);
   const notificationAudioRef = useRef(null);
   const notificationIntervalRef = useRef(null);
@@ -833,7 +837,7 @@ function OrdersDashboard() {
             >
               <option value="all">Todos los estados</option>
               <option value="pending">Pendientes</option>
-              <option value="inProgress">En preparación</option>
+              <option value="inProgress">{tienda ? 'Alistando envío' : 'En preparación'}</option>
               <option value="completed">Completados</option>
             </select>
           </div>
@@ -896,11 +900,11 @@ function OrdersDashboard() {
                       {order.status === 'pending'
                         ? 'Pendiente'
                         : order.status === 'inProgress'
-                        ? 'En preparación'
+                        ? (tienda ? 'Alistando envío' : 'En preparación')
                         : 'Completado'}
                     </span>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                      {order.orderType === 'delivery' ? 'Delivery' : 'En sitio'}
+                      {order.orderType === 'delivery' ? (tienda ? 'Envío' : 'Delivery') : (tienda ? 'Recoge en tienda' : 'En sitio')}
                     </span>
                     {order.tableNumber && (
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">

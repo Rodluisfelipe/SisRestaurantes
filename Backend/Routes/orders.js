@@ -1691,14 +1691,16 @@ async function moverStock(items, signo, contexto = {}) {
       const combinacion = item && item.variante && item.variante.valores;
       if (Array.isArray(combinacion) && combinacion.length) {
         const producto = await Product.findById(item.productId)
-          .select('name businessId variantes')
+          .select('name businessId trackStock variantes')
           .lean();
-        const i = (producto?.variantes || []).findIndex(
+        // Sin control de inventario no se lleva cuenta, igual que en el resto del catálogo.
+        if (!producto || !producto.trackStock) return;
+        const i = (producto.variantes || []).findIndex(
           (v) => Array.isArray(v.valores) &&
             v.valores.length === combinacion.length &&
             v.valores.every((valor, k) => String(valor).toLowerCase() === String(combinacion[k]).toLowerCase())
         );
-        if (!producto || i === -1) return;
+        if (i === -1) return;
 
         const saldoAntes = Number(producto.variantes[i].stock) || 0;
         const saldoDespues = Math.max(0, saldoAntes + cantidad);

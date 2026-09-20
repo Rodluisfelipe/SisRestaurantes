@@ -27,10 +27,20 @@ const FILTROS = [
   { id: 'todos', label: 'Todos' },
 ];
 
+/* Con variantes el inventario no está en el producto sino repartido entre las
+   tallas o fragancias: lo que hay es la suma. El contador del producto se queda
+   en cero y no significa nada. */
+function unidades(p) {
+  if (Array.isArray(p.variantes) && p.variantes.length) {
+    return p.variantes.reduce((t, v) => t + (Number(v.stock) || 0), 0);
+  }
+  return p.stock ?? 0;
+}
+
 /** En qué estado está una línea: agotado, bajo, bien, o sin control. */
 function estadoDe(p) {
   if (!p.trackStock) return 'sin';
-  const s = p.stock ?? 0;
+  const s = unidades(p);
   if (s <= 0) return 'agotado';
   if (s <= (p.lowStockAlert || 5)) return 'bajo';
   return 'bien';
@@ -98,6 +108,10 @@ export default function InventoryManager() {
   /* Se actualiza la fila en el sitio en vez de recargar todo: con el listado
      ordenado por urgencia, recargar haría saltar el producto de posición justo
      mientras se le está ajustando la cantidad. */
+  /* Qué producto tiene desplegadas sus presentaciones. Es aparte de
+     `abierto` (costo y umbral), que ya usaba esa fila. */
+  const [verVariantes, setVerVariantes] = useState(null);
+
   const ajustar = useCallback(async (producto, cambios) => {
     if (ocupado) return;
     setOcupado(producto._id);
@@ -124,10 +138,10 @@ export default function InventoryManager() {
       total: productos.length,
       conControl: conControl.length,
       sinControl: productos.length - conControl.length,
-      agotados: conControl.filter((p) => (p.stock ?? 0) <= 0).length,
-      bajos: conControl.filter((p) => { const s = p.stock ?? 0; return s > 0 && s <= (p.lowStockAlert || 5); }).length,
+      agotados: conControl.filter((p) => unidades(p) <= 0).length,
+      bajos: conControl.filter((p) => { const s = unidades(p); return s > 0 && s <= (p.lowStockAlert || 5); }).length,
       // A costo cuando existe; si no, cae al precio de venta
-      valorInventario: conControl.reduce((s, p) => s + ((p.cost ?? p.price) || 0) * Math.max(0, p.stock ?? 0), 0),
+      valorInventario: conControl.reduce((s, p) => s + ((p.cost ?? p.price) || 0) * Math.max(0, unidades(p)), 0),
       conCosto: conControl.filter((p) => p.cost != null).length,
     };
   };
@@ -320,7 +334,26 @@ export default function InventoryManager() {
                   </div>
                 </div>
 
-                {p.trackStock ? (
+                {p.trackStock && Array.isArray(p.variantes) && p.variantes.length > 0 ? (
+                  <button
+                    onClick={() => setVerVariantes(verVariantes === p._id ? null : p._id)}
+                    title="Ver el stock de cada presentación"
+                    className="shrink-0 flex items-center gap-2 px-3 h-8 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
+                  >
+                    <span className="text-[13px] font-black tabular-nums text-slate-800">
+                      {trabajando ? '·' : unidades(p)}
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      {p.variantes.length} pres.
+                    </span>
+                    <svg
+                      className={`w-3.5 h-3.5 text-slate-400 transition-transform ${verVariantes === p._id ? 'rotate-180' : ''}`}
+                      viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
+                    >
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </button>
+                ) : p.trackStock ? (
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       onClick={() => ajustar(p, { delta: -1 })}
@@ -402,6 +435,70 @@ export default function InventoryManager() {
                   </button>
                 )}
               </div>
+
+              {/* Cada presentación con su propio contador: es donde de verdad
+                  está el inventario de una tienda. */}
+              {verVariantes === p._id && Array.isArray(p.variantes) && (
+                <div className="px-3 pb-2 space-y-1">
+                  {p.variantes.map((v) => {
+                    const clave = v.valores.join('|');
+                    const editandoEsta = editando === `${p._id}:${clave}`;
+                    return (
+                      <div key={clave} className="flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-2.5 py-1.5">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[12px] font-semibold text-slate-700 truncate">
+                            {v.valores.join(' · ')}
+                            {v.activo === false && <span className="ml-1.5 text-[10px] font-normal text-slate-400">· no está a la venta</span>}
+                          </p>
+                          {v.sku && <p className="text-[10px] text-slate-400 truncate">{v.sku}</p>}
+                        </div>
+
+                        <button
+                          onClick={() => ajustar(p, { variante: v.valores, delta: -1 })}
+                          disabled={trabajando || (Number(v.stock) || 0) <= 0}
+                          className="w-7 h-7 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-30 transition-colors flex items-center justify-center"
+                        >
+                          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M5 12h14" /></svg>
+                        </button>
+
+                        {editandoEsta ? (
+                          <input
+                            autoFocus
+                            type="number"
+                            min="0"
+                            value={valorExacto}
+                            onChange={(ev) => setValorExacto(ev.target.value)}
+                            onBlur={() => {
+                              const n = parseInt(valorExacto, 10);
+                              Number.isInteger(n) && n >= 0
+                                ? ajustar(p, { variante: v.valores, stock: n })
+                                : setEditando(null);
+                            }}
+                            onKeyDown={(ev) => { if (ev.key === 'Enter') ev.currentTarget.blur(); if (ev.key === 'Escape') setEditando(null); }}
+                            className="w-12 h-7 text-center text-[12px] font-bold rounded-lg border-2 border-slate-300 outline-none tabular-nums"
+                          />
+                        ) : (
+                          <button
+                            onClick={() => { setEditando(`${p._id}:${clave}`); setValorExacto(String(Number(v.stock) || 0)); }}
+                            title="Escribir la cantidad exacta"
+                            className="w-12 h-7 rounded-lg text-[12px] font-black tabular-nums text-slate-800 bg-white border border-slate-200 hover:bg-slate-100 transition-colors"
+                          >
+                            {Number(v.stock) || 0}
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => ajustar(p, { variante: v.valores, delta: 1 })}
+                          disabled={trabajando}
+                          className="w-7 h-7 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-30 transition-colors flex items-center justify-center"
+                        >
+                          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Costo y umbral de aviso: se abren desde la propia fila para no
                   tener que entrar a editar el producto entero. */}

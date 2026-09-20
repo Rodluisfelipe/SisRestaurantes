@@ -21,6 +21,7 @@ import {
 import api from '../../services/api';
 import { socket, joinBusiness } from '../../services/socket';
 import { useBusinessConfig } from '../../Context/BusinessContext';
+import { esTienda } from '../../utils/tienda';
 import QuickOrderModal from '../QuickOrderModal';
 
 const ICONO_TIPO = {
@@ -45,6 +46,12 @@ const ESTADO_PEDIDO = {
   payment_confirmed: 'Pago confirmado', confirmed: 'Confirmado', preparing: 'En preparación',
   inProgress: 'En preparación', ready: 'Listo', completed: 'Completado',
   delivered: 'Entregado', cancelled: 'Cancelado',
+};
+
+// En tienda se empaca y se despacha; el resto de estados se llaman igual.
+const ESTADO_PEDIDO_TIENDA = {
+  ...ESTADO_PEDIDO,
+  preparing: 'Alistando envío', inProgress: 'Alistando envío', ready: 'Listo para despachar',
 };
 
 function telefonoLegible(p) {
@@ -1440,6 +1447,8 @@ function RespuestasRapidas({ slug, nombre, onElegir }) {
  * los mensajes.
  */
 function FichaRail({ ficha, cargando, telefono, nombreChat, onTomarPedido, onVerPerfil }) {
+  const { businessConfig } = useBusinessConfig();
+  const estados = esTienda(businessConfig) ? ESTADO_PEDIDO_TIENDA : ESTADO_PEDIDO;
   if (cargando) {
     return <div className="p-6 text-center text-slate-300"><FaSpinner className="animate-spin mx-auto" /></div>;
   }
@@ -1519,7 +1528,7 @@ function FichaRail({ ficha, cargando, telefono, nombreChat, onTomarPedido, onVer
                       <span className="text-[13px] font-bold text-amber-800">#{p.orderNumber}</span>
                       <span className="text-[13px] font-bold text-amber-700">{pesos(p.total)}</span>
                     </div>
-                    <p className="text-[11.5px] text-amber-600 mt-0.5">{ESTADO_PEDIDO[p.status] || p.status}</p>
+                    <p className="text-[11.5px] text-amber-600 mt-0.5">{estados[p.status] || p.status}</p>
                   </div>
                 ))}
               </div>
@@ -1574,6 +1583,8 @@ function Dato({ valor, etiqueta, resalta }) {
  * y si tiene algo en curso ahora mismo.
  */
 function FichaCliente({ ficha, cargando }) {
+  const { businessConfig } = useBusinessConfig();
+  const estados = esTienda(businessConfig) ? ESTADO_PEDIDO_TIENDA : ESTADO_PEDIDO;
   if (cargando) {
     return (
       <div className="p-4 border-b border-slate-100 bg-slate-50/60 text-center text-slate-300">
@@ -1637,7 +1648,7 @@ function FichaCliente({ ficha, cargando }) {
             <div key={p._id} className="flex items-center gap-2 bg-amber-50 border border-amber-200/70 rounded-lg px-3 py-2">
               <FaClock className="text-amber-500 text-[10px] shrink-0" />
               <span className="text-xs text-amber-800 font-semibold">#{p.orderNumber}</span>
-              <span className="text-xs text-amber-700">{ESTADO_PEDIDO[p.status] || p.status}</span>
+              <span className="text-xs text-amber-700">{estados[p.status] || p.status}</span>
               <span className="text-xs text-amber-600 ml-auto font-semibold">{pesos(p.total)}</span>
             </div>
           ))}

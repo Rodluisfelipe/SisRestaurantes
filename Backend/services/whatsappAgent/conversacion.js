@@ -244,6 +244,14 @@ async function aplicar(sesion, catalogo, dicho, textoDelCliente) {
         : `Uy, no manejamos "${p.nombre}" 😕`);
     }
     else if (r.motivo === 'ambiguo') avisos.push(`¿Cuál de estos querías? ${r.opciones.join(', ')}`);
+    else if (r.motivo === 'variante') {
+      /* Preguntar antes de anotar: un pedido sin talla le llega al negocio sin
+         saber qué empacar, y el stock de esa talla nunca se descuenta. */
+      const pide = r.falta.map((e) => `${e.nombre.toLowerCase()} (${e.valores.join(', ')})`).join(' y ');
+      avisos.push(r.inexistente
+        ? `De ${r.producto} no tengo esa combinación. Te quedan: ${pide}`
+        : `Para ${r.producto} dime ${pide}`);
+    }
     else if (r.motivo === 'sin_stock') {
       avisos.push(r.disponible > 0
         ? `De ${r.producto} me quedan solo ${r.disponible}, ¿te sirven?`

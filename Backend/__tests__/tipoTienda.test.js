@@ -33,3 +33,36 @@ describe('tipo de tienda', () => {
     expect(tienda.validateSync()).toBeUndefined();
   });
 });
+
+/* Todos los días cerrados: si el horario mandara, este negocio no podría
+   vender nunca. Es el caso que separa una carta de una tienda. */
+const SIEMPRE_CERRADO = {
+  monday: { isOpen: false }, tuesday: { isOpen: false }, wednesday: { isOpen: false },
+  thursday: { isOpen: false }, friday: { isOpen: false }, saturday: { isOpen: false },
+  sunday: { isOpen: false },
+};
+
+describe('una tienda no cierra por horario', () => {
+  it('el restaurante con todo el horario cerrado está cerrado', () => {
+    const r = negocio({ businessHours: SIEMPRE_CERRADO });
+    expect(r.isCurrentlyOpen()).toBe(false);
+    expect(r.getBusinessStatus().isOpen).toBe(false);
+  });
+
+  it('la tienda con el mismo horario sigue vendiendo', () => {
+    const t = negocio({ tipoTienda: 'ecommerce', businessHours: SIEMPRE_CERRADO });
+    expect(t.isCurrentlyOpen()).toBe(true);
+    expect(t.getBusinessStatus().isOpen).toBe(true);
+  });
+
+  it('pausar ventas a mano sí la apaga', () => {
+    // El horario deja de ser una puerta, pero el interruptor del negocio no.
+    const t = negocio({ tipoTienda: 'ecommerce', businessHours: SIEMPRE_CERRADO, isOpen: false });
+    expect(t.getBusinessStatus().isOpen).toBe(false);
+  });
+
+  it('y pausar el menú también', () => {
+    const t = negocio({ tipoTienda: 'ecommerce', businessHours: SIEMPRE_CERRADO, menuStatus: 'paused' });
+    expect(t.getBusinessStatus().isOpen).toBe(false);
+  });
+});

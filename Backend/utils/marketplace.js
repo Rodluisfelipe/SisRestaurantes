@@ -18,7 +18,7 @@ const { estadoDeHoy } = require('../services/whatsappAgent/horario');
    metropolitana sin llegar a la ciudad vecina. La lista completa no se corta. */
 const RADIO_CERCANO_KM = 30;
 
-const CAMPOS_VITRINA = 'businessName slug logo coverImage description theme isOpen menuStatus address whatsappNumber socialMedia department city location businessHours reviewStats createdAt updatedAt useSharedMenu mainBranchId';
+const CAMPOS_VITRINA = 'businessName slug logo coverImage description theme isOpen menuStatus tipoTienda address whatsappNumber socialMedia department city location businessHours reviewStats createdAt updatedAt useSharedMenu mainBranchId';
 
 /* Aparece quien está activo, no fue ocultado por el superadmin, no pausó su
    menú y es un restaurante: los proveedores tienen su propio marketplace B2B.
@@ -70,6 +70,8 @@ function distanciaKm(origen, negocio) {
    existieron, así que "abierto ahora" era solo el interruptor manual. */
 function estaAbiertoAhora(negocio) {
   if (!negocio || negocio.isOpen === false || negocio.menuStatus === 'paused') return false;
+  // Las tiendas venden a toda hora: el horario es cuándo despachan, no cuándo abren.
+  if (negocio.tipoTienda === 'ecommerce') return true;
   const hoy = estadoDeHoy(negocio);
   // Sin horario configurado manda el interruptor, que ya está encendido.
   return hoy ? hoy.abierto : true;

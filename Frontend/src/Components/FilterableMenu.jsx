@@ -7,7 +7,7 @@ import FeaturedProducts from './FeaturedProducts';
 import PopularProducts from './PopularProducts';
 import PendingReviewCard from './PendingReviewCard';
 import { NoSearchResultsIllustration, EmptyMenuIllustration } from './EmptyStates';
-import { esTienda } from '../utils/tienda';
+import { esTienda, estadoEnTienda } from '../utils/tienda';
 import { leerPresentaciones } from '../utils/presentaciones';
 import { getEffectivePrice } from '../utils/promo';
 import {
@@ -463,7 +463,10 @@ const FilterableMenu = ({
             completed: { label: 'Pedido completado', icon: MI.check('w-5 h-5 text-white'), sub: 'Tu pedido ha sido entregado' },
             delivered: { label: 'Pedido entregado', icon: MI.check('w-5 h-5 text-white'), sub: 'Tu pedido ha sido entregado' },
           };
-          const info = statusMap[activeOrderStatus] || { label: 'Pedido en curso', icon: MI.clipboard('w-5 h-5 text-white'), sub: 'Toca para ver el estado' };
+          const base = statusMap[activeOrderStatus] || { label: 'Pedido en curso', icon: MI.clipboard('w-5 h-5 text-white'), sub: 'Toca para ver el estado' };
+          // En tienda se empaca y se despacha, no se cocina.
+          const enTienda = estadoEnTienda(activeOrderStatus, tienda);
+          const info = enTienda ? { ...base, ...enTienda } : base;
 
           return (
             <motion.div

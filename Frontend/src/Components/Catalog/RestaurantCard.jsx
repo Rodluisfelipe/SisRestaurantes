@@ -214,6 +214,10 @@ const RestaurantCard = ({ restaurant, userLocation, variant = 'default' }) => {
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-[15px] font-bold text-gray-900 truncate">{restaurant.businessName}</h3>
+                {/* Entrar a una tienda no es entrar a un restaurante: se avisa antes del clic. */}
+                {restaurant.tipoTienda === 'ecommerce' && (
+                  <span className="flex-shrink-0 text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">Tienda</span>
+                )}
               </div>
 
               {/* Meta */}

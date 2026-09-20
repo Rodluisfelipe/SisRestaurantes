@@ -135,11 +135,46 @@ function buscarVarios(catalogo, texto, limite = 8) {
 }
 
 /** ¿Se puede vender? El stock manda, no lo que crea el modelo. */
-function hayExistencias(producto, cantidad) {
+function hayExistencias(producto, cantidad, variante = null) {
   if (!producto.trackStock) return { ok: true };
-  const stock = Number(producto.stock) || 0;
+  // Con variantes el stock es el de esa talla o fragancia, no el del producto.
+  const stock = Number(variante ? variante.stock : producto.stock) || 0;
   if (stock >= cantidad) return { ok: true };
   return { ok: false, disponible: stock };
+}
+
+/* Tiendas: un producto con variantes no se puede agregar "a secas". Sin saber
+   la talla no se sabe qué cobrar, qué descontar ni qué empacar, así que o el
+   cliente ya la dijo en su mensaje ("la negra en M") o hay que preguntarle.
+   Los valores se comparan por palabras sueltas: así "100 ml" casa con "100ml"
+   y una talla "M" no se dispara dentro de cualquier palabra que lleve eme. */
+function elegirVariante(producto, texto) {
+  const ejes = (producto.opciones || []).filter(
+    (e) => e && e.nombre && Array.isArray(e.valores) && e.valores.length,
+  );
+  if (!ejes.length) return { sinVariantes: true };
+
+  const palabras = llano(texto || '').split(/[^a-z0-9]+/).filter(Boolean);
+  const pegado = palabras.join('');
+  const estaEnElTexto = (valor) => {
+    const partes = llano(valor).split(/[^a-z0-9]+/).filter(Boolean);
+    if (!partes.length) return false;
+    return partes.every((parte) => palabras.includes(parte)) || pegado.includes(partes.join(''));
+  };
+
+  const elegidos = ejes.map((e) => e.valores.find(estaEnElTexto) || null);
+  const falta = ejes.filter((_, i) => !elegidos[i]).map((e) => ({ nombre: e.nombre, valores: e.valores }));
+  if (falta.length) return { falta };
+
+  const activas = (producto.variantes || []).filter((v) => v && v.activo !== false && Array.isArray(v.valores));
+  const hallada = activas.find(
+    (v) => v.valores.length === elegidos.length &&
+      v.valores.every((valor, i) => llano(valor) === llano(elegidos[i])),
+  );
+  // Las palabras existen pero el negocio no vende esa combinación (negro solo en M).
+  if (!hallada) return { falta: ejes.map((e) => ({ nombre: e.nombre, valores: e.valores })), inexistente: true };
+
+  return { variante: hallada };
 }
 
 /**
@@ -157,12 +192,33 @@ async function agregar(sesion, catalogo, { producto: nombre, cantidad = 1, nota 
   }
 
   const p = hallazgo.producto;
-  const yaTiene = (sesion.items || []).find((i) => String(i.productId) === String(p._id));
+
+  /* La variante se busca en lo que escribió el cliente, no en el nombre que
+     resolvió el buscador: ahí es donde viene "la de 100 ml". */
+  const eleccion = elegirVariante(p, `${nombre || ''} ${nota || ''}`);
+  if (eleccion.falta) {
+    return {
+      ok: false,
+      motivo: 'variante',
+      producto: p.name,
+      falta: eleccion.falta,
+      inexistente: !!eleccion.inexistente,
+    };
+  }
+  const variante = eleccion.variante || null;
+  const etiqueta = variante ? `${p.name} (${variante.valores.join(' · ')})` : p.name;
+  const precioLinea = variante && variante.precio != null ? Number(variante.precio) : (Number(p.price) || 0);
+
+  const mismaLinea = (i) => String(i.productId) === String(p._id) &&
+    (variante
+      ? Array.isArray(i.variante?.valores) && i.variante.valores.join('|') === variante.valores.join('|')
+      : !i.variante);
+  const yaTiene = (sesion.items || []).find(mismaLinea);
   const cantidadFinal = (yaTiene?.quantity || 0) + cant;
 
-  const stock = hayExistencias(p, cantidadFinal);
+  const stock = hayExistencias(p, cantidadFinal, variante);
   if (!stock.ok) {
-    return { ok: false, motivo: 'sin_stock', producto: p.name, disponible: stock.disponible };
+    return { ok: false, motivo: 'sin_stock', producto: etiqueta, disponible: stock.disponible };
   }
 
   /* La nota del cliente ("sin salsas", "bien cocida") se guarda en la línea.
@@ -182,14 +238,15 @@ async function agregar(sesion, catalogo, { producto: nombre, cantidad = 1, nota 
   } else {
     sesion.items.push({
       productId: p._id,
-      name: p.name,
-      price: Number(p.price) || 0,   // el precio sale de la base
+      name: etiqueta,
+      price: precioLinea,   // el precio sale de la base, y de la variante si la hay
       quantity: cant,
       note: limpiaNota,
+      ...(variante ? { variante: { valores: variante.valores, sku: variante.sku || '' } } : {}),
     });
   }
 
-  return { ok: true, producto: p.name, cantidad: cant, precio: Number(p.price) || 0, nota: limpiaNota };
+  return { ok: true, producto: etiqueta, cantidad: cant, precio: precioLinea, nota: limpiaNota };
 }
 
 function quitar(sesion, catalogo, { producto: nombre }) {
@@ -247,7 +304,9 @@ async function crearPedido(sesion, businessId, { crearOrden }) {
   if (falta.length) return { ok: false, motivo: 'incompleto', falta };
 
   const ids = sesion.items.map((i) => i.productId);
-  const actuales = await Product.find({ _id: { $in: ids }, businessId }).select('name price stock trackStock').lean();
+  const actuales = await Product.find({ _id: { $in: ids }, businessId })
+    .select('name price stock trackStock opciones variantes')
+    .lean();
   const porId = new Map(actuales.map((p) => [String(p._id), p]));
 
   const items = [];
@@ -255,19 +314,33 @@ async function crearPedido(sesion, businessId, { crearOrden }) {
     const p = porId.get(String(linea.productId));
     if (!p) return { ok: false, motivo: 'producto_desaparecido', producto: linea.name };
 
-    const stock = hayExistencias(p, linea.quantity);
-    if (!stock.ok) {
-      return { ok: false, motivo: 'sin_stock', producto: p.name, disponible: stock.disponible };
+    /* La línea guarda qué combinación pidió el cliente; el precio y el stock
+       se releen de la variante por si el negocio los cambió mientras hablaban. */
+    const combinacion = linea.variante && linea.variante.valores;
+    const variante = Array.isArray(combinacion)
+      ? (p.variantes || []).find(
+          (v) => Array.isArray(v.valores) && v.valores.length === combinacion.length &&
+            v.valores.every((valor, i) => llano(valor) === llano(combinacion[i])),
+        )
+      : null;
+    if (Array.isArray(combinacion) && !variante) {
+      return { ok: false, motivo: 'producto_desaparecido', producto: linea.name };
     }
 
-    const precio = Number(p.price) || 0;
+    const stock = hayExistencias(p, linea.quantity, variante);
+    if (!stock.ok) {
+      return { ok: false, motivo: 'sin_stock', producto: linea.name, disponible: stock.disponible };
+    }
+
+    const precio = variante && variante.precio != null ? Number(variante.precio) : (Number(p.price) || 0);
     items.push({
       productId: p._id,
-      name: p.name,
+      name: linea.name,
       price: precio,
       totalPrice: precio,
       quantity: linea.quantity,
       selectedToppings: [],
+      ...(variante ? { variante: { valores: variante.valores, sku: variante.sku || '' } } : {}),
     });
   }
 

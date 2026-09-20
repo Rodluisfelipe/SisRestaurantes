@@ -390,7 +390,10 @@ router.get("/inventory", tenantAuth, async (req, res) => {
     if (!businessId) return res.status(400).json({ message: "businessId es requerido" });
 
     const productos = await Product.find({ businessId })
-      .select('name image price cost stock trackStock lowStockAlert active category')
+      /* Con variantes el stock no vive en el producto sino en cada talla o
+         fragancia: sin traerlas, Inventario mostraría cero y el negocio no
+         tendría dónde corregirlo. */
+      .select('name image price cost stock trackStock lowStockAlert active category opciones variantes')
       .populate('category', 'name')
       .lean();
 
@@ -512,7 +515,59 @@ router.patch("/:id/stock", tenantAuth, async (req, res) => {
     const producto = await Product.findOne({ _id: id, ...(businessId ? { businessId } : {}) });
     if (!producto) return res.status(404).json({ message: 'Producto no encontrado' });
 
-    const { stock, trackStock, lowStockAlert, delta, cost } = req.body;
+    const { stock, trackStock, lowStockAlert, delta, cost, variante } = req.body;
+
+    /* Tiendas: cuando el ajuste es de una talla o una fragancia, lo que cambia
+       es el stock de esa variante. El contador del producto no se toca: con
+       variantes no significa nada, el inventario está repartido. */
+    if (Array.isArray(variante) && variante.length) {
+      const i = (producto.variantes || []).findIndex(
+        (v) => Array.isArray(v.valores) && v.valores.length === variante.length &&
+          v.valores.every((valor, k) => String(valor).toLowerCase() === String(variante[k]).toLowerCase()),
+      );
+      if (i === -1) return res.status(404).json({ message: 'Esa presentación ya no existe' });
+
+      const antes = Number(producto.variantes[i].stock) || 0;
+      let despues = antes;
+      if (delta !== undefined) {
+        const d = parseInt(delta, 10);
+        if (!Number.isInteger(d)) return res.status(400).json({ message: 'delta debe ser un entero' });
+        despues = Math.max(0, antes + d);
+      } else if (stock !== undefined) {
+        const s = parseInt(stock, 10);
+        if (!Number.isInteger(s) || s < 0) return res.status(400).json({ message: 'stock debe ser un entero de 0 o más' });
+        despues = s;
+      }
+
+      producto.variantes[i].stock = despues;
+      if (trackStock !== undefined) producto.trackStock = !!trackStock;
+      await producto.save();
+
+      if (despues !== antes) {
+        const StockMovement = require('../Models/StockMovement');
+        await StockMovement.create({
+          businessId: producto.businessId,
+          productId: producto._id,
+          productName: producto.name + ' (' + producto.variantes[i].valores.join(' · ') + ')',
+          type: 'adjust',
+          quantity: despues - antes,
+          stockBefore: antes,
+          stockAfter: despues,
+          userId: req.user?.id || null,
+          note: (req.body.nota || '').slice(0, 200),
+        }).catch((e) => logger.warn('No se pudo registrar el movimiento', { error: e.message }));
+      }
+
+      return res.json({
+        _id: producto._id,
+        name: producto.name,
+        trackStock: producto.trackStock,
+        lowStockAlert: producto.lowStockAlert,
+        cost: producto.cost,
+        variantes: producto.variantes,
+      });
+    }
+
     const stockAntes = producto.stock;
 
     if (trackStock !== undefined) {

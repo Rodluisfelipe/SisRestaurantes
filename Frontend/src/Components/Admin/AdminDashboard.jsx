@@ -5,6 +5,7 @@ import DashboardMetrics from './DashboardMetrics';
 import AnnouncementInlineBar from './AnnouncementInlineBar';
 import api from '../../services/api';
 import { getCurrencySymbol } from '../../utils/currency';
+import { esTienda } from '../../utils/tienda';
 
 /* ═══ Icon System ═══ */
 const I = {
@@ -51,7 +52,9 @@ const COLORS = {
 };
 
 /* ═══ Section Data (desktop) ═══ */
-const getSections = (isService, isHotel) => [
+/* Una tienda no tiene mesas, ni comanda, ni caja de restaurante: mostrárselas
+   es hacerle buscar lo suyo entre cosas que nunca va a usar. */
+const getSections = (isService, isHotel, tienda) => [
   {
     id: 'ops',
     label: 'Operaciones',
@@ -65,8 +68,10 @@ const getSections = (isService, isHotel) => [
       { tab: 'payment-config',   svgKey: 'payment',   title: 'Pagos',         desc: 'Métodos de cobro',       color: 'teal' },
       { tab: 'customers',        svgKey: 'customers', title: 'Clientes',      desc: isHotel ? 'Huéspedes' : 'Base de datos',         color: 'cyan' },
       { tab: 'reviews',          svgKey: 'reviews',   title: 'Reseñas',       desc: 'Calificaciones',        color: 'amber' },
-      { tab: 'pos',               svgKey: 'reorder',   title: 'Punto de Venta', desc: 'Sistema de caja',       color: 'purple', isRoute: true, routePath: 'pos', isBeta: true },
-      { tab: 'waiter',            svgKey: 'orders',    title: 'Comanda',        desc: 'Pedidos desde celular',  color: 'rose',   isRoute: true, routePath: 'waiter' },
+      ...(!tienda ? [
+        { tab: 'pos',               svgKey: 'reorder',   title: 'Punto de Venta', desc: 'Sistema de caja',       color: 'purple', isRoute: true, routePath: 'pos', isBeta: true },
+        { tab: 'waiter',            svgKey: 'orders',    title: 'Comanda',        desc: 'Pedidos desde celular',  color: 'rose',   isRoute: true, routePath: 'waiter' },
+      ] : []),
     ],
   },
   {
@@ -75,7 +80,7 @@ const getSections = (isService, isHotel) => [
     items: [
       { tab: 'products',         svgKey: 'products',   title: isService ? 'Servicios' : 'Productos',    desc: isService ? 'Administra tus servicios' : isHotel ? 'Menú de habitaciones' : 'Administra tu carta',    color: 'orange' },
       { tab: 'categories',       svgKey: 'categories', title: 'Categorías',   desc: isService ? 'Organiza servicios' : 'Organiza productos',     color: 'yellow' },
-      { tab: 'toppings',         svgKey: 'toppings',   title: isService ? 'Opciones' : 'Extras',       desc: isService ? 'Variantes y opciones' : 'Toppings y opciones',    color: 'amber' },
+      { tab: 'toppings',         svgKey: 'toppings',   title: isService ? 'Opciones' : tienda ? 'Complementos' : 'Extras',       desc: isService ? 'Variantes y opciones' : tienda ? 'Empaque de regalo, garantía…' : 'Toppings y opciones',    color: 'amber' },
       { tab: 'product-order',    svgKey: 'reorder',    title: 'Orden',        desc: isService ? 'Reordenar servicios' : 'Reordenar productos',    color: 'purple' },
     ],
   },
@@ -85,7 +90,7 @@ const getSections = (isService, isHotel) => [
     items: [
       { tab: 'coupons',          svgKey: 'coupons',   title: 'Cupones',      desc: 'Descuentos y ofertas',   color: 'pink' },
       { tab: 'catalog',          svgKey: 'catalog',   title: 'Catálogo',     desc: 'Banners y promos',       color: 'violet' },
-      ...(!isService ? [{ tab: 'tables',           svgKey: 'tables',    title: isHotel ? 'Habitaciones' : 'Mesas',        desc: isHotel ? 'QR por habitación' : 'Códigos QR',             color: 'indigo' }] : []),
+      ...(!isService && !tienda ? [{ tab: 'tables',           svgKey: 'tables',    title: isHotel ? 'Habitaciones' : 'Mesas',        desc: isHotel ? 'QR por habitación' : 'Códigos QR',             color: 'indigo' }] : []),
       ...(!isService && !isHotel ? [{ tab: 'delivery-zones',   svgKey: 'zones',     title: 'Zonas',        desc: 'Áreas de entrega',       color: 'green' }] : []),
       { tab: 'whatsapp',         svgKey: 'whatsapp',  title: 'WhatsApp',     desc: 'Mensajería automática', color: 'green' },
       { tab: 'referrals',        svgKey: 'customers', title: 'Referidos',    desc: 'Invita y gana créditos', color: 'rose' },
@@ -272,7 +277,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
   /* Desktop search */
   const q = search.trim().toLowerCase();
   const posBetaOn = businessConfig?.features?.posBetaEnabled;
-  const SECTIONS = useMemo(() => getSections(isService, isHotel), [isService, isHotel]);
+  const SECTIONS = useMemo(() => getSections(isService, isHotel, esTienda(businessConfig)), [isService, isHotel, businessConfig]);
   const ALL_ITEMS = useMemo(() => SECTIONS.flatMap(s => s.items), [SECTIONS]);
   const filteredSections = useMemo(() => {
     const filterBeta = (items) => items.filter(i => !i.isBeta || posBetaOn);

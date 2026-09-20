@@ -557,6 +557,12 @@ businessConfigSchema.statics.getConfig = async function() {
 
 // Método para verificar si el negocio está abierto según horarios
 businessConfigSchema.methods.isCurrentlyOpen = function() {
+  /* Una tienda en línea no cierra: se compra a la hora que sea y el negocio
+     despacha cuando abre. El horario sigue existiendo, pero como información
+     ("enviamos de lunes a sábado"), no como una puerta. Para pausar ventas
+     está el interruptor manual isOpen, que sí se respeta abajo. */
+  if (this.tipoTienda === 'ecommerce') return true;
+
   /* Por horario y en hora de Colombia: el servidor corre en UTC y comparar con
      su reloj corría la apertura cinco horas. Ignora el interruptor manual a
      propósito; getBusinessStatus lo combina aparte. */

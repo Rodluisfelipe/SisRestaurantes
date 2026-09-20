@@ -179,6 +179,7 @@ function formatear(b, info) {
     updatedAt: b.updatedAt,
     isOpen: b.isOpen,
     isCurrentlyOpen: b.isCurrentlyOpen,
+    tipoTienda: b.tipoTienda || 'restaurante',
     businessHours: b.businessHours,
     todayHours: b.businessHours?.[ahoraCOL().dia] || null,
     distance: b.distance,

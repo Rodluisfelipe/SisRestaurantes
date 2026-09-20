@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { esTienda } from '../../utils/tienda';
 
 /* ═══ iOS-style section icon components ═══ */
 const SectionIcon = ({ bg, children }) => (
@@ -72,6 +73,8 @@ export default function MobileNavDrawer({ isOpen, onClose, activeTab, setActiveT
   const [search, setSearch] = useState('');
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const isHotel = businessConfig?.businessType === 'hotel';
+  // Una tienda no tiene mesas ni pisos que numerar.
+  const tienda = esTienda(businessConfig);
   const isStaff = userRole === 'staff';
 
   /* Reset search whenever sheet closes */
@@ -107,7 +110,7 @@ export default function MobileNavDrawer({ isOpen, onClose, activeTab, setActiveT
         { id: 'loyalty',        label: 'Programa de fidelidad',icon: I.loyalty,   bg: 'bg-rose-500' },
         { id: 'reviews',        label: 'Reseñas',              icon: I.reviews,   bg: 'bg-amber-500' },
         { id: 'popups',         label: 'Anuncios del menú',    icon: I.popups,    bg: 'bg-fuchsia-500' },
-        ...(!isService ? [{ id: 'tables', label: isHotel ? 'Habitaciones' : 'Mesas y pisos', icon: I.tables, bg: 'bg-indigo-500' }] : []),
+        ...(!isService && !tienda ? [{ id: 'tables', label: isHotel ? 'Habitaciones' : 'Mesas y pisos', icon: I.tables, bg: 'bg-indigo-500' }] : []),
         ...(!isService && !isHotel ? [{ id: 'delivery-zones', label: 'Zonas de entrega', icon: I.zones, bg: 'bg-green-500' }] : []),
         { id: 'catalog',        label: 'Banners y catálogo',   icon: I.catalog,   bg: 'bg-violet-500' },
         { id: 'whatsapp',       label: 'WhatsApp',             icon: I.whatsapp,  bg: 'bg-green-600' },

@@ -749,7 +749,7 @@ router.get('/:slug/track/:orderId', deliveryLimiter, async (req, res) => {
       if (!completed) return res.status(404).json({ message: 'Pedido no encontrado' });
       return res.json({
         ...completed,
-        business: { name: business.businessName, phone: business.phone, slug: business.slug, logo: business.logo || null, buttonColor: business.theme?.buttonColor || '#2563eb', buttonTextColor: business.theme?.buttonTextColor || '#ffffff' },
+        business: { name: business.businessName, phone: business.phone, slug: business.slug, logo: business.logo || null, tipoTienda: business.tipoTienda || 'restaurante', buttonColor: business.theme?.buttonColor || '#2563eb', buttonTextColor: business.theme?.buttonTextColor || '#ffffff' },
         trackingEnabled: false
       });
     }
@@ -775,7 +775,7 @@ router.get('/:slug/track/:orderId', deliveryLimiter, async (req, res) => {
       items: order.items.map(i => ({ name: i.name, quantity: i.quantity })),
       total: order.finalAmount || order.totalAmount,
       deliveryFee: order.deliveryFee || 0,
-      business: { name: business.businessName, phone: business.phone, slug: business.slug, logo: business.logo || null, buttonColor: business.theme?.buttonColor || '#2563eb', buttonTextColor: business.theme?.buttonTextColor || '#ffffff' }
+      business: { name: business.businessName, phone: business.phone, slug: business.slug, logo: business.logo || null, tipoTienda: business.tipoTienda || 'restaurante', buttonColor: business.theme?.buttonColor || '#2563eb', buttonTextColor: business.theme?.buttonTextColor || '#ffffff' }
     });
   } catch (error) {
     logger.error('Error fetching tracking info', error);

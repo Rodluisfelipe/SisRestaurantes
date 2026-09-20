@@ -18,6 +18,7 @@ export function leerPresentaciones(product) {
     .map((v) => ({
       etiqueta: v.valores.join(' · '),
       precio: (v.precio === null || v.precio === undefined || v.precio === '') ? base : Number(v.precio),
+      stock: Number(v.stock) || 0,
     }))
     .filter((v) => Number.isFinite(v.precio));
 
@@ -26,11 +27,18 @@ export function leerPresentaciones(product) {
      chip es ruido: se muestran los nombres y el precio sigue siendo uno solo. */
   const preciosDistintos = varias && new Set(lista.map((p) => p.precio)).size > 1;
 
+  /* Con variantes el inventario no está en el producto sino repartido entre
+     las tallas: lo que queda es la suma. Sin esto, un producto con todas sus
+     tallas en cero se seguía ofreciendo como disponible. */
+  const stock = lista.reduce((total, p) => total + p.stock, 0);
+
   return {
     lista,
     varias,
     preciosDistintos,
     desde: varias ? Math.min(...lista.map((p) => p.precio)) : null,
+    hayVariantes: lista.length > 0,
+    stock,
   };
 }
 

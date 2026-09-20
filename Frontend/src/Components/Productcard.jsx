@@ -41,8 +41,24 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
   const accentBg = menuV2 ? 'var(--mb-accent)' : `${buttonColor}e0`;
   const accentFg = menuV2 ? 'var(--mb-on-accent)' : buttonTextColor;
   const hasToppings = product.toppingGroups && product.toppingGroups.length > 0;
-  const isOutOfStock = product.trackStock && product.stock !== null && product.stock !== undefined && product.stock <= 0;
-  const isLowStock = product.trackStock && product.stock !== null && product.stock !== undefined && product.stock > 0 && product.stock <= (product.lowStockAlert || 5);
+
+  /* En una tienda la foto ES el producto, no el fondo de un precio: va
+     cuadrada, limpia, sin degradado encima, y el precio y el botón bajan a la
+     ficha. En un restaurante la card sigue idéntica a la de siempre. */
+  const tienda = esTienda(businessConfig);
+
+  /* Tiendas: con una sola referencia va el precio de siempre; con varias
+     presentaciones el precio suelto no dice nada, así que arriba queda el
+     "Desde" y el detalle se lista bajo el nombre. */
+  const presentaciones = leerPresentaciones(product);
+
+  /* Lo que queda es la suma de las tallas, no el contador del producto: con
+     todas las tallas en cero la card decía "disponible" y el cliente solo se
+     enteraba al abrir la ficha. Sigue mandando "Control de inventario": sin
+     él, como en cualquier producto de MenuBy, se vende sin límite. */
+  const existencias = presentaciones.hayVariantes ? presentaciones.stock : product.stock;
+  const isOutOfStock = product.trackStock && existencias !== null && existencias !== undefined && existencias <= 0;
+  const isLowStock = product.trackStock && existencias !== null && existencias !== undefined && existencias > 0 && existencias <= (product.lowStockAlert || 5);
   const isDisabled = subscriptionStatus === 'suspended' || !businessStatus?.isOpen || isOutOfStock;
   const isFavorite = businessConfig?.reviewStats?.favoriteProductIds?.some(
     id => id === product._id || id?.toString() === product._id?.toString()
@@ -61,16 +77,8 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
   const effPrice = getEffectivePrice(product);
   const msLeft = promoMsLeft(product);
 
-  /* Tiendas: con una sola referencia va el precio de siempre; con varias
-     presentaciones el precio suelto no dice nada, así que arriba queda el
-     "Desde" y el detalle se lista bajo el nombre. */
-  const presentaciones = leerPresentaciones(product);
   const varios = presentaciones.preciosDistintos;
 
-  /* En una tienda la foto ES el producto, no el fondo de un precio: va
-     cuadrada, limpia, sin degradado encima, y el precio y el botón bajan a la
-     ficha. En un restaurante la card sigue idéntica a la de siempre. */
-  const tienda = esTienda(businessConfig);
   /* La segunda foto de la galería aparece al pasar el mouse, que es como se
      mira la ropa en cualquier catálogo. Solo en PC: en táctil no hay hover y
      bajarla sería peso muerto en datos móviles. */
@@ -254,7 +262,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
             <div className="absolute top-2 left-2 z-[2]">
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-500 text-white shadow-sm">
                 <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd"/></svg>
-                Últimas {product.stock}
+                Últimas {existencias}
               </span>
             </div>
           )}

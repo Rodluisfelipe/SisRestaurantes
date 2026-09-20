@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBusinessConfig } from "../Context/BusinessContext";
+import { esTienda, palabras } from '../utils/tienda';
 import * as SessionManager from '../utils/sessionManager';
 import CouponInput from './CouponInput';
 import { logSystem } from '../utils/systemLogger';
@@ -94,6 +95,10 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
   const [isProcessing, setIsProcessing] = useState(false);
   const { businessConfig, businessId, businessStatus, getStatusDisplay } = useBusinessConfig();
   const isHotel = businessConfig?.businessType === 'hotel';
+  /* En una tienda no se come en sitio ni hay mesas: o se envía, o el cliente
+     pasa a recogerlo. Lo demás del checkout es igual. */
+  const tienda = esTienda(businessConfig);
+  const copy = palabras(tienda);
   const themeColor = businessConfig?.theme?.buttonColor || '#f97316';
   const themeTextColor = businessConfig?.theme?.buttonTextColor || '#ffffff';
 
@@ -744,16 +749,16 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               {/* ── Tipo de pedido inline ── */}
               {!initialOrderTypeSelected && !hasServices && (
                 <div className="space-y-1.5">
-                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Tipo de pedido</p>
+                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">{tienda ? 'Cómo lo recibes' : 'Tipo de pedido'}</p>
                   <div className={`relative p-1 rounded-2xl bg-slate-100`} style={{ display: 'grid', gridTemplateColumns: `repeat(${[
-                    (!tipoDelEnlace || tipoDelEnlace === 'inSite') && businessConfig?.orderTypes?.inSite !== false ? 1 : 0,
+                    !tienda && (!tipoDelEnlace || tipoDelEnlace === 'inSite') && businessConfig?.orderTypes?.inSite !== false ? 1 : 0,
                     (!tipoDelEnlace || tipoDelEnlace === 'takeaway') && businessConfig?.orderTypes?.takeaway !== false ? 1 : 0,
                     (!tipoDelEnlace || tipoDelEnlace === 'delivery') && !isFromTableQR && businessConfig?.orderTypes?.delivery !== false ? 1 : 0
                   ].reduce((a, b) => a + b, 0) || 1}, 1fr)` }}>
                     {[
-                      ...((!tipoDelEnlace || tipoDelEnlace === 'inSite') && businessConfig?.orderTypes?.inSite !== false ? [{ id: 'inSite', label: 'En Sitio', Icon: UtensilsCrossed }] : []),
-                      ...((!tipoDelEnlace || tipoDelEnlace === 'takeaway') && businessConfig?.orderTypes?.takeaway !== false ? [{ id: 'takeaway', label: 'Llevar', Icon: ShoppingBag }] : []),
-                      ...((!tipoDelEnlace || tipoDelEnlace === 'delivery') && !isFromTableQR && businessConfig?.orderTypes?.delivery !== false ? [{ id: 'delivery', label: 'Domicilio', Icon: Bike }] : [])
+                      ...(!tienda && (!tipoDelEnlace || tipoDelEnlace === 'inSite') && businessConfig?.orderTypes?.inSite !== false ? [{ id: 'inSite', label: 'En Sitio', Icon: UtensilsCrossed }] : []),
+                      ...((!tipoDelEnlace || tipoDelEnlace === 'takeaway') && businessConfig?.orderTypes?.takeaway !== false ? [{ id: 'takeaway', label: copy.llevar, Icon: ShoppingBag }] : []),
+                      ...((!tipoDelEnlace || tipoDelEnlace === 'delivery') && !isFromTableQR && businessConfig?.orderTypes?.delivery !== false ? [{ id: 'delivery', label: copy.domicilio, Icon: Bike }] : [])
                     ].map(opt => {
                       const isActive = orderType === opt.id;
                       return (

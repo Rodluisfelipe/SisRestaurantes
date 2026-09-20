@@ -36,11 +36,17 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
   const precioBase = (varianteElegida && varianteElegida.precio != null) ? varianteElegida.precio : (product.price || 0);
   const diferenciaVariante = precioBase - (product.price || 0);
   const faltaElegir = ejes.length > 0 && !varianteElegida;
-  const sinStock = Boolean(varianteElegida) && Number(varianteElegida.stock) <= 0;
+  const sinStock = controlaStock && Boolean(varianteElegida) && Number(varianteElegida.stock) <= 0;
+
+  /* El stock de las variantes solo limita si el producto tiene activado el
+     control de inventario. Sin él —como en cualquier producto de MenuBy— el
+     negocio no lleva cuentas y un cero significa "no lo he contado", no
+     "se acabó". */
+  const controlaStock = product.trackStock === true;
 
   /* Un valor se ve agotado si no queda ninguna variante con stock que lo
      incluya, contando lo que ya eligió el cliente en los otros ejes. */
-  const valorDisponible = (indice, valor) => variantesActivas.some(
+  const valorDisponible = (indice, valor) => !controlaStock || variantesActivas.some(
     (v) => v.valores[indice] === valor &&
       Number(v.stock) > 0 &&
       eleccion.every((sel, j) => j === indice || !sel || v.valores[j] === sel)
@@ -1358,11 +1364,13 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
               ))}
               {varianteElegida && (
                 <p className="text-[11.5px] text-slate-400">
-                  {Number(varianteElegida.stock) > 0
-                    ? (Number(varianteElegida.stock) <= 5
-                        ? `Quedan ${varianteElegida.stock}`
-                        : 'Disponible')
-                    : 'Agotado'}
+                  {!controlaStock
+                    ? 'Disponible'
+                    : Number(varianteElegida.stock) > 0
+                      ? (Number(varianteElegida.stock) <= 5
+                          ? `Quedan ${varianteElegida.stock}`
+                          : 'Disponible')
+                      : 'Agotado'}
                   {varianteElegida.sku ? ` · ${varianteElegida.sku}` : ''}
                 </p>
               )}

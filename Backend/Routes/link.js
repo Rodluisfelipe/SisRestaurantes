@@ -8,7 +8,7 @@ const mongoose = require('mongoose');
 
 const { estaAbiertoAhora } = require('../utils/marketplace');
 
-const BIZ_FIELDS = 'businessName tagline description logo coverImage slug address googleMapsUrl whatsappNumber socialMedia extraLink theme businessHours isOpen menuStatus branchLabel isMainBranch brandId location';
+const BIZ_FIELDS = 'businessName tagline description logo coverImage slug address googleMapsUrl whatsappNumber socialMedia extraLink theme businessHours isOpen menuStatus tipoTienda branchLabel isMainBranch brandId location';
 
 // GET /api/link/:slug — public link page data
 router.get('/:slug', async (req, res) => {

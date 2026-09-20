@@ -17,6 +17,15 @@ const STEPS = [
   { key: 'delivered', label: 'Entregado', sub: '¡Disfruta tu pedido!' }
 ];
 
+/* La misma línea de tiempo contada como la vive quien compra en una tienda:
+   a nadie le están cocinando su perfume, se lo están empacando. */
+const PASOS_TIENDA = [
+  { key: 'received', label: 'Compra recibida', sub: 'Ya la estamos revisando' },
+  { key: 'preparing', label: 'Alistando tu envío', sub: 'Estamos empacando tu compra' },
+  { key: 'on_way', label: 'En camino', sub: 'Tu paquete va hacia ti' },
+  { key: 'delivered', label: 'Entregado', sub: '¡Gracias por tu compra!' }
+];
+
 function getStepIndex(status, pickedAt) {
   if (status === 'delivered' || status === 'completed') return 3;
   if (pickedAt || status === 'inProgress') return 2;
@@ -170,6 +179,7 @@ const DeliveryTracker = () => {
   }
 
   const currentStep = getStepIndex(order.status, order.deliveryPickedAt);
+  const pasos = order.business?.tipoTienda === 'ecommerce' ? PASOS_TIENDA : STEPS;
   const isDelivered = order.status === 'delivered' || order.status === 'completed';
   const showMap = !!domiLocation && !isDelivered;
 
@@ -234,7 +244,7 @@ const DeliveryTracker = () => {
         {!isDelivered && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
             <div className="space-y-0">
-              {STEPS.map((step, i) => {
+              {pasos.map((step, i) => {
                 const isActive = i <= currentStep;
                 const isCurrent = i === currentStep;
                 return (
@@ -257,7 +267,7 @@ const DeliveryTracker = () => {
                           </span>
                         )}
                       </motion.div>
-                      {i < STEPS.length - 1 && (
+                      {i < pasos.length - 1 && (
                         <div className="w-0.5 h-6 transition-colors" style={{ background: i < currentStep ? brandColor : '#e2e8f0' }} />
                       )}
                     </div>
