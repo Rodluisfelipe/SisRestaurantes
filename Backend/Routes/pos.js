@@ -5,10 +5,12 @@ const CompletedOrder = require('../Models/CompletedOrder');
 const Product = require('../Models/Product');
 const Category = require('../Models/Category');
 const Counter = require('../Models/Counter');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { tenantAuth } = require('../middleware/tenantAuth');
 const CashRegister = require('../Models/CashRegister');
 const BusinessConfig = require('../Models/BusinessConfig');
+const PosCaja = require('../Models/PosCaja');
 const PosExcepcion = require('../Models/PosExcepcion');
 const { validarVenta, validarCierre, validarExcepcion, aplanarCatalogo } = require('../utils/pos');
 const { moverStock } = require('../services/inventario');
@@ -27,6 +29,46 @@ const logger = require('../utils/logger');
  * reintenta hasta que confirmemos, así que todo aquí es idempotente por el id
  * que generó la caja.
  */
+
+/**
+ * La caja que habla tiene que seguir vinculada.
+ *
+ * Es la mitad que falta de la revocación: sin esta consulta, "desvincular" en
+ * el panel sería un botón que no apaga nada, porque un token firmado vale hasta
+ * que vence pase lo que pase en la base.
+ *
+ * Una sesión normal del panel pasa de largo: esto solo aplica a tokens de caja.
+ */
+async function cajaVigente(req, res, next) {
+  if (!req.caja?.tokenId) return next();
+
+  try {
+    const caja = await PosCaja.findOne({ tokenId: req.caja.tokenId }).select('revocada nombre').lean();
+
+    if (!caja || caja.revocada) {
+      return res.status(403).json({
+        message: 'Esta caja fue desvinculada. Pide que la vinculen otra vez.',
+        motivo: 'caja_revocada',
+      });
+    }
+
+    /* Se anota que sigue viva, sin esperar la escritura: si falla, lo único que
+       se pierde es un dato de diagnóstico, y una venta no puede esperar por
+       eso. */
+    PosCaja.updateOne(
+      { tokenId: req.caja.tokenId },
+      { $set: { ultimaVezVista: new Date(), ultimaActividad: req.path.replace('/', '') } },
+    ).catch(() => {});
+
+    next();
+  } catch (error) {
+    logger.error('Error verificando la caja', error, req);
+    /* Ante un fallo de base se deja pasar: bloquear las ventas de todas las
+       cajas del país porque una consulta de diagnóstico falló sería peor que el
+       riesgo que esta comprobación evita. */
+    next();
+  }
+}
 
 /** Número de pedido del negocio, atómico. Mismo criterio que orders.js. */
 async function siguienteNumero(businessId) {
@@ -65,6 +107,12 @@ router.post('/pair', tenantAuth, async (req, res) => {
   try {
     const caja = String(req.body.caja || 'caja-1').trim().slice(0, 40);
 
+    /* El jti es el nombre del token, y es lo que permite matarlo desde el panel
+       sin tener que guardar el token mismo: guardar el token sería dejar la
+       llave puesta en la cerradura. */
+    const tokenId = crypto.randomUUID();
+    const dias = 90;
+
     const token = jwt.sign(
       {
         id: req.user?.id || String(businessId),
@@ -72,20 +120,29 @@ router.post('/pair', tenantAuth, async (req, res) => {
         role: req.user?.role || 'admin',
         scope: 'pos',
         caja,
+        jti: tokenId,
       },
       process.env.JWT_SECRET,
-      { expiresIn: '90d' },
+      { expiresIn: `${dias}d` },
     );
+
+    await PosCaja.create({
+      businessId,
+      nombre: caja,
+      tokenId,
+      vinculadaPor: req.user?.id || null,
+      venceEn: new Date(Date.now() + dias * 24 * 60 * 60 * 1000),
+    });
 
     const negocio = await BusinessConfig.findById(businessId).select('businessName').lean();
 
-    logger.info('Caja emparejada', { businessId: String(businessId), caja });
+    logger.info('Caja emparejada', { businessId: String(businessId), caja, tokenId });
     res.json({
       token,
       // Para que la caja muestre a qué negocio quedó conectada, y el técnico
       // se dé cuenta en el acto si emparejó la equivocada.
       negocio: negocio?.businessName || '',
-      vence_en_dias: 90,
+      vence_en_dias: dias,
     });
   } catch (error) {
     logger.error('Error emparejando la caja', error, req);
@@ -94,7 +151,7 @@ router.post('/pair', tenantAuth, async (req, res) => {
 });
 
 /* POST /api/pos/sync-sale — registrar una venta de la caja. */
-router.post('/sync-sale', tenantAuth, async (req, res) => {
+router.post('/sync-sale', tenantAuth, cajaVigente, async (req, res) => {
   const businessId = req.user?.businessId || req.body.businessId;
   if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
 
@@ -184,7 +241,7 @@ router.post('/sync-sale', tenantAuth, async (req, res) => {
  * después si la caja estuvo sin internet. Es un registro para auditar, no una
  * operación que el servidor pueda aprobar o rechazar: lo que se cuenta ya se
  * contó. */
-router.post('/shifts/close', tenantAuth, async (req, res) => {
+router.post('/shifts/close', tenantAuth, cajaVigente, async (req, res) => {
   const businessId = req.user?.businessId || req.body.businessId;
   if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
 
@@ -262,7 +319,7 @@ router.post('/shifts/close', tenantAuth, async (req, res) => {
  * Es el registro que el dueño mira cuando la caja no cuadra. Llega por la cola,
  * así que puede aparecer dos días después si esa caja estuvo sin internet: la
  * fecha que vale es la del mostrador. */
-router.post('/audit', tenantAuth, async (req, res) => {
+router.post('/audit', tenantAuth, cajaVigente, async (req, res) => {
   const businessId = req.user?.businessId || req.body.businessId;
   if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
 
@@ -352,7 +409,7 @@ router.get('/audit', tenantAuth, async (req, res) => {
 });
 
 /* GET /api/pos/catalog?since=ISO — lo que cambió desde la última bajada. */
-router.get('/catalog', tenantAuth, async (req, res) => {
+router.get('/catalog', tenantAuth, cajaVigente, async (req, res) => {
   const businessId = req.user?.businessId || req.query.businessId;
   if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
 

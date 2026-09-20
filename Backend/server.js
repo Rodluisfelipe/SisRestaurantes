@@ -204,6 +204,13 @@ app.use('/uploads/proofs', proofAuth('subscription'), express.static('uploads/pr
 app.use('/uploads/order-proofs', proofAuth('order'), express.static('uploads/order-proofs'));
 
 // Rutas API original
+/* Un token de caja solo sirve para /api/pos. Va aquí, antes de montar las
+   rutas, y no dentro de cada una: una lista de rutas permitidas se olvida de
+   actualizar en cuanto alguien agrega un endpoint, y el olvido no se nota
+   —todo sigue funcionando— hasta que alguien lo aprovecha. */
+const { alcanceCaja } = require("./middleware/alcanceCaja");
+app.use(alcanceCaja);
+
 app.use("/api/whatsapp-inbox", require("./Routes/whatsappInbox"));
 app.use("/api/products", require("./Routes/products"));
 app.use("/api/supplies", require("./Routes/supplies"));   // insumos y recetas (inventario avanzado)
@@ -223,6 +230,7 @@ app.use("/api/orders", require("./Routes/orders"));
 app.use("/api/devoluciones", require("./Routes/devoluciones")); // Devoluciones y cambios (tiendas)
 app.use("/api/rastreo", require("./Routes/rastreo")); // Rastreo de guías por transportadora
 app.use("/api/pos", require("./Routes/pos")); // Caja nativa: subir ventas y bajar catálogo
+app.use("/api/cajas", require("./Routes/cajas")); // Terminales vinculadas: listar y revocar
 app.use("/api/favorites", require("./Routes/favorites")); // Productos favoritos del cliente
 app.use("/api/delivery-zones", require("./Routes/deliveryZones")); // Zonas de entrega
 app.use("/api/delivery-admin", require("./Routes/deliveryAdmin")); // Gestión de domiciliarios (admin)
