@@ -212,6 +212,7 @@ mod pruebas {
                 cajero: String::new(),
                 turno_id: turno.id.clone(),
                 iva_porcentaje: 0,
+                pago: None,
             };
             venta::registrar(&mut c, &v, AHORA).unwrap();
         }

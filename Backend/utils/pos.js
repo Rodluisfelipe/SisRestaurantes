@@ -89,6 +89,16 @@ function validarVenta(cuerpo) {
       turnoId: String(cuerpo.turno_id || '').slice(0, 64),
       creadaEn: cuerpo.creada_en ? new Date(cuerpo.creada_en) : new Date(),
       items,
+      /* El voucher del datáfono, cuando se cobró con tarjeta. Es lo que permite
+         cuadrar la pila de vouchers de papel contra las ventas del turno; sin
+         los últimos cuatro y el código de aprobación, ese cuadre es a ojo. */
+      pago: cuerpo.pago && cuerpo.pago.aprobada
+        ? {
+            autorizacion: String(cuerpo.pago.codigo_autorizacion || '').slice(0, 20),
+            ultimosCuatro: String(cuerpo.pago.ultimos_cuatro || '').slice(0, 4),
+            franquicia: String(cuerpo.pago.franquicia || '').slice(0, 30),
+          }
+        : null,
     },
   };
 }

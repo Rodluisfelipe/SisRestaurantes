@@ -122,6 +122,15 @@ const completedOrderSchema = new mongoose.Schema({
     }]
   }],
   
+  /* El voucher del datáfono, en las ventas con tarjeta de la caja nativa.
+     Guardarlo aquí y no en un modelo aparte es a propósito: quien concilia
+     mira la venta, no una tabla de pagos. */
+  posPago: {
+    autorizacion: { type: String, default: '', trim: true, maxlength: 20 },
+    ultimosCuatro: { type: String, default: '', trim: true, maxlength: 4 },
+    franquicia: { type: String, default: '', trim: true, maxlength: 30 }
+  },
+
   /* Id que generó la caja nativa (UUIDv7) para esta venta.
      Es la llave de idempotencia: el POS reintenta hasta que confirmemos, y sin
      esto cada reintento crearía otra venta. `sparse` porque solo existe en las

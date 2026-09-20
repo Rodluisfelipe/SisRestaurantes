@@ -18,6 +18,8 @@ pos-core = { path = "../core" }
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# Los ids de operación del datáfono, ordenados en el tiempo como los de venta.
+uuid = { version = "1", features = ["v7"] }
 rusqlite = { version = "0.32", features = ["bundled"] }
 time = { version = "0.3", features = ["formatting", "local-offset"] }
 # Habla con los puertos COM sin capas de por medio: es lo que hace que el corte

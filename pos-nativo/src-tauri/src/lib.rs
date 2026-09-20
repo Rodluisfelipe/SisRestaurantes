@@ -9,12 +9,14 @@
 //! tirilla se reimprime; al revés, se entregaría un comprobante de una venta
 //! que no existe.
 
+use pos_core::pagos::{self, Terminal};
 use pos_core::{auditoria, db, dinero::Pesos, escpos, pausadas, sync, turnos, usuarios, venta};
 use std::sync::Mutex;
 use tauri::{Manager, State};
 
 mod cliente;
 mod credenciales;
+mod datafono_red;
 mod nube;
 mod perifericos;
 use nube::Nube;
@@ -47,6 +49,53 @@ fn leer_nube(base: &rusqlite::Connection) -> Option<Nube> {
         return None;
     }
     Some(Nube { base: url, token })
+}
+
+/// Los datos del datáfono integrado, si lo hay. `None` = el manual.
+///
+/// Se devuelven los datos y no el `Box<dyn Terminal>` porque el terminal se
+/// construye dentro del hilo que va a usarlo: así nada que dependa de la
+/// conexión a SQLite cruza el límite del hilo.
+fn descripcion_terminal(base: &rusqlite::Connection) -> Option<(String, u16)> {
+    let leer = |clave: &str| -> String {
+        base.query_row("SELECT valor FROM ajustes WHERE clave = ?1", [clave], |f| f.get(0))
+            .unwrap_or_default()
+    };
+
+    if leer("datafono_tipo") != "red" {
+        return None;
+    }
+    let host = leer("datafono_host");
+    if host.is_empty() {
+        return None;
+    }
+    Some((host, leer("datafono_puerto").parse().unwrap_or(9100)))
+}
+
+fn uuid_v7() -> String {
+    uuid::Uuid::now_v7().to_string()
+}
+
+/// El datáfono configurado en esta caja.
+///
+/// Por defecto, el manual: funciona con el aparato que el negocio ya tiene
+/// sobre el mostrador, sin integrar nada con nadie. El integrado se activa
+/// cuando hay uno y alguien lo configuró.
+fn terminal(base: &rusqlite::Connection) -> Box<dyn Terminal> {
+    let leer = |clave: &str| -> String {
+        base.query_row("SELECT valor FROM ajustes WHERE clave = ?1", [clave], |f| f.get(0))
+            .unwrap_or_default()
+    };
+
+    if leer("datafono_tipo") == "red" {
+        let host = leer("datafono_host");
+        let puerto = leer("datafono_puerto").parse().unwrap_or(9100);
+        if !host.is_empty() {
+            return Box::new(datafono_red::DatafonoRed { host, puerto });
+        }
+    }
+
+    Box::new(pagos::DatafonoManual)
 }
 
 fn ahora_epoch() -> i64 {
@@ -103,15 +152,28 @@ pub struct Cobro {
     impresion: Option<String>,
 }
 
+/// Cobra.
+///
+/// Es `async` por una sola razón: un datáfono integrado puede tardar hasta un
+/// minuto en contestar, y un comando síncrono bloquearía el hilo de la ventana.
+/// El trabajo pesado se manda a un hilo aparte; la caja sigue respondiendo.
+///
+/// El orden importa y no es negociable: **primero se cobra la tarjeta, después
+/// se registra la venta**. Al revés quedaría una venta registrada de un cobro
+/// que el banco rechazó.
 #[tauri::command]
-fn cobrar(estado: State<Estado>, nueva: venta::NuevaVenta) -> Result<Cobro, String> {
+async fn cobrar(
+    estado: State<'_, Estado>,
+    nueva: venta::NuevaVenta,
+    voucher: Option<pagos::Voucher>,
+) -> Result<Cobro, String> {
     let ahora = ahora_local();
 
     /* El turno y el cajero los pone el backend nativo, no la interfaz. Si
        vinieran del webview, bastaría con abrir las herramientas de desarrollo
        para firmar una venta a nombre de otro cajero, y el arqueo dejaría de
        señalar a nadie. */
-    let nueva = {
+    let mut nueva = {
         let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
         let turno = turnos::activo(&base)
             .map_err(|e| e.to_string())?
@@ -126,6 +188,38 @@ fn cobrar(estado: State<Estado>, nueva: venta::NuevaVenta) -> Result<Cobro, Stri
 
         venta::NuevaVenta { turno_id: turno.id, cajero, ..nueva }
     };
+
+    if nueva.medio_pago == "tarjeta" {
+        let total = venta::total_de(&nueva.items).map_err(|e| e.to_string())?;
+        let (_, iva) = total.desglosar_iva(nueva.iva_porcentaje);
+
+        let solicitud = pagos::SolicitudPago {
+            operacion_id: uuid_v7(),
+            monto: total,
+            iva,
+            referencia: nueva.turno_id.chars().take(8).collect(),
+        };
+
+        /* En un hilo aparte: el datáfono puede tardar un minuto y la ventana no
+           puede quedarse congelada mientras tanto. El candado de la base se
+           soltó arriba a propósito, para no retenerlo durante la espera. */
+        let quien = {
+            let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+            descripcion_terminal(&base)
+        };
+        let respuesta = tauri::async_runtime::spawn_blocking(move || {
+            let aparato: Box<dyn Terminal> = match quien {
+                Some((host, puerto)) => Box::new(datafono_red::DatafonoRed { host, puerto }),
+                None => Box::new(pagos::DatafonoManual),
+            };
+            aparato.cobrar(&solicitud, voucher)
+        })
+        .await
+        .map_err(|e| format!("el cobro se interrumpió: {e}"))?
+        .map_err(|e| e.to_string())?;
+
+        nueva.pago = Some(respuesta);
+    }
 
     let registrada = {
         let mut base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
@@ -488,6 +582,49 @@ fn desconectar_nube() -> Result<(), String> {
     credenciales::borrar()
 }
 
+/* ── El datáfono ───────────────────────────────────────────────────────── */
+
+#[derive(serde::Serialize)]
+pub struct InfoTerminal {
+    nombre: String,
+    /// Si es true, la caja tiene que pedirle el voucher al cajero.
+    requiere_digitacion: bool,
+}
+
+#[tauri::command]
+fn info_terminal(estado: State<Estado>) -> Result<InfoTerminal, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    let aparato = terminal(&base);
+    Ok(InfoTerminal {
+        nombre: aparato.nombre().to_string(),
+        requiere_digitacion: aparato.requiere_digitacion(),
+    })
+}
+
+/// Conecta un datáfono integrado, o vuelve al manual con `red = false`.
+#[tauri::command]
+fn configurar_datafono(
+    estado: State<Estado>,
+    red: bool,
+    host: String,
+    puerto: u16,
+) -> Result<(), String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    for (clave, valor) in [
+        ("datafono_tipo", if red { "red" } else { "manual" }.to_string()),
+        ("datafono_host", host.trim().to_string()),
+        ("datafono_puerto", puerto.to_string()),
+    ] {
+        base.execute(
+            "INSERT INTO ajustes (clave, valor) VALUES (?1, ?2)
+             ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor",
+            rusqlite::params![clave, valor],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 /* ── La pantalla del cliente ───────────────────────────────────────────── */
 
 /// Abre la segunda pantalla. Si no hay, lo dice y la caja sigue igual.
@@ -671,6 +808,8 @@ pub fn run() {
             configurar_nube,
             desconectar_nube,
             conectada,
+            info_terminal,
+            configurar_datafono,
             abrir_pantalla_cliente,
             cerrar_pantalla_cliente,
             hay_pantalla_cliente,

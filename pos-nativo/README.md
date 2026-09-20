@@ -143,8 +143,36 @@ cobrar, y vuelve sola a la pantalla de bienvenida. Si hay un solo monitor no se
 abre —superponerla sobre la caja dejaría al cajero sin poder trabajar— y si
 falla, la caja sigue cobrando igual.
 
+## Cobro con tarjeta
+
+El contrato está en un trait `Terminal` (core/src/pagos.rs) con dos
+implementaciones: el **datáfono manual**, que funciona con el aparato que el
+negocio ya tiene sobre el mostrador sin integrar nada con nadie, y el
+**integrado por red**, que es una costura lista para conectar un SmartPOS.
+
+El trait es síncrono a propósito, contra lo que suele hacerse: la caja no hace
+nada más mientras se cobra y meter un runtime async por una operación que
+ocurre una vez por venta contradiría el peso del binario. Lo que no puede
+pasar —que la ventana se congele— lo resuelve quien llama: el comando corre el
+cobro en un hilo aparte.
+
+Dos reglas del cobro con tarjeta:
+
+- **Primero el banco, después la venta.** Si el cobro falla, no queda una venta
+  registrada de algo que nunca se cobró.
+- **Sin voucher no hay venta con tarjeta.** Los últimos cuatro emparejan el
+  papel con la venta cuando al cierre sobra o falta uno, y el código de
+  aprobación es con lo que el banco responde un reclamo tres semanas después.
+  Ni 0000 ni campos vacíos pasan la validación.
+
+Lo que cambia por modelo de datáfono está aislado en dos funciones
+(`armar_peticion` y `leer_respuesta`): integrar uno concreto es reescribir esas
+dos y nada más.
+
 ## Lo que todavía no existe
 
-Devoluciones desde el POS, propina, datáfono integrado y multicaja. Los
+Devoluciones desde el POS, propina y multicaja. El datáfono integrado tiene su
+adaptador pero no se ha probado contra un aparato real: el protocolo cambia por
+adquirente. Los
 descuentos a mano quedan registrados y autorizados, pero todavía no hay una
 pantalla para aplicarlos: hoy la excepción se registra desde el comando.

@@ -301,6 +301,7 @@ mod pruebas {
             cajero: turno.cajero.clone(),
             turno_id: turno.id.clone(),
             iva_porcentaje: 0,
+            pago: None,
         };
         venta::registrar(c, &v, AHORA).unwrap();
     }

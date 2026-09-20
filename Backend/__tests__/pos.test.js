@@ -279,3 +279,29 @@ describe('las excepciones del mostrador', () => {
     expect(r.excepcion.ocurridaEn.toISOString()).toBe('2026-09-20T20:00:00.000Z');
   });
 });
+
+describe('el voucher del datáfono', () => {
+  const conTarjeta = (pago) => ({ ...VENTA, medio_pago: 'tarjeta', pago });
+
+  it('una venta con tarjeta guarda con qué se pagó', () => {
+    // Es lo que permite cuadrar la pila de vouchers de papel contra las ventas.
+    const r = validarVenta(conTarjeta({
+      aprobada: true,
+      codigo_autorizacion: '048123',
+      ultimos_cuatro: '4582',
+      franquicia: 'Visa',
+    }));
+    expect(r.ok).toBe(true);
+    expect(r.venta.pago).toEqual({ autorizacion: '048123', ultimosCuatro: '4582', franquicia: 'Visa' });
+  });
+
+  it('un pago no aprobado no se guarda como pago', () => {
+    const r = validarVenta(conTarjeta({ aprobada: false, codigo_autorizacion: '' }));
+    expect(r.ok).toBe(true);
+    expect(r.venta.pago).toBeNull();
+  });
+
+  it('una venta en efectivo no inventa un voucher', () => {
+    expect(validarVenta(VENTA).venta.pago).toBeNull();
+  });
+});

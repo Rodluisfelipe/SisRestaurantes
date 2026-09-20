@@ -13,6 +13,7 @@ pub mod catalogo;
 pub mod db;
 pub mod dinero;
 pub mod escpos;
+pub mod pagos;
 pub mod pausadas;
 pub mod sync;
 pub mod turnos;

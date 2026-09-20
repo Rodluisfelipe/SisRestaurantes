@@ -81,6 +81,7 @@ router.post('/sync-sale', tenantAuth, async (req, res) => {
       totalAmount: venta.total,
       finalAmount: venta.total,
       paymentMethod: venta.medioPago,
+      ...(venta.pago ? { posPago: venta.pago } : {}),
       /* La hora es la de la caja, no la del servidor: una venta que se hizo sin
          internet a las 3 de la tarde no puede aparecer a las 9 de la noche,
          cuando volvió la señal. */

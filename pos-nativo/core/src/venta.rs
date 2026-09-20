@@ -43,6 +43,9 @@ pub struct NuevaVenta {
     /// IVA incluido en los precios. 0 si el negocio no es responsable de IVA.
     #[serde(default)]
     pub iva_porcentaje: u32,
+    /// El voucher, cuando se cobró con tarjeta.
+    #[serde(default)]
+    pub pago: Option<crate::pagos::RespuestaPago>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -155,9 +158,19 @@ pub fn registrar(
         |f| f.get(0),
     )?;
 
+    let (autorizacion, ultimos4, franquicia) = match &venta.pago {
+        Some(p) => (
+            p.codigo_autorizacion.clone(),
+            p.ultimos_cuatro.clone().unwrap_or_default(),
+            p.franquicia.clone().unwrap_or_default(),
+        ),
+        None => (String::new(), String::new(), String::new()),
+    };
+
     tx.execute(
-        "INSERT INTO ventas (id, consecutivo, total, iva, recibido, vuelto, medio_pago, cajero, turno_id, creada_en)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        "INSERT INTO ventas (id, consecutivo, total, iva, recibido, vuelto, medio_pago, cajero, turno_id, creada_en,
+                             pago_autorizacion, pago_ultimos4, pago_franquicia)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
         params![
             id,
             consecutivo,
@@ -168,7 +181,10 @@ pub fn registrar(
             if venta.medio_pago.is_empty() { "efectivo" } else { &venta.medio_pago },
             venta.cajero,
             venta.turno_id,
-            ahora
+            ahora,
+            autorizacion,
+            ultimos4,
+            franquicia
         ],
     )?;
 
@@ -193,6 +209,8 @@ pub fn registrar(
         "turno_id": venta.turno_id,
         "creada_en": ahora,
         "items": venta.items,
+        // El voucher viaja con la venta: el cuadre de tarjetas se hace en el panel.
+        "pago": venta.pago,
     })
     .to_string();
 
@@ -272,6 +290,7 @@ mod pruebas {
             cajero: "Ana".into(),
             turno_id: turno_id.into(),
             iva_porcentaje: 19,
+            pago: None,
         }
     }
 

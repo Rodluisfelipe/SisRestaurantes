@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   abrirCajon, abrirPantallaCliente, anularItem, catalogo, cerrarPantallaCliente, cobrar,
-  descartarPausada, enTauri, estadoSync, hayPantallaCliente, listarPausadas, mostrarAlCliente,
-  pausarVenta, pesos, retomarVenta, salir, sincronizar, turnoActivo,
-  type CierreTurno, type Cobro, type EnEspera, type LineaVenta, type Producto, type Turno, type Usuario,
+  descartarPausada, enTauri, estadoSync, hayPantallaCliente, infoTerminal, listarPausadas,
+  mostrarAlCliente, pausarVenta, pesos, retomarVenta, salir, sincronizar, turnoActivo,
+  type CierreTurno, type Cobro, type EnEspera, type LineaVenta, type Producto, type Turno,
+  type Usuario, type Voucher,
 } from './nativo';
 import PantallaPin from './PantallaPin';
+import CobroTarjeta from './CobroTarjeta';
 import Autorizar from './Autorizar';
 import { AbrirTurno, PanelTurno, ResumenCierre } from './Turno';
 
@@ -116,6 +118,13 @@ function Caja({
      número uno de robo hormiga. */
   const [anulando, setAnulando] = useState<{ indice: number; linea: LineaVenta } | null>(null);
   const [conCliente, setConCliente] = useState(false);
+  const [medioPago, setMedioPago] = useState<'efectivo' | 'tarjeta'>('efectivo');
+  /* Mientras esto esté puesto, la caja está esperando el voucher del datáfono.
+     La venta todavía no existe: primero el banco, después el registro. */
+  const [pidiendoVoucher, setPidiendoVoucher] = useState(false);
+  const [digitaVoucher, setDigitaVoucher] = useState(true);
+
+  useEffect(() => { infoTerminal().then((t) => setDigitaVoucher(t.requiere_digitacion)).catch(() => {}); }, []);
   const buscador = useRef<HTMLInputElement>(null);
 
   useEffect(() => { hayPantallaCliente().then(setConCliente).catch(() => {}); }, []);
@@ -261,8 +270,16 @@ function Caja({
     await refrescarEspera();
   };
 
-  const finalizar = async () => {
+  const finalizar = async (voucher?: Voucher) => {
     if (!carrito.length || cobrando) return;
+
+    /* Con tarjeta y datáfono independiente, primero el voucher. Con uno
+       integrado, el aparato lo trae y no hay nada que pedir. */
+    if (medioPago === 'tarjeta' && digitaVoucher && !voucher) {
+      setPidiendoVoucher(true);
+      return;
+    }
+
     setCobrando(true);
     setError('');
     try {
@@ -271,15 +288,17 @@ function Caja({
          firmar una venta a nombre de otro. */
       const r = await cobrar({
         items: carrito,
-        medio_pago: 'efectivo',
-        recibido: parseInt(recibido || '0', 10) || 0,
+        medio_pago: medioPago,
+        recibido: medioPago === 'efectivo' ? parseInt(recibido || '0', 10) || 0 : 0,
         cajero: '',
         turno_id: '',
         iva_porcentaje: 0,
-      });
+      }, voucher);
       setUltimo(r);
       setCarrito([]);
       setRecibido('');
+      setMedioPago('efectivo');
+      setPidiendoVoucher(false);
       refrescarEspera();
 
       /* El cambio, gigante y del otro lado: es lo que el cliente está a punto
@@ -395,6 +414,14 @@ function Caja({
           Abrir cajón
         </button>
       </header>
+
+      {pidiendoVoucher && (
+        <CobroTarjeta
+          total={total}
+          onListo={(v) => { setPidiendoVoucher(false); finalizar(v); }}
+          onCancelar={() => setPidiendoVoucher(false)}
+        />
+      )}
 
       {anulando && (
         <Autorizar
@@ -515,23 +542,39 @@ function Caja({
           </div>
 
           <div className="p-3 border-t border-slate-200 space-y-2">
+            <div className="flex gap-1.5">
+              {(['efectivo', 'tarjeta'] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setMedioPago(m)}
+                  className={`flex-1 h-10 rounded-xl text-[12.5px] font-bold border-2 transition-colors ${
+                    medioPago === m ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 text-slate-500'
+                  }`}
+                >
+                  {m === 'efectivo' ? 'Efectivo' : 'Tarjeta'}
+                </button>
+              ))}
+            </div>
+
             <div className="flex items-baseline justify-between">
               <span className="text-sm font-semibold text-slate-500">Total</span>
               <span className="text-3xl font-black tabular-nums">{pesos(total)}</span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <input
-                value={recibido}
-                onChange={(e) => setRecibido(e.target.value.replace(/\D/g, ''))}
-                inputMode="numeric"
-                placeholder="Recibido"
-                className="flex-1 h-11 px-3 rounded-xl border-2 border-slate-200 tabular-nums outline-none focus:border-slate-900"
-              />
-              <span className="w-28 text-right text-sm font-bold text-slate-500 tabular-nums">
-                {vuelto > 0 ? `Cambio ${pesos(vuelto)}` : ''}
-              </span>
-            </div>
+            {medioPago === 'efectivo' && (
+              <div className="flex items-center gap-2">
+                <input
+                  value={recibido}
+                  onChange={(e) => setRecibido(e.target.value.replace(/\D/g, ''))}
+                  inputMode="numeric"
+                  placeholder="Recibido"
+                  className="flex-1 h-11 px-3 rounded-xl border-2 border-slate-200 tabular-nums outline-none focus:border-slate-900"
+                />
+                <span className="w-28 text-right text-sm font-bold text-slate-500 tabular-nums">
+                  {vuelto > 0 ? `Cambio ${pesos(vuelto)}` : ''}
+                </span>
+              </div>
+            )}
 
             {error && <p className="text-[12.5px] font-semibold text-red-600">{error}</p>}
 
@@ -546,11 +589,11 @@ function Caja({
                 <span className="block text-[10px] font-semibold text-slate-400">F4</span>
               </button>
               <button
-                onClick={finalizar}
+                onClick={() => finalizar()}
                 disabled={!carrito.length || cobrando}
                 className="flex-1 h-14 rounded-xl bg-slate-900 text-white text-lg font-black disabled:opacity-30 active:scale-[0.99]"
               >
-                {cobrando ? 'Cobrando…' : 'Cobrar · F2'}
+                {cobrando ? 'Cobrando…' : medioPago === 'tarjeta' ? 'Cobrar con tarjeta · F2' : 'Cobrar · F2'}
               </button>
             </div>
           </div>

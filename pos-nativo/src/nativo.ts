@@ -71,7 +71,31 @@ export async function catalogo(busqueda: string): Promise<Producto[]> {
   return invoke<Producto[]>('catalogo', { busqueda });
 }
 
-export async function cobrar(nueva: NuevaVenta): Promise<Cobro> {
+export interface Voucher {
+  codigo_autorizacion: string;
+  ultimos_cuatro: string;
+  franquicia: string;
+}
+
+export interface InfoTerminal {
+  nombre: string;
+  /** Si es true, la caja le pide el voucher al cajero. */
+  requiere_digitacion: boolean;
+}
+
+export async function infoTerminal(): Promise<InfoTerminal> {
+  if (!enTauri) return { nombre: 'Datáfono (voucher a mano)', requiere_digitacion: true };
+  return invoke<InfoTerminal>('info_terminal');
+}
+
+/**
+ * Cobra.
+ *
+ * Con tarjeta, el cobro pasa **primero** por el datáfono y solo si eso sale
+ * bien se registra la venta: al revés quedaría una venta de un cobro que el
+ * banco rechazó.
+ */
+export async function cobrar(nueva: NuevaVenta, voucher?: Voucher): Promise<Cobro> {
   if (!enTauri) {
     const total = nueva.items.reduce((t, i) => t + i.precio * i.cantidad, 0);
     return {
@@ -86,7 +110,7 @@ export async function cobrar(nueva: NuevaVenta): Promise<Cobro> {
       impresion: 'Modo navegador: no se imprimió ni se guardó nada.',
     };
   }
-  return invoke<Cobro>('cobrar', { nueva });
+  return invoke<Cobro>('cobrar', { nueva, voucher: voucher ?? null });
 }
 
 export interface EstadoSync {

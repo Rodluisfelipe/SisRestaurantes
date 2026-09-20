@@ -187,6 +187,15 @@ const MIGRACIONES: &[&str] = &[
     );
     CREATE INDEX idx_auditoria_turno ON auditoria_operaciones(turno_id, creada_en);
     "#,
+    // 5 — el voucher del datáfono, pegado a la venta.
+    r#"
+    /* Lo que imprime el datáfono. Sin esto, al cerrar el turno hay una pila de
+       vouchers de papel y ninguna forma de emparejarlos con las ventas: los
+       últimos cuatro y el código de aprobación son justo eso. */
+    ALTER TABLE ventas ADD COLUMN pago_autorizacion TEXT NOT NULL DEFAULT '';
+    ALTER TABLE ventas ADD COLUMN pago_ultimos4 TEXT NOT NULL DEFAULT '';
+    ALTER TABLE ventas ADD COLUMN pago_franquicia TEXT NOT NULL DEFAULT '';
+    "#,
 ];
 
 /// Abre (o crea) la base y la deja lista para operar.
