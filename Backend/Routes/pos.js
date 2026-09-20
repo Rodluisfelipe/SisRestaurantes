@@ -1,0 +1,245 @@
+const express = require('express');
+const router = express.Router();
+const mongoose = require('mongoose');
+const CompletedOrder = require('../Models/CompletedOrder');
+const Product = require('../Models/Product');
+const Category = require('../Models/Category');
+const Counter = require('../Models/Counter');
+const { tenantAuth } = require('../middleware/tenantAuth');
+const CashRegister = require('../Models/CashRegister');
+const { validarVenta, validarCierre, aplanarCatalogo } = require('../utils/pos');
+const { moverStock } = require('../services/inventario');
+const socketService = require('../services/socketService');
+const logger = require('../utils/logger');
+
+/**
+ * Lo que la caja nativa necesita de la nube: subir ventas y bajar el catálogo.
+ *
+ * La caja ya cobró y ya imprimió antes de llamar aquí. Eso cambia el contrato
+ * respecto al resto de la API: esto no "crea" una venta, la **registra**. No
+ * puede rechazarla por precios desactualizados ni por horario, porque el
+ * cliente ya pagó y ya se fue.
+ *
+ * Lo único que puede pasar dos veces es la llamada, nunca la venta: el POS
+ * reintenta hasta que confirmemos, así que todo aquí es idempotente por el id
+ * que generó la caja.
+ */
+
+/** Número de pedido del negocio, atómico. Mismo criterio que orders.js. */
+async function siguienteNumero(businessId) {
+  try {
+    const counter = await Counter.findOneAndUpdate(
+      { _id: `orderNumber:${businessId.toString()}` },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true },
+    );
+    return counter.seq.toString();
+  } catch (error) {
+    logger.error('No se pudo numerar la venta del POS', error);
+    return Date.now().toString();
+  }
+}
+
+/* POST /api/pos/sync-sale — registrar una venta de la caja. */
+router.post('/sync-sale', tenantAuth, async (req, res) => {
+  const businessId = req.user?.businessId || req.body.businessId;
+  if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
+
+  const revisada = validarVenta(req.body);
+  if (!revisada.ok) {
+    /* 400 y no 500: que el POS sepa que reintentar no va a servir. Su cola lo
+       aparta después de un par de intentos en vez de taponarse con esto. */
+    return res.status(400).json({ message: revisada.error, motivo: 'payload_invalido' });
+  }
+
+  const venta = revisada.venta;
+
+  try {
+    /* Idempotencia. Primero se mira, porque el caso común de un reintento es
+       que la venta YA entró y la respuesta se perdió en el camino. */
+    const yaEstaba = await CompletedOrder.findOne({ businessId, posSaleId: venta.id })
+      .select('_id orderNumber totalAmount')
+      .lean();
+
+    if (yaEstaba) {
+      return res.json({ ok: true, duplicada: true, orderId: yaEstaba._id, orderNumber: yaEstaba.orderNumber });
+    }
+
+    const orderNumber = await siguienteNumero(businessId);
+
+    const guardada = await CompletedOrder.create({
+      businessId,
+      posSaleId: venta.id,
+      orderNumber,
+      customerName: 'Mostrador',
+      phone: '',
+      orderType: 'takeaway',
+      orderChannel: 'pos',
+      status: 'completed',
+      items: venta.items,
+      totalAmount: venta.total,
+      finalAmount: venta.total,
+      paymentMethod: venta.medioPago,
+      /* La hora es la de la caja, no la del servidor: una venta que se hizo sin
+         internet a las 3 de la tarde no puede aparecer a las 9 de la noche,
+         cuando volvió la señal. */
+      createdAt: venta.creadaEn,
+      completedAt: venta.creadaEn,
+    });
+
+    /* El inventario se mueve con la misma función que el resto del sistema, no
+       con una copia: descontar por una venta de caja y por un pedido del menú
+       tienen que dar exactamente lo mismo. */
+    await moverStock(venta.items, -1, {
+      businessId,
+      type: 'sale',
+      orderId: guardada._id,
+      orderNumber,
+      userName: venta.cajero,
+      note: 'Venta en caja',
+    });
+
+    socketService.emitToBusiness(String(businessId), 'pos_sale_synced', {
+      orderId: String(guardada._id),
+      orderNumber,
+      total: venta.total,
+    });
+
+    logger.info('Venta de caja registrada', { posSaleId: venta.id, orderNumber, businessId: String(businessId) });
+    res.status(201).json({ ok: true, duplicada: false, orderId: guardada._id, orderNumber });
+  } catch (error) {
+    /* Carrera entre dos reintentos simultáneos: el índice único es el que
+       decide, y el que perdió devuelve la venta que sí quedó. Es la diferencia
+       entre "idempotente" e "idempotente de verdad". */
+    if (error.code === 11000) {
+      const existente = await CompletedOrder.findOne({ businessId, posSaleId: venta.id })
+        .select('_id orderNumber')
+        .lean();
+      if (existente) {
+        return res.json({ ok: true, duplicada: true, orderId: existente._id, orderNumber: existente.orderNumber });
+      }
+    }
+    logger.error('Error registrando la venta del POS', error, req);
+    res.status(500).json({ message: 'No se pudo registrar la venta' });
+  }
+});
+
+/* POST /api/pos/shifts/close — el arqueo de un turno cerrado en la caja.
+ *
+ * Llega cuando el turno YA se cerró en el mostrador, posiblemente horas
+ * después si la caja estuvo sin internet. Es un registro para auditar, no una
+ * operación que el servidor pueda aprobar o rechazar: lo que se cuenta ya se
+ * contó. */
+router.post('/shifts/close', tenantAuth, async (req, res) => {
+  const businessId = req.user?.businessId || req.body.businessId;
+  if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
+
+  const revisado = validarCierre(req.body);
+  if (!revisado.ok) {
+    return res.status(400).json({ message: revisado.error, motivo: 'payload_invalido' });
+  }
+
+  const c = revisado.cierre;
+
+  try {
+    const yaEstaba = await CashRegister.findOne({ businessId, posTurnoId: c.turnoId })
+      .select('_id difference')
+      .lean();
+    if (yaEstaba) {
+      return res.json({ ok: true, duplicado: true, cierreId: yaEstaba._id });
+    }
+
+    const guardado = await CashRegister.create({
+      businessId,
+      posTurnoId: c.turnoId,
+      origen: 'pos-nativo',
+      cajeroNombre: c.cajero,
+      openedBy: req.user?.id || undefined,
+      openedAt: c.abiertoEn,
+      closedAt: c.cerradoEn,
+      status: 'closed',
+      openingAmount: c.fondoInicial,
+      closingAmount: c.contado,
+      expectedAmount: c.esperado,
+      difference: c.diferencia,
+      /* Las entradas y salidas de la gaveta, tal como las registró el cajero.
+         Sin ellas, un faltante de 50.000 y un pago al domiciliario de 50.000 se
+         ven exactamente igual desde el panel. */
+      movements: [
+        ...(c.entradas > 0 ? [{ type: 'income', amount: c.entradas, description: 'Entradas de efectivo del turno' }] : []),
+        ...(c.salidas > 0 ? [{ type: 'expense', amount: c.salidas, description: 'Salidas de efectivo del turno' }] : []),
+      ],
+      salesSummary: {
+        totalSales: c.ventasEfectivo + c.ventasOtros,
+        totalOrders: c.ventas,
+        posSales: { total: c.ventasEfectivo + c.ventasOtros, count: c.ventas },
+      },
+    });
+
+    /* Un descuadre es lo único de un cierre que alguien tiene que mirar hoy
+       mismo, así que se avisa al panel en vivo en vez de esperar a que alguien
+       entre a buscarlo. */
+    if (c.diferencia !== 0) {
+      socketService.emitToBusiness(String(businessId), 'pos_shift_mismatch', {
+        cierreId: String(guardado._id),
+        cajero: c.cajero,
+        diferencia: c.diferencia,
+      });
+    }
+
+    logger.info('Arqueo de caja nativa registrado', {
+      posTurnoId: c.turnoId,
+      diferencia: c.diferencia,
+      businessId: String(businessId),
+    });
+    res.status(201).json({ ok: true, duplicado: false, cierreId: guardado._id });
+  } catch (error) {
+    if (error.code === 11000) {
+      const existente = await CashRegister.findOne({ businessId, posTurnoId: c.turnoId }).select('_id').lean();
+      if (existente) return res.json({ ok: true, duplicado: true, cierreId: existente._id });
+    }
+    logger.error('Error registrando el arqueo del POS', error, req);
+    res.status(500).json({ message: 'No se pudo registrar el cierre de turno' });
+  }
+});
+
+/* GET /api/pos/catalog?since=ISO — lo que cambió desde la última bajada. */
+router.get('/catalog', tenantAuth, async (req, res) => {
+  const businessId = req.user?.businessId || req.query.businessId;
+  if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
+
+  try {
+    const desde = req.query.since ? new Date(req.query.since) : null;
+    const filtro = { businessId };
+    /* Marca de agua. Sin ella habría que bajar el catálogo entero en cada
+       arranque: funciona con 50 productos y se cae con 5.000, que es justo el
+       negocio que más lo necesita. */
+    if (desde && !Number.isNaN(desde.getTime())) {
+      filtro.updatedAt = { $gt: desde };
+    }
+
+    const limite = Math.min(parseInt(req.query.limit, 10) || 500, 1000);
+
+    const [productos, categorias] = await Promise.all([
+      Product.find(filtro)
+        .select('name price active category sku variantes updatedAt createdAt')
+        .sort({ updatedAt: 1 })
+        .limit(limite)
+        .lean(),
+      Category.find({ businessId }).select('name').lean(),
+    ]);
+
+    const porId = Object.fromEntries(categorias.map((c) => [String(c._id), c.name]));
+    const filas = aplanarCatalogo(productos, porId);
+
+    /* `hay_mas` lo decide el tamaño del lote, no el de las filas: un producto
+       con diez tallas son diez filas y un solo producto. Si se contaran filas,
+       la caja pediría de nuevo lo mismo y nunca avanzaría. */
+    res.json({ filas, hay_mas: productos.length === limite });
+  } catch (error) {
+    logger.error('Error entregando el catálogo al POS', error, req);
+    res.status(500).json({ message: 'No se pudo cargar el catálogo' });
+  }
+});
+
+module.exports = router;

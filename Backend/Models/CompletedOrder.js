@@ -122,6 +122,17 @@ const completedOrderSchema = new mongoose.Schema({
     }]
   }],
   
+  /* Id que generó la caja nativa (UUIDv7) para esta venta.
+     Es la llave de idempotencia: el POS reintenta hasta que confirmemos, y sin
+     esto cada reintento crearía otra venta. `sparse` porque solo existe en las
+     ventas de caja; el resto de pedidos no lo tienen. */
+  posSaleId: {
+    type: String,
+    default: undefined,
+    trim: true,
+    maxlength: 64
+  },
+
   /* Con qué transportadora y guía salió, si fue envío nacional. Se archiva
      con el pedido: es lo que el cliente pregunta meses después. */
   envio: {
@@ -247,5 +258,13 @@ const completedOrderSchema = new mongoose.Schema({
 completedOrderSchema.index({ businessId: 1, completedAt: -1 });
 completedOrderSchema.index({ businessId: 1, reportDate: 1 });
 completedOrderSchema.index({ businessId: 1, includedInReport: 1 });
+
+/* Único y disperso: dos reintentos simultáneos de la misma venta chocan aquí
+   y solo uno entra. Es la red de seguridad de la idempotencia; sin el índice,
+   la comprobación previa tiene una ventana de carrera. */
+completedOrderSchema.index(
+  { businessId: 1, posSaleId: 1 },
+  { unique: true, partialFilterExpression: { posSaleId: { $type: "string" } } }
+);
 
 module.exports = mongoose.models.CompletedOrder || mongoose.model("CompletedOrder", completedOrderSchema); 

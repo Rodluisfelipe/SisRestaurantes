@@ -1,0 +1,21 @@
+//! Núcleo del POS nativo.
+//!
+//! Todo lo que tiene que estar bien aunque no haya internet, impresora ni
+//! interfaz: la plata, la venta, la base local y los bytes que van a la
+//! térmica. Se prueba entero con `cargo test`, sin hardware.
+//!
+//! La capa de Tauri (`../src-tauri`) es una cáscara: abre la ventana, expone
+//! estos comandos al webview y habla con los puertos. Si mañana el POS deja de
+//! ser Tauri, esto se queda igual.
+
+pub mod catalogo;
+pub mod db;
+pub mod dinero;
+pub mod escpos;
+pub mod sync;
+pub mod turnos;
+pub mod usuarios;
+pub mod venta;
+
+pub use dinero::Pesos;
+pub use venta::{registrar, total_de, ErrorVenta, LineaVenta, NuevaVenta, VentaRegistrada};

@@ -22,10 +22,13 @@ const cashRegisterSchema = new mongoose.Schema({
     ref: 'BusinessConfig',
     required: true
   },
+  /* Quién abrió. En el POS web es el Admin que inició sesión; en la caja
+     nativa es la cuenta del negocio bajo la que está registrada la caja, y el
+     nombre del cajero que contó va aparte, en `cajeroNombre`. */
   openedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Admin',
-    required: true
+    required: false
   },
   closedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -52,7 +55,21 @@ const cashRegisterSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+/* Turno de una caja nativa. Es la llave de idempotencia del cierre: el POS
+   reintenta hasta que confirmemos, y sin esto cada reintento crearía otro
+   arqueo y el dueño vería tres cierres del mismo turno. */
+cashRegisterSchema.add({
+  posTurnoId: { type: String, default: undefined, trim: true, maxlength: 64 },
+  // Quién contó la gaveta. Puede no ser un Admin: es el cajero del mostrador.
+  cajeroNombre: { type: String, default: '', trim: true, maxlength: 80 },
+  origen: { type: String, enum: ['web', 'pos-nativo'], default: 'web' },
+});
+
 cashRegisterSchema.index({ businessId: 1, status: 1 });
+cashRegisterSchema.index(
+  { businessId: 1, posTurnoId: 1 },
+  { unique: true, partialFilterExpression: { posTurnoId: { $type: 'string' } } },
+);
 cashRegisterSchema.index({ businessId: 1, openedAt: -1 });
 
 module.exports = mongoose.model('CashRegister', cashRegisterSchema);

@@ -222,6 +222,7 @@ app.use("/api/floors", require("./Routes/floors"));
 app.use("/api/orders", require("./Routes/orders"));
 app.use("/api/devoluciones", require("./Routes/devoluciones")); // Devoluciones y cambios (tiendas)
 app.use("/api/rastreo", require("./Routes/rastreo")); // Rastreo de guías por transportadora
+app.use("/api/pos", require("./Routes/pos")); // Caja nativa: subir ventas y bajar catálogo
 app.use("/api/favorites", require("./Routes/favorites")); // Productos favoritos del cliente
 app.use("/api/delivery-zones", require("./Routes/deliveryZones")); // Zonas de entrega
 app.use("/api/delivery-admin", require("./Routes/deliveryAdmin")); // Gestión de domiciliarios (admin)

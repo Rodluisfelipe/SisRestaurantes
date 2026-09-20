@@ -1,0 +1,28 @@
+[package]
+name = "pos-nativo"
+version = "0.1.0"
+edition = "2021"
+description = "POS nativo de MenuBy"
+
+[lib]
+# El nombre con _lib es la convención de Tauri 2: permite que el mismo código
+# corra en escritorio y, el día que haga falta, en Android.
+name = "pos_nativo_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+pos-core = { path = "../core" }
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }
+time = { version = "0.3", features = ["formatting", "local-offset"] }
+# Habla con los puertos COM sin capas de por medio: es lo que hace que el corte
+# de papel y el pulso del cajón salgan en microsegundos.
+serialport = "4"
+# Cliente HTTP de bloqueo, sin runtime async: la sincronización corre en su
+# propio hilo y no vale la pena arrastrar tokio para un POST cada 30 segundos.
+ureq = { version = "2", features = ["json"] }

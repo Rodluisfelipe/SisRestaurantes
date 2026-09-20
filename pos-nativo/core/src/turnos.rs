@@ -1,0 +1,393 @@
+//! El turno y su arqueo.
+//!
+//! Un turno es el trozo de día del que alguien responde: desde que abre la
+//! gaveta con un fondo hasta que la cuenta y entrega. Sin turno no se vende, y
+//! toda venta lleva el suyo: si no, un descuadre no tiene dueño y "faltan
+//! veinte mil" se vuelve una conversación imposible.
+//!
+//! **Arqueo ciego.** Al cerrar, la caja no le dice al cajero cuánto debería
+//! haber. Él cuenta lo que hay y lo digita; el sistema compara después. Si la
+//! pantalla soplara el número esperado, el arqueo dejaría de medir nada: quien
+//! tomó plata escribe justo esa cifra y el faltante nunca aparece. Por eso
+//! `esperado_de` es privada del cierre y no hay ningún comando que la exponga
+//! antes de contar.
+//!
+//! La fórmula, que es la de cualquier caja del mundo:
+//!
+//! ```text
+//! esperado  = fondo inicial + ventas en efectivo + entradas − salidas
+//! diferencia = contado − esperado        (negativo = falta plata)
+//! ```
+//!
+//! Solo el efectivo entra en la cuenta: lo de tarjeta y transferencia no pasa
+//! por la gaveta y cuadrarlo contra el datáfono es otro trabajo.
+
+use crate::dinero::Pesos;
+use rusqlite::{params, Connection, OptionalExtension, Result};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Turno {
+    pub id: String,
+    pub usuario_id: String,
+    pub cajero: String,
+    pub abierto_en: String,
+    pub fondo_inicial: Pesos,
+    pub estado: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CierreTurno {
+    pub turno_id: String,
+    pub cajero: String,
+    pub abierto_en: String,
+    pub cerrado_en: String,
+    pub fondo_inicial: Pesos,
+    pub ventas_efectivo: Pesos,
+    pub ventas_otros: Pesos,
+    pub entradas: Pesos,
+    pub salidas: Pesos,
+    pub esperado: Pesos,
+    pub contado: Pesos,
+    /// Negativo = falta plata en la gaveta.
+    pub diferencia: Pesos,
+    pub ventas: i64,
+}
+
+#[derive(Debug)]
+pub enum ErrorTurno {
+    YaHayUnoAbierto(String),
+    NoHayTurnoAbierto,
+    MotivoRequerido,
+    MontoInvalido,
+    Base(rusqlite::Error),
+}
+
+impl std::fmt::Display for ErrorTurno {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ErrorTurno::YaHayUnoAbierto(quien) => write!(f, "Ya hay un turno abierto de {quien}"),
+            ErrorTurno::NoHayTurnoAbierto => write!(f, "No hay un turno abierto en esta caja"),
+            ErrorTurno::MotivoRequerido => write!(f, "Dile por qué sale o entra la plata"),
+            ErrorTurno::MontoInvalido => write!(f, "El monto no es válido"),
+            ErrorTurno::Base(e) => write!(f, "No se pudo guardar: {e}"),
+        }
+    }
+}
+
+impl From<rusqlite::Error> for ErrorTurno {
+    fn from(e: rusqlite::Error) -> Self {
+        ErrorTurno::Base(e)
+    }
+}
+
+/// El turno abierto, si lo hay. Una caja tiene uno o ninguno.
+pub fn activo(conexion: &Connection) -> Result<Option<Turno>> {
+    conexion
+        .query_row(
+            "SELECT id, usuario_id, cajero, abierto_en, fondo_inicial, estado
+             FROM turnos WHERE estado = 'ABIERTO' ORDER BY abierto_en DESC LIMIT 1",
+            [],
+            |f| {
+                Ok(Turno {
+                    id: f.get(0)?,
+                    usuario_id: f.get(1)?,
+                    cajero: f.get(2)?,
+                    abierto_en: f.get(3)?,
+                    fondo_inicial: Pesos(f.get(4)?),
+                    estado: f.get(5)?,
+                })
+            },
+        )
+        .optional()
+}
+
+/// Abre la gaveta del día.
+pub fn abrir(
+    conexion: &Connection,
+    usuario_id: &str,
+    cajero: &str,
+    fondo_inicial: Pesos,
+    ahora: &str,
+) -> Result<Turno, ErrorTurno> {
+    /* Dos turnos abiertos a la vez harían que las ventas se repartieran entre
+       los dos sin criterio y ningún arqueo cuadraría. */
+    if let Some(abierto) = activo(conexion)? {
+        return Err(ErrorTurno::YaHayUnoAbierto(abierto.cajero));
+    }
+    if fondo_inicial < Pesos::CERO {
+        return Err(ErrorTurno::MontoInvalido);
+    }
+
+    let turno = Turno {
+        id: Uuid::now_v7().to_string(),
+        usuario_id: usuario_id.to_string(),
+        cajero: cajero.to_string(),
+        abierto_en: ahora.to_string(),
+        fondo_inicial,
+        estado: "ABIERTO".into(),
+    };
+
+    conexion.execute(
+        "INSERT INTO turnos (id, usuario_id, cajero, abierto_en, fondo_inicial, estado)
+         VALUES (?1, ?2, ?3, ?4, ?5, 'ABIERTO')",
+        params![turno.id, turno.usuario_id, turno.cajero, turno.abierto_en, fondo_inicial.0],
+    )?;
+
+    Ok(turno)
+}
+
+/// Plata que entra o sale de la gaveta sin ser una venta.
+///
+/// El motivo es obligatorio en las dos direcciones. Un movimiento sin motivo es
+/// exactamente el hueco por donde se va la plata: "salieron 50.000" sin nada
+/// más es indistinguible de un faltante.
+pub fn mover_efectivo(
+    conexion: &Connection,
+    turno_id: &str,
+    entrada: bool,
+    monto: Pesos,
+    motivo: &str,
+    usuario: &str,
+    ahora: &str,
+) -> Result<(), ErrorTurno> {
+    if monto <= Pesos::CERO {
+        return Err(ErrorTurno::MontoInvalido);
+    }
+    if motivo.trim().len() < 3 {
+        return Err(ErrorTurno::MotivoRequerido);
+    }
+
+    conexion.execute(
+        "INSERT INTO movimientos_caja (id, turno_id, tipo, monto, motivo, usuario, creado_en)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![
+            Uuid::now_v7().to_string(),
+            turno_id,
+            if entrada { "entrada" } else { "salida" },
+            monto.0,
+            motivo.trim(),
+            usuario,
+            ahora
+        ],
+    )?;
+
+    Ok(())
+}
+
+/// Lo que el sistema cree que hay en la gaveta.
+///
+/// **Privada a propósito.** Si la interfaz pudiera preguntarla antes del
+/// conteo, el arqueo dejaría de ser ciego y dejaría de medir nada.
+fn esperado_de(conexion: &Connection, turno: &Turno) -> Result<CierreTurno> {
+    let (ventas_efectivo, ventas_otros, cuantas): (i64, i64, i64) = conexion.query_row(
+        "SELECT
+            COALESCE(SUM(CASE WHEN medio_pago = 'efectivo' THEN total ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN medio_pago != 'efectivo' THEN total ELSE 0 END), 0),
+            COUNT(*)
+         FROM ventas WHERE turno_id = ?1",
+        [&turno.id],
+        |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?)),
+    )?;
+
+    let (entradas, salidas): (i64, i64) = conexion.query_row(
+        "SELECT
+            COALESCE(SUM(CASE WHEN tipo = 'entrada' THEN monto ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN tipo = 'salida'  THEN monto ELSE 0 END), 0)
+         FROM movimientos_caja WHERE turno_id = ?1",
+        [&turno.id],
+        |f| Ok((f.get(0)?, f.get(1)?)),
+    )?;
+
+    let esperado = turno.fondo_inicial.0 + ventas_efectivo + entradas - salidas;
+
+    Ok(CierreTurno {
+        turno_id: turno.id.clone(),
+        cajero: turno.cajero.clone(),
+        abierto_en: turno.abierto_en.clone(),
+        cerrado_en: String::new(),
+        fondo_inicial: turno.fondo_inicial,
+        ventas_efectivo: Pesos(ventas_efectivo),
+        ventas_otros: Pesos(ventas_otros),
+        entradas: Pesos(entradas),
+        salidas: Pesos(salidas),
+        esperado: Pesos(esperado),
+        contado: Pesos::CERO,
+        diferencia: Pesos::CERO,
+        ventas: cuantas,
+    })
+}
+
+/// Cierra el turno con lo que el cajero contó y deja el arqueo encolado.
+///
+/// El orden es el del arqueo ciego: el conteo **entra** como parámetro, el
+/// esperado se calcula **después**, y solo entonces aparece la diferencia.
+pub fn cerrar(
+    conexion: &mut Connection,
+    contado: Pesos,
+    ahora: &str,
+) -> Result<CierreTurno, ErrorTurno> {
+    let turno = activo(conexion)?.ok_or(ErrorTurno::NoHayTurnoAbierto)?;
+    if contado < Pesos::CERO {
+        return Err(ErrorTurno::MontoInvalido);
+    }
+
+    let mut cierre = esperado_de(conexion, &turno)?;
+    cierre.contado = contado;
+    cierre.diferencia = Pesos(contado.0 - cierre.esperado.0);
+    cierre.cerrado_en = ahora.to_string();
+
+    let tx = conexion.transaction()?;
+
+    tx.execute(
+        "UPDATE turnos SET estado = 'CERRADO', cerrado_en = ?2, contado = ?3, esperado = ?4, diferencia = ?5
+         WHERE id = ?1",
+        params![turno.id, ahora, contado.0, cierre.esperado.0, cierre.diferencia.0],
+    )?;
+
+    /* El arqueo sube por la misma cola que las ventas: el dueño tiene que poder
+       ver desde el panel que faltaron veinte mil el martes, aunque esa caja
+       siga sin internet hasta el jueves. */
+    let payload = serde_json::to_string(&cierre).unwrap_or_default();
+    tx.execute(
+        "INSERT INTO outbox (entidad, entidad_id, operacion, payload, creado_en)
+         VALUES ('turno', ?1, 'cerrar', ?2, ?3)",
+        params![turno.id, payload, ahora],
+    )?;
+
+    tx.commit()?;
+
+    Ok(cierre)
+}
+
+#[cfg(test)]
+mod pruebas {
+    use super::*;
+    use crate::{db, venta};
+
+    const AHORA: &str = "2026-09-20T18:00:00-05:00";
+
+    fn caja_con_turno() -> (Connection, Turno) {
+        let c = db::abrir_en_memoria().unwrap();
+        let t = abrir(&c, "u1", "Ana", Pesos(100_000), "2026-09-20T08:00:00-05:00").unwrap();
+        (c, t)
+    }
+
+    fn vender(c: &mut Connection, turno: &Turno, monto: i64, medio: &str) {
+        let v = venta::NuevaVenta {
+            items: vec![venta::LineaVenta {
+                producto_id: "p1".into(),
+                nombre: "Café".into(),
+                variante: String::new(),
+                precio: Pesos(monto),
+                cantidad: 1,
+            }],
+            medio_pago: medio.into(),
+            recibido: if medio == "efectivo" { Pesos(monto) } else { Pesos::CERO },
+            cajero: turno.cajero.clone(),
+            turno_id: turno.id.clone(),
+            iva_porcentaje: 0,
+        };
+        venta::registrar(c, &v, AHORA).unwrap();
+    }
+
+    #[test]
+    fn no_se_pueden_abrir_dos_turnos_a_la_vez() {
+        // Con dos abiertos, las ventas se reparten sin criterio y ningún arqueo cuadra.
+        let (c, _) = caja_con_turno();
+        assert!(matches!(
+            abrir(&c, "u2", "Beto", Pesos(50_000), AHORA),
+            Err(ErrorTurno::YaHayUnoAbierto(_))
+        ));
+    }
+
+    #[test]
+    fn el_esperado_es_fondo_mas_efectivo_mas_entradas_menos_salidas() {
+        let (mut c, t) = caja_con_turno();
+        vender(&mut c, &t, 30_000, "efectivo");
+        vender(&mut c, &t, 20_000, "tarjeta");        // no pasa por la gaveta
+        mover_efectivo(&c, &t.id, true, Pesos(50_000), "sencillo del banco", "Ana", AHORA).unwrap();
+        mover_efectivo(&c, &t.id, false, Pesos(10_000), "hielo", "Ana", AHORA).unwrap();
+
+        // 100.000 + 30.000 + 50.000 − 10.000 = 170.000
+        let cierre = cerrar(&mut c, Pesos(170_000), AHORA).unwrap();
+        assert_eq!(cierre.esperado, Pesos(170_000));
+        assert_eq!(cierre.ventas_efectivo, Pesos(30_000));
+        assert_eq!(cierre.ventas_otros, Pesos(20_000));
+        assert_eq!(cierre.diferencia, Pesos::CERO);
+    }
+
+    #[test]
+    fn un_faltante_sale_negativo_y_un_sobrante_positivo() {
+        let (mut c, t) = caja_con_turno();
+        vender(&mut c, &t, 30_000, "efectivo");
+        let cierre = cerrar(&mut c, Pesos(110_000), AHORA).unwrap();
+        assert_eq!(cierre.diferencia, Pesos(-20_000), "faltan veinte mil");
+
+        let (mut c2, t2) = caja_con_turno();
+        vender(&mut c2, &t2, 30_000, "efectivo");
+        assert_eq!(cerrar(&mut c2, Pesos(135_000), AHORA).unwrap().diferencia, Pesos(5_000));
+    }
+
+    #[test]
+    fn la_venta_con_tarjeta_no_entra_a_la_gaveta() {
+        let (mut c, t) = caja_con_turno();
+        vender(&mut c, &t, 500_000, "tarjeta");
+        // El esperado sigue siendo solo el fondo: esa plata está en el datáfono.
+        assert_eq!(cerrar(&mut c, Pesos(100_000), AHORA).unwrap().diferencia, Pesos::CERO);
+    }
+
+    #[test]
+    fn el_cierre_queda_encolado_para_el_dueno() {
+        let (mut c, t) = caja_con_turno();
+        vender(&mut c, &t, 30_000, "efectivo");
+        cerrar(&mut c, Pesos(125_000), AHORA).unwrap();
+
+        let cola: Vec<(String, String)> = {
+            let mut q = c.prepare("SELECT entidad, payload FROM outbox WHERE entidad = 'turno'").unwrap();
+            q.query_map([], |f| Ok((f.get(0)?, f.get(1)?))).unwrap().map(|r| r.unwrap()).collect()
+        };
+        assert_eq!(cola.len(), 1);
+
+        let json: serde_json::Value = serde_json::from_str(&cola[0].1).unwrap();
+        assert_eq!(json["diferencia"], -5_000);
+        assert_eq!(json["cajero"], "Ana");
+    }
+
+    #[test]
+    fn cerrado_el_turno_no_queda_ninguno_activo() {
+        let (mut c, _) = caja_con_turno();
+        cerrar(&mut c, Pesos(100_000), AHORA).unwrap();
+        assert!(activo(&c).unwrap().is_none());
+        assert!(matches!(cerrar(&mut c, Pesos(0), AHORA), Err(ErrorTurno::NoHayTurnoAbierto)));
+    }
+
+    #[test]
+    fn la_plata_no_sale_sin_motivo() {
+        // Un "salieron 50.000" sin motivo es indistinguible de un faltante.
+        let (c, t) = caja_con_turno();
+        assert!(matches!(
+            mover_efectivo(&c, &t.id, false, Pesos(50_000), "  ", "Ana", AHORA),
+            Err(ErrorTurno::MotivoRequerido)
+        ));
+        assert!(matches!(
+            mover_efectivo(&c, &t.id, false, Pesos(0), "hielo", "Ana", AHORA),
+            Err(ErrorTurno::MontoInvalido)
+        ));
+    }
+
+    #[test]
+    fn las_ventas_de_otro_turno_no_contaminan_el_arqueo() {
+        let (mut c, t1) = caja_con_turno();
+        vender(&mut c, &t1, 30_000, "efectivo");
+        cerrar(&mut c, Pesos(130_000), AHORA).unwrap();
+
+        let t2 = abrir(&c, "u2", "Beto", Pesos(100_000), AHORA).unwrap();
+        vender(&mut c, &t2, 10_000, "efectivo");
+
+        let cierre = cerrar(&mut c, Pesos(110_000), AHORA).unwrap();
+        assert_eq!(cierre.ventas_efectivo, Pesos(10_000), "solo lo suyo");
+        assert_eq!(cierre.diferencia, Pesos::CERO);
+    }
+}
