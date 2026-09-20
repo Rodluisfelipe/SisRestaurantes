@@ -10,8 +10,9 @@ import {
   guardarEnCuenta, hayPantallaCliente, identidad, imprimirPrecuenta, infoTerminal, listarCuentas,
   listarPausadas, mostrarAlCliente, pausarVenta, pesos, reimprimir, retomarVenta, salir,
   registrarDescuento, repartir, sincronizar, turnoActivo,
-  type CierreTurno, type Cobro, type Cuenta, type EnEspera, type LineaDevolvible, type LineaVenta,
-  type PagoDetalle, type Producto, type Turno, type Usuario, type VentaBuscada,
+  type CierreTurno, type Cobro, type Cuenta, type EnEspera, type ExtraElegido,
+  type LineaDevolvible, type LineaVenta, type PagoDetalle, type Producto, type Turno,
+  type Usuario, type VentaBuscada,
 } from './nativo';
 import ModalMotivo from './ModalMotivo';
 import CobroMixto from './CobroMixto';
@@ -20,6 +21,7 @@ import Descuento from './Descuento';
 import Cuentas from './Cuentas';
 import FotoProducto from './FotoProducto';
 import Devolucion from './Devolucion';
+import Extras from './Extras';
 import { activarSonido, bip, error as bipError, sonidoActivo } from './sonido';
 import PantallaPin from './PantallaPin';
 import Impresoras from './Impresoras';
@@ -219,6 +221,10 @@ function Caja({
      asado". Es el índice y no la línea, porque lo que se edita es la posición
      del carrito. */
   const [anotando, setAnotando] = useState<number | null>(null);
+  /* El producto al que se le están eligiendo los extras. Mientras esté puesto,
+     todavía no entró al carrito: si entrara antes, el cajero que cancela la
+     pantalla se quedaría con el producto marcado sin sus adiciones. */
+  const [conExtras, setConExtras] = useState<Producto | null>(null);
   /* El descuento va en dos pasos: primero se arma el monto, después lo autoriza
      un supervisor. Entre los dos vive aquí, sin haberse aplicado todavía. */
   const [pidiendoDescuento, setPidiendoDescuento] = useState(false);
@@ -384,9 +390,30 @@ function Caja({
     });
   }, [carrito, aCobrar, negocio, cobrandoAhora, entregado, vuelto, falta]);
 
-  const agregar = (p: Producto) => {
+  /* Un producto con extras no entra de una: primero hay que preguntar cómo lo
+     quiere el cliente. Sin esto —que es como estaba— el cajero marcaba la
+     hamburguesa, entraba el precio base, y ni el cliente pagaba el queso ni la
+     cocina se enteraba de que lo llevaba. */
+  const tocar = (p: Producto) => {
+    if (Array.isArray(p.extras) && p.extras.length) {
+      setConExtras(p);
+      return;
+    }
+    agregar(p);
+  };
+
+  const agregar = (p: Producto, extras: ExtraElegido[] = [], sobreprecio = 0) => {
     setCarrito((c) => {
-      const i = c.findIndex((x) => x.producto_id === p.id && x.variante === p.variante);
+      /* Dos líneas del mismo producto con extras distintos son dos líneas
+         distintas: una hamburguesa con queso y otra sin él no se pueden sumar,
+         porque la cocina tiene que recibir las dos por separado. */
+      const mismosExtras = (a: ExtraElegido[] = [], b: ExtraElegido[] = []) =>
+        a.length === b.length &&
+        a.every((x, k) => x.nombre === b[k]?.nombre && x.cantidad === b[k]?.cantidad);
+
+      const i = c.findIndex(
+        (x) => x.producto_id === p.id && x.variante === p.variante && mismosExtras(x.extras, extras),
+      );
       if (i >= 0) {
         const copia = [...c];
         copia[i] = { ...copia[i], cantidad: copia[i].cantidad + 1 };
@@ -394,7 +421,11 @@ function Caja({
       }
       return [...c, {
         producto_id: p.id, nombre: p.nombre, variante: p.variante,
-        precio: p.precio, cantidad: 1, nota: '',
+        /* El precio de la línea es el precio **como se vendió**: base más
+           extras. Que sea así es lo que permite que toda la aritmética de la
+           caja —totales, vuelto, arqueo, devoluciones— siga intacta. */
+        precio: p.precio + sobreprecio,
+        cantidad: 1, nota: '', extras,
       }];
     });
     setRecien((r) => ({ clave: `${p.id}${p.variante}`, vez: r.vez + 1 }));
@@ -572,7 +603,7 @@ function Caja({
      al terminar de leer un código. */
   const enterEnBusqueda = (e: React.KeyboardEvent) => {
     if (e.key !== 'Enter' || !productos.length) return;
-    agregar(productos[0]);
+    tocar(productos[0]);
     setBusqueda('');
   };
 
@@ -783,6 +814,18 @@ function Caja({
             buscador.current?.focus();
           }}
           onCancelar={() => { setPidiendoGaveta(false); buscador.current?.focus(); }}
+        />
+      )}
+
+      {conExtras && (
+        <Extras
+          producto={conExtras}
+          onListo={(extras, sobreprecio) => {
+            const cual = conExtras;
+            setConExtras(null);
+            agregar(cual, extras, sobreprecio);
+          }}
+          onCancelar={() => { setConExtras(null); buscador.current?.focus(); }}
         />
       )}
 
@@ -1074,7 +1117,7 @@ function Caja({
             {productos.map((p) => (
               <button
                 key={p.id + p.variante}
-                onClick={() => agregar(p)}
+                onClick={() => tocar(p)}
                 className="h-40 rounded-xl bg-white border border-slate-200 text-left hover:border-marca active:scale-95 active:border-marca transition-transform duration-75 flex flex-col overflow-hidden"
               >
                 {/* La foto ocupa más que el texto a propósito: un cajero la
@@ -1147,10 +1190,15 @@ function Caja({
                       className="flex-shrink-0 text-slate-300 group-hover:text-marca"
                     />
                   </p>
+                  {/* Los extras se leen enteros, igual que la nota: media
+                      línea en pantalla es peor que ninguna, porque el cajero
+                      cree que ya la revisó. */}
+                  {i.extras && i.extras.length > 0 && (
+                    <p className="text-[11px] font-semibold text-slate-500 leading-tight">
+                      {i.extras.map((e) => (e.cantidad > 1 ? `${e.nombre} x${e.cantidad}` : e.nombre)).join(', ')}
+                    </p>
+                  )}
                   {i.nota ? (
-                    /* La nota se lee entera y no truncada: media nota en
-                       pantalla es peor que ninguna, porque el cajero cree que
-                       ya la revisó. */
                     <p className="text-[11px] font-semibold text-amber-700 leading-tight">{i.nota}</p>
                   ) : (
                     <p className="text-[11px] text-slate-400 tabular-nums">{pesos(i.precio)} c/u</p>

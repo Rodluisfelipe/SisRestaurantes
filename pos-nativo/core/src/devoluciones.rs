@@ -93,7 +93,7 @@ fn llave(producto_id: &str, variante: &str) -> String {
 /// anteriores de esa venta, no solo en la última.
 pub fn devolubles(conexion: &Connection, venta_id: &str) -> Result<Vec<(LineaVenta, i64)>> {
     let mut consulta = conexion.prepare(
-        "SELECT producto_id, nombre, variante, precio, cantidad, nota
+        "SELECT producto_id, nombre, variante, precio, cantidad, nota, extras
          FROM venta_items WHERE venta_id = ?1 ORDER BY linea",
     )?;
     let vendidas: Vec<LineaVenta> = consulta
@@ -105,6 +105,9 @@ pub fn devolubles(conexion: &Connection, venta_id: &str) -> Result<Vec<(LineaVen
                 precio: Pesos(f.get(3)?),
                 cantidad: f.get(4)?,
                 nota: f.get(5)?,
+                /* Lo que llevaba puesto. Una devolución tiene que poder decir
+                   que volvió la hamburguesa **con** el queso extra. */
+                extras: serde_json::from_str(&f.get::<_, String>(6)?).unwrap_or_default(),
             })
         })?
         .collect::<Result<Vec<_>>>()?;
@@ -313,6 +316,7 @@ mod pruebas {
             precio: Pesos(precio),
             cantidad,
             nota: String::new(),
+            extras: vec![],
         }
     }
 

@@ -42,6 +42,13 @@ pub struct FilaCatalogo {
     /// De dónde bajar la foto. Vacío = el producto no tiene.
     #[serde(default)]
     pub foto: String,
+    /// Los grupos de extras, tal como los manda la nube.
+    ///
+    /// Se guarda el JSON sin interpretar: la caja no decide qué es un extra
+    /// válido, eso lo decide el panel. Aquí solo se replica para poder
+    /// dibujar la pantalla sin internet.
+    #[serde(default)]
+    pub extras: serde_json::Value,
 }
 
 fn verdadero() -> bool {
@@ -65,8 +72,8 @@ pub fn aplicar(conexion: &mut Connection, filas: &[FilaCatalogo]) -> Result<Opti
             /* `foto_local` no se toca en el UPDATE: el archivo que ya está en
                disco sigue sirviendo. Solo se borra cuando la dirección cambió,
                y eso se decide abajo comparando contra la que había. */
-            "INSERT INTO productos (id, nombre, precio, categoria, sku, variante, activo, actualizado, foto_url)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+            "INSERT INTO productos (id, nombre, precio, categoria, sku, variante, activo, actualizado, foto_url, extras)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
              ON CONFLICT(id) DO UPDATE SET
                nombre = excluded.nombre,
                precio = excluded.precio,
@@ -75,6 +82,7 @@ pub fn aplicar(conexion: &mut Connection, filas: &[FilaCatalogo]) -> Result<Opti
                variante = excluded.variante,
                activo = excluded.activo,
                actualizado = excluded.actualizado,
+               extras = excluded.extras,
                foto_url = excluded.foto_url,
                foto_local = CASE
                    WHEN productos.foto_url = excluded.foto_url THEN productos.foto_local
@@ -89,7 +97,11 @@ pub fn aplicar(conexion: &mut Connection, filas: &[FilaCatalogo]) -> Result<Opti
                 fila.variante,
                 fila.activo as i64,
                 fila.actualizado,
-                fila.foto
+                fila.foto,
+                /* Si viniera algo que no es una lista, se guarda una lista
+                   vacía: un JSON corrupto en esta columna dejaría sin abrir la
+                   pantalla de extras de ese producto para siempre. */
+                if fila.extras.is_array() { fila.extras.to_string() } else { "[]".to_string() }
             ],
         )?;
 
@@ -140,6 +152,7 @@ mod pruebas {
             activo: true,
             actualizado: actualizado.into(),
             foto: String::new(),
+            extras: serde_json::json!([]),
         }
     }
 

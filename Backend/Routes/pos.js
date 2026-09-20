@@ -624,7 +624,17 @@ router.get('/catalog', tenantAuth, cajaVigente, async (req, res) => {
 
     const [productos, categorias, negocio] = await Promise.all([
       Product.find(filtro)
-        .select('name price active category sku variantes updatedAt createdAt image images')
+        .select('name price active category sku variantes updatedAt createdAt image images toppingGroups')
+        /* Los extras viajan **dentro** de cada producto y no como catálogo
+           aparte. Duplica datos —dos hamburguesas comparten el grupo "salsas"—
+           pero es lo que permite que la caja arme la pantalla de extras sin
+           una segunda consulta ni una segunda tabla que mantener sincronizada.
+           Un grupo de extras pesa unos cientos de bytes. */
+        .populate({
+          path: 'toppingGroups',
+          match: { active: true },
+          select: 'name isMultipleChoice isRequired basePrice options subGroups active',
+        })
         .sort({ updatedAt: 1 })
         .limit(limite)
         .lean(),

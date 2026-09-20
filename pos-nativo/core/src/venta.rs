@@ -21,6 +21,15 @@ pub struct LineaVenta {
     pub variante: String,
     pub precio: Pesos,
     pub cantidad: i64,
+    /// Los extras que se le agregaron: adiciones, salsas, términos.
+    ///
+    /// **El precio ya viene sumado en `precio`.** Aquí van solo para que la
+    /// comanda y la tirilla puedan decir qué llevaba, y para que el panel lo
+    /// reciba desglosado. Que el precio de la línea sea el precio final es lo
+    /// que permite que toda la aritmética de la caja —totales, vuelto, arqueo,
+    /// devoluciones— siga siendo exactamente la misma.
+    #[serde(default)]
+    pub extras: Vec<ExtraElegido>,
     /// Cómo lo pidió el cliente: "sin cebolla", "término tres cuartos".
     ///
     /// Va en la línea y no en la venta porque en una mesa de cuatro cada plato
@@ -34,6 +43,36 @@ impl LineaVenta {
     pub fn total(&self) -> Option<Pesos> {
         self.precio.por(self.cantidad)
     }
+
+    /// Cómo se llama esta línea en un papel: el producto con lo que lleva.
+    pub fn descripcion(&self) -> String {
+        let mut texto = self.nombre.clone();
+        if !self.variante.is_empty() {
+            texto.push_str(&format!(" ({})", self.variante));
+        }
+        texto
+    }
+}
+
+/// Un extra elegido para una línea: "queso extra", "término medio".
+///
+/// Lleva el grupo del que salió porque en la cocina no es lo mismo "medio" en
+/// el grupo "término" que en el grupo "picante".
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ExtraElegido {
+    #[serde(default)]
+    pub grupo: String,
+    pub nombre: String,
+    /// Lo que costó **uno**. Ya está sumado en el precio de la línea.
+    #[serde(default)]
+    pub precio: Pesos,
+    /// Cuántas veces: "zanahoria x2". Uno si no se repite.
+    #[serde(default = "uno")]
+    pub cantidad: i64,
+}
+
+fn uno() -> i64 {
+    1
 }
 
 /// Con qué se pagó. Una venta puede tener varios.
@@ -355,9 +394,13 @@ pub fn registrar(
 
     for (i, item) in venta.items.iter().enumerate() {
         tx.execute(
-            "INSERT INTO venta_items (venta_id, linea, producto_id, nombre, variante, precio, cantidad, nota)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-            params![id, i as i64 + 1, item.producto_id, item.nombre, item.variante, item.precio.0, item.cantidad, item.nota],
+            "INSERT INTO venta_items (venta_id, linea, producto_id, nombre, variante, precio, cantidad, nota, extras)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            params![
+                id, i as i64 + 1, item.producto_id, item.nombre, item.variante,
+                item.precio.0, item.cantidad, item.nota,
+                serde_json::to_string(&item.extras).unwrap_or_else(|_| "[]".into())
+            ],
         )?;
     }
 
@@ -490,7 +533,7 @@ pub fn detalle(conexion: &Connection, venta_id: &str) -> Result<Option<VentaComp
     };
 
     let mut consulta = conexion.prepare(
-        "SELECT producto_id, nombre, variante, precio, cantidad, nota
+        "SELECT producto_id, nombre, variante, precio, cantidad, nota, extras
          FROM venta_items WHERE venta_id = ?1 ORDER BY linea",
     )?;
     let filas = consulta.query_map([venta_id], |f| {
@@ -501,6 +544,7 @@ pub fn detalle(conexion: &Connection, venta_id: &str) -> Result<Option<VentaComp
             precio: Pesos(f.get(3)?),
             cantidad: f.get(4)?,
             nota: f.get(5)?,
+            extras: serde_json::from_str(&f.get::<_, String>(6)?).unwrap_or_default(),
         })
     })?;
 
@@ -580,6 +624,7 @@ mod pruebas {
             precio: Pesos(precio),
             cantidad,
             nota: String::new(),
+            extras: vec![],
         }
     }
 
@@ -1055,6 +1100,84 @@ mod pruebas {
         assert_eq!(leido["bruto"], 50_000);
         assert_eq!(leido["descuento"], 5_000);
         assert_eq!(leido["total"], 45_000);
+    }
+
+
+    #[test]
+    fn los_extras_sobreviven_a_la_reimpresion() {
+        /* El carrito ya se limpió y el cliente vuelve media hora después
+           reclamando que pagó el queso extra. La tirilla tiene que poder
+           decirlo. */
+        let (mut c, turno) = caja();
+        let mut linea = item("Hamburguesa", 21_000, 1);
+        linea.extras = vec![
+            ExtraElegido {
+                grupo: "Adiciones".into(),
+                nombre: "Queso extra".into(),
+                precio: Pesos(3_000),
+                cantidad: 1,
+            },
+        ];
+
+        let r = registrar(&mut c, &venta_de(vec![linea], &turno), AHORA).unwrap();
+        let releida = detalle(&c, &r.id).unwrap().unwrap();
+
+        assert_eq!(releida.items[0].extras.len(), 1);
+        assert_eq!(releida.items[0].extras[0].nombre, "Queso extra");
+        assert_eq!(releida.items[0].extras[0].precio, Pesos(3_000));
+    }
+
+    #[test]
+    fn el_precio_de_la_linea_es_el_precio_con_extras() {
+        /* La decisión de la que depende todo lo demás: `precio` es el precio
+           **como se vendió**. Por eso los totales, el vuelto, el arqueo y las
+           devoluciones no necesitaron cambiar ni una línea para soportar
+           extras. */
+        let (mut c, turno) = caja();
+        let mut linea = item("Hamburguesa", 21_000, 2);
+        linea.extras = vec![ExtraElegido {
+            grupo: "Adiciones".into(),
+            nombre: "Queso extra".into(),
+            precio: Pesos(3_000),
+            cantidad: 1,
+        }];
+
+        let r = registrar(&mut c, &venta_de(vec![linea], &turno), AHORA).unwrap();
+
+        // 21.000 × 2, no 18.000 × 2 + algo aparte.
+        assert_eq!(r.total, Pesos(42_000));
+    }
+
+    #[test]
+    fn los_extras_viajan_a_la_nube() {
+        let (mut c, turno) = caja();
+        let mut linea = item("Hamburguesa", 21_000, 1);
+        linea.extras = vec![ExtraElegido {
+            grupo: "Adiciones".into(),
+            nombre: "Tocineta".into(),
+            precio: Pesos(4_000),
+            cantidad: 2,
+        }];
+
+        registrar(&mut c, &venta_de(vec![linea], &turno), AHORA).unwrap();
+
+        let payload: String = c
+            .query_row("SELECT payload FROM outbox WHERE entidad = 'venta'", [], |f| f.get(0))
+            .unwrap();
+        let leido: serde_json::Value = serde_json::from_str(&payload).unwrap();
+
+        assert_eq!(leido["items"][0]["extras"][0]["nombre"], "Tocineta");
+        assert_eq!(leido["items"][0]["extras"][0]["cantidad"], 2);
+    }
+
+    #[test]
+    fn una_linea_sin_extras_no_se_rompe_al_releerla() {
+        // Las ventas de antes de que los extras existieran.
+        let (mut c, turno) = caja();
+        let r = registrar(&mut c, &venta_de(vec![item("Café", 5_000, 1)], &turno), AHORA).unwrap();
+
+        let releida = detalle(&c, &r.id).unwrap().unwrap();
+        assert!(releida.items[0].extras.is_empty());
     }
 
 }

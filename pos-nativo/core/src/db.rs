@@ -385,6 +385,28 @@ const MIGRACIONES: &[&str] = &[
         PRIMARY KEY (devolucion_id, linea)
     );
     "#,
+    // 13 — los extras: adiciones, salsas, términos.
+    r#"
+    /* Los grupos de extras del producto, tal como bajan de la nube, en JSON.
+
+       En una columna y no en tablas propias a propósito: esto es **material de
+       consulta replicado**, no datos del negocio. La caja no lo consulta ni lo
+       cruza con nada —lo lee entero para dibujar una pantalla y ya— y tres
+       tablas con sus llaves foráneas serían tres tablas que mantener en
+       sincronía con un modelo que vive en Mongo y cambia sin avisar.
+
+       Lo que el cajero elige sí se guarda estructurado, en `venta_items`. */
+    ALTER TABLE productos ADD COLUMN extras TEXT NOT NULL DEFAULT '[]';
+
+    /* Qué extras llevaba esta línea. Es lo que hace que la comanda diga
+       "hamburguesa con queso extra y sin cebolla" y no solo "hamburguesa". */
+    ALTER TABLE venta_items ADD COLUMN extras TEXT NOT NULL DEFAULT '[]';
+
+    /* Una columna nueva alimentada por el catálogo obliga a bajarlo entero:
+       las filas que ya estaban nacen con '[]' y la marca de agua impediría que
+       se volvieran a pedir nunca. Misma regla que la migración 10. */
+    DELETE FROM ajustes WHERE clave = 'catalogo_desde';
+    "#,
 ];
 
 /// Abre (o crea) la base y la deja lista para operar.

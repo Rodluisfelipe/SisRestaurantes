@@ -83,6 +83,26 @@ function validarVenta(cuerpo) {
        mirando esto. */
     const nota = String(linea?.nota || '').trim().slice(0, 120);
 
+    /* Los extras que llevaba: adiciones, salsas, términos.
+
+       Se mapean a `selectedToppings`, que es el mismo campo que usan los
+       pedidos del menú web. Así el panel muestra una venta de caja y una del
+       menú con el mismo desglose, y los informes de qué adiciones se venden
+       más suman las dos sin saber de dónde vino cada una.
+
+       El precio de la línea **ya los incluye**: esto es el desglose, no una
+       suma aparte. Si se sumaran otra vez, el total no cuadraría con las
+       líneas y la venta se rechazaría. */
+    const extras = (Array.isArray(linea?.extras) ? linea.extras : [])
+      .filter((e) => e && e.nombre)
+      .slice(0, 40)
+      .map((e) => ({
+        groupName: String(e.grupo || '').trim().slice(0, 80),
+        optionName: String(e.nombre).trim().slice(0, 80),
+        price: Math.max(0, Number(e.precio) || 0),
+        basePrice: Math.max(0, Number(e.precio) || 0),
+      }));
+
     items.push({
       productId,
       name: nombre,
@@ -90,6 +110,7 @@ function validarVenta(cuerpo) {
       price: precio,
       quantity: cantidad,
       nota: nota || undefined,
+      selectedToppings: extras.length ? extras : undefined,
     });
   }
 
@@ -222,6 +243,41 @@ function aplanarCatalogo(productos, categoriasPorId = {}) {
        arriba y no dentro de cada rama. */
     const foto = String(p.image || (Array.isArray(p.images) ? p.images[0] : '') || '').trim();
 
+    /* Los extras del producto, aplanados a lo que la caja necesita para
+       cobrarlos: nombre, precio y las reglas de cuántos se pueden elegir.
+
+       Lo apagado no baja. En el menú web una opción inactiva se oculta; en la
+       caja tiene que desaparecer igual, o el cajero vendería una salsa que el
+       negocio dejó de ofrecer. */
+    const extras = (Array.isArray(p.toppingGroups) ? p.toppingGroups : [])
+      .filter((g) => g && g.active !== false)
+      .map((g) => ({
+        id: String(g._id),
+        nombre: g.name,
+        /* `multiple` decide si el cajero puede marcar varias o solo una, y
+           `obligatorio` si puede seguir sin elegir nada. Son las dos reglas
+           que hacen que una comanda llegue completa a la cocina. */
+        multiple: g.isMultipleChoice === true,
+        obligatorio: g.isRequired === true,
+        precio_base: Math.round(Number(g.basePrice) || 0),
+        opciones: (Array.isArray(g.options) ? g.options : [])
+          .filter((o) => o && o.active !== false && o.name)
+          .map((o) => ({ nombre: o.name, precio: Math.round(Number(o.price) || 0) })),
+        subgrupos: (Array.isArray(g.subGroups) ? g.subGroups : []).map((sg) => ({
+          titulo: sg.title || '',
+          multiple: sg.isMultipleChoice !== false,
+          obligatorio: sg.isRequired === true,
+          // null = sin tope. Es lo que permite "máximo 3 de 5 vegetales".
+          maximo: sg.maxSelections == null ? null : Math.max(1, Number(sg.maxSelections) || 1),
+          repetibles: sg.allowRepeats === true,
+          opciones: (Array.isArray(sg.options) ? sg.options : [])
+            .filter((o) => o && o.active !== false && o.name)
+            .map((o) => ({ nombre: o.name, precio: Math.round(Number(o.price) || 0) })),
+        })),
+      }))
+      // Un grupo sin nada que elegir es una pantalla en blanco para el cajero.
+      .filter((g) => g.opciones.length || g.subgrupos.some((sg) => sg.opciones.length));
+
     const variantes = Array.isArray(p.variantes) ? p.variantes : [];
 
     if (!variantes.length) {
@@ -235,6 +291,7 @@ function aplanarCatalogo(productos, categoriasPorId = {}) {
         activo: activoProducto,
         actualizado,
         foto,
+        extras,
       });
       continue;
     }
@@ -259,6 +316,10 @@ function aplanarCatalogo(productos, categoriasPorId = {}) {
         activo: activoProducto && v.activo !== false,
         actualizado,
         foto,
+        /* Las variantes heredan los extras del producto: una camiseta talla M
+           lleva los mismos estampados que la L, y una hamburguesa no cambia de
+           salsas según el tamaño. */
+        extras,
       });
     }
   }

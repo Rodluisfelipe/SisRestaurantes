@@ -207,6 +207,7 @@ mod pruebas {
                     precio: Pesos(1_000),
                     cantidad: 1,
                     nota: String::new(),
+                    extras: vec![],
                 }],
                 medio_pago: "efectivo".into(),
                 recibido: Pesos(1_000),

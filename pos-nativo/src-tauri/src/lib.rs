@@ -128,6 +128,12 @@ pub struct Producto {
     variante: String,
     /// Nombre del archivo en la carpeta de fotos. Vacío = todavía no bajó.
     foto: String,
+    /// Los grupos de extras, tal como bajaron de la nube.
+    ///
+    /// Va crudo hasta la pantalla: la caja no interpreta qué es un extra
+    /// válido —eso lo decide el panel— solo lo dibuja para que el cajero
+    /// elija.
+    extras: serde_json::Value,
 }
 
 /// El catálogo sale de SQLite, nunca de la red: es lo que permite abrir la caja
@@ -146,7 +152,7 @@ fn catalogo(
 
     let mut consulta = base
         .prepare(
-            "SELECT id, nombre, precio, categoria, variante, foto_local FROM productos
+            "SELECT id, nombre, precio, categoria, variante, foto_local, extras FROM productos
              WHERE activo = 1
                AND (?1 = '%%' OR nombre LIKE ?1 OR sku LIKE ?1)
                AND (?2 = '' OR categoria = ?2)
@@ -163,6 +169,10 @@ fn catalogo(
                 categoria: f.get(3)?,
                 variante: f.get(4)?,
                 foto: f.get(5)?,
+                /* Un JSON corrupto no puede dejar el catálogo sin cargar: ese
+                   producto se queda sin extras y los demás siguen vendiéndose. */
+                extras: serde_json::from_str(&f.get::<_, String>(6)?)
+                    .unwrap_or_else(|_| serde_json::json!([])),
             })
         })
         .map_err(|e| e.to_string())?;
@@ -1419,6 +1429,18 @@ fn tirilla_de(negocio: &str, ancho: usize, v: &venta::VentaCompleta, copia: bool
         let total_linea = item.total().unwrap_or(Pesos::CERO);
         t.par(&format!("{} x{}", nombre, item.cantidad), &total_linea.to_string());
 
+        /* Los extras, desglosados con su precio. El cliente tiene derecho a
+           ver por qué su hamburguesa costó tres mil más que la de la carta. */
+        for extra in &item.extras {
+            let veces = if extra.cantidad > 1 { format!(" x{}", extra.cantidad) } else { String::new() };
+            let cuesta = extra.precio.por(extra.cantidad * item.cantidad).unwrap_or(Pesos::CERO);
+            if cuesta > Pesos::CERO {
+                t.par(&format!("   + {}{}", extra.nombre, veces), &cuesta.to_string());
+            } else {
+                t.linea(&format!("   + {}{}", extra.nombre, veces));
+            }
+        }
+
         // Lo que pidió el cliente, por si el plato hay que reclamarlo después.
         if !item.nota.is_empty() {
             t.linea(&format!("   {}", item.nota));
@@ -1585,8 +1607,12 @@ fn comanda_de(
         };
         t.doble(true).linea(&format!("{} x{}", item.cantidad, nombre));
 
-        // La nota, igual de grande que el plato: es lo que se lee de reojo
-        // desde el otro lado de la plancha.
+        // Los extras y la nota, igual de grandes que el plato: es lo que se
+        // lee de reojo desde el otro lado de la plancha.
+        for extra in &item.extras {
+            let veces = if extra.cantidad > 1 { format!(" x{}", extra.cantidad) } else { String::new() };
+            t.linea(&format!("  + {}{}", extra.nombre.to_uppercase(), veces));
+        }
         if !item.nota.is_empty() {
             t.linea(&format!("  >> {}", item.nota.to_uppercase()));
         }
@@ -1673,10 +1699,15 @@ fn comanda(ancho: usize, nueva: &venta::NuevaVenta, registrada: &venta::VentaReg
         };
         t.doble(true).linea(&format!("{} x{}", item.cantidad, nombre));
 
-        /* La nota va igual de grande que el plato, y a propósito. Es lo que la
-           cocina tiene que leer de reojo desde el otro lado de la plancha, y en
-           letra pequeña se pasa por alto: un "sin cebolla" que no se ve es un
-           plato devuelto y una mesa perdida. */
+        /* Los extras y la nota van igual de grandes que el plato, y a
+           propósito. Es lo que la cocina lee de reojo desde el otro lado de la
+           plancha: un "sin cebolla" que no se ve es un plato devuelto y una
+           mesa perdida, y un "queso extra" que no se ve es un plato que el
+           cliente pagó y no recibió. */
+        for extra in &item.extras {
+            let veces = if extra.cantidad > 1 { format!(" x{}", extra.cantidad) } else { String::new() };
+            t.linea(&format!("  + {}{}", extra.nombre.to_uppercase(), veces));
+        }
         if !item.nota.is_empty() {
             t.linea(&format!("  >> {}", item.nota.to_uppercase()));
         }

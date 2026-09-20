@@ -256,6 +256,7 @@ mod pruebas {
             precio: Pesos(10_000),
             cantidad,
             nota: String::new(),
+            extras: vec![],
         }
     }
 

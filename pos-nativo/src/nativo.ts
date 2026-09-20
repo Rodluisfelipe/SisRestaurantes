@@ -13,6 +13,50 @@ import { invoke } from '@tauri-apps/api/core';
 
 export const enTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
+/** Una opción de un grupo de extras: "queso extra", "término medio". */
+export interface OpcionExtra {
+  nombre: string;
+  precio: number;
+}
+
+/** Un subgrupo dentro de un grupo: "vegetales", "salsas". */
+export interface SubgrupoExtra {
+  titulo: string;
+  multiple: boolean;
+  obligatorio: boolean;
+  /** Tope de opciones. null = sin límite. */
+  maximo: number | null;
+  /** Si la misma opción se puede elegir varias veces: "zanahoria x2". */
+  repetibles: boolean;
+  opciones: OpcionExtra[];
+}
+
+/**
+ * Un grupo de extras del producto.
+ *
+ * Las reglas —obligatorio, una o varias, el tope— las define el negocio en el
+ * panel. La caja las obedece; no decide cuáles son.
+ */
+export interface GrupoExtra {
+  id: string;
+  nombre: string;
+  multiple: boolean;
+  obligatorio: boolean;
+  /** Lo que cuesta el grupo por sí mismo, aparte de sus opciones. */
+  precio_base: number;
+  opciones: OpcionExtra[];
+  subgrupos: SubgrupoExtra[];
+}
+
+/** Un extra ya elegido, tal como viaja con la línea de venta. */
+export interface ExtraElegido {
+  grupo: string;
+  nombre: string;
+  /** Lo que costó **uno**. Ya está sumado en el precio de la línea. */
+  precio: number;
+  cantidad: number;
+}
+
 export interface Producto {
   id: string;
   nombre: string;
@@ -21,6 +65,8 @@ export interface Producto {
   variante: string;
   /** Nombre del archivo de su foto en disco. Vacío = no tiene o no bajó aún. */
   foto: string;
+  /** Los grupos de extras. Vacío = se vende tal cual. */
+  extras: GrupoExtra[];
 }
 
 export interface LineaVenta {
@@ -31,6 +77,13 @@ export interface LineaVenta {
   cantidad: number;
   /** Cómo lo pidió el cliente: "sin cebolla", "término tres cuartos". */
   nota?: string;
+  /**
+   * Los extras que lleva. **El precio ya viene sumado en `precio`.**
+   *
+   * Van aquí solo para que la comanda y la tirilla puedan decir qué llevaba, y
+   * para que el panel lo reciba desglosado.
+   */
+  extras?: ExtraElegido[];
 }
 
 /** Los medios que acepta la caja. El orden es el que se ve en pantalla. */
@@ -108,12 +161,12 @@ export interface Cobro {
 
 /* Catálogo de prueba para trabajar la interfaz en el navegador. */
 const DEMO: Producto[] = [
-  { id: 'd1', nombre: 'Café americano', precio: 4500, categoria: 'Bebidas', variante: '', foto: '' },
-  { id: 'd2', nombre: 'Capuchino', precio: 7000, categoria: 'Bebidas', variante: '', foto: '' },
-  { id: 'd3', nombre: 'Croissant', precio: 5500, categoria: 'Panadería', variante: '', foto: '' },
-  { id: 'd4', nombre: 'Sándwich de pollo', precio: 15900, categoria: 'Comida', variante: '', foto: '' },
-  { id: 'd5', nombre: 'Jugo de naranja', precio: 6500, categoria: 'Bebidas', variante: '', foto: '' },
-  { id: 'd6', nombre: 'Torta de chocolate', precio: 8900, categoria: 'Postres', variante: '', foto: '' },
+  { id: 'd1', nombre: 'Café americano', precio: 4500, categoria: 'Bebidas', variante: '', foto: '', extras: [] },
+  { id: 'd2', nombre: 'Capuchino', precio: 7000, categoria: 'Bebidas', variante: '', foto: '', extras: [] },
+  { id: 'd3', nombre: 'Croissant', precio: 5500, categoria: 'Panadería', variante: '', foto: '', extras: [] },
+  { id: 'd4', nombre: 'Sándwich de pollo', precio: 15900, categoria: 'Comida', variante: '', foto: '', extras: [] },
+  { id: 'd5', nombre: 'Jugo de naranja', precio: 6500, categoria: 'Bebidas', variante: '', foto: '', extras: [] },
+  { id: 'd6', nombre: 'Torta de chocolate', precio: 8900, categoria: 'Postres', variante: '', foto: '', extras: [] },
 ];
 
 export async function catalogo(busqueda: string, categoria = ''): Promise<Producto[]> {

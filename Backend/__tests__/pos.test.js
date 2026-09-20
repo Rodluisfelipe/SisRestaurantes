@@ -636,3 +636,60 @@ describe('la devolución que sube la caja', () => {
     expect(validarDevolucion(devolucion({ medio: 'tarjeta' })).devolucion.medio).toBe('tarjeta');
   });
 });
+
+describe('los extras de una línea', () => {
+  /* Adiciones, salsas, términos. El precio de la línea **ya los incluye**:
+     esto es el desglose para el panel, no una suma aparte. */
+
+  const conExtras = (extras) => venta({
+    total: 18000,
+    items: [{
+      producto_id: 'p1', nombre: 'Hamburguesa', variante: '', precio: 18000, cantidad: 1, extras,
+    }],
+  });
+
+  it('viajan como selectedToppings, igual que en el menú web', () => {
+    /* El mismo campo que usan los pedidos del menú: así el panel muestra las
+       dos con el mismo desglose y los informes las suman sin saber de dónde
+       vino cada venta. */
+    const r = validarVenta(conExtras([
+      { grupo: 'Adiciones', nombre: 'Queso extra', precio: 3000, cantidad: 1 },
+    ]));
+
+    expect(r.ok).toBe(true);
+    expect(r.venta.items[0].selectedToppings).toEqual([
+      { groupName: 'Adiciones', optionName: 'Queso extra', price: 3000, basePrice: 3000 },
+    ]);
+  });
+
+  it('el precio de la línea ya los incluye y no se suman otra vez', () => {
+    /* Es la trampa de este diseño: si el validador sumara los extras al
+       precio, el total dejaría de cuadrar con las líneas y **toda venta con
+       adiciones se rechazaría** con un 400. */
+    const r = validarVenta(conExtras([
+      { grupo: 'Adiciones', nombre: 'Queso extra', precio: 3000, cantidad: 1 },
+      { grupo: 'Adiciones', nombre: 'Tocineta', precio: 4000, cantidad: 1 },
+    ]));
+
+    expect(r.ok).toBe(true);
+    expect(r.venta.total).toBe(18000);
+  });
+
+  it('sin extras la línea no lleva el campo', () => {
+    // Para no llenar la base de listas vacías.
+    expect(validarVenta(VENTA).venta.items[0].selectedToppings).toBeUndefined();
+  });
+
+  it('un extra sin nombre se descarta', () => {
+    const r = validarVenta(conExtras([{ grupo: 'Adiciones', precio: 3000 }]));
+    expect(r.venta.items[0].selectedToppings).toBeUndefined();
+  });
+
+  it('un precio negativo en un extra se vuelve cero', () => {
+    // Un extra que resta sería un descuento sin autorizar.
+    const r = validarVenta(conExtras([
+      { grupo: 'Adiciones', nombre: 'Queso extra', precio: -5000, cantidad: 1 },
+    ]));
+    expect(r.venta.items[0].selectedToppings[0].price).toBe(0);
+  });
+});
