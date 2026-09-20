@@ -35,11 +35,18 @@ export default [
          `functions: false` porque las declaraciones de función sí se elevan y
          llamarlas antes es idiomático en React.
 
-         Queda en aviso y no en error porque la regla es léxica, no temporal:
-         también señala los usos dentro de un callback, que corren después de
-         que la constante existe y son correctos. Esos avisos son ruido; el
-         que importa —una constante leída en el cuerpo del componente antes de
-         declararse— sale en la misma lista y ese sí rompe. */
+         Costó dos caídas del menú en producción. La segunda fue la peligrosa:
+         la constante se leía en la **lista de dependencias** de un efecto, que
+         se evalúa en cada render y no cuando el efecto corre. Al leer el
+         código parecía estar dentro del callback.
+
+         Queda en aviso porque la regla es léxica y no temporal: también señala
+         los usos del cuerpo de un callback, que sí son correctos, y hoy hay
+         96 así en el repositorio. Ponerla en error obligaría a tocarlos todos.
+
+         Dónde mirar cuando aparezca: si la línea señalada es una lista de
+         dependencias —`}, [algo]);`— **eso revienta**. Si está dentro del
+         cuerpo de una función, no. La diferencia es cuándo se evalúa. */
       'no-use-before-define': ['warn', { functions: false, classes: true, variables: true }],
       'react-refresh/only-export-components': [
         'warn',

@@ -31,6 +31,12 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
     .filter((v) => v && v.activo !== false && Array.isArray(v.valores));
   const [eleccion, setEleccion] = useState(() => ejes.map(() => ''));
 
+  /* Arriba del todo, antes de cualquier efecto que lo use en su lista de
+     dependencias. Esa lista se evalúa en cada render —no cuando el efecto
+     corre— así que una constante declarada más abajo revienta la pantalla
+     entera con "Cannot access before initialization". */
+  const { businessConfig, businessId } = useBusinessConfig();
+
   /* El stock de las variantes solo limita si el producto tiene activado el
      control de inventario. Sin él —como en cualquier producto de MenuBy— el
      negocio no lleva cuentas y un cero significa "no lo he contado", no
@@ -90,8 +96,6 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
     const name = optionName.toLowerCase();
     return name.includes('gratis') || name.includes('gratuito') || name.includes('sin costo') || name.includes('incluido');
   };
-  
-  const { businessConfig, businessId } = useBusinessConfig();
   
   // Asegurarnos de que no haya grupos duplicados y que toppingGroups sea un array
   // Ordenar según el orden guardado en el backend
@@ -225,7 +229,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
     }
   }, [selectedToppings, quantity]);
 
-  const calculateTotal = () => {
+  function calculateTotal() {
     // Inicializar totales
     let basePriceTotal = 0;
     let optionsPriceTotal = 0;
@@ -292,7 +296,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
     const finalTotal = (Number(product.price || 0) + extraTotal) * quantity;
     setTotalPrice(finalTotal);
     setDisplayTotal(finalTotal);
-  };
+  }
 
   const handleOptionChange = (groupId, optionId, isSubGroup = false, subGroupId = null, isSingleChoice = false) => {
     setSelectedToppings(prev => {
@@ -472,13 +476,13 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
     return result;
   };
 
-  const handleError = (error) => {
+  function handleError(error) {
     console.error('Error en ProductToppingsSelector:', error);
     setError('Ha ocurrido un error al procesar las opciones');
-  };
+  }
 
   // Función para validar toppings obligatorios
-  const validateRequiredToppings = () => {
+  function validateRequiredToppings() {
     const errors = [];
     
     uniqueToppingGroups.forEach(group => {
@@ -525,7 +529,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
     });
     
     return errors;
-  };
+  }
 
   const handleAddToCart = () => {
     try {
