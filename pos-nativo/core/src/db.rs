@@ -304,6 +304,30 @@ const MIGRACIONES: &[&str] = &[
     ALTER TABLE productos ADD COLUMN foto_url TEXT NOT NULL DEFAULT '';
     ALTER TABLE productos ADD COLUMN foto_local TEXT NOT NULL DEFAULT '';
     "#,
+    // 10 — volver a bajar el catálogo entero, una vez.
+    r#"
+    /* La marca de agua guarda hasta cuándo se bajó el catálogo, y el servidor
+       solo manda lo que cambió después de esa fecha. Eso es lo que permite que
+       una caja con 5.000 productos arranque en un segundo.
+
+       Tiene una consecuencia que costó una tarde entender: **agregar una
+       columna nueva no rellena las filas que ya estaban**. La migración 9 creó
+       `foto_url`, pero como en la nube ningún producto había cambiado desde la
+       última bajada, el servidor respondía "no hay nada nuevo" y esa columna se
+       quedaba vacía para siempre. Las fotos no bajaban y no había forma de que
+       bajaran.
+
+       Borrar la marca fuerza una bajada completa la próxima vez. Cuesta unos
+       segundos, pasa una sola vez y deja el catálogo con todo lo que el
+       contrato nuevo trae.
+
+       ── La regla, para que esto no vuelva a pasar ──────────────────────────
+       Toda migración que agregue una columna de `productos` alimentada por el
+       catálogo tiene que borrar la marca de agua en la misma migración. Si no,
+       la columna nace vacía y nadie se entera hasta que un cajero dice que
+       algo no aparece. */
+    DELETE FROM ajustes WHERE clave = 'catalogo_desde';
+    "#,
 ];
 
 /// Abre (o crea) la base y la deja lista para operar.
@@ -400,4 +424,50 @@ mod pruebas {
         let modo: String = c.query_row("PRAGMA journal_mode", [], |f| f.get(0)).unwrap();
         assert_eq!(modo.to_lowercase(), "wal");
     }
+
+    #[test]
+    fn una_columna_nueva_del_catalogo_obliga_a_bajarlo_entero() {
+        /* Esta prueba existe por un fallo real: la migración 9 agregó
+           `foto_url` y las fotos no bajaron nunca. El catálogo solo trae lo que
+           cambió desde la marca de agua, así que una columna nueva nace vacía
+           en todas las filas que ya estaban y se queda vacía para siempre.
+
+           Se comprueba leyendo las migraciones: cualquiera que agregue una
+           columna a `productos` tiene que borrar la marca, en ella misma o en
+           la siguiente. Una prueba que solo mirara la base no vería el
+           problema, porque una base recién creada no tiene marca que estorbe. */
+        let toca_productos: Vec<usize> = MIGRACIONES
+            .iter()
+            .enumerate()
+            .filter(|(_, sql)| sql.contains("ALTER TABLE productos ADD COLUMN"))
+            .map(|(i, _)| i)
+            .collect();
+
+        assert!(!toca_productos.is_empty(), "debería haber alguna");
+
+        for i in toca_productos {
+            /* En la misma o en la siguiente: se admiten las dos porque la
+               número 10 arregló a posteriori lo que la 9 dejó suelto, y
+               reescribir una migración ya publicada no es una opción. */
+            let borra_la_marca = MIGRACIONES[i..]
+                .iter()
+                .take(2)
+                .any(|sql| sql.contains("DELETE FROM ajustes WHERE clave = 'catalogo_desde'"));
+
+            assert!(
+                borra_la_marca,
+                "la migración {} agrega una columna de productos y no borra la marca de agua: \
+                 esa columna va a quedarse vacía en toda caja que ya haya sincronizado",
+                i + 1,
+            );
+        }
+    }
+
+    #[test]
+    fn sin_marca_de_agua_el_catalogo_se_pide_desde_el_principio() {
+        // Que es lo que hace que la bajada completa ocurra de verdad.
+        let c = abrir_en_memoria().unwrap();
+        assert_eq!(crate::catalogo::marca_de_agua(&c).unwrap(), "");
+    }
+
 }
