@@ -9,6 +9,7 @@ import {
 import PantallaPin from './PantallaPin';
 import CobroTarjeta from './CobroTarjeta';
 import Impresoras from './Impresoras';
+import Nube from './Nube';
 import Autorizar from './Autorizar';
 import { AbrirTurno, PanelTurno, ResumenCierre } from './Turno';
 
@@ -125,6 +126,7 @@ function Caja({
   const [pidiendoVoucher, setPidiendoVoucher] = useState(false);
   const [digitaVoucher, setDigitaVoucher] = useState(true);
   const [verImpresoras, setVerImpresoras] = useState(false);
+  const [verNube, setVerNube] = useState(false);
   /* El aviso de que la tirilla no salió. Va como toast y no como bloqueo: la
      venta ya está cobrada y guardada, y el cajero tiene que poder seguir
      atendiendo mientras alguien le pone papel a la impresora. */
@@ -419,6 +421,13 @@ function Caja({
           Reimprimir
         </button>
         <button
+          onClick={() => setVerNube(true)}
+          title="Conectar esta caja con MenuBy"
+          className="text-[12px] font-semibold px-3 h-8 rounded-lg bg-slate-700 hover:bg-slate-600"
+        >
+          MenuBy
+        </button>
+        <button
           onClick={() => setVerImpresoras(true)}
           title="Configurar las impresoras"
           className="text-[12px] font-semibold px-3 h-8 rounded-lg bg-slate-700 hover:bg-slate-600"
@@ -471,6 +480,7 @@ function Caja({
       )}
 
       {verImpresoras && <Impresoras onCerrar={() => setVerImpresoras(false)} />}
+      {verNube && <Nube onCerrar={() => setVerNube(false)} />}
 
       {pidiendoVoucher && (
         <CobroTarjeta

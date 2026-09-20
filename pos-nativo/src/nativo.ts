@@ -450,3 +450,41 @@ export async function reimprimir(ventaId?: string): Promise<void> {
   if (!enTauri) return;
   await invoke('reimprimir', { ventaId: ventaId ?? null });
 }
+
+/* ── Conexión con MenuBy ──────────────────────────────────────────────── */
+
+export interface Emparejada {
+  negocio: string;
+  vence_en_dias: number;
+}
+
+/**
+ * Cambia la sesión del panel por el token largo de esta caja.
+ *
+ * La del panel vence en 24 horas y no se guarda en ninguna parte: se usa una
+ * vez y se descarta. El token de la caja va al llavero del sistema.
+ */
+export async function emparejar(url: string, tokenPanel: string, caja: string): Promise<Emparejada> {
+  if (!enTauri) throw new Error('Solo en la app instalada');
+  return invoke<Emparejada>('emparejar', { url, tokenPanel, caja });
+}
+
+export async function probarNube(): Promise<void> {
+  if (!enTauri) throw new Error('Solo en la app instalada');
+  await invoke('probar_nube');
+}
+
+export async function urlNube(): Promise<string> {
+  if (!enTauri) return '';
+  return invoke<string>('url_nube');
+}
+
+export async function conectada(): Promise<boolean> {
+  if (!enTauri) return false;
+  return invoke<boolean>('conectada');
+}
+
+export async function desconectarNube(): Promise<void> {
+  if (!enTauri) return;
+  await invoke('desconectar_nube');
+}

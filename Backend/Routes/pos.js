@@ -5,8 +5,10 @@ const CompletedOrder = require('../Models/CompletedOrder');
 const Product = require('../Models/Product');
 const Category = require('../Models/Category');
 const Counter = require('../Models/Counter');
+const jwt = require('jsonwebtoken');
 const { tenantAuth } = require('../middleware/tenantAuth');
 const CashRegister = require('../Models/CashRegister');
+const BusinessConfig = require('../Models/BusinessConfig');
 const PosExcepcion = require('../Models/PosExcepcion');
 const { validarVenta, validarCierre, validarExcepcion, aplanarCatalogo } = require('../utils/pos');
 const { moverStock } = require('../services/inventario');
@@ -40,6 +42,56 @@ async function siguienteNumero(businessId) {
     return Date.now().toString();
   }
 }
+
+/* POST /api/pos/pair — emparejar una caja con este negocio.
+ *
+ * Se llama UNA vez, con la sesión del panel, y devuelve el token con el que la
+ * caja va a trabajar de ahí en adelante.
+ *
+ * Por qué no sirve el token del panel: vence en 24 horas. Una caja que lo use
+ * deja de sincronizar al día siguiente, en mitad del servicio y sin que nadie
+ * entienda por qué. El de la caja dura 90 días y vive en el llavero del sistema
+ * operativo, no en un archivo.
+ *
+ * Lo que este token NO puede hacer es tan importante como lo que puede: lleva
+ * `scope: 'pos'`, así que si mañana se restringe por scope, una caja robada no
+ * sirve para entrar al panel ni para cambiar precios. Hoy vale lo mismo que la
+ * sesión del negocio, y eso está dicho aquí para que nadie lo descubra tarde.
+ */
+router.post('/pair', tenantAuth, async (req, res) => {
+  const businessId = req.user?.businessId || req.body.businessId;
+  if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
+
+  try {
+    const caja = String(req.body.caja || 'caja-1').trim().slice(0, 40);
+
+    const token = jwt.sign(
+      {
+        id: req.user?.id || String(businessId),
+        businessId: String(businessId),
+        role: req.user?.role || 'admin',
+        scope: 'pos',
+        caja,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '90d' },
+    );
+
+    const negocio = await BusinessConfig.findById(businessId).select('businessName').lean();
+
+    logger.info('Caja emparejada', { businessId: String(businessId), caja });
+    res.json({
+      token,
+      // Para que la caja muestre a qué negocio quedó conectada, y el técnico
+      // se dé cuenta en el acto si emparejó la equivocada.
+      negocio: negocio?.businessName || '',
+      vence_en_dias: 90,
+    });
+  } catch (error) {
+    logger.error('Error emparejando la caja', error, req);
+    res.status(500).json({ message: 'No se pudo emparejar la caja' });
+  }
+});
 
 /* POST /api/pos/sync-sale — registrar una venta de la caja. */
 router.post('/sync-sale', tenantAuth, async (req, res) => {

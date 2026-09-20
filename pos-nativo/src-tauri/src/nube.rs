@@ -80,6 +80,61 @@ impl sync::Transporte for Nube {
 }
 
 #[derive(serde::Deserialize)]
+pub struct Emparejamiento {
+    pub token: String,
+    #[serde(default)]
+    pub negocio: String,
+    #[serde(default)]
+    pub vence_en_dias: i64,
+}
+
+/// Cambia la sesión del panel por el token de esta caja.
+///
+/// El del panel vence en 24 horas: una caja que lo use deja de sincronizar al
+/// día siguiente, en mitad del servicio y sin que nadie entienda por qué. Este
+/// intercambio ocurre una sola vez, al instalar.
+pub fn emparejar(base_url: &str, token_panel: &str, caja: &str) -> Result<Emparejamiento, String> {
+    let url = format!("{}/pos/pair", base_url.trim_end_matches('/'));
+
+    ureq::post(&url)
+        .timeout(ESPERA)
+        .set("Authorization", &format!("Bearer {}", token_panel.trim()))
+        .send_json(serde_json::json!({ "caja": caja }))
+        .map_err(|e| match Nube::clasificar(e) {
+            sync::FalloEnvio::Red(m) => format!("No se pudo llegar a {url}: {m}"),
+            sync::FalloEnvio::Servidor(c, _) => format!("El servidor falló ({c}). Intenta más tarde"),
+            sync::FalloEnvio::Rechazado(401, _) | sync::FalloEnvio::Rechazado(403, _) => {
+                "Esa sesión no sirve o ya venció. Vuelve a entrar al panel y copia el token otra vez".into()
+            }
+            sync::FalloEnvio::Rechazado(c, m) => format!("Rechazado ({c}): {m}"),
+        })?
+        .into_json()
+        .map_err(|e| format!("Respuesta inesperada del servidor: {e}"))
+}
+
+/// Comprueba que la caja puede hablar con MenuBy con el token que ya tiene.
+///
+/// Se pide el catálogo con una marca de agua imposible: contesta rápido, no
+/// baja nada y verifica de una sola vez la URL, el token y los permisos.
+pub fn probar(nube: &Nube) -> Result<(), String> {
+    ureq::get(&format!("{}/pos/catalog", nube.base))
+        .timeout(ESPERA)
+        .set("Authorization", &format!("Bearer {}", nube.token))
+        .query("since", "2999-01-01T00:00:00.000Z")
+        .query("limit", "1")
+        .call()
+        .map(|_| ())
+        .map_err(|e| match Nube::clasificar(e) {
+            sync::FalloEnvio::Red(m) => format!("Sin conexión: {m}"),
+            sync::FalloEnvio::Servidor(c, _) => format!("El servidor falló ({c})"),
+            sync::FalloEnvio::Rechazado(401, _) | sync::FalloEnvio::Rechazado(403, _) => {
+                "El token de esta caja venció o fue revocado. Hay que emparejarla otra vez".into()
+            }
+            sync::FalloEnvio::Rechazado(c, m) => format!("Rechazado ({c}): {m}"),
+        })
+}
+
+#[derive(serde::Deserialize)]
 struct RespuestaCatalogo {
     filas: Vec<catalogo::FilaCatalogo>,
     #[serde(default)]

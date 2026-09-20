@@ -591,6 +591,69 @@ fn configurar_nube(estado: State<Estado>, url: String, token: String) -> Result<
     Ok(())
 }
 
+#[derive(serde::Serialize)]
+pub struct Emparejada {
+    negocio: String,
+    /// Para poder avisar antes de que la caja se quede muda.
+    vence_en_dias: i64,
+}
+
+/// Empareja esta caja con un negocio.
+///
+/// Recibe la sesión del panel —la que el dueño copia una vez— y guarda a cambio
+/// el token largo de la caja en el llavero del sistema. La sesión del panel no
+/// se guarda en ninguna parte: se usa y se descarta.
+#[tauri::command]
+async fn emparejar(
+    estado: State<'_, Estado>,
+    url: String,
+    token_panel: String,
+    caja: String,
+) -> Result<Emparejada, String> {
+    let base = url.trim_end_matches('/').to_string();
+    let limpia = base.clone();
+
+    let resultado = tauri::async_runtime::spawn_blocking(move || {
+        nube::emparejar(&limpia, &token_panel, &caja)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+
+    credenciales::guardar(&resultado.token)?;
+
+    let conexion = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    conexion
+        .execute(
+            "INSERT INTO ajustes (clave, valor) VALUES ('nube_url', ?1)
+             ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor",
+            rusqlite::params![base],
+        )
+        .map_err(|e| e.to_string())?;
+
+    Ok(Emparejada { negocio: resultado.negocio, vence_en_dias: resultado.vence_en_dias })
+}
+
+/// Comprueba que la caja puede hablar con MenuBy ahora mismo.
+#[tauri::command]
+async fn probar_nube(estado: State<'_, Estado>) -> Result<(), String> {
+    let destino = {
+        let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+        leer_nube(&base).ok_or("Esta caja todavía no está conectada a MenuBy")?
+    };
+
+    tauri::async_runtime::spawn_blocking(move || nube::probar(&destino))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// A qué MenuBy apunta esta caja. Sin el token: eso no sale del llavero.
+#[tauri::command]
+fn url_nube(estado: State<Estado>) -> String {
+    let Ok(base) = estado.base.lock() else { return String::new() };
+    base.query_row("SELECT valor FROM ajustes WHERE clave = 'nube_url'", [], |f| f.get(0))
+        .unwrap_or_default()
+}
+
 /// Desconecta la caja de MenuBy: borra la credencial del llavero.
 ///
 /// No toca ventas ni turnos. Es para cuando el equipo cambia de dueño o sale a
@@ -1011,6 +1074,9 @@ pub fn run() {
             configurar_nube,
             desconectar_nube,
             conectada,
+            emparejar,
+            probar_nube,
+            url_nube,
             impresoras,
             configurar_impresora,
             probar_impresora,
