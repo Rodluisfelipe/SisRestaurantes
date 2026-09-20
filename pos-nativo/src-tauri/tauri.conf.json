@@ -28,11 +28,42 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["msi", "nsis", "deb", "appimage"],
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.ico"],
+    "targets": [
+      "nsis",
+      "msi"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/icon.ico"
+    ],
     "copyright": "MenuBy",
     "category": "Business",
     "shortDescription": "Punto de venta nativo",
-    "longDescription": "Punto de venta local-first: cobra, imprime y abre el cajón sin depender de internet."
+    "longDescription": "Punto de venta local-first: cobra, imprime y abre el cajón sin depender de internet.",
+    "publisher": "MenuBy",
+    "windows": {
+      "nsis": {
+        "languages": [
+          "Spanish",
+          "SpanishInternational"
+        ],
+        "installMode": "currentUser",
+        "displayLanguageSelector": false
+      },
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "http://timestamp.digicert.com"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": false,
+      "endpoints": [
+        "https://api.menuby.tech/api/pos/actualizaciones/{{target}}/{{current_version}}"
+      ],
+      "dialog": true,
+      "pubkey": ""
+    }
   }
 }

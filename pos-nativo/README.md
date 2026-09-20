@@ -169,6 +169,43 @@ Lo que cambia por modelo de datáfono está aislado en dos funciones
 (`armar_peticion` y `leer_respuesta`): integrar uno concreto es reescribir esas
 dos y nada más.
 
+## Instalador y actualizaciones
+
+```bash
+npm run tauri build     # NSIS (.exe) y MSI en src-tauri/target/release/bundle
+```
+
+El NSIS se instala **en el usuario** (`installMode: currentUser`): un cajero no
+tiene permisos de administrador y no debería tener que llamar a nadie de
+sistemas para actualizar su caja. El MSI se genera igual, para los negocios que
+despliegan por directiva de grupo.
+
+### Firma de código (pendiente, y es del dueño del producto)
+
+Sin certificado de firma, Windows muestra la advertencia de SmartScreen la
+primera vez. No es un error: es lo esperado para un ejecutable sin firmar, y se
+quita comprando un certificado de firma de código y poniendo su huella en
+`bundle.windows.certificateThumbprint`.
+
+### El actualizador está configurado pero apagado
+
+`plugins.updater.active` está en `false` a propósito. Encenderlo exige un par de
+llaves:
+
+```bash
+npm run tauri signer generate -- -w ~/.tauri/menuby-pos.key
+```
+
+La **pública** va en `plugins.updater.pubkey` y la **privada** firma cada
+release. Esas llaves no las genero yo y la decisión es deliberada: quien tenga
+la privada puede publicar una actualización que todas las cajas instalarán
+solas, sin preguntar. Es la credencial más sensible del proyecto —más que el
+token del negocio— y tiene que nacer en manos de quien responde por el producto,
+guardarse fuera del repositorio y nunca pasar por un chat ni por un log.
+
+Mientras el actualizador esté apagado, actualizar es volver a correr el
+instalador. Con una o dos cajas es perfectamente razonable.
+
 ## Lo que todavía no existe
 
 Devoluciones desde el POS, propina y multicaja. El datáfono integrado tiene su
