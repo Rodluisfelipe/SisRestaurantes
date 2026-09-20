@@ -117,6 +117,18 @@ export interface NuevaVenta {
   descuento_motivo?: string;
   /** Lo que el cliente da de más para el personal. No es del negocio. */
   propina?: number;
+  /** El cliente, cuando el cajero lo identificó. Vacío es lo normal. */
+  cliente_id?: string;
+  cliente_telefono?: string;
+  /**
+   * Cuánto tardó el cajero en armar el ticket, en segundos.
+   *
+   * Lo mide esta pantalla —del primer producto al cobro— porque es lo único
+   * que el servidor no puede deducir: la venta le llega ya cerrada, y si se
+   * hizo sin señal le llega horas después. Rust lo acota a dos horas al
+   * guardarlo.
+   */
+  duracion_toma_segundos?: number;
 }
 
 /**
@@ -308,13 +320,94 @@ export interface ResumenSync {
   fallidas: number;
   apartadas: number;
   catalogo: number;
+  /** Cuántos clientes se refrescaron en la copia local. */
+  clientes: number;
   error: string | null;
 }
 
 /** Sube lo pendiente y baja el catálogo. También corre solo cada 30 s. */
 export async function sincronizar(): Promise<ResumenSync> {
-  if (!enTauri) return { enviadas: 0, fallidas: 0, apartadas: 0, catalogo: 0, error: 'Modo navegador' };
+  if (!enTauri) {
+    return { enviadas: 0, fallidas: 0, apartadas: 0, catalogo: 0, clientes: 0, error: 'Modo navegador' };
+  }
   return invoke<ResumenSync>('sincronizar');
+}
+
+/* ── Clientes y fidelización ───────────────────────────────────────────────
+ *
+ * Buscar y listar recompensas salen de la copia local, así que responden sin
+ * internet. El canje no: ese va contra el servidor, y abajo se explica por qué.
+ */
+
+export interface Cliente {
+  id: string;
+  documento: string;
+  tipo_documento: string;
+  telefono: string;
+  nombre: string;
+  puntos: number;
+  saldo_favor: number;
+  estado: string;
+  actualizado: string;
+}
+
+export interface Recompensa {
+  id: string;
+  nombre: string;
+  tipo: string;
+  costo_puntos: number;
+  producto_id: string;
+  valor_descuento: number;
+}
+
+/** Busca por teléfono, cédula o nombre, todo a la vez. */
+export async function buscarClientes(texto: string): Promise<Cliente[]> {
+  if (!enTauri) return [];
+  return invoke<Cliente[]>('buscar_clientes', { texto });
+}
+
+/** Las recompensas que se pueden ofrecer ahora mismo. */
+export async function recompensas(): Promise<Recompensa[]> {
+  if (!enTauri) return [];
+  return invoke<Recompensa[]>('recompensas');
+}
+
+export interface Canje {
+  success: boolean;
+  puntos_gastados: number;
+  puntos_restantes: number;
+  reward: unknown;
+}
+
+/**
+ * Canjea puntos por una recompensa. **Siempre contra el servidor.**
+ *
+ * Es la única cosa del POS que no funciona sin internet, y es a propósito. El
+ * descuento tiene que ser atómico entre todas las terminales del negocio: dos
+ * cajas atendiendo al mismo cliente en el mismo minuto podrían quemarle los
+ * mismos cien puntos dos veces si cada una decidiera por su cuenta.
+ *
+ * Dejarlo en la cola para confirmarlo después tampoco sirve: la caja ya le
+ * habría entregado el café gratis, y cuando la nube dijera que no alcanzaban
+ * los puntos no habría nada que deshacer.
+ *
+ * Sin señal, el error lo dice con esas palabras. El resto del cobro sigue.
+ */
+export async function canjearRecompensa(
+  clienteId: string,
+  telefono: string,
+  rewardId: string,
+  ventaId: string,
+  cajero: string,
+): Promise<Canje> {
+  if (!enTauri) throw new Error('El canje de puntos necesita la caja conectada');
+  return invoke<Canje>('canjear_recompensa', {
+    clienteId,
+    telefono,
+    rewardId,
+    ventaId,
+    cajero,
+  });
 }
 
 export interface Identidad {

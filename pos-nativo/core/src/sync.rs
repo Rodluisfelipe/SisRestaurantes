@@ -220,6 +220,7 @@ mod pruebas {
                 propina: Pesos::CERO,
                 descuento_motivo: String::new(),
                 pagos: vec![],
+                ..Default::default()
             };
             venta::registrar(&mut c, &v, AHORA).unwrap();
         }

@@ -387,6 +387,7 @@ mod pruebas {
             propina: Pesos::CERO,
             descuento_motivo: String::new(),
             pagos: vec![],
+            ..Default::default()
         };
         venta::registrar(c, &v, AHORA).unwrap();
     }
@@ -540,6 +541,7 @@ mod pruebas {
                 venta::PagoDetalle { metodo: "efectivo".into(), monto: Pesos(30_000), referencia: String::new() },
                 venta::PagoDetalle { metodo: "tarjeta".into(), monto: Pesos(20_000), referencia: "A1".into() },
             ],
+            ..Default::default()
         };
         venta::registrar(&mut c, &v, AHORA).unwrap();
 
@@ -580,6 +582,7 @@ mod pruebas {
             propina: Pesos::CERO,
             descuento_motivo: String::new(),
             pagos: vec![],
+            ..Default::default()
         };
         let r = venta::registrar(&mut c, &v, AHORA).unwrap();
         assert_eq!(r.vuelto, Pesos(20_000));
@@ -624,6 +627,7 @@ mod pruebas {
             descuento_motivo: String::new(),
             propina: Pesos(3_000),
             pagos: vec![],
+            ..Default::default()
         };
         let r = venta::registrar(&mut c, &v, AHORA).unwrap();
 

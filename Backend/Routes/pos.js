@@ -15,6 +15,11 @@ const PosDevolucion = require('../Models/PosDevolucion');
 const PosVinculacion = require('../Models/PosVinculacion');
 const { normalizar } = require('../utils/codigoVinculacion');
 const { conDefectos } = require('../utils/configPos');
+const Customer = require('../Models/Customer');
+const { redimir } = require('../services/fidelizacion');
+const { resolveBusinessId } = require('../utils/businessResolver');
+const CustomerLoyalty = require('../Models/CustomerLoyalty');
+const LoyaltyProgram = require('../Models/LoyaltyProgram');
 const rateLimit = require('express-rate-limit');
 const PosExcepcion = require('../Models/PosExcepcion');
 const {
@@ -298,6 +303,15 @@ router.post('/sync-sale', tenantAuth, cajaVigente, async (req, res) => {
          cuando volvió la señal. */
       createdAt: venta.creadaEn,
       completedAt: venta.creadaEn,
+      /* Una venta de mostrador nace aceptada y entregada en el mismo acto: el
+         cliente estaba ahí. Las marcas intermedias —cocina, despacho— quedan
+         vacías porque nunca ocurrieron, y vale más un hueco honesto que una
+         hora inventada que después alguien promedia. */
+      marcasTiempo: {
+        aceptado: venta.creadaEn,
+        entregado: venta.creadaEn,
+        duracionTomaSegundos: venta.duracionTomaSegundos,
+      },
     });
 
     /* El inventario se mueve con la misma función que el resto del sistema, no
@@ -694,6 +708,170 @@ router.get('/catalog', tenantAuth, cajaVigente, async (req, res) => {
   } catch (error) {
     logger.error('Error entregando el catálogo al POS', error, req);
     res.status(500).json({ message: 'No se pudo cargar el catálogo' });
+  }
+});
+
+/* GET /api/pos/customers?since=ISO — los clientes que cambiaron.
+ *
+ * La caja guarda una copia local para poder buscar por cédula o teléfono en
+ * menos de lo que tarda el cajero en soltar el teclado, **y sin internet**. Un
+ * cliente que llega al mostrador con la conexión caída no puede quedarse sin
+ * sus puntos porque el router se reinició.
+ *
+ * Por marca de agua, como el catálogo: la primera bajada trae todo y las
+ * siguientes solo lo que cambió. Un negocio con veinte mil clientes no puede
+ * mandarlos enteros cada treinta segundos.
+ *
+ * Los puntos viven en otra colección y se cruzan por teléfono, que es como los
+ * lleva el programa de fidelización. */
+router.get('/customers', tenantAuth, cajaVigente, async (req, res) => {
+  const businessId = req.user?.businessId || req.query.businessId;
+  if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
+
+  try {
+    const desde = req.query.since ? new Date(req.query.since) : null;
+    const filtro = { businessId };
+    if (desde && !Number.isNaN(desde.getTime())) {
+      filtro.updatedAt = { $gt: desde };
+    }
+
+    const limite = Math.min(parseInt(req.query.limit, 10) || 500, 2000);
+
+    const clientes = await Customer.find(filtro)
+      .select('phone name documento tipoDocumento saldoFavor status updatedAt')
+      .sort({ updatedAt: 1 })
+      .limit(limite)
+      .lean();
+
+    /* Los puntos de esos clientes, en una sola consulta. Uno por cliente
+       serían quinientas consultas por sincronización y por terminal. */
+    const telefonos = clientes.map((c) => c.phone).filter(Boolean);
+    const puntos = telefonos.length
+      ? await CustomerLoyalty.find({ businessId, phone: { $in: telefonos } })
+          .select('phone points')
+          .lean()
+      : [];
+    const porTelefono = Object.fromEntries(puntos.map((p) => [p.phone, p.points || 0]));
+
+    const filas = clientes.map((c) => ({
+      id: String(c._id),
+      documento: c.documento || '',
+      tipo_documento: c.tipoDocumento || 'CC',
+      telefono: c.phone || '',
+      nombre: c.name || '',
+      puntos: porTelefono[c.phone] || 0,
+      saldo_favor: Math.max(0, Math.round(c.saldoFavor || 0)),
+      estado: c.status || 'active',
+      actualizado: (c.updatedAt || new Date()).toISOString(),
+    }));
+
+    /* Las recompensas activas, para que la caja pueda ofrecerlas sin
+       internet. Van con los clientes y no en su propia ruta porque se piden
+       juntas y son pocas: un negocio tiene diez recompensas, no diez mil. */
+    const programa = await LoyaltyProgram.findOne({ businessId, isActive: true })
+      .select('rewards pointsPerAmount amountPerPoints')
+      .lean();
+
+    const recompensas = (programa?.rewards || [])
+      .filter((r) => r.isActive !== false)
+      .map((r) => ({
+        id: String(r._id),
+        nombre: r.name,
+        tipo: r.type,
+        costo_puntos: Math.max(1, Math.round(r.pointsCost || 1)),
+        producto_id: r.productId ? String(r.productId) : '',
+        valor_descuento: Math.max(0, Math.round(r.discountValue || 0)),
+      }));
+
+    res.json({
+      filas,
+      hay_mas: clientes.length === limite,
+      recompensas,
+      /* Cuántos pesos vale un punto, para que la caja pueda decirle al cliente
+         cuánto lleva acumulado sin preguntar. */
+      puntos_por_monto: programa?.pointsPerAmount || 0,
+      monto_por_puntos: programa?.amountPerPoints || 0,
+    });
+  } catch (error) {
+    logger.error('Error entregando los clientes al POS', error, req);
+    res.status(500).json({ message: 'No se pudieron cargar los clientes' });
+  }
+});
+
+/* POST /api/pos/redeem-reward — canjear puntos desde el mostrador.
+ *
+ * El canje del menú web vive en /api/loyalty/redeem y no sirve para esto por
+ * dos razones. La primera es de cierre: el token de una caja solo puede tocar
+ * /api/pos (ver middleware/alcanceCaja), y abrirle un hueco a otra ruta
+ * debilitaría justamente lo que protege a las terminales robadas.
+ *
+ * La segunda es que aquí se exige más. En el menú es el cliente quien quema
+ * sus propios puntos; en el mostrador hay un empleado con las manos en el
+ * dinero, y una salida de valor sin firma es el primer sitio donde mirar
+ * cuando algo no cuadra. Por eso van obligatorios:
+ *
+ *   - `posSaleId`: la venta contra la que se redime. Sin él se pueden quemar
+ *     puntos al aire, sin que el cliente esté siquiera presente.
+ *   - `cajero`: quién lo procesó.
+ *
+ * La terminal se identifica sola por su token, así que no se pide.
+ *
+ * El descuento es el mismo código que el del menú —services/fidelizacion— para
+ * que arreglar una carrera en un lado no deje el hueco abierto en el otro. */
+router.post('/redeem-reward', tenantAuth, cajaVigente, async (req, res) => {
+  const crudo = req.user?.businessId || req.body.businessId;
+  if (!crudo) return res.status(400).json({ message: 'businessId es requerido' });
+
+  const telefono = String(req.body.telefono || req.body.phone || '').trim();
+  const rewardId = String(req.body.reward_id || req.body.rewardId || '').trim();
+  const posSaleId = String(req.body.venta_id || req.body.posSaleId || '').trim();
+  const cajero = String(req.body.cajero || '').trim();
+
+  if (!telefono || !rewardId) {
+    return res.status(400).json({ message: 'Falta el teléfono del cliente o la recompensa' });
+  }
+  if (!posSaleId) {
+    return res.status(400).json({
+      message: 'El canje tiene que ir con la venta en la que se usa',
+      motivo: 'sin_venta',
+    });
+  }
+  if (!cajero) {
+    return res.status(400).json({
+      message: 'Falta quién está procesando el canje',
+      motivo: 'sin_cajero',
+    });
+  }
+
+  try {
+    let businessId;
+    try {
+      businessId = await resolveBusinessId(crudo);
+    } catch {
+      return res.status(404).json({ message: 'Negocio no encontrado' });
+    }
+
+    const salida = await redimir({
+      businessId,
+      telefono,
+      rewardId,
+      origen: 'pos',
+      posSaleId,
+      autorizadoPor: cajero,
+      cajaTokenId: req.caja?.tokenId || '',
+      cajaNombre: req.caja?.nombre || '',
+    });
+
+    if (salida.ok) {
+      logger.info('Canje de puntos en caja', {
+        businessId: String(businessId), posSaleId, cajero, puntos: salida.cuerpo.pointsSpent,
+      });
+    }
+
+    return res.status(salida.estado).json(salida.cuerpo);
+  } catch (error) {
+    logger.error('Error canjeando puntos desde la caja', error, req);
+    res.status(500).json({ message: 'No se pudo canjear la recompensa' });
   }
 });
 

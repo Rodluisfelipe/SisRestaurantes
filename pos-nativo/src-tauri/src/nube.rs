@@ -276,6 +276,137 @@ pub fn bajar_catalogo(
     Ok(Bajada { filas: total, configuracion: aplicada })
 }
 
+/// Lo que devuelve GET /pos/customers.
+#[derive(serde::Deserialize)]
+struct RespuestaClientes {
+    #[serde(default)]
+    filas: Vec<pos_core::clientes::FilaCliente>,
+    #[serde(default)]
+    hay_mas: bool,
+    /* Las recompensas viajan con los clientes porque se piden juntas y son
+       pocas. Vienen enteras en cada vuelta, así que solo se aplican en la
+       primera: repetir el reemplazo veinte veces sería borrar y reescribir la
+       misma tabla veinte veces. */
+    #[serde(default)]
+    recompensas: Vec<pos_core::clientes::FilaRecompensa>,
+}
+
+/// Baja los clientes que cambiaron, y de paso las recompensas vigentes.
+///
+/// Su fallo **no** puede tumbar la sincronización. Una caja que no pudo bajar
+/// clientes sigue vendiendo perfectamente; una que deja de subir ventas por eso
+/// pierde plata. Por eso quien la llama se limita a anotar el error.
+pub fn bajar_clientes(
+    conexion: &mut rusqlite::Connection,
+    nube: &Nube,
+) -> Result<usize, String> {
+    let mut total = 0usize;
+    let mut primera = true;
+
+    for _ in 0..20 {
+        let desde = pos_core::clientes::marca_de_agua(conexion).map_err(|e| e.to_string())?;
+
+        let cruda = ureq::get(&format!("{}/pos/customers", nube.base))
+            .timeout(ESPERA)
+            .set("Authorization", &format!("Bearer {}", nube.token))
+            .query("since", &desde)
+            .call()
+            .map_err(|e| match Nube::clasificar(e) {
+                sync::FalloEnvio::Red(m) => format!("Sin conexión: {m}"),
+                sync::FalloEnvio::Servidor(c, _) => format!("El servidor falló ({c})"),
+                sync::FalloEnvio::Rechazado(c, m) => format!("Rechazado ({c}): {m}"),
+            })?;
+
+        let respuesta: RespuestaClientes = cruda
+            .into_json()
+            .map_err(|e| format!("Respuesta ilegible: {e}"))?;
+
+        if primera {
+            pos_core::clientes::reemplazar_recompensas(conexion, &respuesta.recompensas)
+                .map_err(|e| e.to_string())?;
+            primera = false;
+        }
+
+        let cuantas = respuesta.filas.len();
+        let marca = pos_core::clientes::aplicar(conexion, &respuesta.filas)
+            .map_err(|e| e.to_string())?;
+        total += cuantas;
+
+        /* Se corta si no hay más, si el lote vino vacío, o si el lote no movió
+           la marca de agua. Lo último es lo que evita el bucle infinito cuando
+           todas las filas comparten la misma fecha: sin esa condición se
+           pediría lo mismo veinte veces. */
+        if !respuesta.hay_mas || cuantas == 0 || marca.is_none() {
+            break;
+        }
+    }
+
+    Ok(total)
+}
+
+/// Lo que el servidor responde a un canje.
+#[derive(serde::Deserialize, serde::Serialize, Default)]
+pub struct Canje {
+    #[serde(default)]
+    pub success: bool,
+    #[serde(rename = "pointsSpent", default)]
+    pub puntos_gastados: i64,
+    #[serde(rename = "remainingPoints", default)]
+    pub puntos_restantes: i64,
+    #[serde(default)]
+    pub reward: serde_json::Value,
+}
+
+/// Canjea puntos por una recompensa. **Siempre contra el servidor.**
+///
+/// Esta es la excepción a que la caja pueda todo sin internet, y es deliberada.
+/// El descuento de puntos tiene que ser atómico entre todas las terminales del
+/// negocio: dos cajas atendiendo al mismo cliente en el mismo minuto —una en el
+/// mostrador y otra en la caja rápida— podrían quemarle los mismos cien puntos
+/// dos veces si cada una decidiera por su cuenta.
+///
+/// Guardarlo en la cola para "confirmarlo después" tampoco sirve: la caja ya le
+/// habría entregado el café gratis al cliente, y cuando la nube dijera que no
+/// alcanzaban los puntos no habría nada que deshacer.
+///
+/// Así que sin señal no hay canje, y la pantalla lo dice con esas palabras. El
+/// resto del cobro sigue funcionando igual.
+pub fn canjear(
+    nube: &Nube,
+    telefono: &str,
+    reward_id: &str,
+    venta_id: &str,
+    cajero: &str,
+) -> Result<Canje, String> {
+    let cuerpo = serde_json::json!({
+        "telefono": telefono,
+        "reward_id": reward_id,
+        /* La venta contra la que se canjea. El servidor la exige, y es lo que
+           hace que un reintento cuente una sola vez: el mismo id de venta con
+           la misma recompensa choca contra su índice único y no descuenta dos
+           veces. */
+        "venta_id": venta_id,
+        "cajero": cajero,
+    });
+
+    let respuesta = ureq::post(&format!("{}/pos/redeem-reward", nube.base))
+        .timeout(ESPERA)
+        .set("Authorization", &format!("Bearer {}", nube.token))
+        .send_json(cuerpo)
+        .map_err(|e| match Nube::clasificar(e) {
+            sync::FalloEnvio::Red(_) => {
+                "Sin conexión: el canje de puntos necesita internet".to_string()
+            }
+            sync::FalloEnvio::Servidor(c, _) => format!("El servidor falló ({c})"),
+            /* El mensaje del servidor se muestra tal cual porque es el que le
+               sirve al cajero: "Puntos insuficientes" explica la situación al
+               cliente que está enfrente; "error 400" no. */
+            sync::FalloEnvio::Rechazado(_, m) => m,
+        })?;
+
+    respuesta.into_json().map_err(|e| format!("Respuesta ilegible: {e}"))
+}
+
 /// Deja el nombre y el color del negocio en los ajustes locales.
 ///
 /// Un color mal escrito en el panel no puede tumbar una sincronización, así

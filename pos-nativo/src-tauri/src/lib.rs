@@ -1466,6 +1466,8 @@ pub struct ResumenSync {
     fallidas: usize,
     apartadas: usize,
     catalogo: usize,
+    /// Cuántos clientes se refrescaron en la copia local.
+    clientes: usize,
     error: Option<String>,
 }
 
@@ -1497,6 +1499,81 @@ fn identidad(estado: State<Estado>) -> Identidad {
     }
 }
 
+/* ── Clientes y fidelización ───────────────────────────────────────────────
+
+   La búsqueda y la lista de recompensas salen de la copia local, así que
+   responden sin internet y en el mismo instante en que el cajero teclea. El
+   canje no: ese va contra el servidor, y más abajo se explica por qué. */
+
+/// Buscar un cliente por teléfono, cédula o nombre.
+#[tauri::command]
+fn buscar_clientes(
+    estado: State<Estado>,
+    texto: String,
+) -> Result<Vec<pos_core::clientes::FilaCliente>, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    pos_core::clientes::buscar(&base, &texto, 20).map_err(|e| e.to_string())
+}
+
+/// Las recompensas que se pueden ofrecer ahora mismo.
+#[tauri::command]
+fn recompensas(
+    estado: State<Estado>,
+) -> Result<Vec<pos_core::clientes::FilaRecompensa>, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    pos_core::clientes::recompensas(&base).map_err(|e| e.to_string())
+}
+
+/// Canjear puntos por una recompensa.
+///
+/// `async` y con la red fuera del candado, por las dos razones de siempre: un
+/// comando no-async corre en el hilo que dibuja —y dejaría la ventana en "no
+/// responde" mientras espera al servidor—, y sostener el candado de la base
+/// durante una llamada HTTP trabaría cualquier otra cosa que el cajero
+/// intentara hacer entre tanto.
+#[tauri::command]
+async fn canjear_recompensa(
+    app: tauri::AppHandle,
+    cliente_id: String,
+    telefono: String,
+    reward_id: String,
+    venta_id: String,
+    cajero: String,
+) -> Result<nube::Canje, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let estado = app.state::<Estado>();
+
+        // El destino se lee y el candado se suelta antes de tocar la red.
+        let destino = {
+            let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+            leer_nube(&base).ok_or_else(|| {
+                "Esta caja todavía no está conectada a MenuBy".to_string()
+            })?
+        };
+
+        let canje = nube::canjear(&destino, &telefono, &reward_id, &venta_id, &cajero)?;
+
+        /* El reflejo en la copia local, para que la pantalla no siga mostrando
+           puntos que ya no existen. Si falla no se propaga: la nube ya
+           descontó y el cliente ya tiene su recompensa —negársela porque una
+           escritura de caché falló sería castigarlo por un problema nuestro—.
+           La próxima sincronización lo corrige. */
+        if !cliente_id.is_empty() {
+            if let Ok(base) = estado.base.lock() {
+                let _ = pos_core::clientes::reflejar_canje(
+                    &base,
+                    &cliente_id,
+                    canje.puntos_gastados,
+                );
+            }
+        }
+
+        Ok(canje)
+    })
+    .await
+    .unwrap_or_else(|_| Err("El canje se interrumpió".into()))
+}
+
 /// Sincroniza, sin ventana de por medio.
 ///
 /// **No baja fotos.** Eso lo hace el hilo de fondo después de llamar aquí: son
@@ -1521,6 +1598,19 @@ fn sincronizar_ahora(estado: &Estado, app: &tauri::AppHandle) -> ResumenSync {
     let (catalogo, config_nueva, error) = match nube::bajar_catalogo(&mut base, &destino) {
         Ok(b) => (b.filas, b.configuracion, None),
         Err(e) => (0, None, Some(e)),
+    };
+
+    /* Los clientes, para poder buscarlos sin internet.
+
+       Va después del catálogo y su fallo se anota pero no se propaga: una caja
+       que no pudo bajar clientes vende igual, y castigar la sincronización
+       entera por eso dejaría ventas sin subir, que es lo único irrecuperable. */
+    let clientes = match nube::bajar_clientes(&mut base, &destino) {
+        Ok(n) => n,
+        Err(e) => {
+            println!("Los clientes no se pudieron bajar: {e}");
+            0
+        }
     };
 
     /* Si el dueño le cambió el nombre al negocio en el panel, la próxima
@@ -1551,6 +1641,7 @@ fn sincronizar_ahora(estado: &Estado, app: &tauri::AppHandle) -> ResumenSync {
             fallidas: cola.fallidas,
             apartadas: cola.apartadas,
             catalogo,
+            clientes,
             error,
         };
     }
@@ -1560,6 +1651,7 @@ fn sincronizar_ahora(estado: &Estado, app: &tauri::AppHandle) -> ResumenSync {
         fallidas: cola.fallidas,
         apartadas: cola.apartadas,
         catalogo,
+        clientes,
         error,
     }
 }
@@ -2121,6 +2213,9 @@ pub fn run() {
             catalogo,
             categorias,
             carpeta_fotos,
+            buscar_clientes,
+            recompensas,
+            canjear_recompensa,
             cobrar,
             abrir_cajon,
             estado_sync,

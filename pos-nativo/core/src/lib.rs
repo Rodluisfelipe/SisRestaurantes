@@ -10,6 +10,7 @@
 
 pub mod auditoria;
 pub mod catalogo;
+pub mod clientes;
 pub mod cuentas;
 pub mod db;
 pub mod devoluciones;

@@ -12,6 +12,7 @@ const {
   validateRedeem,
 } = require('../middleware/validators/loyaltyValidators');
 const { getSubscriptionForBusiness, isFeatureEnabledForPlan } = require('../utils/subscriptionHelper');
+const { redimir } = require('../services/fidelizacion');
 
 // Helper: get the effective businessId for admin routes
 async function getAdminBusinessId(req) {
@@ -304,85 +305,18 @@ router.post('/redeem', publicLimiter, validateRedeem, async (req, res) => {
       return res.status(404).json({ message: 'Negocio no encontrado' });
     }
 
-    const program = await LoyaltyProgram.findOne({ businessId, isActive: true });
-    if (!program) {
-      return res.status(404).json({ message: 'Programa de fidelidad no disponible' });
-    }
+    /* El canje en sí lo hace `services/fidelizacion`, que es el mismo que usa
+       la caja. Aquí solo queda lo propio de esta puerta: que el cliente redime
+       lo suyo desde el menú, sin cajero de por medio y sin venta a la cual
+       atarlo. */
+    const salida = await redimir({
+      businessId,
+      telefono: phone,
+      rewardId,
+      origen: 'menu',
+    });
 
-    const { hasLoyaltyRewards, commercialPlan } = await getPlanGateInfo(businessId);
-    if (!hasLoyaltyRewards) {
-      return res.status(403).json({
-        message: 'Tu plan actual no incluye recompensas canjeables.',
-        code: 'PLAN_FEATURE_NOT_AVAILABLE',
-        feature: 'loyaltyRewards',
-        plan: commercialPlan
-      });
-    }
-
-    const reward = program.rewards.id(rewardId);
-    if (!reward || !reward.isActive) {
-      return res.status(404).json({ message: 'Recompensa no encontrada o inactiva' });
-    }
-
-    // Atomic deduction: only succeeds if points >= cost (prevents race conditions)
-    const loyalty = await CustomerLoyalty.findOneAndUpdate(
-      { businessId, phone, points: { $gte: reward.pointsCost } },
-      {
-        $inc: { points: -reward.pointsCost, totalRedeemed: reward.pointsCost },
-        $set: { lastActivityAt: new Date() },
-        $push: {
-          transactions: {
-            type: 'redeem',
-            points: -reward.pointsCost,
-            description: `Canjeo: ${reward.name}`,
-            rewardId: reward._id,
-            rewardName: reward.name,
-            createdAt: new Date()
-          }
-        }
-      },
-      { new: true }
-    );
-
-    if (!loyalty) {
-      // Check if customer exists at all
-      const exists = await CustomerLoyalty.findOne({ businessId, phone });
-      if (!exists) {
-        return res.status(404).json({ message: 'No tienes puntos acumulados' });
-      }
-      return res.status(400).json({
-        message: 'Puntos insuficientes',
-        required: reward.pointsCost,
-        available: exists.points
-      });
-    }
-
-    // Update tier after atomic deduction
-    if (program.tiersEnabled && program.tiers.length) {
-      loyalty.computeTier(program.tiers);
-      await loyalty.save();
-    }
-
-    // Increment reward counter
-    reward.timesRedeemed = (reward.timesRedeemed || 0) + 1;
-    await program.save();
-
-    // Build the discount info to return
-    const redemptionResult = {
-      success: true,
-      pointsSpent: reward.pointsCost,
-      remainingPoints: loyalty.points,
-      reward: {
-        name: reward.name,
-        type: reward.type,
-        discountValue: reward.discountValue,
-        maxDiscount: reward.maxDiscount,
-        productId: reward.productId,
-        productName: reward.productName
-      }
-    };
-
-    res.json(redemptionResult);
+    return res.status(salida.estado).json(salida.cuerpo);
   } catch (error) {
     if (error.message === 'Puntos insuficientes') {
       return res.status(400).json({ message: error.message });

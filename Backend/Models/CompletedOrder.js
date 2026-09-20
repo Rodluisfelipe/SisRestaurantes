@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { marcasTiempo } = require("./marcasTiempo");
 
 /**
  * Model for completed orders in the restaurant system
@@ -302,7 +303,11 @@ const completedOrderSchema = new mongoose.Schema({
   includedInReport: {
     type: Boolean,
     default: false
-  }
+  },
+
+  /* Las horas de cada paso. Ver Models/marcasTiempo.js: entre "se creó" y "se
+     completó" hoy no hay nada, y ahí es donde vive toda la demora. */
+  marcasTiempo: marcasTiempo
 });
 
 // Indexes for faster queries

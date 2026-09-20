@@ -450,6 +450,70 @@ const MIGRACIONES: &[&str] = &[
        bajarlo entero. Misma regla que la migración 10. */
     DELETE FROM ajustes WHERE clave = 'catalogo_desde';
     "#,
+    // 15 — los clientes y las recompensas, en la terminal.
+    r#"
+    /* Una copia local de los clientes del negocio.
+
+       Hoy el cajero que quiere sumarle puntos a alguien depende de que haya
+       internet en ese segundo. Cuando se cae —y se cae— el cliente pierde sus
+       puntos de esa compra, que es justo lo que el programa de fidelización
+       prometió que no pasaría. Con esta tabla la caja busca y acumula sola, y
+       la nube se entera cuando vuelva la señal.
+
+       Es **caché**: la verdad vive en Mongo. Por eso nada de aquí se envía de
+       vuelta como si fuera nuevo, y por eso se puede borrar entera sin perder
+       nada —lo único que se pierde es la marca de agua, y se baja otra vez—. */
+    CREATE TABLE clientes_cache (
+        id              TEXT PRIMARY KEY,   -- el _id de Mongo
+        documento       TEXT NOT NULL DEFAULT '',
+        tipo_documento  TEXT NOT NULL DEFAULT 'CC',
+        telefono        TEXT NOT NULL DEFAULT '',
+        nombre          TEXT NOT NULL DEFAULT '',
+        puntos          INTEGER NOT NULL DEFAULT 0,
+        saldo_favor     INTEGER NOT NULL DEFAULT 0,
+        estado          TEXT NOT NULL DEFAULT 'active',
+        actualizado     TEXT NOT NULL DEFAULT ''
+    );
+
+    /* Las dos formas en que alguien se identifica en un mostrador: dice su
+       número o muestra su cédula. Las dos tienen que responder mientras el
+       cajero todavía tiene los dedos en el teclado. */
+    CREATE INDEX idx_clientes_telefono ON clientes_cache (telefono);
+    CREATE INDEX idx_clientes_documento ON clientes_cache (documento) WHERE documento <> '';
+    CREATE INDEX idx_clientes_nombre ON clientes_cache (nombre);
+
+    /* Las recompensas vigentes. Son diez, no diez mil, así que bajan enteras y
+       se reemplazan enteras: mantener una marca de agua para una tabla de diez
+       filas cuesta más código del que ahorra. */
+    CREATE TABLE recompensas_cache (
+        id              TEXT PRIMARY KEY,
+        nombre          TEXT NOT NULL,
+        tipo            TEXT NOT NULL,
+        costo_puntos    INTEGER NOT NULL,
+        producto_id     TEXT NOT NULL DEFAULT '',
+        valor_descuento INTEGER NOT NULL DEFAULT 0
+    );
+
+    /* Cuánto tardó el cajero en armar esta venta, en segundos. Lo mide la
+       terminal porque es lo único que el servidor no puede deducir: la venta
+       le llega ya cerrada, y si se hizo sin señal le llega horas después.
+
+       Sirve para lo que un dueño pregunta y hoy nadie responde: si la fila del
+       mediodía es por la cocina o porque el cajero tarda dos minutos en
+       encontrar los productos. Lo segundo se arregla reordenando el menú. */
+    ALTER TABLE ventas ADD COLUMN duracion_toma_segundos INTEGER NOT NULL DEFAULT 0;
+
+    /* El cliente de la venta, cuando lo hay. Suelto y no como llave foránea a
+       `clientes_cache`: esa tabla es caché y se puede vaciar, y una venta de
+       hace tres meses no puede volverse imposible de leer porque se limpió un
+       caché. */
+    ALTER TABLE ventas ADD COLUMN cliente_id TEXT NOT NULL DEFAULT '';
+    ALTER TABLE ventas ADD COLUMN cliente_telefono TEXT NOT NULL DEFAULT '';
+
+    /* Ninguna columna nueva de `productos` se toca acá, así que la marca de
+       agua del catálogo se queda: no hay por qué obligar a cada terminal del
+       país a rebajar el catálogo entero. La de clientes nace vacía sola. */
+    "#,
 ];
 
 /// Abre (o crea) la base y la deja lista para operar.

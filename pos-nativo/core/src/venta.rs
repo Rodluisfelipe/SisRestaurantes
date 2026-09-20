@@ -104,7 +104,7 @@ impl PagoDetalle {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct NuevaVenta {
     pub items: Vec<LineaVenta>,
     #[serde(default)]
@@ -143,6 +143,25 @@ pub struct NuevaVenta {
     /// código que mantener.
     #[serde(default)]
     pub pagos: Vec<PagoDetalle>,
+    /// El cliente, cuando el cajero lo identificó. Vacío es lo normal: la
+    /// mayoría de las ventas de mostrador son anónimas y obligar a pedir el
+    /// teléfono en cada una solo alarga la fila.
+    #[serde(default)]
+    pub cliente_id: String,
+    #[serde(default)]
+    pub cliente_telefono: String,
+    /// Cuánto tardó el cajero en armar esta venta, en segundos.
+    ///
+    /// Lo mide la pantalla —del primer producto al cobro— porque es lo único
+    /// que el servidor no puede deducir: la venta le llega ya cerrada, y si se
+    /// hizo sin señal le llega horas después.
+    ///
+    /// Se acota a dos horas al guardarla: una caja que se quedó con la
+    /// pantalla encendida desde la mañana no es "una toma de cinco horas", y
+    /// ese valor metido en el promedio arruina el único número para el que el
+    /// dato sirve.
+    #[serde(default)]
+    pub duracion_toma_segundos: i64,
 }
 
 impl NuevaVenta {
@@ -421,9 +440,10 @@ pub fn registrar(
         "INSERT INTO ventas (id, consecutivo, total, iva, recibido, vuelto, medio_pago, cajero, turno_id, creada_en,
                              pago_autorizacion, pago_ultimos4, pago_franquicia,
                              bruto, descuento, descuento_motivo, propina,
-                             total_base_inc, total_inc, total_base_iva, total_iva, total_exento)
+                             total_base_inc, total_inc, total_base_iva, total_iva, total_exento,
+                             cliente_id, cliente_telefono, duracion_toma_segundos)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17,
-                 ?18, ?19, ?20, ?21, ?22)",
+                 ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25)",
         params![
             id,
             consecutivo,
@@ -446,7 +466,10 @@ pub fn registrar(
             tributos.inc.0,
             tributos.base_iva.0,
             tributos.iva.0,
-            tributos.exento.0
+            tributos.exento.0,
+            venta.cliente_id.trim(),
+            venta.cliente_telefono.trim(),
+            venta.duracion_toma_segundos.clamp(0, 7200),
         ],
     )?;
 
@@ -512,6 +535,10 @@ pub fn registrar(
         "items": venta.items,
         // El voucher viaja con la venta: el cuadre de tarjetas se hace en el panel.
         "pago": venta.pago,
+        /* Cuánto tardó el cajero en armar el ticket. Viaja con la venta
+           porque el servidor no puede deducirlo: la venta le llega ya
+           cerrada, y si se hizo sin señal le llega horas después. */
+        "duracion_toma_segundos": venta.duracion_toma_segundos.clamp(0, 7200),
     })
     .to_string();
 
@@ -748,6 +775,7 @@ mod pruebas {
             propina: Pesos::CERO,
             descuento_motivo: String::new(),
             pagos: vec![],
+            ..Default::default()
         }
     }
 
@@ -1189,6 +1217,58 @@ mod pruebas {
         assert_eq!(leido["medio_pago"], "mixto");
         assert_eq!(leido["pagos"].as_array().unwrap().len(), 2);
         assert_eq!(leido["pagos"][0]["monto"], 30_000);
+    }
+
+    #[test]
+    fn la_duracion_de_la_toma_llega_hasta_la_nube() {
+        /* El dato solo sirve si llega: se mide en la pantalla, se guarda en
+           la venta y tiene que viajar en el payload. Si se quedara en la
+           terminal, el dueño no podría saber nunca si la fila del mediodía
+           es de la cocina o del mostrador. */
+        let (mut c, turno) = caja();
+        let mut v = venta_de(vec![item("Almuerzo", 50_000, 1)], &turno);
+        v.duracion_toma_segundos = 92;
+        v.cliente_id = "cli-1".into();
+        v.cliente_telefono = "3001234567".into();
+
+        let r = registrar(&mut c, &v, AHORA).unwrap();
+
+        let guardada: (i64, String) = c
+            .query_row(
+                "SELECT duracion_toma_segundos, cliente_telefono FROM ventas WHERE id = ?1",
+                [&r.id],
+                |f| Ok((f.get(0)?, f.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(guardada.0, 92);
+        assert_eq!(guardada.1, "3001234567");
+
+        let payload: String = c
+            .query_row("SELECT payload FROM outbox WHERE entidad = 'venta'", [], |f| f.get(0))
+            .unwrap();
+        let leido: serde_json::Value = serde_json::from_str(&payload).unwrap();
+        assert_eq!(leido["duracion_toma_segundos"], 92);
+    }
+
+    #[test]
+    fn una_caja_olvidada_encendida_no_ensucia_el_promedio() {
+        /* Una venta que quedó abierta desde la mañana y se cobró en la tarde
+           no es "una toma de cinco horas": es una pantalla encendida. Sin el
+           tope, ese único valor arruina el promedio del día entero. */
+        let (mut c, turno) = caja();
+        let mut v = venta_de(vec![item("Almuerzo", 50_000, 1)], &turno);
+        v.duracion_toma_segundos = 86_400;
+
+        let r = registrar(&mut c, &v, AHORA).unwrap();
+
+        let guardada: i64 = c
+            .query_row(
+                "SELECT duracion_toma_segundos FROM ventas WHERE id = ?1",
+                [&r.id],
+                |f| f.get(0),
+            )
+            .unwrap();
+        assert_eq!(guardada, 7_200);
     }
 
     #[test]

@@ -21,6 +21,43 @@ const customerSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+
+  /* ── Identificación formal ───────────────────────────────────────────────
+
+     Hasta ahora un cliente se identificaba **solo por teléfono**. Eso basta
+     para un domicilio, pero no para facturar a nombre de alguien ni para que
+     el cajero encuentre a quien llega al mostrador sin decir su número.
+
+     `sparse` porque la inmensa mayoría de los clientes de un restaurante no
+     dejan documento: un índice normal fallaría al segundo cliente sin él. */
+  documento: {
+    type: String,
+    trim: true,
+    maxlength: 20,
+    default: ''
+  },
+  tipoDocumento: {
+    type: String,
+    enum: ['CC', 'NIT', 'CE', 'PP'],
+    default: 'CC'
+  },
+
+  /* ── Saldo a favor ───────────────────────────────────────────────────────
+
+     Plata que el negocio le debe al cliente: una devolución que se dejó como
+     crédito, un abono, un "fiao" prepagado.
+
+     En pesos enteros, como todo el dinero del sistema. Y con `min: 0` a
+     propósito: esto es **saldo a favor**, no una línea de crédito. Un número
+     negativo aquí significaría que el cliente le debe al negocio, que es un
+     problema distinto —cartera— y necesita su propio modelo con vencimientos
+     y cobranza. Mezclarlos en un solo campo termina en un cliente con saldo
+     negativo al que nadie le cobra. */
+  saldoFavor: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   // Estadísticas del cliente
   totalOrders: {
     type: Number,
@@ -73,6 +110,18 @@ const customerSchema = new mongoose.Schema({
 
 // Índice compuesto para búsqueda eficiente
 customerSchema.index({ businessId: 1, phone: 1 }, { unique: true });
+
+/* Buscar por documento en el mostrador: el cliente dice su cédula y tiene que
+   aparecer antes de que termine de decirla. Parcial porque casi ninguno lo
+   tiene, y un índice sobre miles de cadenas vacías no sirve para nada. */
+customerSchema.index(
+  { businessId: 1, documento: 1 },
+  { partialFilterExpression: { documento: { $gt: '' } } }
+);
+
+/* Lo que pide la caja: "dame lo que cambió desde tal fecha". Sin este índice,
+   cada sincronización de cada terminal recorre la colección entera. */
+customerSchema.index({ businessId: 1, updatedAt: 1 });
 
 // Método para actualizar estadísticas después de un pedido
 customerSchema.methods.updateStats = function(orderTotal) {

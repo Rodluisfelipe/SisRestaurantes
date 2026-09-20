@@ -2253,13 +2253,44 @@ describe('BL-7 — Booking state machine', () => {
 });
 
 describe('BL-8 — Loyalty points redemption is atomic', () => {
-  test('loyalty.js uses findOneAndUpdate with $gte for atomic deduction', () => {
+  /* El descuento vivía en Routes/loyalty.js hasta que la caja física
+     necesitó canjear también. Ahora hay dos puertas —el menú web y el
+     mostrador— y una sola función que descuenta, justamente para que no
+     existan dos copias de esta condición y una se quede sin arreglar. */
+  const fuente = () => {
     const fs = require('fs');
     const path = require('path');
-    const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'loyalty.js'), 'utf8');
+    return fs.readFileSync(path.join(__dirname, '..', 'services', 'fidelizacion.js'), 'utf8');
+  };
+
+  test('el descuento es findOneAndUpdate con $gte, no un if previo', () => {
+    const src = fuente();
     expect(src).toContain('findOneAndUpdate');
     expect(src).toContain('$gte');
     expect(src).toContain('$inc');
+  });
+
+  test('las dos puertas usan la misma función, no una copia cada una', () => {
+    /* Si alguna ruta volviera a descontar por su cuenta, arreglar una
+       carrera en un lado dejaría el hueco abierto en el otro. */
+    const fs = require('fs');
+    const path = require('path');
+    for (const ruta of ['loyalty.js', 'pos.js']) {
+      const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', ruta), 'utf8');
+      expect(src).toContain("require('../services/fidelizacion')");
+      // Leer estadísticas está bien; lo que ninguna ruta puede es descontar.
+      expect(src).not.toContain('points: { $gte:');
+    }
+  });
+
+  test('el canje desde una caja exige venta y cajero', () => {
+    /* Sin la venta se pueden quemar puntos al aire, sin que el cliente esté
+       presente. Sin el cajero, una salida de valor queda sin firma. */
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'pos.js'), 'utf8');
+    expect(src).toContain('sin_venta');
+    expect(src).toContain('sin_cajero');
   });
 });
 

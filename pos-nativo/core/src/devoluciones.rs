@@ -339,6 +339,7 @@ mod pruebas {
             descuento_motivo: String::new(),
             propina: Pesos::CERO,
             pagos: vec![],
+            ..Default::default()
         };
         let r = venta::registrar(&mut c, &v, AHORA).unwrap();
         (c, r.id)

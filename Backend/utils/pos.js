@@ -239,6 +239,13 @@ function validarVenta(cuerpo) {
       cajero: String(cuerpo.cajero || '').slice(0, 80),
       turnoId: String(cuerpo.turno_id || '').slice(0, 64),
       creadaEn: cuerpo.creada_en ? new Date(cuerpo.creada_en) : new Date(),
+      /* Cuánto tardó el cajero en armar el ticket, medido por la terminal.
+
+         Se acota a dos horas: una venta abierta desde la mañana que se cobra
+         en la tarde no es "una toma de cinco horas", es una caja que se quedó
+         con la pantalla encendida, y ese valor metido en el promedio arruina
+         el único número para el que el dato sirve. */
+      duracionTomaSegundos: Math.min(7200, Math.max(0, Math.round(Number(cuerpo.duracion_toma_segundos) || 0))),
       items,
       /* El voucher del datáfono, cuando se cobró con tarjeta. Es lo que permite
          cuadrar la pila de vouchers de papel contra las ventas del turno; sin

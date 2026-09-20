@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { marcasTiempo } = require("./marcasTiempo");
 const logger = require("../utils/logger");
 
 /**
@@ -440,6 +441,11 @@ const orderSchema = new mongoose.Schema({
     required: true
   },
   
+
+  /* Las horas de cada paso. Ver Models/marcasTiempo.js: entre "se creó" y "se
+     completó" hoy no hay nada, y ahí es donde vive toda la demora. */
+  marcasTiempo: marcasTiempo,
+
   // Timestamps
   createdAt: {
     type: Date,
