@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Banknote, CreditCard, Smartphone, Trash2 } from 'lucide-react';
+import { Banknote, CreditCard, HandCoins, Smartphone, Trash2 } from 'lucide-react';
 import { MEDIOS, pesos, repartir, type Medio, type PagoDetalle } from './nativo';
 
 /** Los billetes que existen en Colombia, de mayor a menor. */
 const BILLETES = [100_000, 50_000, 20_000, 10_000, 5_000, 2_000];
+
+/** Los porcentajes de propina que se usan de verdad en un restaurante. */
+const PROPINAS = [0, 5, 10];
 
 const ICONO: Record<Medio, typeof Banknote> = {
   efectivo: Banknote,
@@ -34,26 +37,44 @@ const NOMBRE: Record<Medio, string> = {
  */
 export default function CobroMixto({
   total,
+  conPropina,
   pidiendoVoucher,
   onCambio,
   onCobrar,
   onCancelar,
 }: {
   total: number;
+  /** Si el negocio pide propina. Un mostrador de barrio no la pide. */
+  conPropina: boolean;
   /** Si el datáfono no está integrado, la tarjeta exige voucher a mano. */
   pidiendoVoucher: boolean;
   /** Avisa lo que lleva cobrado, para la pantalla del cliente. */
   onCambio: (pagos: PagoDetalle[]) => void;
-  onCobrar: (pagos: PagoDetalle[]) => void;
+  onCobrar: (pagos: PagoDetalle[], propina: number) => void;
   onCancelar: () => void;
 }) {
   const [pagos, setPagos] = useState<PagoDetalle[]>([]);
   const [metodo, setMetodo] = useState<Medio>('efectivo');
   const [monto, setMonto] = useState('');
   const [referencia, setReferencia] = useState('');
+  /* La propina se elige **antes** de cobrar, no después: una vez cobrado no se
+     le puede pedir más plata a alguien que ya guardó la billetera. */
+  const [propinaPct, setPropinaPct] = useState(0);
+  const [propinaOtra, setPropinaOtra] = useState('');
   const campo = useRef<HTMLInputElement>(null);
 
-  const { falta, vuelto } = useMemo(() => repartir(total, pagos), [total, pagos]);
+  /* Redondeada al peso y hacia abajo: la propina es voluntaria, y un peso de
+     más es un peso que el cliente no aceptó. */
+  const propina = propinaOtra
+    ? parseInt(propinaOtra, 10) || 0
+    : Math.floor((total * propinaPct) / 100);
+
+  /* Lo que hay que cubrir es la venta más la propina. Rust vuelve a hacer esta
+     suma al guardar —es él quien manda— pero la pantalla tiene que pedir la
+     cifra correcta desde el primer momento. */
+  const aPagar = total + propina;
+
+  const { falta, vuelto } = useMemo(() => repartir(aPagar, pagos), [aPagar, pagos]);
 
   /* El monto propuesto es siempre lo que falta. En la venta de un solo medio
      eso es el total, así que la pantalla abre lista para cobrar de una. */
@@ -87,18 +108,18 @@ export default function CobroMixto({
      un toque de más en la operación que se hace trescientas veces al día. */
   const cobrarYa = () => {
     if (pagos.length === 0) {
-      const cuanto = valor || total;
-      onCobrar([{ metodo, monto: cuanto, referencia: referencia.trim() }]);
+      const cuanto = valor || aPagar;
+      onCobrar([{ metodo, monto: cuanto, referencia: referencia.trim() }], propina);
       return;
     }
     if (falta > 0 && valor > 0) {
-      onCobrar([...pagos, { metodo, monto: valor, referencia: referencia.trim() }]);
+      onCobrar([...pagos, { metodo, monto: valor, referencia: referencia.trim() }], propina);
       return;
     }
-    onCobrar(pagos);
+    onCobrar(pagos, propina);
   };
 
-  const listo = falta === 0 || (pagos.length === 0 && (valor || total) >= total) || valor >= falta;
+  const listo = falta === 0 || (pagos.length === 0 && (valor || aPagar) >= aPagar) || valor >= falta;
   const faltaRef = metodo !== 'efectivo' && pidiendoVoucher && !referencia.trim();
 
   return (
@@ -108,10 +129,62 @@ export default function CobroMixto({
         className="w-[560px] max-h-[92vh] overflow-y-auto bg-white rounded-2xl p-5 space-y-4 shadow-2xl"
       >
         {/* El total, grande: es la cifra que el cajero le dice al cliente. */}
-        <div className="flex items-baseline justify-between">
-          <span className="text-[13px] font-bold uppercase tracking-wide text-slate-400">Total a cobrar</span>
-          <span className="text-4xl font-black tabular-nums">{pesos(total)}</span>
+        <div className="space-y-1">
+          {propina > 0 && (
+            <>
+              <div className="flex items-baseline justify-between text-slate-500">
+                <span className="text-[12.5px] font-semibold">Consumo</span>
+                <span className="text-[15px] font-bold tabular-nums">{pesos(total)}</span>
+              </div>
+              <div className="flex items-baseline justify-between text-emerald-700">
+                <span className="text-[12.5px] font-semibold">Propina</span>
+                <span className="text-[15px] font-bold tabular-nums">{pesos(propina)}</span>
+              </div>
+            </>
+          )}
+          <div className="flex items-baseline justify-between">
+            <span className="text-[13px] font-bold uppercase tracking-wide text-slate-400">
+              {propina > 0 ? 'A pagar' : 'Total a cobrar'}
+            </span>
+            <span className="text-4xl font-black tabular-nums">{pesos(aPagar)}</span>
+          </div>
         </div>
+
+        {/* La propina, antes de elegir con qué se paga. Se pregunta una vez y
+            se pregunta aquí: después de cobrar ya no se le puede pedir más
+            plata a alguien que guardó la billetera. */}
+        {conPropina && pagos.length === 0 && (
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+              Propina
+            </label>
+            <div className="flex gap-1.5">
+              {PROPINAS.map((p) => {
+                const elegido = !propinaOtra && propinaPct === p;
+                return (
+                  <button
+                    key={p}
+                    onClick={() => { setPropinaPct(p); setPropinaOtra(''); }}
+                    className={`flex-1 h-toque rounded-xl text-[13px] font-bold border-2 tabular-nums transition-colors ${
+                      elegido
+                        ? 'border-marca bg-marca text-sobre-marca'
+                        : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                    }`}
+                  >
+                    {p === 0 ? 'Sin propina' : `${p}%`}
+                  </button>
+                );
+              })}
+              <input
+                value={propinaOtra}
+                onChange={(e) => setPropinaOtra(e.target.value.replace(/\D/g, ''))}
+                inputMode="numeric"
+                placeholder="Otro"
+                className="w-24 h-toque px-2 rounded-xl border-2 border-slate-200 text-center text-[13px] font-bold tabular-nums outline-none focus:border-marca"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Lo ya cobrado */}
         {pagos.length > 0 && (
@@ -145,7 +218,10 @@ export default function CobroMixto({
             falta > 0 ? 'bg-amber-50 text-amber-900' : 'bg-emerald-50 text-emerald-800'
           }`}
         >
-          <span className="text-[13px] font-bold">{falta > 0 ? 'Falta' : vuelto > 0 ? 'Cambio' : 'Cubierto'}</span>
+          <span className="flex items-center gap-1.5 text-[13px] font-bold">
+            {propina > 0 && <HandCoins size={15} strokeWidth={2.25} />}
+            {falta > 0 ? 'Falta' : vuelto > 0 ? 'Cambio' : 'Cubierto'}
+          </span>
           <span className="text-2xl font-black tabular-nums">
             {falta > 0 ? pesos(falta) : vuelto > 0 ? pesos(vuelto) : pesos(0)}
           </span>

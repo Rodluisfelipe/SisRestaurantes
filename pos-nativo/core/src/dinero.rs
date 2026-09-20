@@ -50,6 +50,19 @@ impl Pesos {
         (Pesos(base), Pesos(self.0 - base))
     }
 
+    /// Un porcentaje de esta cantidad, redondeado al peso.
+    ///
+    /// Se usa para la propina. El redondeo es hacia abajo y a propósito: la
+    /// propina la paga el cliente voluntariamente, y cobrarle un peso de más
+    /// por un redondeo es cobrarle algo que no aceptó.
+    ///
+    /// Se multiplica antes de dividir para no perder la precisión: el 10% de
+    /// 45.000 calculado como `45.000 / 100 * 10` da lo mismo, pero el 10% de
+    /// 45.005 no.
+    pub fn porcentaje(self, por_ciento: u8) -> Option<Pesos> {
+        self.0.checked_mul(por_ciento as i64).map(|v| Pesos(v / 100))
+    }
+
     /// El vuelto. `None` si el pago no alcanza: cobrar de menos no es un caso
     /// a redondear, es un error que el cajero tiene que ver.
     pub fn vuelto(total: Pesos, recibido: Pesos) -> Option<Pesos> {
@@ -128,4 +141,30 @@ mod pruebas {
         assert_eq!(Pesos::vuelto(Pesos(10_000), Pesos(20_000)), Some(Pesos(10_000)));
         assert_eq!(Pesos::vuelto(Pesos(10_000), Pesos(10_000)), Some(Pesos::CERO));
     }
+
+    #[test]
+    fn el_porcentaje_se_calcula_sobre_el_total() {
+        // El 10% de 45.000 son 4.500.
+        assert_eq!(Pesos(45_000).porcentaje(10), Some(Pesos(4_500)));
+    }
+
+    #[test]
+    fn el_porcentaje_redondea_a_favor_del_cliente() {
+        /* El 10% de 23.999 son 2.399,9. Se cobran 2.399 y no 2.400: la propina
+           es voluntaria, y un peso de más es un peso que el cliente no
+           aceptó. */
+        assert_eq!(Pesos(23_999).porcentaje(10), Some(Pesos(2_399)));
+    }
+
+    #[test]
+    fn el_cero_por_ciento_no_es_propina() {
+        assert_eq!(Pesos(45_000).porcentaje(0), Some(Pesos::CERO));
+    }
+
+    #[test]
+    fn un_porcentaje_sobre_una_cifra_absurda_no_da_la_vuelta() {
+        // Mismo criterio que el resto: se revienta, no se envuelve en silencio.
+        assert_eq!(Pesos(i64::MAX).porcentaje(10), None);
+    }
+
 }

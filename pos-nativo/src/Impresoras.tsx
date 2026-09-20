@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { CreditCard, Printer } from 'lucide-react';
 import {
   configurarImpresora, impresoras, probarImpresora,
   type ConfigImpresora, type Impresora, type Impresoras as Config,
 } from './nativo';
+import Datafono from './Datafono';
 
 /**
  * Dónde imprime esta caja.
@@ -19,6 +21,9 @@ export default function Impresoras({ onCerrar }: { onCerrar: () => void }) {
   const [config, setConfig] = useState<Config | null>(null);
   const [aviso, setAviso] = useState('');
   const [error, setError] = useState('');
+  /* Los dos aparatos que un local conecta a la caja. Van juntos porque se
+     configuran el mismo día —el de la instalación— y no se vuelven a tocar. */
+  const [pestana, setPestana] = useState<'impresoras' | 'datafono'>('impresoras');
 
   useEffect(() => { impresoras().then(setConfig).catch(() => {}); }, []);
 
@@ -51,21 +56,47 @@ export default function Impresoras({ onCerrar }: { onCerrar: () => void }) {
         onClick={(e) => e.stopPropagation()}
         className="w-[520px] max-h-[85vh] overflow-y-auto bg-white rounded-2xl p-5 space-y-4"
       >
-        <p className="text-[15px] font-black">Impresoras</p>
+        <p className="text-[15px] font-black">Aparatos conectados</p>
 
-        {(['caja', 'cocina'] as const).map((rol) => (
-          <Ficha
-            key={rol}
-            rol={rol}
-            valor={config[rol]}
-            puertos={config.puertos}
-            onCambiar={(nueva) => guardar(rol, nueva)}
-            onProbar={() => probar(rol)}
-          />
-        ))}
+        <div className="flex gap-1.5">
+          {([
+            { id: 'impresoras' as const, nombre: 'Impresoras', icono: Printer },
+            { id: 'datafono' as const, nombre: 'Datáfono', icono: CreditCard },
+          ]).map(({ id, nombre, icono: Icono }) => (
+            <button
+              key={id}
+              onClick={() => setPestana(id)}
+              className={`flex-1 flex items-center justify-center gap-2 h-toque rounded-xl text-[13px] font-bold border-2 transition-colors ${
+                pestana === id
+                  ? 'border-marca bg-marca text-sobre-marca'
+                  : 'border-slate-200 text-slate-500 hover:border-slate-300'
+              }`}
+            >
+              <Icono size={16} strokeWidth={2.25} />
+              {nombre}
+            </button>
+          ))}
+        </div>
 
-        {aviso && <p className="text-[12.5px] font-semibold text-emerald-600">{aviso}</p>}
-        {error && <p className="text-[12.5px] font-semibold text-red-600">{error}</p>}
+        {pestana === 'datafono' ? (
+          <Datafono />
+        ) : (
+          <>
+            {(['caja', 'cocina'] as const).map((rol) => (
+              <Ficha
+                key={rol}
+                rol={rol}
+                valor={config[rol]}
+                puertos={config.puertos}
+                onCambiar={(nueva) => guardar(rol, nueva)}
+                onProbar={() => probar(rol)}
+              />
+            ))}
+
+            {aviso && <p className="text-[12.5px] font-semibold text-emerald-600">{aviso}</p>}
+            {error && <p className="text-[12.5px] font-semibold text-red-600">{error}</p>}
+          </>
+        )}
 
         <button onClick={onCerrar} className="w-full h-toque rounded-xl bg-marca text-sobre-marca text-[13px] font-bold">
           Listo

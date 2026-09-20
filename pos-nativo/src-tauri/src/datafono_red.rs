@@ -32,6 +32,13 @@ const ESPERA_CONEXION: Duration = Duration::from_secs(5);
 pub struct DatafonoRed {
     pub host: String,
     pub puerto: u16,
+    /// Cuánto se le da al aparato para contestar, en segundos.
+    ///
+    /// Configurable porque no hay un número bueno para todos: un datáfono en
+    /// la misma mesa contesta en diez segundos y uno detrás de una red de
+    /// cadena puede tardar dos minutos. Lo que no puede es quedar esperando
+    /// para siempre con el cliente al frente.
+    pub espera: u64,
 }
 
 impl DatafonoRed {
@@ -45,7 +52,11 @@ impl DatafonoRed {
         let flujo = TcpStream::connect_timeout(&dir, ESPERA_CONEXION)
             .map_err(|e| ErrorTerminal::Comunicacion(format!("{} no responde: {e}", self.host)))?;
 
-        flujo.set_read_timeout(Some(ESPERA)).ok();
+        /* Cero nunca llega aquí —se acota al guardar— pero si llegara,
+           `set_read_timeout(0)` significa "esperar indefinidamente" en el
+           sistema operativo, que es justo lo que no puede pasar. */
+        let espera = if self.espera == 0 { ESPERA } else { Duration::from_secs(self.espera) };
+        flujo.set_read_timeout(Some(espera)).ok();
         flujo.set_write_timeout(Some(ESPERA_CONEXION)).ok();
         Ok(flujo)
     }

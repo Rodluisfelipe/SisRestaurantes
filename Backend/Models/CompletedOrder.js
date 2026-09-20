@@ -153,6 +153,12 @@ const completedOrderSchema = new mongoose.Schema({
      el dueño revisa el mes. */
   discountReason: { type: String, trim: true, maxlength: 120, default: '' },
 
+  /* La propina de las ventas de caja.
+
+     `tipAmount` ya existía para los pedidos del menú y significa lo mismo, así
+     que se reutiliza: los informes del negocio suman las dos cosas sin tener
+     que saber de dónde vino la venta. */
+
   /* Id que generó la caja nativa (UUIDv7) para esta venta.
      Es la llave de idempotencia: el POS reintenta hasta que confirmemos, y sin
      esto cada reintento crearía otra venta. `sparse` porque solo existe en las

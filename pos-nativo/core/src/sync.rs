@@ -215,6 +215,7 @@ mod pruebas {
                 iva_porcentaje: 0,
                 pago: None,
                 descuento: Pesos::CERO,
+                propina: Pesos::CERO,
                 descuento_motivo: String::new(),
                 pagos: vec![],
             };

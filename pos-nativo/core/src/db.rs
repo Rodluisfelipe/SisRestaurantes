@@ -328,6 +328,21 @@ const MIGRACIONES: &[&str] = &[
        algo no aparece. */
     DELETE FROM ajustes WHERE clave = 'catalogo_desde';
     "#,
+    // 11 — la propina, que se cobra pero no es del negocio.
+    r#"
+    /* La propina va aparte del total y no dentro, y la diferencia no es
+       cosmética: no es ingreso del negocio ni base gravable. Si se sumara al
+       total, aparecería en las ventas del mes, pagaría impuestos que no le
+       corresponden y el administrador no tendría forma de separar lo que hay
+       que repartirle al personal.
+
+       El gran total que el cliente paga es `total + propina`. En la gaveta
+       entran las dos cosas juntas, y por eso el arqueo tiene que saber cuánta
+       propina en efectivo hay dentro: al liquidar el turno, esa plata sale y
+       no es un faltante. */
+    ALTER TABLE ventas ADD COLUMN propina INTEGER NOT NULL DEFAULT 0;
+    CREATE INDEX idx_ventas_propina ON ventas(turno_id) WHERE propina > 0;
+    "#,
 ];
 
 /// Abre (o crea) la base y la deja lista para operar.

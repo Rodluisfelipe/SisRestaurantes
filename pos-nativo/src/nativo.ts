@@ -62,6 +62,8 @@ export interface NuevaVenta {
   /** Lo que se le rebaja al total. Ya autorizado por un supervisor. */
   descuento?: number;
   descuento_motivo?: string;
+  /** Lo que el cliente da de más para el personal. No es del negocio. */
+  propina?: number;
 }
 
 /**
@@ -92,6 +94,9 @@ export interface VentaRegistrada {
   total: number;
   iva: number;
   vuelto: number;
+  propina: number;
+  /** Lo que el cliente entrega: el total más la propina. */
+  a_pagar: number;
   creada_en: string;
 }
 
@@ -156,6 +161,52 @@ export interface InfoTerminal {
   requiere_digitacion: boolean;
 }
 
+export interface ConfigDatafono {
+  /** true = integrado por red. false = el manual, con voucher digitado. */
+  red: boolean;
+  host: string;
+  puerto: number;
+  /** Segundos que se le dan al aparato para contestar durante un cobro. */
+  espera: number;
+}
+
+export async function configDatafono(): Promise<ConfigDatafono> {
+  if (!enTauri) return { red: false, host: '', puerto: 9100, espera: 60 };
+  return invoke<ConfigDatafono>('config_datafono');
+}
+
+/**
+ * Elige con qué se cobran las tarjetas.
+ *
+ * El comando existía en Rust desde el principio y **nunca estuvo en este
+ * puente**, así que el datáfono de red no se podía activar desde ninguna
+ * pantalla: el código estaba escrito, probado y muerto.
+ */
+export async function configurarDatafono(
+  red: boolean,
+  host: string,
+  puerto: number,
+  espera: number,
+): Promise<void> {
+  if (!enTauri) return;
+  await invoke('configurar_datafono', { red, host, puerto, espera });
+}
+
+/**
+ * Toca la puerta del datáfono sin cobrarle nada a nadie.
+ *
+ * Abre el socket y lo cierra. No manda una transacción a propósito: probar la
+ * configuración no puede terminar con un cobro de prueba en el extracto del
+ * negocio.
+ */
+export async function probarDatafono(
+  host: string,
+  puerto: number,
+): Promise<{ milisegundos: number }> {
+  if (!enTauri) throw new Error('Solo en la app instalada');
+  return invoke<{ milisegundos: number }>('probar_datafono', { host, puerto });
+}
+
 export async function infoTerminal(): Promise<InfoTerminal> {
   if (!enTauri) return { nombre: 'Datáfono (voucher a mano)', requiere_digitacion: true };
   return invoke<InfoTerminal>('info_terminal');
@@ -178,6 +229,8 @@ export async function cobrar(nueva: NuevaVenta, voucher?: Voucher): Promise<Cobr
         total,
         iva: 0,
         vuelto: Math.max(0, nueva.recibido - total),
+        propina: nueva.propina ?? 0,
+        a_pagar: total + (nueva.propina ?? 0),
         creada_en: new Date().toISOString(),
       },
       impresion: 'Modo navegador: no se imprimió ni se guardó nada.',

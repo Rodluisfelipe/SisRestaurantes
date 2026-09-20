@@ -31,6 +31,16 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
     .filter((v) => v && v.activo !== false && Array.isArray(v.valores));
   const [eleccion, setEleccion] = useState(() => ejes.map(() => ''));
 
+  /* El stock de las variantes solo limita si el producto tiene activado el
+     control de inventario. Sin él —como en cualquier producto de MenuBy— el
+     negocio no lleva cuentas y un cero significa "no lo he contado", no
+     "se acabó".
+
+     Va aquí arriba y no más abajo porque `sinStock` lo lee: declarada después,
+     esa línea lanzaba "Cannot access before initialization" en cada render y
+     la ficha de producto no abría nunca. */
+  const controlaStock = product.trackStock === true;
+
   const varianteElegida = ejes.length
     ? variantesActivas.find((v) => v.valores.length === ejes.length && v.valores.every((valor, i) => valor === eleccion[i]))
     : null;
@@ -38,12 +48,6 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
   const diferenciaVariante = precioBase - (product.price || 0);
   const faltaElegir = ejes.length > 0 && !varianteElegida;
   const sinStock = controlaStock && Boolean(varianteElegida) && Number(varianteElegida.stock) <= 0;
-
-  /* El stock de las variantes solo limita si el producto tiene activado el
-     control de inventario. Sin él —como en cualquier producto de MenuBy— el
-     negocio no lleva cuentas y un cero significa "no lo he contado", no
-     "se acabó". */
-  const controlaStock = product.trackStock === true;
 
   /* Lo que opinó quien ya lo compró. Se pide al abrir la ficha y no con el
      menú entero: son datos que solo importan cuando alguien se detiene en un

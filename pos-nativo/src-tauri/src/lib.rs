@@ -57,7 +57,7 @@ fn leer_nube(base: &rusqlite::Connection) -> Option<Nube> {
 /// Se devuelven los datos y no el `Box<dyn Terminal>` porque el terminal se
 /// construye dentro del hilo que va a usarlo: así nada que dependa de la
 /// conexión a SQLite cruza el límite del hilo.
-fn descripcion_terminal(base: &rusqlite::Connection) -> Option<(String, u16)> {
+fn descripcion_terminal(base: &rusqlite::Connection) -> Option<(String, u16, u64)> {
     let leer = |clave: &str| -> String {
         base.query_row("SELECT valor FROM ajustes WHERE clave = ?1", [clave], |f| f.get(0))
             .unwrap_or_default()
@@ -70,7 +70,11 @@ fn descripcion_terminal(base: &rusqlite::Connection) -> Option<(String, u16)> {
     if host.is_empty() {
         return None;
     }
-    Some((host, leer("datafono_puerto").parse().unwrap_or(9100)))
+    Some((
+        host,
+        leer("datafono_puerto").parse().unwrap_or(9100),
+        leer("datafono_espera").parse().unwrap_or(60),
+    ))
 }
 
 fn uuid_v7() -> String {
@@ -91,8 +95,9 @@ fn terminal(base: &rusqlite::Connection) -> Box<dyn Terminal> {
     if leer("datafono_tipo") == "red" {
         let host = leer("datafono_host");
         let puerto = leer("datafono_puerto").parse().unwrap_or(9100);
+        let espera = leer("datafono_espera").parse().unwrap_or(60);
         if !host.is_empty() {
-            return Box::new(datafono_red::DatafonoRed { host, puerto });
+            return Box::new(datafono_red::DatafonoRed { host, puerto, espera });
         }
     }
 
@@ -284,7 +289,9 @@ async fn cobrar(
         };
         let respuesta = tauri::async_runtime::spawn_blocking(move || {
             let aparato: Box<dyn Terminal> = match quien {
-                Some((host, puerto)) => Box::new(datafono_red::DatafonoRed { host, puerto }),
+                Some((host, puerto, espera)) => {
+                    Box::new(datafono_red::DatafonoRed { host, puerto, espera })
+                }
                 None => Box::new(pagos::DatafonoManual),
             };
             aparato.cobrar(&solicitud, voucher)
@@ -1010,12 +1017,32 @@ fn configurar_datafono(
     red: bool,
     host: String,
     puerto: u16,
+    espera: Option<u64>,
 ) -> Result<(), String> {
+    let anfitrion = host.trim().to_string();
+
+    /* Un datáfono de red sin dirección es un datáfono que no existe, y la venta
+       se quedaría esperando un aparato inalcanzable con el cliente al frente.
+       Se atrapa al guardar, que es cuando hay alguien mirando la pantalla de
+       ajustes, y no en mitad de un cobro. */
+    if red && anfitrion.is_empty() {
+        return Err("Escribe la dirección del datáfono".into());
+    }
+    if red && puerto == 0 {
+        return Err("El puerto tiene que ser mayor que cero".into());
+    }
+
+    /* Entre 5 y 180 segundos. Menos no le alcanza a nadie para pasar la tarjeta
+       y digitar la clave; más deja la caja esperando un aparato que ya se
+       colgó, y el cajero sin poder cobrarle al siguiente. */
+    let segundos = espera.unwrap_or(60).clamp(5, 180);
+
     let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
     for (clave, valor) in [
         ("datafono_tipo", if red { "red" } else { "manual" }.to_string()),
-        ("datafono_host", host.trim().to_string()),
+        ("datafono_host", anfitrion),
         ("datafono_puerto", puerto.to_string()),
+        ("datafono_espera", segundos.to_string()),
     ] {
         base.execute(
             "INSERT INTO ajustes (clave, valor) VALUES (?1, ?2)
@@ -1025,6 +1052,94 @@ fn configurar_datafono(
         .map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+/// Cómo está configurado el datáfono ahora mismo.
+#[derive(serde::Serialize)]
+struct ConfigDatafono {
+    /// true = integrado por red. false = el manual, con voucher digitado.
+    red: bool,
+    host: String,
+    puerto: u16,
+    espera: u64,
+}
+
+/// Se lee de SQLite cada vez, no de una copia en memoria.
+///
+/// Es configuración que se toca una vez al instalar y se mira cuando algo
+/// falla: una copia en memoria solo serviría para mostrar valores viejos
+/// justo el día que alguien está intentando arreglar el aparato.
+#[tauri::command]
+fn config_datafono(estado: State<Estado>) -> Result<ConfigDatafono, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    let leer = |clave: &str| -> String {
+        base.query_row("SELECT valor FROM ajustes WHERE clave = ?1", [clave], |f| f.get(0))
+            .unwrap_or_default()
+    };
+
+    Ok(ConfigDatafono {
+        red: leer("datafono_tipo") == "red",
+        host: leer("datafono_host"),
+        puerto: leer("datafono_puerto").parse().unwrap_or(9100),
+        espera: leer("datafono_espera").parse().unwrap_or(60),
+    })
+}
+
+/// Cuánto tarda el datáfono en contestar, en milisegundos.
+#[derive(serde::Serialize)]
+struct PruebaDatafono {
+    milisegundos: u128,
+}
+
+/// Toca la puerta del datáfono sin cobrarle nada a nadie.
+///
+/// Abre el socket y lo cierra. No manda una transacción a propósito: probar la
+/// configuración no puede terminar con un cobro de prueba en el extracto del
+/// negocio.
+///
+/// Tres segundos de espera, mucho menos que los del cobro: aquí hay alguien
+/// mirando la pantalla, y si el aparato no está, lo que se quiere es saberlo
+/// rápido para corregir la dirección.
+#[tauri::command]
+async fn probar_datafono(host: String, puerto: u16) -> Result<PruebaDatafono, String> {
+    let anfitrion = host.trim().to_string();
+    if anfitrion.is_empty() {
+        return Err("Escribe la dirección del datáfono".into());
+    }
+
+    tauri::async_runtime::spawn_blocking(move || {
+        use std::net::ToSocketAddrs;
+
+        let destino = format!("{anfitrion}:{puerto}");
+        let inicio = std::time::Instant::now();
+
+        /* Se resuelve el nombre antes de conectar para poder distinguir "esa
+           dirección no existe" de "existe y no contesta". Son dos problemas
+           distintos y se arreglan de forma distinta. */
+        let mut direcciones = destino
+            .to_socket_addrs()
+            .map_err(|_| format!("No se entiende la dirección \"{destino}\""))?;
+
+        let direccion = direcciones
+            .next()
+            .ok_or_else(|| format!("No se encontró \"{destino}\" en la red"))?;
+
+        std::net::TcpStream::connect_timeout(&direccion, std::time::Duration::from_secs(3))
+            .map_err(|e| match e.kind() {
+                std::io::ErrorKind::TimedOut => {
+                    "El datáfono no contestó en tres segundos. ¿Está encendido y en la misma red?".to_string()
+                }
+                std::io::ErrorKind::ConnectionRefused => {
+                    format!("Algo contestó en {destino}, pero rechazó la conexión. ¿Es ese el puerto?")
+                }
+                _ => format!("No se pudo conectar: {e}"),
+            })?;
+
+        // La conexión se cierra al salir de aquí; no se manda nada por ella.
+        Ok(PruebaDatafono { milisegundos: inicio.elapsed().as_millis() })
+    })
+    .await
+    .unwrap_or_else(|e| Err(format!("la prueba se interrumpió: {e}")))
 }
 
 /* ── La pantalla del cliente ───────────────────────────────────────────── */
@@ -1089,8 +1204,12 @@ fn identidad(estado: State<Estado>) -> Identidad {
     }
 }
 
-#[tauri::command]
-fn sincronizar(estado: State<Estado>) -> ResumenSync {
+/// Sincroniza, sin ventana de por medio.
+///
+/// **No baja fotos.** Eso lo hace el hilo de fondo después de llamar aquí: son
+/// hasta veinticinco descargas y no pueden estar dentro de la operación que el
+/// cajero dispara con un botón.
+fn sincronizar_ahora(estado: &Estado) -> ResumenSync {
     let mut base = match estado.base.lock() {
         Ok(b) => b,
         Err(_) => return ResumenSync { error: Some("base ocupada".into()), ..Default::default() },
@@ -1111,13 +1230,6 @@ fn sincronizar(estado: State<Estado>) -> ResumenSync {
         Err(e) => (0, Some(e)),
     };
 
-    /* Las fotos, al final y sin poder estropear nada. Van después del
-       catálogo porque es el catálogo el que dice cuáles faltan, y su fallo no
-       se reporta: un producto sin foto se dibuja con sus iniciales, que es
-       infinitamente mejor que una caja que no sincroniza porque un CDN está
-       lento. */
-    fotos::bajar_pendientes(&base, &estado.datos);
-
     /* Si el dueño le cambió el nombre al negocio en el panel, la próxima
        tirilla ya sale con el nuevo. Sin esto habría que reiniciar la caja. */
     if let Ok(nombre) = base.query_row::<String, _, _>(
@@ -1137,6 +1249,28 @@ fn sincronizar(estado: State<Estado>) -> ResumenSync {
         catalogo,
         error,
     }
+}
+
+/// Sincroniza a petición del cajero, sin congelar la ventana.
+///
+/// Un comando de Tauri que no es `async` corre en el hilo principal, y este
+/// habla con la red: subir la cola, bajar el catálogo. Mientras tanto la
+/// ventana se queda sin responder, y con un catálogo grande o una conexión
+/// mala eso son minutos con el cartel de "no responde" encima de la caja.
+///
+/// Es el mismo trato que ya recibía el datáfono, y por la misma razón: lo que
+/// depende de la red nunca va en el hilo que dibuja.
+#[tauri::command]
+async fn sincronizar(app: tauri::AppHandle) -> ResumenSync {
+    tauri::async_runtime::spawn_blocking(move || {
+        let estado = app.state::<Estado>();
+        sincronizar_ahora(&estado)
+    })
+    .await
+    .unwrap_or_else(|e| ResumenSync {
+        error: Some(format!("la sincronización se interrumpió: {e}")),
+        ..Default::default()
+    })
 }
 
 /// La tirilla de una venta releída de la base. Es la que se reimprime.
@@ -1195,7 +1329,18 @@ fn tirilla_de(negocio: &str, ancho: usize, v: &venta::VentaCompleta, copia: bool
         t.par("IVA incluido", &v.iva.to_string());
     }
 
-    t.doble(true).par("TOTAL", &v.total.to_string()).doble(false);
+    /* La propina va **después** del total de la venta y con su propia línea.
+       No se suma dentro: no es ingreso del negocio ni base gravable, y una
+       tirilla que la esconda dentro del total impide al cliente ver qué
+       aceptó pagar y al negocio separarla al liquidar. */
+    if v.propina > Pesos::CERO {
+        t.par("TOTAL", &v.total.to_string());
+        t.par("Propina", &v.propina.to_string());
+        let gran_total = v.total.mas(v.propina).unwrap_or(v.total);
+        t.doble(true).par("A PAGAR", &gran_total.to_string()).doble(false);
+    } else {
+        t.doble(true).par("TOTAL", &v.total.to_string()).doble(false);
+    }
 
     /* Con pago mixto hay que desglosar: "pagó con mixto" no le dice nada a
        nadie, y es justo la tirilla que alguien vuelve a mirar cuando no le
@@ -1479,7 +1624,13 @@ pub fn run() {
             std::thread::spawn(move || loop {
                 std::thread::sleep(std::time::Duration::from_secs(30));
                 let estado = mango.state::<Estado>();
-                let _ = sincronizar(estado);
+                sincronizar_ahora(&estado);
+
+                /* Las fotos van aquí y **solo** aquí: este hilo puede tardar lo
+                   que sea sin que nadie lo note, y el cajero nunca las está
+                   esperando. Si fallan, en la próxima vuelta se reintentan y
+                   mientras tanto el producto se dibuja con sus iniciales. */
+                fotos::bajar_pendientes(&estado.base, &estado.datos);
             });
 
             Ok(())
@@ -1504,6 +1655,8 @@ pub fn run() {
             reimprimir,
             info_terminal,
             configurar_datafono,
+            config_datafono,
+            probar_datafono,
             abrir_pantalla_cliente,
             cerrar_pantalla_cliente,
             hay_pantalla_cliente,

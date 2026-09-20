@@ -489,7 +489,7 @@ function Caja({
     setCobrandoAhora(true);
   };
 
-  const cobrarCon = async (pagos: PagoDetalle[]) => {
+  const cobrarCon = async (pagos: PagoDetalle[], propina: number) => {
     if (!carrito.length || cobrando) return;
     setCobrandoAhora(false);
     setCobrando(true);
@@ -512,6 +512,7 @@ function Caja({
         pagos,
         descuento: descuento.monto,
         descuento_motivo: descuento.motivo,
+        propina,
       });
       setUltimo(r);
       setCarrito([]);
@@ -840,6 +841,10 @@ function Caja({
       {cobrandoAhora && (
         <CobroMixto
           total={aCobrar}
+          /* La propina se pide cuando hay mesas abiertas: es lo que separa un
+             restaurante de un mostrador, y en un mostrador preguntar por la
+             propina en cada café es un toque de más trescientas veces al día. */
+          conPropina={cuentas.length > 0 || enCuenta !== null}
           pidiendoVoucher={digitaVoucher}
           onCambio={setVistaPago}
           onCobrar={cobrarCon}

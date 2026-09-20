@@ -53,6 +53,15 @@ pub struct CierreTurno {
     /// Negativo = falta plata en la gaveta.
     pub diferencia: Pesos,
     pub ventas: i64,
+    /// Propina cobrada en efectivo durante el turno.
+    ///
+    /// **Está dentro del esperado**, porque ese billete está físicamente en la
+    /// gaveta y el conteo lo va a encontrar. Se informa aparte para que quien
+    /// liquida el turno sepa cuánto de lo que hay no es del negocio: sacarla
+    /// sin este número deja un faltante que nadie sabe explicar.
+    pub propina_efectivo: Pesos,
+    /// Propina cobrada con tarjeta o transferencia. No pasa por la gaveta.
+    pub propina_otros: Pesos,
 }
 
 #[derive(Debug)]
@@ -219,6 +228,24 @@ fn esperado_de(conexion: &Connection, turno: &Turno) -> Result<CierreTurno> {
         |f| Ok((f.get(0)?, f.get(1)?)),
     )?;
 
+    /* La propina se reparte por medio de pago igual que la venta: la que
+       entró en billetes está en la gaveta y la que entró por datáfono no.
+
+       No se suma al esperado porque ya está contada: `ventas_efectivo` sale de
+       `venta_pagos`, y el cliente que dejó propina pagó el gran total —venta
+       más propina— con esos medios. Sumarla otra vez la contaría dos veces y
+       la caja cerraría siempre con un faltante del tamaño de las propinas. */
+    let (propina_efectivo, propina_otros): (i64, i64) = conexion
+        .query_row(
+            "SELECT
+                COALESCE(SUM(CASE WHEN v.medio_pago = 'efectivo' THEN v.propina ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN v.medio_pago != 'efectivo' THEN v.propina ELSE 0 END), 0)
+             FROM ventas v WHERE v.turno_id = ?1",
+            [&turno.id],
+            |f| Ok((f.get(0)?, f.get(1)?)),
+        )
+        .unwrap_or((0, 0));
+
     let esperado = turno.fondo_inicial.0 + ventas_efectivo + entradas - salidas;
 
     Ok(CierreTurno {
@@ -228,6 +255,8 @@ fn esperado_de(conexion: &Connection, turno: &Turno) -> Result<CierreTurno> {
         cerrado_en: String::new(),
         fondo_inicial: turno.fondo_inicial,
         ventas_efectivo: Pesos(ventas_efectivo),
+        propina_efectivo: Pesos(propina_efectivo),
+        propina_otros: Pesos(propina_otros),
         ventas_otros: Pesos(ventas_otros),
         entradas: Pesos(entradas),
         salidas: Pesos(salidas),
@@ -317,6 +346,7 @@ mod pruebas {
             iva_porcentaje: 0,
             pago: None,
             descuento: Pesos::CERO,
+            propina: Pesos::CERO,
             descuento_motivo: String::new(),
             pagos: vec![],
         };
@@ -464,6 +494,7 @@ mod pruebas {
             iva_porcentaje: 0,
             pago: None,
             descuento: Pesos::CERO,
+            propina: Pesos::CERO,
             descuento_motivo: String::new(),
             pagos: vec![
                 venta::PagoDetalle { metodo: "efectivo".into(), monto: Pesos(30_000), referencia: String::new() },
@@ -504,6 +535,7 @@ mod pruebas {
             iva_porcentaje: 0,
             pago: None,
             descuento: Pesos::CERO,
+            propina: Pesos::CERO,
             descuento_motivo: String::new(),
             pagos: vec![],
         };
@@ -514,6 +546,51 @@ mod pruebas {
 
         assert_eq!(cierre.ventas_efectivo, Pesos(30_000));
         assert_eq!(cierre.diferencia, Pesos::CERO);
+    }
+
+
+    #[test]
+    fn la_propina_en_efectivo_esta_en_la_gaveta_pero_se_informa_aparte() {
+        /* Venta de 30.000 con 3.000 de propina, pagada con un billete de
+           50.000: el cliente entrega 33.000 y se lleva 17.000 de cambio. En la
+           gaveta quedan 33.000, de los cuales 3.000 no son del negocio.
+
+           Lo que esta prueba fija es que la propina **no se sume dos veces**.
+           Ya está dentro de `ventas_efectivo`, porque el pago cubrió el gran
+           total; sumarla otra vez al esperado haría que la caja cerrara con un
+           faltante del tamaño de las propinas, todos los días. */
+        let (mut c, t) = caja_con_turno();
+
+        let v = venta::NuevaVenta {
+            items: vec![venta::LineaVenta {
+                producto_id: "p1".into(),
+                nombre: "Almuerzo".into(),
+                variante: String::new(),
+                precio: Pesos(30_000),
+                cantidad: 1,
+                nota: String::new(),
+            }],
+            medio_pago: "efectivo".into(),
+            recibido: Pesos(50_000),
+            cajero: "Ana".into(),
+            turno_id: t.id.clone(),
+            iva_porcentaje: 0,
+            pago: None,
+            descuento: Pesos::CERO,
+            descuento_motivo: String::new(),
+            propina: Pesos(3_000),
+            pagos: vec![],
+        };
+        let r = venta::registrar(&mut c, &v, AHORA).unwrap();
+
+        assert_eq!(r.a_pagar, Pesos(33_000), "el cliente paga venta + propina");
+        assert_eq!(r.vuelto, Pesos(17_000));
+
+        // Fondo 100.000 + 33.000 que quedaron en la gaveta.
+        let cierre = cerrar(&mut c, Pesos(133_000), AHORA).unwrap();
+
+        assert_eq!(cierre.diferencia, Pesos::CERO, "la caja cuadra");
+        assert_eq!(cierre.propina_efectivo, Pesos(3_000), "y se sabe cuánto sacar");
     }
 
 }

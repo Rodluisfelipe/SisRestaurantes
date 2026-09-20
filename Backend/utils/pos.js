@@ -142,12 +142,22 @@ function validarVenta(cuerpo) {
 
      Se compara con "mayor o igual" porque en efectivo el cliente entrega de
      más y recibe cambio: lo que no puede pasar es que sume de menos. */
+  /* La propina. Va aparte del total y **no se suma a él**: no es ingreso del
+     negocio ni base gravable. Si entrara al total, aparecería en las ventas
+     del mes, pagaría impuestos que no le corresponden, y al liquidar el turno
+     nadie podría separar lo que hay que repartirle al personal. */
+  const propina = Math.max(0, Number(cuerpo.propina) || 0);
+
   if (pagos.length) {
+    /* Lo que el cliente entrega es la venta más la propina, así que los pagos
+       se miden contra esa suma. Medirlos contra el total solo haría que toda
+       venta con propina pareciera pagada de más. */
+    const aPagar = Math.round(total) + propina;
     const cobrado = pagos.reduce((t, p) => t + p.monto, 0);
-    if (Math.round(cobrado) < Math.round(total)) {
+    if (Math.round(cobrado) < aPagar) {
       return {
         ok: false,
-        error: `Los pagos (${cobrado}) no alcanzan para el total (${total})`,
+        error: `Los pagos (${cobrado}) no alcanzan para lo que hay que pagar (${aPagar})`,
       };
     }
   }
@@ -162,6 +172,7 @@ function validarVenta(cuerpo) {
       medioPago: String(cuerpo.medio_pago || 'efectivo').slice(0, 30),
       pagos,
       bruto: Math.round(suma),
+      propina,
       descuento,
       descuentoMotivo: String(cuerpo.descuento_motivo || '').trim().slice(0, 120),
       cajero: String(cuerpo.cajero || '').slice(0, 80),

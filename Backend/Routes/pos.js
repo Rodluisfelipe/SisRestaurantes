@@ -277,7 +277,11 @@ router.post('/sync-sale', tenantAuth, cajaVigente, async (req, res) => {
          tener que saber de dónde vino la venta. */
       totalAmount: venta.bruto,
       discountAmount: venta.descuento,
+      /* `finalAmount` es lo que el negocio facturó, **sin la propina**: la
+         propina no es suya. Lo que el cliente entregó es finalAmount +
+         tipAmount, y esa suma se reconstruye donde haga falta. */
       finalAmount: venta.total,
+      tipAmount: venta.propina,
       paymentMethod: venta.medioPago,
       ...(venta.descuento > 0 ? { discountReason: venta.descuentoMotivo } : {}),
       ...(venta.pago ? { posPago: venta.pago } : {}),

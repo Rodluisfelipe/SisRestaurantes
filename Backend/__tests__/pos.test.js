@@ -477,3 +477,68 @@ describe('la nota del cliente', () => {
     expect(r.venta.items[0].nota).toBeUndefined();
   });
 });
+
+describe('la propina', () => {
+  /* No es del negocio. Se cobra con la venta, viaja con ella y se guarda
+     aparte del total: si entrara al total aparecería en las ventas del mes,
+     pagaría impuestos que no le corresponden, y al liquidar el turno nadie
+     podría separar lo que hay que repartirle al personal. */
+
+  it('viaja aparte y no toca el total', () => {
+    const r = validarVenta(venta({ propina: 2000 }));
+
+    expect(r.ok).toBe(true);
+    expect(r.venta.propina).toBe(2000);
+    expect(r.venta.total).toBe(14500);
+    expect(r.venta.bruto).toBe(14500);
+  });
+
+  it('sin propina es cero, no undefined', () => {
+    // Para que sumar la columna en un informe no dé NaN.
+    expect(validarVenta(VENTA).venta.propina).toBe(0);
+  });
+
+  it('los pagos tienen que cubrir la venta más la propina', () => {
+    /* Lo que el cliente entrega es la suma de las dos. Medir los pagos solo
+       contra el total haría que una venta con propina pareciera pagada de
+       más, y el desglose que ve el panel no cuadraría con la gaveta. */
+    const r = validarVenta(venta({
+      propina: 2000,
+      pagos: [{ metodo: 'efectivo', monto: 14500 }],
+    }));
+
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/no alcanzan/);
+  });
+
+  it('con el pago completo, pasa', () => {
+    const r = validarVenta(venta({
+      propina: 2000,
+      pagos: [{ metodo: 'efectivo', monto: 16500 }],
+    }));
+
+    expect(r.ok).toBe(true);
+  });
+
+  it('una propina negativa no es un descuento encubierto', () => {
+    const r = validarVenta(venta({ propina: -2000 }));
+    expect(r.venta.propina).toBe(0);
+  });
+
+  it('convive con el descuento', () => {
+    /* El caso completo de un restaurante: se descuenta sobre el consumo y la
+       propina se calcula aparte. Los pagos cubren 13.000 + 1.300. */
+    const r = validarVenta(venta({
+      total: 13000,
+      descuento: 1500,
+      propina: 1300,
+      pagos: [{ metodo: 'efectivo', monto: 14300 }],
+    }));
+
+    expect(r.ok).toBe(true);
+    expect(r.venta.bruto).toBe(14500);
+    expect(r.venta.descuento).toBe(1500);
+    expect(r.venta.total).toBe(13000);
+    expect(r.venta.propina).toBe(1300);
+  });
+});

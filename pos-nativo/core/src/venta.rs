@@ -85,6 +85,13 @@ pub struct NuevaVenta {
     pub descuento: Pesos,
     #[serde(default)]
     pub descuento_motivo: String,
+    /// Lo que el cliente da de más, voluntariamente, para el personal.
+    ///
+    /// **No es del negocio.** Se cobra con la venta y se guarda aparte del
+    /// total: no es ingreso ni base gravable, y al liquidar el turno hay que
+    /// poder separarla sin adivinar.
+    #[serde(default)]
+    pub propina: Pesos,
     /// Vacío significa "como siempre": se arma uno solo con `medio_pago` y
     /// `recibido`. Eso mantiene andando todo lo que ya existía —incluida
     /// cualquier caja que no se haya actualizado— sin una segunda ruta de
@@ -164,6 +171,9 @@ pub struct VentaRegistrada {
     pub total: Pesos,
     pub iva: Pesos,
     pub vuelto: Pesos,
+    pub propina: Pesos,
+    /// Lo que el cliente entrega: el total más la propina.
+    pub a_pagar: Pesos,
     pub creada_en: String,
 }
 
@@ -264,8 +274,17 @@ pub fn registrar(
     /* Qué se pagó y con qué. Una sola función decide esto para la venta de un
        solo medio y para la mixta: si fueran dos caminos, el día que cambie la
        regla del vuelto cambiaría en uno solo. */
-    let formas = venta.formas_de_pago(total);
-    let vuelto = repartir(total, &formas)?;
+    /* La propina entra en lo que hay que cubrir. Es plata que el cliente
+       entrega y que tiene que salir de algún medio de pago: si el reparto se
+       hiciera solo contra el total, una venta de 45.000 con 5.000 de propina
+       daría 5.000 de vuelto en vez de cobrarlos. */
+    if venta.propina < Pesos::CERO {
+        return Err(ErrorVenta::PagoInvalido);
+    }
+    let a_pagar = total.mas(venta.propina).ok_or(ErrorVenta::Desbordado)?;
+
+    let formas = venta.formas_de_pago(a_pagar);
+    let vuelto = repartir(a_pagar, &formas)?;
 
     /* `medio_pago` se queda como estaba, porque es lo que hace legible un
        listado de ventas sin abrir cada una. Con más de un medio pasa a "mixto",
@@ -311,8 +330,8 @@ pub fn registrar(
     tx.execute(
         "INSERT INTO ventas (id, consecutivo, total, iva, recibido, vuelto, medio_pago, cajero, turno_id, creada_en,
                              pago_autorizacion, pago_ultimos4, pago_franquicia,
-                             bruto, descuento, descuento_motivo)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+                             bruto, descuento, descuento_motivo, propina)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
         params![
             id,
             consecutivo,
@@ -329,7 +348,8 @@ pub fn registrar(
             franquicia,
             bruto.0,
             venta.descuento.0,
-            venta.descuento_motivo
+            venta.descuento_motivo,
+            venta.propina.0
         ],
     )?;
 
@@ -366,6 +386,7 @@ pub fn registrar(
         "bruto": bruto.0,
         "descuento": venta.descuento.0,
         "descuento_motivo": venta.descuento_motivo,
+        "propina": venta.propina.0,
         "cajero": venta.cajero,
         "turno_id": venta.turno_id,
         "creada_en": ahora,
@@ -383,7 +404,16 @@ pub fn registrar(
 
     tx.commit()?;
 
-    Ok(VentaRegistrada { id, consecutivo, total, iva, vuelto, creada_en: ahora.to_string() })
+    Ok(VentaRegistrada {
+        id,
+        consecutivo,
+        total,
+        iva,
+        vuelto,
+        propina: venta.propina,
+        a_pagar,
+        creada_en: ahora.to_string(),
+    })
 }
 
 /// Una venta ya guardada, con todo lo que hace falta para reimprimirla.
@@ -412,6 +442,8 @@ pub struct VentaCompleta {
     pub descuento: Pesos,
     #[serde(default)]
     pub descuento_motivo: String,
+    #[serde(default)]
+    pub propina: Pesos,
     /// Con qué se pagó. Una sola entrada en la venta corriente.
     ///
     /// La reimpresión tiene que poder decir "treinta mil en efectivo y veinte
@@ -425,7 +457,7 @@ pub struct VentaCompleta {
 pub fn detalle(conexion: &Connection, venta_id: &str) -> Result<Option<VentaCompleta>> {
     let base = conexion.query_row(
         "SELECT id, consecutivo, total, iva, recibido, vuelto, medio_pago, cajero, creada_en,
-                pago_autorizacion, pago_ultimos4, bruto, descuento, descuento_motivo
+                pago_autorizacion, pago_ultimos4, bruto, descuento, descuento_motivo, propina
          FROM ventas WHERE id = ?1",
         [venta_id],
         |f| {
@@ -445,6 +477,7 @@ pub fn detalle(conexion: &Connection, venta_id: &str) -> Result<Option<VentaComp
                 bruto: Pesos(f.get(11)?),
                 descuento: Pesos(f.get(12)?),
                 descuento_motivo: f.get(13)?,
+                propina: Pesos(f.get(14)?),
                 pagos: vec![],
             })
         },
@@ -568,6 +601,7 @@ mod pruebas {
             iva_porcentaje: 19,
             pago: None,
             descuento: Pesos::CERO,
+            propina: Pesos::CERO,
             descuento_motivo: String::new(),
             pagos: vec![],
         }

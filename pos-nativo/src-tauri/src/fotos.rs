@@ -26,7 +26,7 @@ use std::path::{Path, PathBuf};
 ///
 /// Con la sincronización cada 30 segundos, un catálogo de 500 productos queda
 /// completo en menos de diez minutos sin que nadie note la descarga.
-const POR_VUELTA: usize = 25;
+const POR_VUELTA: usize = 12;
 
 /// Lo que se espera por una foto. Corto a propósito: es lo menos importante
 /// que hace la caja y no puede retrasar lo demás.
@@ -43,17 +43,27 @@ pub fn carpeta(datos: &Path) -> PathBuf {
 
 /// Baja las fotos que falten. Devuelve cuántas quedaron en disco.
 ///
+/// Recibe el candado de la base y **no lo retiene mientras descarga**. Esa es
+/// la regla de la que depende que la caja siga viva: veinticinco descargas de
+/// diez segundos con el candado puesto dejan bloqueada cualquier venta, cobro
+/// o cierre de turno que intente escribir mientras tanto. Se abre para leer la
+/// lista, se suelta, se baja, y se vuelve a abrir para anotar cada una.
+///
 /// Los errores no se propagan: una foto que no bajó se reintenta en la próxima
 /// vuelta, y mientras tanto el producto se ve con su marcador de iniciales.
-pub fn bajar_pendientes(conexion: &rusqlite::Connection, datos: &Path) -> usize {
+pub fn bajar_pendientes(base: &std::sync::Mutex<rusqlite::Connection>, datos: &Path) -> usize {
     let destino = carpeta(datos);
     if std::fs::create_dir_all(&destino).is_err() {
         return 0;
     }
 
-    let pendientes = match listar_pendientes(conexion) {
-        Ok(v) => v,
-        Err(_) => return 0,
+    // Se abre solo para leer qué falta, y se suelta enseguida.
+    let pendientes = {
+        let Ok(conexion) = base.lock() else { return 0 };
+        match listar_pendientes(&conexion) {
+            Ok(v) => v,
+            Err(_) => return 0,
+        }
     };
 
     let mut listas = 0;
@@ -65,6 +75,7 @@ pub fn bajar_pendientes(conexion: &rusqlite::Connection, datos: &Path) -> usize 
            borró pero la carpeta no, o cuando dos filas del mismo producto con
            variantes distintas comparten la foto del padre. */
         if !archivo.exists() {
+            // Aquí es donde se van los segundos, y aquí no hay candado puesto.
             match descargar(&url) {
                 Ok(bytes) => {
                     if std::fs::write(&archivo, &bytes).is_err() {
@@ -75,13 +86,18 @@ pub fn bajar_pendientes(conexion: &rusqlite::Connection, datos: &Path) -> usize 
             }
         }
 
-        if conexion
-            .execute(
-                "UPDATE productos SET foto_local = ?1 WHERE foto_url = ?2",
-                rusqlite::params![nombre, url],
-            )
-            .is_ok()
-        {
+        // Se vuelve a abrir solo para anotar esta, y se suelta.
+        let anotada = {
+            let Ok(conexion) = base.lock() else { continue };
+            conexion
+                .execute(
+                    "UPDATE productos SET foto_local = ?1 WHERE foto_url = ?2",
+                    rusqlite::params![nombre, url],
+                )
+                .is_ok()
+        };
+
+        if anotada {
             listas += 1;
         }
     }
@@ -211,4 +227,54 @@ mod pruebas {
         assert!(nombre_de_archivo("abc", "").is_none());
         assert!(nombre_de_archivo("abc", "   ").is_none());
     }
+
+    /* Las dos pruebas que siguen leen el código en vez de ejecutarlo. No es lo
+       ideal, pero lo que hay que vigilar aquí no se puede observar desde
+       dentro: que una función tarde no es un fallo, y que congele la ventana
+       tampoco lo detecta ningún `assert`. Lo que sí se puede fijar es la forma
+       del código que causó el cuelgue, para que nadie la reintroduzca. */
+
+    /// El código de producción, sin las pruebas.
+    fn codigo(archivo: &str) -> String {
+        let texto = std::fs::read_to_string(archivo).expect("no pude leer el archivo");
+        texto.split("#[cfg(test)]").next().unwrap_or_default().to_string()
+    }
+
+    #[test]
+    fn la_descarga_no_retiene_el_candado_de_la_base() {
+        /* El cuelgue real: `bajar_pendientes` recibía una `&Connection` —es
+           decir, el candado ya abierto— y hacía dentro hasta veinticinco
+           descargas de diez segundos. Cualquier venta que intentara escribir
+           durante esos minutos se quedaba esperando.
+
+           Recibir el `Mutex` en vez de la conexión es lo que obliga a abrirlo y
+           soltarlo por tramos. */
+        let fuente = codigo("src/fotos.rs");
+
+        assert!(
+            fuente.contains("pub fn bajar_pendientes(base: &std::sync::Mutex<rusqlite::Connection>"),
+            "bajar_pendientes tiene que recibir el Mutex, no una conexión ya abierta: \
+             con el candado puesto, cada descarga bloquea las ventas",
+        );
+    }
+
+    #[test]
+    fn la_sincronizacion_no_corre_en_el_hilo_que_dibuja() {
+        /* El otro lado del mismo cuelgue: un comando de Tauri que no es `async`
+           corre en el hilo principal. `sincronizar` habla con la red, así que
+           ahí dejaba la ventana en "no responde" hasta que terminara. */
+        let fuente = codigo("src/lib.rs");
+
+        assert!(
+            fuente.contains("async fn sincronizar(app: tauri::AppHandle)"),
+            "el comando sincronizar tiene que ser async y salirse del hilo principal: \
+             si no, la ventana se congela mientras habla con la red",
+        );
+
+        assert!(
+            !fuente.contains("fn sincronizar(estado: State<Estado>)"),
+            "quedó la versión vieja del comando, que sí congela la ventana",
+        );
+    }
+
 }
