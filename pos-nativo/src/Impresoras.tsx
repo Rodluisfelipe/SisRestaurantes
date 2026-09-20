@@ -67,7 +67,7 @@ export default function Impresoras({ onCerrar }: { onCerrar: () => void }) {
         {aviso && <p className="text-[12.5px] font-semibold text-emerald-600">{aviso}</p>}
         {error && <p className="text-[12.5px] font-semibold text-red-600">{error}</p>}
 
-        <button onClick={onCerrar} className="w-full h-11 rounded-xl bg-slate-900 text-white text-[13px] font-bold">
+        <button onClick={onCerrar} className="w-full h-toque rounded-xl bg-marca text-sobre-marca text-[13px] font-bold">
           Listo
         </button>
       </div>
@@ -108,7 +108,7 @@ function Ficha({
         <button
           onClick={onProbar}
           disabled={tipo === 'ninguna'}
-          className="h-8 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-[12px] font-bold disabled:opacity-30"
+          className="h-toque px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-[12px] font-bold disabled:opacity-30"
         >
           Probar
         </button>
@@ -124,8 +124,8 @@ function Ficha({
           <button
             key={id}
             onClick={() => cambiarTipo(id)}
-            className={`flex-1 h-9 rounded-lg text-[11.5px] font-bold border-2 transition-colors ${
-              tipo === id ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 text-slate-500'
+            className={`flex-1 h-toque rounded-lg text-[11.5px] font-bold border-2 transition-colors ${
+              tipo === id ? 'border-marca bg-marca text-sobre-marca' : 'border-slate-200 text-slate-500'
             }`}
           >
             {etiqueta}
@@ -139,12 +139,12 @@ function Ficha({
             value={valor.impresora.host}
             onChange={(e) => onCambiar({ ...valor, impresora: { tipo: 'red', host: e.target.value, puerto: (valor.impresora as any).puerto } })}
             placeholder="192.168.1.100"
-            className="flex-1 h-10 px-3 rounded-lg border-2 border-slate-200 text-[13px] outline-none focus:border-slate-900"
+            className="flex-1 h-toque px-3 rounded-lg border-2 border-slate-200 text-[13px] outline-none focus:border-marca"
           />
           <input
             value={valor.impresora.puerto}
             onChange={(e) => onCambiar({ ...valor, impresora: { tipo: 'red', host: (valor.impresora as any).host, puerto: parseInt(e.target.value || '9100', 10) || 9100 } })}
-            className="w-24 h-10 px-3 rounded-lg border-2 border-slate-200 text-[13px] tabular-nums outline-none focus:border-slate-900"
+            className="w-24 h-toque px-3 rounded-lg border-2 border-slate-200 text-[13px] tabular-nums outline-none focus:border-marca"
           />
         </div>
       )}
@@ -155,7 +155,7 @@ function Ficha({
           <select
             value={valor.impresora.puerto}
             onChange={(e) => onCambiar({ ...valor, impresora: { tipo: 'serie', puerto: e.target.value, baudios: (valor.impresora as any).baudios } })}
-            className="flex-1 h-10 px-2 rounded-lg border-2 border-slate-200 text-[13px]"
+            className="flex-1 h-toque px-2 rounded-lg border-2 border-slate-200 text-[13px]"
           >
             {[valor.impresora.puerto, ...puertos.filter((p) => p !== (valor.impresora as any).puerto)].map((p) => (
               <option key={p} value={p}>{p}</option>
@@ -164,7 +164,7 @@ function Ficha({
           <select
             value={valor.impresora.baudios}
             onChange={(e) => onCambiar({ ...valor, impresora: { tipo: 'serie', puerto: (valor.impresora as any).puerto, baudios: parseInt(e.target.value, 10) } })}
-            className="w-28 h-10 px-2 rounded-lg border-2 border-slate-200 text-[13px]"
+            className="w-28 h-toque px-2 rounded-lg border-2 border-slate-200 text-[13px]"
           >
             {[9600, 19200, 38400, 115200].map((b) => <option key={b} value={b}>{b}</option>)}
           </select>
@@ -176,7 +176,7 @@ function Ficha({
           value={valor.impresora.ruta}
           onChange={(e) => onCambiar({ ...valor, impresora: { tipo: 'archivo', ruta: e.target.value } })}
           placeholder="/dev/usb/lp0"
-          className="w-full h-10 px-3 rounded-lg border-2 border-slate-200 text-[13px] outline-none focus:border-slate-900"
+          className="w-full h-toque px-3 rounded-lg border-2 border-slate-200 text-[13px] outline-none focus:border-marca"
         />
       )}
 
@@ -187,8 +187,8 @@ function Ficha({
             <button
               key={ancho}
               onClick={() => onCambiar({ ...valor, ancho: ancho as number })}
-              className={`h-8 px-3 rounded-lg text-[11.5px] font-bold border-2 ${
-                valor.ancho === ancho ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 text-slate-500'
+              className={`h-toque px-3 rounded-lg text-[11.5px] font-bold border-2 ${
+                valor.ancho === ancho ? 'border-marca bg-marca text-sobre-marca' : 'border-slate-200 text-slate-500'
               }`}
             >
               {etiqueta}

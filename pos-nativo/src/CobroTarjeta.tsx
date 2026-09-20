@@ -64,7 +64,7 @@ export default function CobroTarjeta({
               onChange={(e) => setUltimos(e.target.value.replace(/\D/g, '').slice(0, 4))}
               inputMode="numeric"
               placeholder="4582"
-              className="w-full h-12 px-3 rounded-xl border-2 border-slate-200 text-center text-2xl font-black tabular-nums tracking-[0.3em] outline-none focus:border-slate-900"
+              className="w-full h-12 px-3 rounded-xl border-2 border-slate-200 text-center text-2xl font-black tabular-nums tracking-[0.3em] outline-none focus:border-marca"
             />
           </div>
 
@@ -77,7 +77,7 @@ export default function CobroTarjeta({
               onChange={(e) => setCodigo(e.target.value.toUpperCase().slice(0, 20))}
               onKeyDown={(e) => { if (e.key === 'Enter') confirmar(); }}
               placeholder="048123"
-              className="w-full h-12 px-3 rounded-xl border-2 border-slate-200 text-center text-xl font-bold tracking-wider outline-none focus:border-slate-900"
+              className="w-full h-12 px-3 rounded-xl border-2 border-slate-200 text-center text-xl font-bold tracking-wider outline-none focus:border-marca"
             />
           </div>
 
@@ -90,8 +90,8 @@ export default function CobroTarjeta({
                 <button
                   key={f}
                   onClick={() => setFranquicia(franquicia === f ? '' : f)}
-                  className={`flex-1 h-10 rounded-lg text-[12px] font-bold border-2 transition-colors ${
-                    franquicia === f ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 text-slate-500'
+                  className={`flex-1 h-toque rounded-lg text-[12px] font-bold border-2 transition-colors ${
+                    franquicia === f ? 'border-marca bg-marca text-sobre-marca' : 'border-slate-200 text-slate-500'
                   }`}
                 >
                   {f}
@@ -114,7 +114,7 @@ export default function CobroTarjeta({
           </button>
           <button
             onClick={confirmar}
-            className="flex-1 h-12 rounded-xl bg-slate-900 text-white text-[13px] font-bold"
+            className="flex-1 h-12 rounded-xl bg-marca text-sobre-marca text-[13px] font-bold"
           >
             Cobrado
           </button>

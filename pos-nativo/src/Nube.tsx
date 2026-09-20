@@ -127,7 +127,7 @@ export default function Nube({ onCerrar }: { onCerrar: () => void }) {
                 onChange={(e) => setCodigo(e.target.value.toUpperCase().slice(0, 12))}
                 onKeyDown={(e) => { if (e.key === 'Enter' && codigo.length >= 8) conectarConCodigo(); }}
                 placeholder="ABCD-EFGH"
-                className="w-full h-16 px-3 rounded-xl border-2 border-slate-200 text-center text-3xl font-black tracking-[0.25em] uppercase outline-none focus:border-slate-900"
+                className="w-full h-16 px-3 rounded-xl border-2 border-slate-200 text-center text-3xl font-black tracking-[0.25em] uppercase outline-none focus:border-marca"
               />
               <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-[12px] text-slate-600 space-y-1">
                 <p className="font-bold text-slate-700">Dónde sale este código</p>
@@ -146,7 +146,7 @@ export default function Nube({ onCerrar }: { onCerrar: () => void }) {
               <input
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                className="w-full h-11 px-3 rounded-xl border-2 border-slate-200 text-[13px] outline-none focus:border-slate-900"
+                className="w-full h-toque px-3 rounded-xl border-2 border-slate-200 text-[13px] outline-none focus:border-marca"
               />
             </div>
 
@@ -159,7 +159,7 @@ export default function Nube({ onCerrar }: { onCerrar: () => void }) {
                 onChange={(e) => setToken(e.target.value.trim())}
                 rows={3}
                 placeholder="eyJhbGciOi…"
-                className="w-full px-3 py-2 rounded-xl border-2 border-slate-200 text-[11px] font-mono outline-none focus:border-slate-900"
+                className="w-full px-3 py-2 rounded-xl border-2 border-slate-200 text-[11px] font-mono outline-none focus:border-marca"
               />
               <p className="text-[11px] text-slate-400">
                 Vía de soporte. En el panel: F12 → Application → Local Storage → accessToken.
@@ -175,7 +175,7 @@ export default function Nube({ onCerrar }: { onCerrar: () => void }) {
           <button
             onClick={modoSoporte ? conectar : conectarConCodigo}
             disabled={ocupado || (modoSoporte ? token.length < 20 : codigo.replace(/-/g, '').length < 8)}
-            className="flex-1 h-12 rounded-xl bg-slate-900 text-white text-[13px] font-bold disabled:opacity-30"
+            className="flex-1 h-12 rounded-xl bg-marca text-sobre-marca text-[13px] font-bold disabled:opacity-30"
           >
             {ocupado ? 'Conectando…' : yaConectada ? 'Volver a conectar' : 'Conectar'}
           </button>
@@ -206,7 +206,7 @@ export default function Nube({ onCerrar }: { onCerrar: () => void }) {
               setYaConectada(false);
               setAviso('Caja desconectada. Las ventas siguen guardadas aquí.');
             }}
-            className="w-full h-10 text-[12px] font-semibold text-slate-400 hover:text-red-600"
+            className="w-full h-toque text-[12px] font-semibold text-slate-400 hover:text-red-600"
           >
             Desconectar esta caja
           </button>
@@ -219,7 +219,7 @@ export default function Nube({ onCerrar }: { onCerrar: () => void }) {
           >
             {modoSoporte ? '← Volver al código' : 'Conectar con una sesión del panel'}
           </button>
-          <button onClick={onCerrar} className="h-10 px-3 text-[12.5px] font-semibold text-slate-500">
+          <button onClick={onCerrar} className="h-toque px-3 text-[12.5px] font-semibold text-slate-500">
             Cerrar
           </button>
         </div>

@@ -870,6 +870,32 @@ pub struct ResumenSync {
 
 /// Sube lo pendiente y baja el catálogo. Lo llama el botón y también el hilo
 /// de fondo; es la misma operación, solo cambia quién la dispara.
+/// Cómo se llama el negocio y de qué color es, para pintar la pantalla.
+///
+/// Es lo que separa una caja que parece un programa genérico de una que parece
+/// del negocio. Los colores ya vienen validados como hexadecimales desde la
+/// bajada del catálogo; vacío significa "usa el tuyo".
+#[derive(serde::Serialize, Default)]
+struct Identidad {
+    nombre: String,
+    color: String,
+    color_texto: String,
+}
+
+#[tauri::command]
+fn identidad(estado: State<Estado>) -> Identidad {
+    let Ok(base) = estado.base.lock() else { return Identidad::default() };
+    let leer = |clave: &str| -> String {
+        base.query_row("SELECT valor FROM ajustes WHERE clave = ?1", [clave], |f| f.get(0))
+            .unwrap_or_default()
+    };
+    Identidad {
+        nombre: leer("negocio_nombre"),
+        color: leer("marca_color"),
+        color_texto: leer("marca_color_texto"),
+    }
+}
+
 #[tauri::command]
 fn sincronizar(estado: State<Estado>) -> ResumenSync {
     let mut base = match estado.base.lock() {
@@ -891,6 +917,18 @@ fn sincronizar(estado: State<Estado>) -> ResumenSync {
         Ok(n) => (n, None),
         Err(e) => (0, Some(e)),
     };
+
+    /* Si el dueño le cambió el nombre al negocio en el panel, la próxima
+       tirilla ya sale con el nuevo. Sin esto habría que reiniciar la caja. */
+    if let Ok(nombre) = base.query_row::<String, _, _>(
+        "SELECT valor FROM ajustes WHERE clave = 'negocio_nombre'", [], |f| f.get(0),
+    ) {
+        if !nombre.is_empty() {
+            if let Ok(mut actual) = estado.negocio.lock() {
+                *actual = nombre;
+            }
+        }
+    }
 
     ResumenSync {
         enviadas: cola.enviadas,
@@ -1074,9 +1112,16 @@ pub fn run() {
                 println!("El token del negocio se movió al llavero del sistema");
             }
 
+            /* El nombre que va en la cabecera de la tirilla. Sale de la última
+               bajada de catálogo; "MenuBy POS" solo se ve en una caja recién
+               instalada que todavía no ha hablado con la nube. */
+            let nombre: String = base
+                .query_row("SELECT valor FROM ajustes WHERE clave = 'negocio_nombre'", [], |f| f.get(0))
+                .unwrap_or_default();
+
             app.manage(Estado {
                 base: Mutex::new(base),
-                negocio: Mutex::new("MenuBy POS".into()),
+                negocio: Mutex::new(if nombre.is_empty() { "MenuBy POS".into() } else { nombre }),
                 sesion: Mutex::new(None),
             });
 
@@ -1118,6 +1163,7 @@ pub fn run() {
             cerrar_pantalla_cliente,
             hay_pantalla_cliente,
             sincronizar,
+            identidad,
             puertos_serie,
             entrar,
             salir,

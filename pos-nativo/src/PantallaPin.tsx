@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Delete, Lock } from 'lucide-react';
 import { crearUsuario, entrar, hayUsuarios, type Usuario } from './nativo';
 
 /**
@@ -11,7 +12,14 @@ import { crearUsuario, entrar, hayUsuarios, type Usuario } from './nativo';
  * Acepta el teclado físico además de la pantalla: en un mostrador con teclado,
  * obligar a apuntar con el dedo es más lento.
  */
-export default function PantallaPin({ onEntrar }: { onEntrar: (u: Usuario) => void }) {
+export default function PantallaPin({
+  negocio,
+  onEntrar,
+}: {
+  /** Cómo se llama el negocio. Vacío en una caja que nunca ha sincronizado. */
+  negocio: string;
+  onEntrar: (u: Usuario) => void;
+}) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [ocupado, setOcupado] = useState(false);
@@ -63,11 +71,20 @@ export default function PantallaPin({ onEntrar }: { onEntrar: (u: Usuario) => vo
 
   return (
     <div className="h-screen flex flex-col items-center justify-center bg-slate-900 text-white gap-6">
-      <div className="text-center">
-        <p className="text-2xl font-black tracking-tight">MenuBy POS</p>
-        <p className="text-sm text-slate-400 mt-1">
-          {primeraVez ? 'Crea el usuario del dueño' : 'Ingresa tu PIN'}
-        </p>
+      {/* Esta es la primera pantalla de la mañana. Lleva el nombre del negocio
+          y no el del programa: el cajero trabaja para el negocio, y una caja
+          que dice "MenuBy POS" a las seis de la mañana es una herramienta
+          ajena. El candado hace de marca cuando todavía no hay ninguna. */}
+      <div className="flex flex-col items-center gap-3">
+        <span className="flex items-center justify-center w-14 h-14 rounded-2xl bg-marca text-sobre-marca">
+          <Lock size={26} strokeWidth={2.25} />
+        </span>
+        <div className="text-center">
+          <p className="text-2xl font-black tracking-tight">{negocio || 'MenuBy POS'}</p>
+          <p className="text-sm text-slate-400 mt-1">
+            {primeraVez ? 'Crea el usuario del dueño' : 'Ingresa tu PIN'}
+          </p>
+        </div>
       </div>
 
       {primeraVez && (
@@ -76,7 +93,7 @@ export default function PantallaPin({ onEntrar }: { onEntrar: (u: Usuario) => vo
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
           placeholder="Tu nombre"
-          className="w-64 h-12 px-4 rounded-xl bg-slate-800 border-2 border-slate-700 text-center outline-none focus:border-white"
+          className="w-64 h-14 px-4 rounded-xl bg-slate-800 border-2 border-slate-700 text-center outline-none focus:border-white"
         />
       )}
 
@@ -95,20 +112,21 @@ export default function PantallaPin({ onEntrar }: { onEntrar: (u: Usuario) => vo
           <button
             key={d}
             onClick={() => marcar(d)}
-            className="w-20 h-20 rounded-2xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-2xl font-bold transition-all"
+            className="w-20 h-20 rounded-2xl bg-slate-700 hover:bg-slate-600 active:scale-95 text-2xl font-bold transition-transform duration-75 border border-slate-600"
           >
             {d}
           </button>
         ))}
         <button
           onClick={() => setPin((p) => p.slice(0, -1))}
-          className="w-20 h-20 rounded-2xl bg-slate-800/60 hover:bg-slate-700 text-xl transition-all"
+          aria-label="Borrar"
+          className="flex items-center justify-center w-20 h-20 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 active:scale-95 transition-transform duration-75 border border-slate-700"
         >
-          ←
+          <Delete size={24} strokeWidth={2} />
         </button>
         <button
           onClick={() => marcar('0')}
-          className="w-20 h-20 rounded-2xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-2xl font-bold transition-all"
+          className="w-20 h-20 rounded-2xl bg-slate-700 hover:bg-slate-600 active:scale-95 text-2xl font-bold transition-transform duration-75 border border-slate-600"
         >
           0
         </button>

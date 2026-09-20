@@ -165,6 +165,22 @@ struct RespuestaCatalogo {
     filas: Vec<catalogo::FilaCatalogo>,
     #[serde(default)]
     hay_mas: bool,
+    #[serde(default)]
+    negocio: Option<Identidad>,
+}
+
+/// Cómo se llama el negocio y de qué color es.
+///
+/// Viaja con el catálogo, no con el emparejamiento: el emparejamiento ocurre
+/// una vez y el dueño puede cambiar su color un martes cualquiera.
+#[derive(serde::Deserialize, Default)]
+pub struct Identidad {
+    #[serde(default)]
+    pub nombre: String,
+    #[serde(default)]
+    pub color: String,
+    #[serde(default)]
+    pub color_texto: String,
 }
 
 /// Baja el catálogo desde la marca de agua y lo aplica.
@@ -197,6 +213,9 @@ pub fn bajar_catalogo(
 
         let cuantas = respuesta.filas.len();
         catalogo::aplicar(conexion, &respuesta.filas).map_err(|e| e.to_string())?;
+        if let Some(quien) = &respuesta.negocio {
+            guardar_identidad(conexion, quien);
+        }
         total += cuantas;
 
         /* Se corta si no hay más, o si el lote no movió la marca de agua: sin
@@ -208,4 +227,61 @@ pub fn bajar_catalogo(
     }
 
     Ok(total)
+}
+
+/// Deja el nombre y el color del negocio en los ajustes locales.
+///
+/// Un color mal escrito en el panel no puede tumbar una sincronización, así
+/// que se valida aquí: si no es un hexadecimal de los de siempre, se ignora y
+/// la caja se queda con el que ya tenía. Y si falla la escritura tampoco se
+/// propaga: lo que importaba de esta bajada eran los productos.
+fn guardar_identidad(conexion: &rusqlite::Connection, quien: &Identidad) {
+    let poner = |clave: &str, valor: &str| {
+        if valor.is_empty() {
+            return;
+        }
+        let _ = conexion.execute(
+            "INSERT INTO ajustes (clave, valor) VALUES (?1, ?2)
+             ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor",
+            rusqlite::params![clave, valor],
+        );
+    };
+
+    poner("negocio_nombre", quien.nombre.trim());
+    if es_hexadecimal(&quien.color) {
+        poner("marca_color", quien.color.trim());
+    }
+    if es_hexadecimal(&quien.color_texto) {
+        poner("marca_color_texto", quien.color_texto.trim());
+    }
+}
+
+/// #rgb o #rrggbb, nada más. Lo que llega de la nube se dibuja en una pantalla
+/// y termina dentro de una hoja de estilos: no se deja pasar texto libre.
+fn es_hexadecimal(valor: &str) -> bool {
+    let v = valor.trim();
+    let Some(cuerpo) = v.strip_prefix('#') else { return false };
+    (cuerpo.len() == 3 || cuerpo.len() == 6) && cuerpo.chars().all(|c| c.is_ascii_hexdigit())
+}
+
+#[cfg(test)]
+mod pruebas_identidad {
+    use super::es_hexadecimal;
+
+    #[test]
+    fn acepta_las_dos_formas_de_escribir_un_color() {
+        assert!(es_hexadecimal("#fff"));
+        assert!(es_hexadecimal("#2563EB"));
+    }
+
+    #[test]
+    fn no_deja_pasar_nada_que_no_sea_un_color() {
+        /* El de en medio es el que importa: un valor así, puesto en el panel y
+           metido tal cual en un atributo de estilo, es una inyección. */
+        assert!(!es_hexadecimal("rojo"));
+        assert!(!es_hexadecimal("#fff; background: url(http://x)"));
+        assert!(!es_hexadecimal("2563eb"));
+        assert!(!es_hexadecimal(""));
+        assert!(!es_hexadecimal("#12345"));
+    }
 }

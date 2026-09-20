@@ -39,7 +39,7 @@ export function AbrirTurno({ usuario, onAbierto }: { usuario: Usuario; onAbierto
         onKeyDown={(e) => { if (e.key === 'Enter') abrir(); }}
         inputMode="numeric"
         placeholder="0"
-        className="w-72 h-16 px-4 rounded-2xl border-2 border-slate-200 bg-white text-center text-3xl font-black tabular-nums outline-none focus:border-slate-900"
+        className="w-72 h-16 px-4 rounded-2xl border-2 border-slate-200 bg-white text-center text-3xl font-black tabular-nums outline-none focus:border-marca"
       />
 
       <p className="text-[12px] text-slate-400 max-w-xs text-center">
@@ -52,7 +52,7 @@ export function AbrirTurno({ usuario, onAbierto }: { usuario: Usuario; onAbierto
       <button
         onClick={abrir}
         disabled={ocupado}
-        className="w-72 h-14 rounded-2xl bg-slate-900 text-white text-lg font-black disabled:opacity-40"
+        className="w-72 h-14 rounded-2xl bg-marca text-sobre-marca text-lg font-black disabled:opacity-40"
       >
         {ocupado ? 'Abriendo…' : 'Abrir turno'}
       </button>
@@ -153,13 +153,13 @@ export function PanelTurno({
           </button>
           <button
             onClick={() => setVista('cierre')}
-            className="w-full h-12 rounded-xl bg-slate-900 text-white text-[13.5px] font-bold"
+            className="w-full h-12 rounded-xl bg-marca text-sobre-marca text-[13.5px] font-bold"
           >
             Cerrar turno y contar
           </button>
           <button
             onClick={onSalir}
-            className="w-full h-10 text-[12.5px] font-semibold text-slate-400 hover:text-slate-700"
+            className="w-full h-toque text-[12.5px] font-semibold text-slate-400 hover:text-slate-700"
           >
             Bloquear caja sin cerrar el turno
           </button>
@@ -174,13 +174,13 @@ export function PanelTurno({
             onChange={(e) => setMonto(e.target.value.replace(/\D/g, ''))}
             inputMode="numeric"
             placeholder="Cuánto"
-            className="w-full h-12 px-3 rounded-xl border-2 border-slate-200 text-center text-xl font-black tabular-nums outline-none focus:border-slate-900"
+            className="w-full h-12 px-3 rounded-xl border-2 border-slate-200 text-center text-xl font-black tabular-nums outline-none focus:border-marca"
           />
           <input
             value={motivo}
             onChange={(e) => setMotivo(e.target.value)}
             placeholder={entrada ? 'De dónde salió (sencillo del banco…)' : 'En qué se gastó (hielo, domiciliario…)'}
-            className="w-full h-12 px-3 rounded-xl border-2 border-slate-200 text-[13.5px] outline-none focus:border-slate-900"
+            className="w-full h-12 px-3 rounded-xl border-2 border-slate-200 text-[13.5px] outline-none focus:border-marca"
           />
           {/* El motivo es obligatorio: sin él, una salida es indistinguible de un faltante. */}
           <p className="text-[11.5px] text-slate-400">
@@ -194,7 +194,7 @@ export function PanelTurno({
             <button
               onClick={guardarMovimiento}
               disabled={ocupado}
-              className="flex-1 h-12 rounded-xl bg-slate-900 text-white text-[13px] font-bold disabled:opacity-40"
+              className="flex-1 h-12 rounded-xl bg-marca text-sobre-marca text-[13px] font-bold disabled:opacity-40"
             >
               Registrar
             </button>
@@ -223,7 +223,7 @@ export function PanelTurno({
                       onChange={(e) => setCuantos((c) => ({ ...c, [d]: e.target.value.replace(/\D/g, '') }))}
                       inputMode="numeric"
                       placeholder="0"
-                      className="w-16 h-10 px-2 rounded-lg border-2 border-slate-200 text-center text-[14px] font-bold tabular-nums outline-none focus:border-slate-900"
+                      className="w-16 h-toque px-2 rounded-lg border-2 border-slate-200 text-center text-[14px] font-bold tabular-nums outline-none focus:border-marca"
                     />
                     {/* El subtotal a la vista: el cajero detecta el dedazo en el momento. */}
                     <span className="flex-1 text-right text-[13px] tabular-nums text-slate-400">
@@ -240,7 +240,7 @@ export function PanelTurno({
               onChange={(e) => setContado(e.target.value.replace(/\D/g, ''))}
               inputMode="numeric"
               placeholder="0"
-              className="w-full h-16 px-3 rounded-xl border-2 border-slate-200 text-center text-3xl font-black tabular-nums outline-none focus:border-slate-900"
+              className="w-full h-16 px-3 rounded-xl border-2 border-slate-200 text-center text-3xl font-black tabular-nums outline-none focus:border-marca"
             />
           )}
 
@@ -268,7 +268,7 @@ export function PanelTurno({
             <button
               onClick={cerrar}
               disabled={ocupado || (aMano && contado === '')}
-              className="flex-1 h-12 rounded-xl bg-slate-900 text-white text-[13px] font-bold disabled:opacity-40"
+              className="flex-1 h-12 rounded-xl bg-marca text-sobre-marca text-[13px] font-bold disabled:opacity-40"
             >
               {ocupado ? 'Cerrando…' : 'Cerrar turno'}
             </button>
@@ -331,7 +331,7 @@ export function ResumenCierre({ cierre, onListo }: { cierre: CierreTurno; onList
         desde el panel, con la hora exacta.
       </p>
 
-      <button onClick={onListo} className="w-full max-w-sm h-14 rounded-2xl bg-slate-900 text-white font-black">
+      <button onClick={onListo} className="w-full max-w-sm h-14 rounded-2xl bg-marca text-sobre-marca font-black">
         Listo
       </button>
     </div>

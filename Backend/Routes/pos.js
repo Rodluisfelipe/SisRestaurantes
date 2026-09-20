@@ -517,13 +517,18 @@ router.get('/catalog', tenantAuth, cajaVigente, async (req, res) => {
 
     const limite = Math.min(parseInt(req.query.limit, 10) || 500, 1000);
 
-    const [productos, categorias] = await Promise.all([
+    const [productos, categorias, negocio] = await Promise.all([
       Product.find(filtro)
         .select('name price active category sku variantes updatedAt createdAt')
         .sort({ updatedAt: 1 })
         .limit(limite)
         .lean(),
       Category.find({ businessId }).select('name').lean(),
+      /* La identidad del negocio viaja por aquí y no por el emparejamiento
+         porque el emparejamiento pasa una vez en la vida de la caja: si el
+         dueño cambia su color en el panel, la caja tendría el viejo para
+         siempre. Esta bajada corre cada pocos minutos. */
+      BusinessConfig.findById(businessId).select('businessName theme.buttonColor theme.buttonTextColor').lean(),
     ]);
 
     const porId = Object.fromEntries(categorias.map((c) => [String(c._id), c.name]));
@@ -532,7 +537,15 @@ router.get('/catalog', tenantAuth, cajaVigente, async (req, res) => {
     /* `hay_mas` lo decide el tamaño del lote, no el de las filas: un producto
        con diez tallas son diez filas y un solo producto. Si se contaran filas,
        la caja pediría de nuevo lo mismo y nunca avanzaría. */
-    res.json({ filas, hay_mas: productos.length === limite });
+    res.json({
+      filas,
+      hay_mas: productos.length === limite,
+      negocio: {
+        nombre: negocio?.businessName || '',
+        color: negocio?.theme?.buttonColor || '',
+        color_texto: negocio?.theme?.buttonTextColor || '',
+      },
+    });
   } catch (error) {
     logger.error('Error entregando el catálogo al POS', error, req);
     res.status(500).json({ message: 'No se pudo cargar el catálogo' });

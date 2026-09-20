@@ -138,6 +138,74 @@ export async function sincronizar(): Promise<ResumenSync> {
   return invoke<ResumenSync>('sincronizar');
 }
 
+export interface Identidad {
+  nombre: string;
+  color: string;
+  color_texto: string;
+}
+
+/**
+ * Cómo se llama el negocio y de qué color es.
+ *
+ * Llega con la bajada del catálogo, así que una caja recién instalada devuelve
+ * todo vacío y la pantalla se queda con los colores de MenuBy. Eso es lo
+ * correcto: es preferible una caja sin personalizar a una caja con un botón de
+ * cobrar invisible.
+ */
+export async function identidad(): Promise<Identidad> {
+  if (!enTauri) return { nombre: '', color: '', color_texto: '' };
+  return invoke<Identidad>('identidad');
+}
+
+/**
+ * Pinta la pantalla con el color del negocio.
+ *
+ * Se toca una variable CSS y no cada botón: así el color vive en un solo sitio
+ * y las dos ventanas —la caja y la del cliente— lo toman igual.
+ */
+export function aplicarMarca(quien: Identidad): void {
+  const raiz = document.documentElement;
+
+  /* Se comprueba aquí otra vez aunque Rust ya lo haya validado al guardarlo.
+     No es desconfianza del backend: es que este valor termina dentro de una
+     hoja de estilos, y lo que se mete en una hoja de estilos se valida en el
+     sitio donde se mete. Un color ilegible deja el botón de cobrar invisible,
+     que en una caja es lo mismo que no poder cobrar. */
+  if (luminancia(quien.color) === null) return;
+
+  raiz.style.setProperty('--marca', quien.color);
+  raiz.style.setProperty('--marca-viva', quien.color);
+  /* El color del texto no se hereda del panel a ciegas: si el negocio tiene
+     marca amarilla con letra blanca —que en una web con sombras se lee y en un
+     botón plano no—, el botón de cobrar quedaría ilegible. Se decide por
+     luminancia y solo se respeta el del panel cuando contrasta. */
+  raiz.style.setProperty('--sobre-marca', contraste(quien.color, quien.color_texto));
+}
+
+/** Blanco o negro sobre un fondo, lo que se lea mejor. */
+function contraste(fondo: string, preferido: string): string {
+  const luz = luminancia(fondo);
+  if (luz === null) return '#ffffff';
+
+  const suyo = luminancia(preferido);
+  // La diferencia mínima para que un texto se distinga de su fondo de un vistazo.
+  if (suyo !== null && Math.abs(suyo - luz) > 0.45) return preferido;
+  return luz > 0.55 ? '#0f172a' : '#ffffff';
+}
+
+/** 0 = negro, 1 = blanco. Null si el color no es un hexadecimal. */
+function luminancia(hex: string): number | null {
+  const limpio = (hex || '').trim().replace('#', '');
+  const largo = limpio.length === 3
+    ? limpio.split('').map((c) => c + c).join('')
+    : limpio;
+  if (largo.length !== 6 || !/^[0-9a-fA-F]{6}$/.test(largo)) return null;
+
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(largo.slice(i, i + 2), 16) / 255);
+  // Pesos de la percepción humana: el verde ilumina mucho más que el azul.
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
 /** Abrir la gaveta sin venta. No pide supervisor, pero queda registrado. */
 export async function abrirCajon(motivo: string): Promise<void> {
   if (!enTauri) return;

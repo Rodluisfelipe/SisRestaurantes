@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { pesos, type EstadoCliente } from './nativo';
+import { aplicarMarca, identidad, pesos, type EstadoCliente } from './nativo';
 
 /**
  * Lo que ve el cliente desde el otro lado del mostrador.
@@ -20,11 +20,22 @@ export default function PantallaCliente() {
     return () => { suelta.then((f) => f()); };
   }, []);
 
+  /* Esta es otra ventana del sistema operativo, con su propio documento: el
+     color que aplicó la caja no llega hasta aquí y hay que pedirlo de nuevo.
+     Importa más que en la caja, porque esta es la pantalla que mira el
+     cliente todo el rato que espera. */
+  useEffect(() => { identidad().then(aplicarMarca).catch(() => {}); }, []);
+
   if (estado.modo === 'espera') {
+    /* En reposo, la pantalla entera es del color del negocio: es un letrero en
+       el mostrador la mayor parte del día, y un rectángulo gris oscuro no dice
+       de quién es el local. */
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-slate-900 text-white gap-4">
-        <p className="text-5xl font-black tracking-tight">{estado.negocio || 'Bienvenido'}</p>
-        <p className="text-xl text-slate-400">{estado.mensaje || 'Con gusto te atendemos'}</p>
+      <div className="h-screen flex flex-col items-center justify-center bg-marca text-sobre-marca gap-4">
+        <p className="text-6xl font-black tracking-tight text-center px-8">
+          {estado.negocio || 'Bienvenido'}
+        </p>
+        <p className="text-xl opacity-70">{estado.mensaje || 'Con gusto te atendemos'}</p>
       </div>
     );
   }

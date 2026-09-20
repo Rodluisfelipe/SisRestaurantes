@@ -74,7 +74,7 @@ export default function Autorizar({
           value={motivo}
           onChange={(e) => setMotivo(e.target.value)}
           placeholder="Por qué (obligatorio)"
-          className="w-full h-11 px-3 rounded-xl border-2 border-slate-200 text-[13.5px] outline-none focus:border-slate-900"
+          className="w-full h-toque px-3 rounded-xl border-2 border-slate-200 text-[13.5px] outline-none focus:border-marca"
         />
 
         <div>
@@ -101,7 +101,7 @@ export default function Autorizar({
             <button
               onClick={confirmar}
               disabled={pin.length < 4 || ocupado}
-              className="h-12 rounded-xl bg-slate-900 text-white text-[12px] font-bold disabled:opacity-30"
+              className="h-12 rounded-xl bg-marca text-sobre-marca text-[12px] font-bold disabled:opacity-30"
             >
               {ocupado ? '…' : 'Autorizar'}
             </button>
@@ -110,7 +110,7 @@ export default function Autorizar({
 
         {error && <p className="text-[12.5px] font-semibold text-red-600">{error}</p>}
 
-        <button onClick={onCancelar} className="w-full h-10 text-[12.5px] font-semibold text-slate-400 hover:text-slate-700">
+        <button onClick={onCancelar} className="w-full h-toque text-[12.5px] font-semibold text-slate-400 hover:text-slate-700">
           Cancelar
         </button>
       </div>
