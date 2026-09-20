@@ -35,11 +35,24 @@ module.exports = async function authMiddleware(req, res, next) {
       return res.status(401).json({ message: 'Invalid token' });
     }
     
+    /* Un token de caja no es el de una persona. Lo firma el negocio para una
+       terminal de mostrador y su `id` es el del negocio, no el de un Admin, así
+       que buscarlo en la colección de administradores no encuentra nada y
+       responde "User no longer exists". Eso es exactamente lo que rompía el
+       emparejamiento por código: la caja quedaba vinculada y no podía sincronizar
+       ni una sola vez.
+
+       No se queda sin comprobar. Una caja tiene su propia cadena, que es la que
+       le corresponde: `alcanceCaja` la encierra en /api/pos/ y `cajaVigente`
+       mira contra la base que siga vinculada y no revocada — el equivalente,
+       para una terminal, de "este usuario todavía existe". */
+    const esCaja = decoded.scope === 'pos';
+
     // Verify user still exists in DB (with cache to avoid DB hit every request)
     const cacheKey = `${decoded.id}_${decoded.role || 'admin'}`;
     const cached = verifiedUsersCache.get(cacheKey);
-    
-    if (!cached || (Date.now() - cached.timestamp > CACHE_TTL)) {
+
+    if (!esCaja && (!cached || (Date.now() - cached.timestamp > CACHE_TTL))) {
       let userExists = false;
       if (decoded.role === 'superadmin') {
         const SuperAdmin = require('../Models/SuperAdmin');
