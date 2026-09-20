@@ -271,10 +271,17 @@ router.post('/sync-sale', tenantAuth, cajaVigente, async (req, res) => {
       orderChannel: 'pos',
       status: 'completed',
       items: venta.items,
-      totalAmount: venta.total,
+      /* `totalAmount` es lo que valía antes del descuento y `finalAmount` lo
+         que el cliente pagó. Es el mismo significado que tienen en un pedido
+         del menú, así que los informes del negocio suman las dos cosas sin
+         tener que saber de dónde vino la venta. */
+      totalAmount: venta.bruto,
+      discountAmount: venta.descuento,
       finalAmount: venta.total,
       paymentMethod: venta.medioPago,
+      ...(venta.descuento > 0 ? { discountReason: venta.descuentoMotivo } : {}),
       ...(venta.pago ? { posPago: venta.pago } : {}),
+      ...(venta.pagos.length > 1 ? { posPagos: venta.pagos } : {}),
       /* La hora es la de la caja, no la del servidor: una venta que se hizo sin
          internet a las 3 de la tarde no puede aparecer a las 9 de la noche,
          cuando volvió la señal. */

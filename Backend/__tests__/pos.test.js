@@ -342,3 +342,104 @@ describe('el id compuesto del catálogo aplanado', () => {
     expect(r.venta.items[0].variante.valores).toEqual(['M']);
   });
 });
+
+describe('el descuento que baja de la caja', () => {
+  /* El descuento lo autoriza un supervisor en el mostrador y queda en la
+     auditoría de esa terminal. Aquí no se vuelve a autorizar: se comprueba que
+     la cuenta cierre, que es lo único que este lado puede saber. */
+
+  it('una venta con descuento cuadra', () => {
+    const r = validarVenta(venta({ total: 13000, descuento: 1500, descuento_motivo: 'Cliente frecuente' }));
+
+    expect(r.ok).toBe(true);
+    expect(r.venta.descuento).toBe(1500);
+    expect(r.venta.bruto).toBe(14500);
+    expect(r.venta.total).toBe(13000);
+    expect(r.venta.descuentoMotivo).toBe('Cliente frecuente');
+  });
+
+  it('sin descuento, el bruto es el total', () => {
+    // Para que restar las dos cifras en un informe no dé un descuento fantasma.
+    const r = validarVenta(VENTA);
+    expect(r.venta.bruto).toBe(r.venta.total);
+    expect(r.venta.descuento).toBe(0);
+  });
+
+  it('un total que no cuadra ni con descuento se rechaza', () => {
+    const r = validarVenta(venta({ total: 9000, descuento: 1500 }));
+    expect(r.ok).toBe(false);
+  });
+
+  it('no se puede descontar más de lo que vale la venta', () => {
+    const r = validarVenta(venta({ total: 0, descuento: 99000 }));
+    expect(r.ok).toBe(false);
+  });
+
+  it('un descuento negativo no se convierte en recargo', () => {
+    /* Si pasara, sería la forma de cobrar de más sin que quedara registrado
+       como un precio distinto. Se trata como cero, y entonces el total no
+       cuadra y la venta se rechaza. */
+    const r = validarVenta(venta({ total: 16000, descuento: -1500 }));
+    expect(r.ok).toBe(false);
+  });
+});
+
+describe('el pago repartido entre varios medios', () => {
+  it('una venta mixta trae su desglose', () => {
+    const r = validarVenta(venta({
+      medio_pago: 'mixto',
+      pagos: [
+        { metodo: 'efectivo', monto: 10000 },
+        { metodo: 'tarjeta', monto: 4500, referencia: 'A1B2' },
+      ],
+    }));
+
+    expect(r.ok).toBe(true);
+    expect(r.venta.pagos).toHaveLength(2);
+    expect(r.venta.pagos[1]).toEqual({ metodo: 'tarjeta', monto: 4500, referencia: 'A1B2' });
+  });
+
+  it('el medio se normaliza a minúsculas', () => {
+    // El cuadre del panel agrupa por este campo: "Tarjeta" y "tarjeta" tienen
+    // que caer en el mismo montón.
+    const r = validarVenta(venta({ pagos: [{ metodo: 'TARJETA', monto: 14500 }] }));
+    expect(r.venta.pagos[0].metodo).toBe('tarjeta');
+  });
+
+  it('los pagos en cero o sin medio se descartan', () => {
+    const r = validarVenta(venta({
+      pagos: [
+        { metodo: 'efectivo', monto: 14500 },
+        { metodo: 'tarjeta', monto: 0 },
+        { metodo: '', monto: 500 },
+      ],
+    }));
+    expect(r.venta.pagos).toHaveLength(1);
+  });
+
+  it('una venta de siempre no trae pagos y no pasa nada', () => {
+    // Las cajas que todavía no se hayan actualizado siguen subiendo igual.
+    const r = validarVenta(VENTA);
+    expect(r.ok).toBe(true);
+    expect(r.venta.pagos).toEqual([]);
+  });
+});
+
+describe('la nota del cliente', () => {
+  it('llega con la línea', () => {
+    /* Una devolución de "pedí la hamburguesa sin cebolla y vino con cebolla"
+       se resuelve mirando esto en el panel. */
+    const r = validarVenta(venta({
+      items: [{ producto_id: 'p1', nombre: 'Hamburguesa', variante: '', precio: 14500, cantidad: 1, nota: 'Sin cebolla' }],
+    }));
+
+    expect(r.ok).toBe(true);
+    expect(r.venta.items[0].nota).toBe('Sin cebolla');
+  });
+
+  it('sin nota, la línea no lleva el campo', () => {
+    // Para no llenar la base de cadenas vacías.
+    const r = validarVenta(VENTA);
+    expect(r.venta.items[0].nota).toBeUndefined();
+  });
+});

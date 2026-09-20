@@ -87,7 +87,22 @@ export default function PantallaCliente() {
           <span className="text-7xl font-black tabular-nums leading-none">{pesos(estado.total || 0)}</span>
         </div>
 
-        {estado.modo === 'pago' && (estado.recibido ?? 0) > 0 && (
+        {/* Mientras se está pagando por partes, lo que el cliente necesita ver
+            es cuánto le falta, no cuánto lleva entregado. Pagar cincuenta mil
+            en dos veces sin ver el saldo bajar es pedirle que confíe, y esta
+            pantalla existe justamente para que no tenga que hacerlo. */}
+        {estado.modo === 'pago' && (estado.falta ?? 0) > 0 && (
+          <div className="mt-4 flex items-end justify-between">
+            <span className="text-xl text-slate-500">
+              Entregado {pesos(estado.recibido || 0)}
+            </span>
+            <span className="text-5xl font-black tabular-nums text-amber-600">
+              Falta {pesos(estado.falta || 0)}
+            </span>
+          </div>
+        )}
+
+        {estado.modo === 'pago' && (estado.falta ?? 0) === 0 && (estado.recibido ?? 0) > 0 && (
           <div className="mt-4 flex items-end justify-between text-slate-500">
             <span className="text-xl">Recibido {pesos(estado.recibido || 0)}</span>
             <span className="text-3xl font-black tabular-nums text-slate-900">

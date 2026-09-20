@@ -78,12 +78,18 @@ function validarVenta(cuerpo) {
       ? valoresDelId
       : (linea.variante ? [String(linea.variante)] : []);
 
+    /* Cómo lo pidió el cliente. Llega al panel porque una devolución de
+       "la hamburguesa que pedí sin cebolla vino con cebolla" se resuelve
+       mirando esto. */
+    const nota = String(linea?.nota || '').trim().slice(0, 120);
+
     items.push({
       productId,
       name: nombre,
       variante: valores.length ? { valores, sku: '' } : undefined,
       price: precio,
       quantity: cantidad,
+      nota: nota || undefined,
     });
   }
 
@@ -92,12 +98,38 @@ function validarVenta(cuerpo) {
     return { ok: false, error: 'La venta no trae un total válido' };
   }
 
+  /* El descuento, ya autorizado por un supervisor en la caja. Aquí no se
+     vuelve a autorizar —eso pasó en el mostrador y quedó en la auditoría de la
+     terminal— pero sí se comprueba que sea una cifra posible. */
+  const descuento = Math.max(0, Number(cuerpo.descuento) || 0);
+  if (descuento > Math.round(suma)) {
+    return { ok: false, error: `El descuento (${descuento}) es mayor que la venta (${suma})` };
+  }
+
   /* Que el total no cuadre con sus líneas no es una diferencia de precios: es
      un payload corrupto o un error de cálculo. Se rechaza para que no entre a
-     los informes del negocio como una venta "rara" que nadie explica. */
-  if (Math.round(suma) !== Math.round(total)) {
-    return { ok: false, error: `El total (${total}) no cuadra con las líneas (${suma})` };
+     los informes del negocio como una venta "rara" que nadie explica.
+
+     El descuento entra en la cuenta: sin esto, toda venta con descuento se
+     rechazaba con un 400 y la cola de esa caja la apartaba para siempre. */
+  if (Math.round(suma) - descuento !== Math.round(total)) {
+    return {
+      ok: false,
+      error: `El total (${total}) no cuadra con las líneas (${suma}) menos el descuento (${descuento})`,
+    };
   }
+
+  /* Con qué se pagó. Puede ser más de un medio: "treinta mil en efectivo y el
+     resto con tarjeta". El cuadre de caja del panel depende de esto, no del
+     resumen `medio_pago`, que con pago mixto solo dice "mixto". */
+  const pagos = (Array.isArray(cuerpo.pagos) ? cuerpo.pagos : [])
+    .map((p) => ({
+      metodo: String(p?.metodo || '').trim().toLowerCase().slice(0, 30),
+      monto: Math.max(0, Number(p?.monto) || 0),
+      referencia: String(p?.referencia || '').trim().slice(0, 40),
+    }))
+    .filter((p) => p.metodo && p.monto > 0)
+    .slice(0, 10);
 
   return {
     ok: true,
@@ -107,6 +139,10 @@ function validarVenta(cuerpo) {
       total,
       iva: Math.max(0, Number(cuerpo.iva) || 0),
       medioPago: String(cuerpo.medio_pago || 'efectivo').slice(0, 30),
+      pagos,
+      bruto: Math.round(suma),
+      descuento,
+      descuentoMotivo: String(cuerpo.descuento_motivo || '').trim().slice(0, 120),
       cajero: String(cuerpo.cajero || '').slice(0, 80),
       turnoId: String(cuerpo.turno_id || '').slice(0, 64),
       creadaEn: cuerpo.creada_en ? new Date(cuerpo.creada_en) : new Date(),

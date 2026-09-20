@@ -27,6 +27,25 @@ export interface LineaVenta {
   variante: string;
   precio: number;
   cantidad: number;
+  /** Cómo lo pidió el cliente: "sin cebolla", "término tres cuartos". */
+  nota?: string;
+}
+
+/** Los medios que acepta la caja. El orden es el que se ve en pantalla. */
+export const MEDIOS = ['efectivo', 'tarjeta', 'transferencia'] as const;
+export type Medio = (typeof MEDIOS)[number];
+
+/**
+ * Un pago. Una venta puede tener varios.
+ *
+ * El pago mixto —parte en efectivo y el resto con tarjeta— es diario en
+ * mostrador. Cada línea es un cobro real, y su suma tiene que alcanzar el
+ * total; el reparto y el vuelto los decide Rust, no esta pantalla.
+ */
+export interface PagoDetalle {
+  metodo: Medio | string;
+  monto: number;
+  referencia?: string;
 }
 
 export interface NuevaVenta {
@@ -36,6 +55,33 @@ export interface NuevaVenta {
   cajero: string;
   turno_id: string;
   iva_porcentaje: number;
+  /** Vacío = un solo medio, el de `medio_pago`. */
+  pagos?: PagoDetalle[];
+  /** Lo que se le rebaja al total. Ya autorizado por un supervisor. */
+  descuento?: number;
+  descuento_motivo?: string;
+}
+
+/**
+ * Cuánto falta por cobrar y cuánto hay que devolver.
+ *
+ * Es la misma regla que aplica Rust al guardar, repetida aquí solo para pintar
+ * la pantalla mientras el cajero teclea. **No decide nada**: la venta la valida
+ * el núcleo, y si las dos cuentas no coincidieran, la que manda es la de allá.
+ */
+export function repartir(total: number, pagos: PagoDetalle[]): { falta: number; vuelto: number } {
+  const suma = (cuales: PagoDetalle[]) => cuales.reduce((t, p) => t + (p.monto || 0), 0);
+
+  const noEfectivo = suma(pagos.filter((p) => p.metodo !== 'efectivo'));
+  const efectivo = suma(pagos.filter((p) => p.metodo === 'efectivo'));
+
+  // Lo que no es efectivo ya está cobrado y no admite vuelto.
+  const porCubrir = Math.max(0, total - noEfectivo);
+
+  return {
+    falta: Math.max(0, porCubrir - efectivo),
+    vuelto: Math.max(0, efectivo - porCubrir),
+  };
 }
 
 export interface VentaRegistrada {
@@ -63,12 +109,26 @@ const DEMO: Producto[] = [
   { id: 'd6', nombre: 'Torta de chocolate', precio: 8900, categoria: 'Postres', variante: '' },
 ];
 
-export async function catalogo(busqueda: string): Promise<Producto[]> {
+export async function catalogo(busqueda: string, categoria = ''): Promise<Producto[]> {
   if (!enTauri) {
     const b = busqueda.trim().toLowerCase();
-    return DEMO.filter((p) => !b || p.nombre.toLowerCase().includes(b));
+    return DEMO.filter(
+      (p) => (!b || p.nombre.toLowerCase().includes(b)) && (!categoria || p.categoria === categoria),
+    );
   }
-  return invoke<Producto[]>('catalogo', { busqueda });
+  return invoke<Producto[]>('catalogo', { busqueda, categoria: categoria || null });
+}
+
+/**
+ * Las categorías con algo que vender.
+ *
+ * Alimentan las pestañas de la rejilla. Buscar por texto funciona bien con
+ * veinte productos y deja de funcionar con cuarenta platos en carta: el cajero
+ * no se sabe los nombres exactos y el lector no sirve para un plato.
+ */
+export async function categorias(): Promise<string[]> {
+  if (!enTauri) return [...new Set(DEMO.map((p) => p.categoria))].sort();
+  return invoke<string[]>('categorias');
 }
 
 export interface Voucher {
@@ -431,6 +491,8 @@ export interface EstadoCliente {
   total?: number;
   recibido?: number;
   vuelto?: number;
+  /** Lo que todavía falta por cubrir, cuando se está pagando por partes. */
+  falta?: number;
 }
 
 export async function abrirPantallaCliente(): Promise<void> {

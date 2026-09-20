@@ -206,6 +206,7 @@ mod pruebas {
                     variante: String::new(),
                     precio: Pesos(1_000),
                     cantidad: 1,
+                    nota: String::new(),
                 }],
                 medio_pago: "efectivo".into(),
                 recibido: Pesos(1_000),
@@ -213,6 +214,9 @@ mod pruebas {
                 turno_id: turno.id.clone(),
                 iva_porcentaje: 0,
                 pago: None,
+                descuento: Pesos::CERO,
+                descuento_motivo: String::new(),
+                pagos: vec![],
             };
             venta::registrar(&mut c, &v, AHORA).unwrap();
         }

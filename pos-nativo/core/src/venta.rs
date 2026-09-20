@@ -21,11 +21,41 @@ pub struct LineaVenta {
     pub variante: String,
     pub precio: Pesos,
     pub cantidad: i64,
+    /// Cómo lo pidió el cliente: "sin cebolla", "término tres cuartos".
+    ///
+    /// Va en la línea y no en la venta porque en una mesa de cuatro cada plato
+    /// se pide distinto, y una nota al pie de la comanda no le dice al cocinero
+    /// cuál de las tres hamburguesas es la que va sin salsa.
+    #[serde(default)]
+    pub nota: String,
 }
 
 impl LineaVenta {
     pub fn total(&self) -> Option<Pesos> {
         self.precio.por(self.cantidad)
+    }
+}
+
+/// Con qué se pagó. Una venta puede tener varios.
+///
+/// El pago mixto —parte en efectivo, el resto con tarjeta— es diario en
+/// mostrador. Antes solo cabía un medio por venta, y el cajero terminaba
+/// registrando el total en uno solo: el arqueo cuadraba de milagro y el cuadre
+/// de tarjetas del panel no cuadraba nunca.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PagoDetalle {
+    /// "efectivo", "tarjeta", "transferencia". En minúsculas al normalizar.
+    pub metodo: String,
+    pub monto: Pesos,
+    /// El voucher o la aprobación, cuando el medio la tiene.
+    #[serde(default)]
+    pub referencia: String,
+}
+
+impl PagoDetalle {
+    /// Solo el efectivo admite que sobre. Un datáfono cobra el monto exacto.
+    pub fn es_efectivo(&self) -> bool {
+        self.metodo.eq_ignore_ascii_case("efectivo")
     }
 }
 
@@ -46,6 +76,85 @@ pub struct NuevaVenta {
     /// El voucher, cuando se cobró con tarjeta.
     #[serde(default)]
     pub pago: Option<crate::pagos::RespuestaPago>,
+    /// Los medios con los que se pagó.
+    ///
+    /// Lo que se le rebaja al total. Ya viene autorizado por un supervisor:
+    /// quien decide si se puede es la pantalla, aquí solo se aplica y se deja
+    /// escrito.
+    #[serde(default)]
+    pub descuento: Pesos,
+    #[serde(default)]
+    pub descuento_motivo: String,
+    /// Vacío significa "como siempre": se arma uno solo con `medio_pago` y
+    /// `recibido`. Eso mantiene andando todo lo que ya existía —incluida
+    /// cualquier caja que no se haya actualizado— sin una segunda ruta de
+    /// código que mantener.
+    #[serde(default)]
+    pub pagos: Vec<PagoDetalle>,
+}
+
+impl NuevaVenta {
+    /// Los pagos, siempre como lista, venga la venta de donde venga.
+    /// Necesita el total porque el monto de un pago que no es efectivo no está
+    /// escrito en ninguna parte de la venta antigua: el datáfono cobró el total
+    /// exacto y nadie lo digitó.
+    fn formas_de_pago(&self, total: Pesos) -> Vec<PagoDetalle> {
+        if !self.pagos.is_empty() {
+            return self.pagos.clone();
+        }
+
+        let metodo = if self.medio_pago.is_empty() { "efectivo" } else { &self.medio_pago };
+        let es_efectivo = metodo.eq_ignore_ascii_case("efectivo");
+        let referencia = self
+            .pago
+            .as_ref()
+            .map(|p| p.codigo_autorizacion.clone())
+            .unwrap_or_default();
+
+        /* Con efectivo, el monto es lo que el cajero digitó haber recibido.
+           Cero significa "no lo contó porque el cliente pagó justo", así que
+           vale el total: si valiera cero, la gaveta esperaría esa plata de
+           menos al cerrar el turno y el cajero cargaría con un faltante que no
+           es suyo. Con cualquier otro medio el aparato cobró la cifra exacta. */
+        let monto = match (es_efectivo, self.recibido > Pesos::CERO) {
+            (true, true) => self.recibido,
+            _ => total,
+        };
+
+        vec![PagoDetalle { metodo: metodo.to_string(), monto, referencia }]
+    }
+}
+
+/// Qué falta, qué sobra y si la venta se puede cerrar.
+///
+/// El orden importa: primero se descuenta lo que no es efectivo, porque eso ya
+/// está cobrado y no admite vuelto. Lo que quede es lo que el cliente tiene que
+/// poner en billetes, y solo sobre eso se calcula el cambio.
+pub fn repartir(total: Pesos, pagos: &[PagoDetalle]) -> Result<Pesos, ErrorVenta> {
+    let mut no_efectivo = Pesos::CERO;
+    let mut efectivo = Pesos::CERO;
+
+    for p in pagos {
+        if p.monto < Pesos::CERO {
+            return Err(ErrorVenta::PagoInvalido);
+        }
+        let destino = if p.es_efectivo() { &mut efectivo } else { &mut no_efectivo };
+        *destino = destino.mas(p.monto).ok_or(ErrorVenta::Desbordado)?;
+    }
+
+    /* Un datáfono no devuelve cambio. Si alguien digitó de más, es un error de
+       digitación que hay que atrapar aquí y no al cuadrar el mes. */
+    if no_efectivo > total {
+        return Err(ErrorVenta::PagoExcedido { total, cobrado: no_efectivo });
+    }
+
+    let falta = total.menos(no_efectivo).ok_or(ErrorVenta::Desbordado)?;
+
+    if efectivo < falta {
+        return Err(ErrorVenta::PagoInsuficiente { total: falta, recibido: efectivo });
+    }
+
+    efectivo.menos(falta).ok_or(ErrorVenta::Desbordado)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -66,6 +175,12 @@ pub enum ErrorVenta {
     CantidadInvalida,
     Desbordado,
     PagoInsuficiente { total: Pesos, recibido: Pesos },
+    /// Se digitó con tarjeta más de lo que vale la venta. No hay vuelto posible.
+    PagoExcedido { total: Pesos, cobrado: Pesos },
+    /// Un monto negativo. Casi siempre es un signo de menos que se coló.
+    PagoInvalido,
+    /// Un descuento mayor que la venta. Dejaría un total negativo.
+    DescuentoExcesivo { bruto: Pesos, descuento: Pesos },
     Base(rusqlite::Error),
 }
 
@@ -80,6 +195,13 @@ impl std::fmt::Display for ErrorVenta {
             ErrorVenta::Desbordado => write!(f, "El total es demasiado grande, revisa las cantidades"),
             ErrorVenta::PagoInsuficiente { total, recibido } => {
                 write!(f, "Con {recibido} no alcanza: el total es {total}")
+            }
+            ErrorVenta::PagoExcedido { total, cobrado } => {
+                write!(f, "Se cobraron {cobrado} y la venta es de {total}: revisa el monto")
+            }
+            ErrorVenta::PagoInvalido => write!(f, "Hay un monto de pago inválido"),
+            ErrorVenta::DescuentoExcesivo { bruto, descuento } => {
+                write!(f, "El descuento de {descuento} es mayor que la venta de {bruto}")
             }
             ErrorVenta::Base(e) => write!(f, "No se pudo guardar la venta: {e}"),
         }
@@ -114,7 +236,18 @@ pub fn registrar(
     venta: &NuevaVenta,
     ahora: &str,
 ) -> Result<VentaRegistrada, ErrorVenta> {
-    let total = total_de(&venta.items)?;
+    let bruto = total_de(&venta.items)?;
+
+    /* El descuento se rebaja aquí y no en la pantalla: si el total llegara ya
+       rebajado desde el webview, un descuento sería indistinguible de un precio
+       cambiado a mano, y la auditoría no tendría contra qué comparar. */
+    if venta.descuento < Pesos::CERO {
+        return Err(ErrorVenta::PagoInvalido);
+    }
+    if venta.descuento > bruto {
+        return Err(ErrorVenta::DescuentoExcesivo { bruto, descuento: venta.descuento });
+    }
+    let total = bruto.menos(venta.descuento).ok_or(ErrorVenta::Desbordado)?;
 
     /* Toda venta pertenece a un turno abierto. Es lo que hace que el arqueo
        signifique algo: sin esto, las ventas quedarían huérfanas y el cierre no
@@ -128,15 +261,23 @@ pub fn registrar(
         return Err(ErrorVenta::SinTurno);
     }
 
-    /* El efectivo es lo único donde el pago puede quedarse corto: con tarjeta o
-       transferencia el monto lo define el datáfono, no el cajero. */
-    let vuelto = if venta.medio_pago == "efectivo" && venta.recibido > Pesos::CERO {
-        Pesos::vuelto(total, venta.recibido).ok_or(ErrorVenta::PagoInsuficiente {
-            total,
-            recibido: venta.recibido,
-        })?
+    /* Qué se pagó y con qué. Una sola función decide esto para la venta de un
+       solo medio y para la mixta: si fueran dos caminos, el día que cambie la
+       regla del vuelto cambiaría en uno solo. */
+    let formas = venta.formas_de_pago(total);
+    let vuelto = repartir(total, &formas)?;
+
+    /* `medio_pago` se queda como estaba, porque es lo que hace legible un
+       listado de ventas sin abrir cada una. Con más de un medio pasa a "mixto",
+       y el detalle real vive en `venta_pagos`. */
+    let medio_resumen: String = if formas.len() > 1 {
+        "mixto".to_string()
     } else {
-        Pesos::CERO
+        formas
+            .first()
+            .map(|p| p.metodo.to_lowercase())
+            .filter(|m| !m.is_empty())
+            .unwrap_or_else(|| "efectivo".to_string())
     };
 
     let (_base, iva) = total.desglosar_iva(venta.iva_porcentaje);
@@ -169,8 +310,9 @@ pub fn registrar(
 
     tx.execute(
         "INSERT INTO ventas (id, consecutivo, total, iva, recibido, vuelto, medio_pago, cajero, turno_id, creada_en,
-                             pago_autorizacion, pago_ultimos4, pago_franquicia)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+                             pago_autorizacion, pago_ultimos4, pago_franquicia,
+                             bruto, descuento, descuento_motivo)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
         params![
             id,
             consecutivo,
@@ -178,21 +320,36 @@ pub fn registrar(
             iva.0,
             venta.recibido.0,
             vuelto.0,
-            if venta.medio_pago.is_empty() { "efectivo" } else { &venta.medio_pago },
+            medio_resumen,
             venta.cajero,
             venta.turno_id,
             ahora,
             autorizacion,
             ultimos4,
-            franquicia
+            franquicia,
+            bruto.0,
+            venta.descuento.0,
+            venta.descuento_motivo
         ],
     )?;
 
     for (i, item) in venta.items.iter().enumerate() {
         tx.execute(
-            "INSERT INTO venta_items (venta_id, linea, producto_id, nombre, variante, precio, cantidad)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-            params![id, i as i64 + 1, item.producto_id, item.nombre, item.variante, item.precio.0, item.cantidad],
+            "INSERT INTO venta_items (venta_id, linea, producto_id, nombre, variante, precio, cantidad, nota)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![id, i as i64 + 1, item.producto_id, item.nombre, item.variante, item.precio.0, item.cantidad, item.nota],
+        )?;
+    }
+
+    /* Los pagos, dentro de la misma transacción que la venta. Si quedaran
+       fuera, una caída entre los dos escritos dejaría una venta cobrada sin
+       registro de con qué se pagó: el arqueo la contaría como efectivo y la
+       gaveta no tendría el dinero. */
+    for (i, p) in formas.iter().enumerate() {
+        tx.execute(
+            "INSERT INTO venta_pagos (venta_id, linea, metodo, monto, referencia)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![id, i as i64 + 1, p.metodo.to_lowercase(), p.monto.0, p.referencia],
         )?;
     }
 
@@ -204,7 +361,11 @@ pub fn registrar(
         "consecutivo": consecutivo,
         "total": total.0,
         "iva": iva.0,
-        "medio_pago": venta.medio_pago,
+        "medio_pago": medio_resumen,
+        "pagos": formas,
+        "bruto": bruto.0,
+        "descuento": venta.descuento.0,
+        "descuento_motivo": venta.descuento_motivo,
         "cajero": venta.cajero,
         "turno_id": venta.turno_id,
         "creada_en": ahora,
@@ -244,13 +405,27 @@ pub struct VentaCompleta {
     pub items: Vec<LineaVenta>,
     pub pago_autorizacion: String,
     pub pago_ultimos4: String,
+    /// Lo que valía antes del descuento. Igual al total si no hubo.
+    #[serde(default)]
+    pub bruto: Pesos,
+    #[serde(default)]
+    pub descuento: Pesos,
+    #[serde(default)]
+    pub descuento_motivo: String,
+    /// Con qué se pagó. Una sola entrada en la venta corriente.
+    ///
+    /// La reimpresión tiene que poder decir "treinta mil en efectivo y veinte
+    /// con tarjeta": es justo la tirilla que alguien vuelve a pedir cuando no
+    /// le cuadra un gasto.
+    #[serde(default)]
+    pub pagos: Vec<PagoDetalle>,
 }
 
 /// Relee una venta con sus líneas.
 pub fn detalle(conexion: &Connection, venta_id: &str) -> Result<Option<VentaCompleta>> {
     let base = conexion.query_row(
         "SELECT id, consecutivo, total, iva, recibido, vuelto, medio_pago, cajero, creada_en,
-                pago_autorizacion, pago_ultimos4
+                pago_autorizacion, pago_ultimos4, bruto, descuento, descuento_motivo
          FROM ventas WHERE id = ?1",
         [venta_id],
         |f| {
@@ -267,6 +442,10 @@ pub fn detalle(conexion: &Connection, venta_id: &str) -> Result<Option<VentaComp
                 items: vec![],
                 pago_autorizacion: f.get(9)?,
                 pago_ultimos4: f.get(10)?,
+                bruto: Pesos(f.get(11)?),
+                descuento: Pesos(f.get(12)?),
+                descuento_motivo: f.get(13)?,
+                pagos: vec![],
             })
         },
     );
@@ -278,7 +457,7 @@ pub fn detalle(conexion: &Connection, venta_id: &str) -> Result<Option<VentaComp
     };
 
     let mut consulta = conexion.prepare(
-        "SELECT producto_id, nombre, variante, precio, cantidad
+        "SELECT producto_id, nombre, variante, precio, cantidad, nota
          FROM venta_items WHERE venta_id = ?1 ORDER BY linea",
     )?;
     let filas = consulta.query_map([venta_id], |f| {
@@ -288,10 +467,24 @@ pub fn detalle(conexion: &Connection, venta_id: &str) -> Result<Option<VentaComp
             variante: f.get(2)?,
             precio: Pesos(f.get(3)?),
             cantidad: f.get(4)?,
+            nota: f.get(5)?,
         })
     })?;
 
     completa.items = filas.collect::<Result<Vec<_>>>()?;
+
+    let mut pagos = conexion.prepare(
+        "SELECT metodo, monto, referencia FROM venta_pagos WHERE venta_id = ?1 ORDER BY linea",
+    )?;
+    let cobros = pagos.query_map([venta_id], |f| {
+        Ok(PagoDetalle {
+            metodo: f.get(0)?,
+            monto: Pesos(f.get(1)?),
+            referencia: f.get(2)?,
+        })
+    })?;
+
+    completa.pagos = cobros.collect::<Result<Vec<_>>>()?;
     Ok(Some(completa))
 }
 
@@ -353,6 +546,7 @@ mod pruebas {
             variante: String::new(),
             precio: Pesos(precio),
             cantidad,
+            nota: String::new(),
         }
     }
 
@@ -373,6 +567,9 @@ mod pruebas {
             turno_id: turno_id.into(),
             iva_porcentaje: 19,
             pago: None,
+            descuento: Pesos::CERO,
+            descuento_motivo: String::new(),
+            pagos: vec![],
         }
     }
 
@@ -529,4 +726,301 @@ mod pruebas {
         assert_eq!(json["items"][0]["cantidad"], 2);
         assert_eq!(json["turno_id"], t, "la nube tiene que saber de qué turno salió");
     }
+
+    fn efectivo(monto: i64) -> PagoDetalle {
+        PagoDetalle { metodo: "efectivo".into(), monto: Pesos(monto), referencia: String::new() }
+    }
+
+    fn tarjeta(monto: i64) -> PagoDetalle {
+        PagoDetalle { metodo: "tarjeta".into(), monto: Pesos(monto), referencia: "A1B2".into() }
+    }
+
+    /* El reparto, sin tocar la base. Es la regla que decide si una venta se
+       puede cerrar y cuánto cambio sale de la gaveta, así que se prueba sola. */
+    mod reparto {
+        use super::*;
+
+        #[test]
+        fn treinta_en_efectivo_y_el_resto_con_tarjeta() {
+            // El caso que motivó todo esto.
+            let vuelto = repartir(Pesos(50_000), &[efectivo(30_000), tarjeta(20_000)]).unwrap();
+            assert_eq!(vuelto, Pesos::CERO);
+        }
+
+        #[test]
+        fn el_cambio_sale_solo_de_la_parte_en_efectivo() {
+            /* Tarjeta 20.000 y el cliente pone 50.000 en billetes sobre una
+               venta de 60.000: faltan 40.000 en efectivo, así que el cambio es
+               10.000. Es la cuenta que el cajero hace de cabeza y en la que se
+               equivoca con gente esperando. */
+            let vuelto = repartir(Pesos(60_000), &[tarjeta(20_000), efectivo(50_000)]).unwrap();
+            assert_eq!(vuelto, Pesos(10_000));
+        }
+
+        #[test]
+        fn no_se_cierra_una_venta_a_la_que_le_falta_plata() {
+            let r = repartir(Pesos(50_000), &[efectivo(10_000), tarjeta(20_000)]);
+            assert!(matches!(r, Err(ErrorVenta::PagoInsuficiente { .. })));
+        }
+
+        #[test]
+        fn un_datafono_no_devuelve_cambio() {
+            /* Digitar 60.000 en el datáfono para una venta de 50.000 no es un
+               pago con vuelto: es un error de digitación, y al cliente le
+               cobraron diez mil de más. Tiene que saltar aquí, no al cuadrar
+               el mes. */
+            let r = repartir(Pesos(50_000), &[tarjeta(60_000)]);
+            assert!(matches!(r, Err(ErrorVenta::PagoExcedido { .. })));
+        }
+
+        #[test]
+        fn dos_tarjetas_que_suman_exacto_pasan() {
+            // Tarjeta del cliente y tarjeta del acompañante, a medias.
+            let vuelto = repartir(Pesos(50_000), &[tarjeta(25_000), tarjeta(25_000)]).unwrap();
+            assert_eq!(vuelto, Pesos::CERO);
+        }
+
+        #[test]
+        fn un_monto_negativo_no_pasa() {
+            let r = repartir(Pesos(50_000), &[efectivo(60_000), efectivo(-10_000)]);
+            assert!(matches!(r, Err(ErrorVenta::PagoInvalido)));
+        }
+
+        #[test]
+        fn un_pago_de_cero_no_paga_nada() {
+            /* Aquí cero es cero. Que el cajero no haya digitado cuánto recibió
+               es otra cosa y se resuelve antes, al armar las formas de pago:
+               esta función solo ve montos ya resueltos y no tiene por qué
+               adivinar intenciones. */
+            let r = repartir(Pesos(50_000), &[efectivo(0)]);
+            assert!(matches!(r, Err(ErrorVenta::PagoInsuficiente { .. })));
+        }
+    }
+
+    #[test]
+    fn el_efectivo_sin_digitar_cuenta_completo_en_la_gaveta() {
+        /* La venta de toda la vida: efectivo, el cliente paga justo y el cajero
+           no digita nada. Ese billete entra a la gaveta igual, así que la venta
+           tiene que quedar registrada como cincuenta mil en efectivo.
+
+           Si contara cero, al cerrar el turno la caja esperaría cincuenta mil
+           de menos y el cajero respondería por un faltante que no existe. */
+        let (mut c, turno) = caja();
+        let mut v = venta_de(vec![item("Almuerzo", 50_000, 1)], &turno);
+        v.medio_pago = "efectivo".into();
+        v.recibido = Pesos::CERO;
+
+        let r = registrar(&mut c, &v, AHORA).unwrap();
+        assert_eq!(r.vuelto, Pesos::CERO);
+
+        let en_gaveta: i64 = c
+            .query_row(
+                "SELECT SUM(monto) FROM venta_pagos WHERE venta_id = ?1 AND metodo = 'efectivo'",
+                [&r.id],
+                |f| f.get(0),
+            )
+            .unwrap();
+        assert_eq!(en_gaveta, 50_000);
+    }
+
+    #[test]
+    fn una_venta_mixta_guarda_sus_dos_pagos() {
+        let (mut c, turno) = caja();
+        let mut v = venta_de(vec![item("Almuerzo", 50_000, 1)], &turno);
+        v.pagos = vec![efectivo(30_000), tarjeta(20_000)];
+
+        let r = registrar(&mut c, &v, AHORA).unwrap();
+
+        let cuantos: i64 = c
+            .query_row("SELECT COUNT(*) FROM venta_pagos WHERE venta_id = ?1", [&r.id], |f| f.get(0))
+            .unwrap();
+        assert_eq!(cuantos, 2);
+
+        let suma: i64 = c
+            .query_row("SELECT SUM(monto) FROM venta_pagos WHERE venta_id = ?1", [&r.id], |f| f.get(0))
+            .unwrap();
+        assert_eq!(suma, 50_000);
+    }
+
+    #[test]
+    fn el_listado_de_ventas_dice_mixto() {
+        /* `medio_pago` es lo que se lee de un vistazo en un listado. Con dos
+           medios no puede decir "efectivo", porque quien lea el listado creería
+           que esa plata está en la gaveta. */
+        let (mut c, turno) = caja();
+        let mut v = venta_de(vec![item("Almuerzo", 50_000, 1)], &turno);
+        v.pagos = vec![efectivo(30_000), tarjeta(20_000)];
+
+        let r = registrar(&mut c, &v, AHORA).unwrap();
+
+        let medio: String = c
+            .query_row("SELECT medio_pago FROM ventas WHERE id = ?1", [&r.id], |f| f.get(0))
+            .unwrap();
+        assert_eq!(medio, "mixto");
+    }
+
+    #[test]
+    fn la_venta_de_un_solo_medio_no_dice_mixto() {
+        // La de siempre tiene que seguir leyéndose igual.
+        let (mut c, turno) = caja();
+        let r = registrar(&mut c, &venta_de(vec![item("Café", 3_000, 1)], &turno), AHORA).unwrap();
+
+        let medio: String = c
+            .query_row("SELECT medio_pago FROM ventas WHERE id = ?1", [&r.id], |f| f.get(0))
+            .unwrap();
+        assert_eq!(medio, "efectivo");
+    }
+
+    #[test]
+    fn los_pagos_viajan_a_la_nube() {
+        /* Si el detalle se quedara en la caja, el panel vería una venta "mixta"
+           sin saber cuánto fue en efectivo: el cuadre de tarjetas del negocio
+           dependería de ir terminal por terminal. */
+        let (mut c, turno) = caja();
+        let mut v = venta_de(vec![item("Almuerzo", 50_000, 1)], &turno);
+        v.pagos = vec![efectivo(30_000), tarjeta(20_000)];
+
+        registrar(&mut c, &v, AHORA).unwrap();
+
+        let payload: String = c
+            .query_row("SELECT payload FROM outbox WHERE entidad = 'venta'", [], |f| f.get(0))
+            .unwrap();
+        let leido: serde_json::Value = serde_json::from_str(&payload).unwrap();
+
+        assert_eq!(leido["medio_pago"], "mixto");
+        assert_eq!(leido["pagos"].as_array().unwrap().len(), 2);
+        assert_eq!(leido["pagos"][0]["monto"], 30_000);
+    }
+
+    #[test]
+    fn una_venta_mixta_a_la_que_le_falta_plata_no_entra() {
+        /* Y lo que importa: no deja rastro. Si la venta se guardara y solo
+           fallara el pago, quedaría una venta cobrada que nadie pagó. */
+        let (mut c, turno) = caja();
+        let mut v = venta_de(vec![item("Almuerzo", 50_000, 1)], &turno);
+        v.pagos = vec![efectivo(10_000), tarjeta(20_000)];
+
+        assert!(registrar(&mut c, &v, AHORA).is_err());
+
+        let ventas: i64 = c.query_row("SELECT COUNT(*) FROM ventas", [], |f| f.get(0)).unwrap();
+        assert_eq!(ventas, 0);
+    }
+
+    #[test]
+    fn la_nota_del_cliente_llega_hasta_la_reimpresion() {
+        /* "Sin cebolla" tiene que sobrevivir a que se limpie el carrito: si el
+           plato vuelve, la tirilla es la prueba de qué se pidió. */
+        let (mut c, turno) = caja();
+        let mut linea = item("Hamburguesa", 25_000, 1);
+        linea.nota = "Sin cebolla, término tres cuartos".into();
+
+        let r = registrar(&mut c, &venta_de(vec![linea], &turno), AHORA).unwrap();
+        let releida = detalle(&c, &r.id).unwrap().unwrap();
+
+        assert_eq!(releida.items[0].nota, "Sin cebolla, término tres cuartos");
+    }
+
+
+    #[test]
+    fn el_descuento_se_rebaja_del_total() {
+        let (mut c, turno) = caja();
+        let mut v = venta_de(vec![item("Almuerzo", 50_000, 1)], &turno);
+        v.descuento = Pesos(5_000);
+        v.descuento_motivo = "Cliente frecuente".into();
+
+        let r = registrar(&mut c, &v, AHORA).unwrap();
+
+        assert_eq!(r.total, Pesos(45_000));
+    }
+
+    #[test]
+    fn la_venta_guarda_cuanto_valia_antes() {
+        /* Sin el bruto, la tirilla no puede decir "antes 50.000, descuento
+           5.000, paga 45.000", y un descuento que no se ve escrito es
+           indistinguible de un precio cambiado a mano. */
+        let (mut c, turno) = caja();
+        let mut v = venta_de(vec![item("Almuerzo", 50_000, 1)], &turno);
+        v.descuento = Pesos(5_000);
+        v.descuento_motivo = "Cliente frecuente".into();
+
+        let r = registrar(&mut c, &v, AHORA).unwrap();
+        let releida = detalle(&c, &r.id).unwrap().unwrap();
+
+        assert_eq!(releida.bruto, Pesos(50_000));
+        assert_eq!(releida.descuento, Pesos(5_000));
+        assert_eq!(releida.total, Pesos(45_000));
+        assert_eq!(releida.descuento_motivo, "Cliente frecuente");
+    }
+
+    #[test]
+    fn no_se_puede_descontar_mas_de_lo_que_vale() {
+        /* Dejaría un total negativo, y un total negativo en una caja significa
+           que la gaveta tiene que poner plata. */
+        let (mut c, turno) = caja();
+        let mut v = venta_de(vec![item("Café", 3_000, 1)], &turno);
+        v.descuento = Pesos(10_000);
+
+        assert!(matches!(
+            registrar(&mut c, &v, AHORA),
+            Err(ErrorVenta::DescuentoExcesivo { .. })
+        ));
+    }
+
+    #[test]
+    fn una_cortesia_completa_si_se_puede() {
+        // Descontar el 100% es un plato de cortesía, y es legítimo.
+        let (mut c, turno) = caja();
+        let mut v = venta_de(vec![item("Postre", 8_000, 1)], &turno);
+        v.descuento = Pesos(8_000);
+        v.descuento_motivo = "Cortesía por la demora".into();
+        v.recibido = Pesos::CERO;
+
+        let r = registrar(&mut c, &v, AHORA).unwrap();
+        assert_eq!(r.total, Pesos::CERO);
+    }
+
+    #[test]
+    fn un_descuento_negativo_no_es_un_recargo() {
+        /* Si pasara, sería la forma de cobrar de más sin que quedara registrado
+           como un precio distinto. */
+        let (mut c, turno) = caja();
+        let mut v = venta_de(vec![item("Café", 3_000, 1)], &turno);
+        v.descuento = Pesos(-5_000);
+
+        assert!(registrar(&mut c, &v, AHORA).is_err());
+    }
+
+    #[test]
+    fn se_paga_sobre_el_total_con_descuento() {
+        /* La cuenta que importa: con 45.000 en la mano alcanza para una venta
+           de 50.000 que tiene 5.000 de descuento. Si el pago se validara contra
+           el bruto, el cajero no podría cerrar la venta. */
+        let (mut c, turno) = caja();
+        let mut v = venta_de(vec![item("Almuerzo", 50_000, 1)], &turno);
+        v.descuento = Pesos(5_000);
+        v.pagos = vec![efectivo(45_000)];
+
+        let r = registrar(&mut c, &v, AHORA).unwrap();
+        assert_eq!(r.vuelto, Pesos::CERO);
+    }
+
+    #[test]
+    fn el_descuento_viaja_a_la_nube() {
+        let (mut c, turno) = caja();
+        let mut v = venta_de(vec![item("Almuerzo", 50_000, 1)], &turno);
+        v.descuento = Pesos(5_000);
+        v.descuento_motivo = "Cliente frecuente".into();
+
+        registrar(&mut c, &v, AHORA).unwrap();
+
+        let payload: String = c
+            .query_row("SELECT payload FROM outbox WHERE entidad = 'venta'", [], |f| f.get(0))
+            .unwrap();
+        let leido: serde_json::Value = serde_json::from_str(&payload).unwrap();
+
+        assert_eq!(leido["bruto"], 50_000);
+        assert_eq!(leido["descuento"], 5_000);
+        assert_eq!(leido["total"], 45_000);
+    }
+
 }

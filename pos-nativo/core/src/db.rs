@@ -196,6 +196,68 @@ const MIGRACIONES: &[&str] = &[
     ALTER TABLE ventas ADD COLUMN pago_ultimos4 TEXT NOT NULL DEFAULT '';
     ALTER TABLE ventas ADD COLUMN pago_franquicia TEXT NOT NULL DEFAULT '';
     "#,
+    // 6 — una venta pagada con dos medios, y lo que el cliente pidió a mano.
+    r#"
+    /* Pago mixto: "treinta mil en efectivo y el resto con tarjeta" es diario en
+       mostrador, y hasta aquí la venta solo admitía un medio.
+
+       Es tabla aparte y no más columnas en `ventas` porque el número de pagos
+       no tiene tope: hay clientes que juntan efectivo, tarjeta y un bono. La
+       columna `medio_pago` de `ventas` se queda —es lo que hace legible un
+       listado de un vistazo— y pasa a guardar "mixto" cuando hay más de uno.
+
+       No lleva llave foránea a `ventas` por accidente: la lleva porque borrar
+       una venta sin borrar sus pagos dejaría plata registrada sin venta, que es
+       exactamente el tipo de fila que descuadra un arqueo sin explicación. */
+    CREATE TABLE venta_pagos (
+        venta_id    TEXT NOT NULL REFERENCES ventas(id) ON DELETE CASCADE,
+        linea       INTEGER NOT NULL,
+        metodo      TEXT NOT NULL,
+        monto       INTEGER NOT NULL,
+        -- El voucher o el número de aprobación, cuando el medio lo tiene.
+        referencia  TEXT NOT NULL DEFAULT '',
+        PRIMARY KEY (venta_id, linea)
+    );
+    CREATE INDEX idx_venta_pagos_metodo ON venta_pagos(metodo);
+
+    /* La nota del ítem: "sin cebolla", "término tres cuartos". En gastronomía
+       no se vende un plato, se vende un plato como lo pidieron, y esa frase
+       tiene que llegar a la cocina o el plato vuelve. */
+    ALTER TABLE venta_items ADD COLUMN nota TEXT NOT NULL DEFAULT '';
+
+    /* Las ventas que ya estaban en la caja se traen a la tabla nueva. Sin esto
+       habría dos formas de saber con qué se pagó —la columna vieja para lo de
+       antes y la tabla para lo de ahora— y el arqueo tendría que conocer las
+       dos. Con el relleno, `venta_pagos` es la única respuesta.
+
+       El monto reproduce lo que hace `formas_de_pago`: en efectivo, lo que el
+       cajero digitó, y el total cuando no digitó nada; en cualquier otro medio,
+       el total. */
+    INSERT INTO venta_pagos (venta_id, linea, metodo, monto, referencia)
+    SELECT id, 1, medio_pago,
+           CASE WHEN medio_pago = 'efectivo' AND recibido > 0 THEN recibido ELSE total END,
+           pago_autorizacion
+    FROM ventas;
+    "#,
+    // 7 — el descuento, rebajado del total y con nombre y apellido.
+    r#"
+    /* Un descuento no es una anotación: cambia lo que el cliente paga. Va en la
+       venta y no en las líneas porque se aplica al total —un 10% sobre la
+       cuenta, una cortesía— y repartirlo por línea obligaría a redondear cuatro
+       veces y a que la suma de las partes no diera el total.
+
+       `bruto` se guarda además del total para que la tirilla pueda decir
+       "antes 50.000, descuento 5.000, paga 45.000": sin el bruto, esa resta no
+       se puede reconstruir después. */
+    ALTER TABLE ventas ADD COLUMN bruto INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE ventas ADD COLUMN descuento INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE ventas ADD COLUMN descuento_motivo TEXT NOT NULL DEFAULT '';
+
+    /* Las ventas que ya existían no tenían descuento, así que su bruto es su
+       total. Sin esto quedarían con bruto cero y cualquier informe que reste
+       las dos cifras vería un descuento del 100%. */
+    UPDATE ventas SET bruto = total WHERE bruto = 0;
+    "#,
 ];
 
 /// Abre (o crea) la base y la deja lista para operar.

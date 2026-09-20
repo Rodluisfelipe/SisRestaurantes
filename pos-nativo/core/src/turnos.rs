@@ -188,11 +188,24 @@ pub fn mover_efectivo(
 /// conteo, el arqueo dejaría de ser ciego y dejaría de medir nada.
 fn esperado_de(conexion: &Connection, turno: &Turno) -> Result<CierreTurno> {
     let (ventas_efectivo, ventas_otros, cuantas): (i64, i64, i64) = conexion.query_row(
+        /* El efectivo sale de `venta_pagos` y no de `medio_pago`: con el pago
+           mixto, una venta de cincuenta mil puede tener treinta en la gaveta y
+           veinte en el datáfono, y mirar solo el resumen la contaría entera de
+           un solo lado. El vuelto se resta porque ese billete volvió a salir.
+
+           `v.vuelto` se suma en la consulta de afuera —una fila por venta— y
+           los pagos en subconsultas, porque unir las dos tablas multiplicaría
+           el vuelto por la cantidad de pagos de cada venta. */
         "SELECT
-            COALESCE(SUM(CASE WHEN medio_pago = 'efectivo' THEN total ELSE 0 END), 0),
-            COALESCE(SUM(CASE WHEN medio_pago != 'efectivo' THEN total ELSE 0 END), 0),
+            COALESCE((SELECT SUM(p.monto) FROM venta_pagos p
+                      JOIN ventas vv ON vv.id = p.venta_id
+                      WHERE vv.turno_id = ?1 AND p.metodo = 'efectivo'), 0)
+              - COALESCE(SUM(v.vuelto), 0),
+            COALESCE((SELECT SUM(p.monto) FROM venta_pagos p
+                      JOIN ventas vv ON vv.id = p.venta_id
+                      WHERE vv.turno_id = ?1 AND p.metodo != 'efectivo'), 0),
             COUNT(*)
-         FROM ventas WHERE turno_id = ?1",
+         FROM ventas v WHERE v.turno_id = ?1",
         [&turno.id],
         |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?)),
     )?;
@@ -295,6 +308,7 @@ mod pruebas {
                 variante: String::new(),
                 precio: Pesos(monto),
                 cantidad: 1,
+                nota: String::new(),
             }],
             medio_pago: medio.into(),
             recibido: if medio == "efectivo" { Pesos(monto) } else { Pesos::CERO },
@@ -302,6 +316,9 @@ mod pruebas {
             turno_id: turno.id.clone(),
             iva_porcentaje: 0,
             pago: None,
+            descuento: Pesos::CERO,
+            descuento_motivo: String::new(),
+            pagos: vec![],
         };
         venta::registrar(c, &v, AHORA).unwrap();
     }
@@ -418,4 +435,85 @@ mod pruebas {
         assert_eq!(cierre.ventas_efectivo, Pesos(10_000), "solo lo suyo");
         assert_eq!(cierre.diferencia, Pesos::CERO);
     }
+
+    #[test]
+    fn la_parte_en_efectivo_de_una_venta_mixta_entra_a_la_gaveta() {
+        /* Cincuenta mil: treinta en billetes y veinte con tarjeta. En la gaveta
+           quedan treinta.
+
+           Esta prueba existe por una regresión concreta: al agregar el pago
+           mixto, el esperado se calculaba mirando `medio_pago`, que en estas
+           ventas dice "mixto" y no "efectivo". Esos treinta mil desaparecían de
+           la cuenta, la caja cerraba con un sobrante de treinta mil y el
+           cajero quedaba señalado por algo que nunca hizo. */
+        let (mut c, t) = caja_con_turno();
+
+        let v = venta::NuevaVenta {
+            items: vec![venta::LineaVenta {
+                producto_id: "p1".into(),
+                nombre: "Almuerzo".into(),
+                variante: String::new(),
+                precio: Pesos(50_000),
+                cantidad: 1,
+                nota: String::new(),
+            }],
+            medio_pago: String::new(),
+            recibido: Pesos::CERO,
+            cajero: "Ana".into(),
+            turno_id: t.id.clone(),
+            iva_porcentaje: 0,
+            pago: None,
+            descuento: Pesos::CERO,
+            descuento_motivo: String::new(),
+            pagos: vec![
+                venta::PagoDetalle { metodo: "efectivo".into(), monto: Pesos(30_000), referencia: String::new() },
+                venta::PagoDetalle { metodo: "tarjeta".into(), monto: Pesos(20_000), referencia: "A1".into() },
+            ],
+        };
+        venta::registrar(&mut c, &v, AHORA).unwrap();
+
+        let cierre = cerrar(&mut c, Pesos(130_000), AHORA).unwrap();
+
+        assert_eq!(cierre.ventas_efectivo, Pesos(30_000));
+        assert_eq!(cierre.ventas_otros, Pesos(20_000));
+        // Fondo 100.000 + 30.000 en billetes = 130.000, y la gaveta tiene eso.
+        assert_eq!(cierre.diferencia, Pesos::CERO);
+    }
+
+    #[test]
+    fn el_vuelto_no_se_queda_en_la_gaveta() {
+        /* Venta de 30.000, el cliente entrega 50.000 y se le devuelven 20.000.
+           En la gaveta quedan 30.000, no 50.000: el pago entra completo y el
+           vuelto vuelve a salir. */
+        let (mut c, t) = caja_con_turno();
+
+        let v = venta::NuevaVenta {
+            items: vec![venta::LineaVenta {
+                producto_id: "p1".into(),
+                nombre: "Café".into(),
+                variante: String::new(),
+                precio: Pesos(30_000),
+                cantidad: 1,
+                nota: String::new(),
+            }],
+            medio_pago: "efectivo".into(),
+            // Entrega 50.000 por una venta de 30.000: se le devuelven 20.000.
+            recibido: Pesos(50_000),
+            cajero: "Ana".into(),
+            turno_id: t.id.clone(),
+            iva_porcentaje: 0,
+            pago: None,
+            descuento: Pesos::CERO,
+            descuento_motivo: String::new(),
+            pagos: vec![],
+        };
+        let r = venta::registrar(&mut c, &v, AHORA).unwrap();
+        assert_eq!(r.vuelto, Pesos(20_000));
+
+        let cierre = cerrar(&mut c, Pesos(130_000), AHORA).unwrap();
+
+        assert_eq!(cierre.ventas_efectivo, Pesos(30_000));
+        assert_eq!(cierre.diferencia, Pesos::CERO);
+    }
+
 }

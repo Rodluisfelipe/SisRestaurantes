@@ -120,20 +120,29 @@ pub struct Producto {
 /// El catálogo sale de SQLite, nunca de la red: es lo que permite abrir la caja
 /// a las 7 de la mañana sin internet.
 #[tauri::command]
-fn catalogo(estado: State<Estado>, busqueda: String) -> Result<Vec<Producto>, String> {
+fn catalogo(
+    estado: State<Estado>,
+    busqueda: String,
+    categoria: Option<String>,
+) -> Result<Vec<Producto>, String> {
     let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
     let patron = format!("%{}%", busqueda.trim());
+    // Vacío = todas. Se filtra en SQL y no en la interfaz porque el límite de
+    // 200 filas se aplica antes: filtrar después dejaría categorías sin nada.
+    let cual = categoria.unwrap_or_default();
 
     let mut consulta = base
         .prepare(
             "SELECT id, nombre, precio, categoria, variante FROM productos
-             WHERE activo = 1 AND (?1 = '%%' OR nombre LIKE ?1 OR sku LIKE ?1)
+             WHERE activo = 1
+               AND (?1 = '%%' OR nombre LIKE ?1 OR sku LIKE ?1)
+               AND (?2 = '' OR categoria = ?2)
              ORDER BY nombre LIMIT 200",
         )
         .map_err(|e| e.to_string())?;
 
     let filas = consulta
-        .query_map([&patron], |f| {
+        .query_map(rusqlite::params![&patron, &cual], |f| {
             Ok(Producto {
                 id: f.get(0)?,
                 nombre: f.get(1)?,
@@ -142,6 +151,30 @@ fn catalogo(estado: State<Estado>, busqueda: String) -> Result<Vec<Producto>, St
                 variante: f.get(4)?,
             })
         })
+        .map_err(|e| e.to_string())?;
+
+    filas.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+/// Las categorías que de verdad tienen algo que vender.
+///
+/// Salen de los productos y no de una tabla aparte: una categoría vacía en
+/// pantalla es una pestaña que el cajero toca y no le muestra nada, y con
+/// cuarenta platos en carta eso pasa seguido.
+#[tauri::command]
+fn categorias(estado: State<Estado>) -> Result<Vec<String>, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+
+    let mut consulta = base
+        .prepare(
+            "SELECT DISTINCT categoria FROM productos
+             WHERE activo = 1 AND categoria != ''
+             ORDER BY categoria",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let filas = consulta
+        .query_map([], |f| f.get::<_, String>(0))
         .map_err(|e| e.to_string())?;
 
     filas.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
@@ -192,13 +225,35 @@ async fn cobrar(
         venta::NuevaVenta { turno_id: turno.id, cajero, ..nueva }
     };
 
-    if nueva.medio_pago == "tarjeta" {
+    /* Cuánto va al datáfono. Con pago mixto **no es el total**: si el cliente
+       pone treinta mil en billetes y veinte con tarjeta, cobrarle el total a la
+       tarjeta le saca cincuenta mil de la cuenta y le deja los billetes en la
+       mano. Es el error más caro que podría cometer esta función, y por eso el
+       monto sale de las líneas de pago y no del medio de la venta. */
+    let al_datafono = {
         let total = venta::total_de(&nueva.items).map_err(|e| e.to_string())?;
-        let (_, iva) = total.desglosar_iva(nueva.iva_porcentaje);
+
+        if !nueva.pagos.is_empty() {
+            let mut suma = Pesos::CERO;
+            for p in nueva.pagos.iter().filter(|p| !p.es_efectivo()) {
+                suma = suma.mas(p.monto).ok_or("El total es demasiado grande")?;
+            }
+            suma
+        } else if nueva.medio_pago == "tarjeta" {
+            total
+        } else {
+            Pesos::CERO
+        }
+    };
+
+    if al_datafono > Pesos::CERO {
+        /* El IVA que se le declara al datáfono es el de la parte que cobra, no
+           el de la venta entera: es lo que va impreso en el voucher. */
+        let (_, iva) = al_datafono.desglosar_iva(nueva.iva_porcentaje);
 
         let solicitud = pagos::SolicitudPago {
             operacion_id: uuid_v7(),
-            monto: total,
+            monto: al_datafono,
             iva,
             referencia: nueva.turno_id.chars().take(8).collect(),
         };
@@ -967,9 +1022,29 @@ fn tirilla_de(negocio: &str, ancho: usize, v: &venta::VentaCompleta, copia: bool
         };
         let total_linea = item.total().unwrap_or(Pesos::CERO);
         t.par(&format!("{} x{}", nombre, item.cantidad), &total_linea.to_string());
+
+        // Lo que pidió el cliente, por si el plato hay que reclamarlo después.
+        if !item.nota.is_empty() {
+            t.linea(&format!("   {}", item.nota));
+        }
     }
 
     t.separador();
+
+    /* El descuento va escrito con el antes y el después. Una tirilla que solo
+       dice "45.000" no le sirve a nadie para reclamar el descuento que le
+       prometieron, ni al dueño para ver cuánto se regaló en el mes. */
+    if v.descuento > Pesos::CERO {
+        t.par("Subtotal", &v.bruto.to_string());
+        t.par(
+            &if v.descuento_motivo.is_empty() {
+                "Descuento".to_string()
+            } else {
+                format!("Dcto: {}", v.descuento_motivo)
+            },
+            &format!("-{}", v.descuento),
+        );
+    }
 
     if v.iva > Pesos::CERO {
         t.par("IVA incluido", &v.iva.to_string());
@@ -977,7 +1052,22 @@ fn tirilla_de(negocio: &str, ancho: usize, v: &venta::VentaCompleta, copia: bool
 
     t.doble(true).par("TOTAL", &v.total.to_string()).doble(false);
 
-    if v.medio_pago == "efectivo" && v.recibido > Pesos::CERO {
+    /* Con pago mixto hay que desglosar: "pagó con mixto" no le dice nada a
+       nadie, y es justo la tirilla que alguien vuelve a mirar cuando no le
+       cuadra un gasto. */
+    if v.pagos.len() > 1 {
+        for p in &v.pagos {
+            let etiqueta = if p.referencia.is_empty() {
+                p.metodo.clone()
+            } else {
+                format!("{} {}", p.metodo, p.referencia)
+            };
+            t.par(&etiqueta, &p.monto.to_string());
+        }
+        if v.vuelto > Pesos::CERO {
+            t.par("Cambio", &v.vuelto.to_string());
+        }
+    } else if v.medio_pago == "efectivo" && v.recibido > Pesos::CERO {
         t.par("Recibido", &v.recibido.to_string());
         t.par("Cambio", &v.vuelto.to_string());
     } else {
@@ -1021,7 +1111,16 @@ fn comanda(ancho: usize, nueva: &venta::NuevaVenta, registrada: &venta::VentaReg
         } else {
             format!("{} ({})", item.nombre, item.variante)
         };
-        t.doble(true).linea(&format!("{} x{}", item.cantidad, nombre)).doble(false);
+        t.doble(true).linea(&format!("{} x{}", item.cantidad, nombre));
+
+        /* La nota va igual de grande que el plato, y a propósito. Es lo que la
+           cocina tiene que leer de reojo desde el otro lado de la plancha, y en
+           letra pequeña se pasa por alto: un "sin cebolla" que no se ve es un
+           plato devuelto y una mesa perdida. */
+        if !item.nota.is_empty() {
+            t.linea(&format!("  >> {}", item.nota.to_uppercase()));
+        }
+        t.doble(false);
     }
 
     t.separador().cortar();
@@ -1143,6 +1242,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             catalogo,
+            categorias,
             cobrar,
             abrir_cajon,
             estado_sync,

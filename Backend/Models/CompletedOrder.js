@@ -109,6 +109,10 @@ const completedOrderSchema = new mongoose.Schema({
       valores: [{ type: String, trim: true, maxlength: 40 }],
       sku: { type: String, trim: true, maxlength: 40, default: '' }
     },
+    /* Cómo lo pidió el cliente: "sin cebolla", "término tres cuartos". Llega
+       de la caja nativa y se guarda porque una devolución de "lo pedí sin
+       cebolla y vino con cebolla" se resuelve mirando esta línea. */
+    nota: { type: String, trim: true, maxlength: 120, default: '' },
     selectedToppings: [{
       groupName: String,
       optionName: String,
@@ -130,6 +134,24 @@ const completedOrderSchema = new mongoose.Schema({
     ultimosCuatro: { type: String, default: '', trim: true, maxlength: 4 },
     franquicia: { type: String, default: '', trim: true, maxlength: 30 }
   },
+
+  /* Con qué se pagó, cuando fue con más de un medio: "treinta mil en efectivo
+     y el resto con tarjeta".
+
+     Va aquí y no en `paymentMethod` porque ese campo es uno solo y con pago
+     mixto solo puede decir "mixto". El cuadre de caja del negocio —cuánto
+     entró en billetes contra cuánto por datáfono— sale de este desglose, no
+     del resumen. Vacío en las ventas de un solo medio. */
+  posPagos: [{
+    metodo: { type: String, trim: true, maxlength: 30 },
+    monto: { type: Number, min: 0 },
+    referencia: { type: String, trim: true, maxlength: 40, default: '' }
+  }],
+
+  /* Por qué se descontó. `discountAmount` ya decía cuánto y nunca por qué, y
+     un descuento sin motivo es indistinguible de un precio mal puesto cuando
+     el dueño revisa el mes. */
+  discountReason: { type: String, trim: true, maxlength: 120, default: '' },
 
   /* Id que generó la caja nativa (UUIDv7) para esta venta.
      Es la llave de idempotencia: el POS reintenta hasta que confirmemos, y sin

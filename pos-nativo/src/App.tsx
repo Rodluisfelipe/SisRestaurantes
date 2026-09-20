@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Banknote, CircleUser, CloudCheck, CloudOff, CreditCard, Inbox, Minus, Monitor,
-  PauseCircle, Plus, Printer, RefreshCw, ScanLine, Trash2, Wallet, X,
+  CircleUser, CloudCheck, CloudOff, Inbox, Minus, Monitor,
+  MessageSquarePlus, PauseCircle, Percent, Plus, Printer, RefreshCw, ScanLine, Trash2, Wallet, X,
 } from 'lucide-react';
 import {
   abrirCajon, abrirPantallaCliente, anularItem, aplicarMarca, catalogo, cerrarPantallaCliente,
-  cobrar, descartarPausada, enTauri, estadoSync, hayPantallaCliente, identidad, infoTerminal,
+  categorias, cobrar, descartarPausada, enTauri, estadoSync, hayPantallaCliente, identidad, infoTerminal,
   listarPausadas, mostrarAlCliente, pausarVenta, pesos, reimprimir, retomarVenta, salir,
-  sincronizar, turnoActivo,
-  type CierreTurno, type Cobro, type EnEspera, type LineaVenta, type Producto, type Turno,
-  type Usuario, type Voucher,
+  registrarDescuento, repartir, sincronizar, turnoActivo,
+  type CierreTurno, type Cobro, type EnEspera, type LineaVenta, type PagoDetalle, type Producto,
+  type Turno, type Usuario,
 } from './nativo';
 import ModalMotivo from './ModalMotivo';
+import CobroMixto from './CobroMixto';
+import NotaItem from './NotaItem';
+import Descuento from './Descuento';
 import PantallaPin from './PantallaPin';
-import CobroTarjeta from './CobroTarjeta';
 import Impresoras from './Impresoras';
 import Nube from './Nube';
 import Autorizar from './Autorizar';
@@ -162,8 +164,10 @@ function Caja({
 }) {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [busqueda, setBusqueda] = useState('');
+  const [rubros, setRubros] = useState<string[]>([]);
+  /** Vacío = todas. */
+  const [rubro, setRubro] = useState('');
   const [carrito, setCarrito] = useState<LineaVenta[]>([]);
-  const [recibido, setRecibido] = useState('');
   const [cobrando, setCobrando] = useState(false);
   const [ultimo, setUltimo] = useState<Cobro | null>(null);
   const [cola, setCola] = useState({ pendientes: 0, apartadas: 0 });
@@ -176,11 +180,13 @@ function Caja({
      número uno de robo hormiga. */
   const [anulando, setAnulando] = useState<{ indice: number; linea: LineaVenta } | null>(null);
   const [conCliente, setConCliente] = useState(false);
-  const [medioPago, setMedioPago] = useState<'efectivo' | 'tarjeta'>('efectivo');
-  /* Mientras esto esté puesto, la caja está esperando el voucher del datáfono.
-     La venta todavía no existe: primero el banco, después el registro. */
-  const [pidiendoVoucher, setPidiendoVoucher] = useState(false);
+  /* Mientras esto esté puesto, la caja está en la pantalla de cobro. La venta
+     todavía no existe: primero se define con qué se paga, después el registro. */
+  const [cobrandoAhora, setCobrandoAhora] = useState(false);
   const [digitaVoucher, setDigitaVoucher] = useState(true);
+  /* Lo que se lleva cobrado en la pantalla de cobro, solo para que el cliente
+     vea su saldo bajar del otro lado del mostrador. */
+  const [vistaPago, setVistaPago] = useState<PagoDetalle[]>([]);
   const [verImpresoras, setVerImpresoras] = useState(false);
   const [verNube, setVerNube] = useState(false);
   /* El aviso de que la tirilla no salió. Va como toast y no como bloqueo: la
@@ -203,6 +209,16 @@ function Caja({
      aunque el cajero siguiera marcando. Con el contador, se mantiene encendida
      mientras la toquen y se apaga 450 ms después del último toque. */
   const [recien, setRecien] = useState({ clave: '', vez: 0 });
+  /* La línea a la que se le está poniendo una nota: "sin cebolla", "bien
+     asado". Es el índice y no la línea, porque lo que se edita es la posición
+     del carrito. */
+  const [anotando, setAnotando] = useState<number | null>(null);
+  /* El descuento va en dos pasos: primero se arma el monto, después lo autoriza
+     un supervisor. Entre los dos vive aquí, sin haberse aplicado todavía. */
+  const [pidiendoDescuento, setPidiendoDescuento] = useState(false);
+  const [porAutorizar, setPorAutorizar] = useState<{ monto: number; detalle: string } | null>(null);
+  /* El descuento ya autorizado, que se rebaja al cobrar. */
+  const [descuento, setDescuento] = useState({ monto: 0, motivo: '' });
 
   useEffect(() => { infoTerminal().then((t) => setDigitaVoucher(t.requiere_digitacion)).catch(() => {}); }, []);
   const buscador = useRef<HTMLInputElement>(null);
@@ -213,8 +229,17 @@ function Caja({
   useEffect(() => { refrescarEspera(); }, []);
 
   useEffect(() => {
-    catalogo(busqueda).then(setProductos).catch(() => setProductos([]));
-  }, [busqueda]);
+    catalogo(busqueda, rubro).then(setProductos).catch(() => setProductos([]));
+  }, [busqueda, rubro]);
+
+  /* Las categorías se piden una vez: cambian cuando baja catálogo nuevo, no
+     mientras el cajero atiende. */
+  useEffect(() => { categorias().then(setRubros).catch(() => {}); }, []);
+
+  /* Buscar por texto manda sobre la pestaña. Si alguien escanea un código
+     estando en "Bebidas" y el producto es de "Postres", tiene que aparecer:
+     el lector nunca se equivoca de categoría, el dedo sí. */
+  useEffect(() => { if (busqueda.trim()) setRubro(''); }, [busqueda]);
 
   /* La barra se refresca sola: el hilo de Rust sube en segundo plano y esto
      solo mira el resultado. Nunca dispara la subida, para que la pantalla no
@@ -241,26 +266,38 @@ function Caja({
     () => carrito.reduce((t, i) => t + i.precio * i.cantidad, 0),
     [carrito],
   );
-  const vuelto = Math.max(0, (parseInt(recibido || '0', 10) || 0) - total);
+  /* Lo que lleva cubierto el cliente mientras el cajero arma el cobro. Sirve
+     para una sola cosa, y es importante: que el cliente vea bajar su saldo del
+     otro lado del mostrador según va entregando. Pagar cincuenta mil en dos
+     partes sin ver el saldo es pedirle que confíe. */
+  /* Lo que de verdad se cobra. Rust vuelve a hacer esta resta al guardar —es
+     él quien manda— pero la pantalla tiene que mostrar la cifra correcta desde
+     que se autoriza el descuento. */
+  const aCobrar = Math.max(0, total - descuento.monto);
+  const { falta, vuelto } = useMemo(() => repartir(aCobrar, vistaPago), [aCobrar, vistaPago]);
+  const entregado = useMemo(
+    () => vistaPago.reduce((t, p) => t + p.monto, 0),
+    [vistaPago],
+  );
 
   /* Lo que se marca aparece al instante del otro lado del mostrador. Es lo que
      evita el "yo no pedí eso" cuando ya está cobrado: el cliente ve su pedido
      mientras se arma, no después. */
   useEffect(() => {
-    const recibidoNum = parseInt(recibido || '0', 10) || 0;
     mostrarAlCliente({
-      modo: carrito.length === 0 ? 'espera' : recibidoNum > 0 ? 'pago' : 'venta',
+      modo: carrito.length === 0 ? 'espera' : cobrandoAhora ? 'pago' : 'venta',
       negocio: negocio || 'MenuBy',
       items: carrito.map((i) => ({
         nombre: `${i.nombre}${i.variante ? ` · ${i.variante}` : ''}`,
         cantidad: i.cantidad,
         total: i.precio * i.cantidad,
       })),
-      total,
-      recibido: recibidoNum,
+      total: aCobrar,
+      recibido: entregado,
       vuelto,
+      falta,
     });
-  }, [carrito, recibido, total, vuelto, negocio]);
+  }, [carrito, aCobrar, negocio, cobrandoAhora, entregado, vuelto, falta]);
 
   const agregar = (p: Producto) => {
     setCarrito((c) => {
@@ -272,7 +309,7 @@ function Caja({
       }
       return [...c, {
         producto_id: p.id, nombre: p.nombre, variante: p.variante,
-        precio: p.precio, cantidad: 1,
+        precio: p.precio, cantidad: 1, nota: '',
       }];
     });
     setRecien((r) => ({ clave: `${p.id}${p.variante}`, vez: r.vez + 1 }));
@@ -338,7 +375,6 @@ function Caja({
     try {
       await pausarVenta(carrito, etiqueta, total);
       setCarrito([]);
-      setRecibido('');
       await refrescarEspera();
     } catch (e) {
       setError(String(e));
@@ -367,35 +403,42 @@ function Caja({
     await refrescarEspera();
   };
 
-  const finalizar = async (voucher?: Voucher) => {
+  /* Abre la pantalla de cobro. No cobra: decidir con qué se paga es un paso
+     aparte desde que una venta puede repartirse entre varios medios. */
+  const finalizar = () => {
     if (!carrito.length || cobrando) return;
+    setVistaPago([]);
+    setCobrandoAhora(true);
+  };
 
-    /* Con tarjeta y datáfono independiente, primero el voucher. Con uno
-       integrado, el aparato lo trae y no hay nada que pedir. */
-    if (medioPago === 'tarjeta' && digitaVoucher && !voucher) {
-      setPidiendoVoucher(true);
-      return;
-    }
-
+  const cobrarCon = async (pagos: PagoDetalle[]) => {
+    if (!carrito.length || cobrando) return;
+    setCobrandoAhora(false);
     setCobrando(true);
     setError('');
     try {
       /* `cajero` y `turno_id` los rellena el lado nativo con la sesión real:
          si vinieran de aquí, bastaría abrir las herramientas del webview para
-         firmar una venta a nombre de otro. */
+         firmar una venta a nombre de otro.
+
+         `medio_pago` y `recibido` van por compatibilidad; con `pagos` puesto,
+         Rust se guía por la lista y recalcula el resumen. */
+      const efectivo = pagos.filter((p) => p.metodo === 'efectivo').reduce((t, p) => t + p.monto, 0);
       const r = await cobrar({
         items: carrito,
-        medio_pago: medioPago,
-        recibido: medioPago === 'efectivo' ? parseInt(recibido || '0', 10) || 0 : 0,
+        medio_pago: pagos.length === 1 ? String(pagos[0].metodo) : 'mixto',
+        recibido: efectivo,
         cajero: '',
         turno_id: '',
         iva_porcentaje: 0,
-      }, voucher);
+        pagos,
+        descuento: descuento.monto,
+        descuento_motivo: descuento.motivo,
+      });
       setUltimo(r);
       setCarrito([]);
-      setRecibido('');
-      setMedioPago('efectivo');
-      setPidiendoVoucher(false);
+      setVistaPago([]);
+      setDescuento({ monto: 0, motivo: '' });
       setFalloImpresion(r.impresion ?? '');
       refrescarEspera();
 
@@ -417,7 +460,12 @@ function Caja({
     const tecla = (e: KeyboardEvent) => {
       if (e.key === 'F2') { e.preventDefault(); finalizar(); }
       if (e.key === 'F4') { e.preventDefault(); pausar(); }
-      if (e.key === 'Escape') { setCarrito([]); setRecibido(''); setError(''); }
+      if (e.key === 'F3') { e.preventDefault(); if (carrito.length) setPidiendoDescuento(true); }
+      if (e.key === 'Escape' && !cobrandoAhora) {
+        setCarrito([]);
+        setDescuento({ monto: 0, motivo: '' });
+        setError('');
+      }
     };
     window.addEventListener('keydown', tecla);
     return () => window.removeEventListener('keydown', tecla);
@@ -617,6 +665,54 @@ function Caja({
         />
       )}
 
+      {pidiendoDescuento && (
+        <Descuento
+          total={total}
+          items={carrito}
+          onListo={(monto, detalle) => {
+            setPidiendoDescuento(false);
+            setPorAutorizar({ monto, detalle });
+          }}
+          onCancelar={() => { setPidiendoDescuento(false); buscador.current?.focus(); }}
+        />
+      )}
+
+      {/* El descuento no existe hasta que un supervisor pone su PIN. Es el
+          mismo modal que autoriza una anulación, y a propósito: las dos son la
+          misma clase de excepción —plata que sale sin venderse— y tienen que
+          verse igual para quien las revisa después. */}
+      {porAutorizar && (
+        <Autorizar
+          titulo="Autorizar descuento"
+          detalle={`${porAutorizar.detalle} · se rebajan ${pesos(porAutorizar.monto)}`}
+          onListo={async (motivo, autorizo) => {
+            const cual = porAutorizar;
+            setPorAutorizar(null);
+            try {
+              await registrarDescuento(cual.detalle, cual.monto, motivo, autorizo);
+              setDescuento({ monto: cual.monto, motivo });
+            } catch (e) {
+              setError(String(e).replace(/^Error:\s*/, ''));
+            } finally {
+              buscador.current?.focus();
+            }
+          }}
+          onCancelar={() => { setPorAutorizar(null); buscador.current?.focus(); }}
+        />
+      )}
+
+      {anotando !== null && carrito[anotando] && (
+        <NotaItem
+          linea={carrito[anotando]}
+          onListo={(nota) => {
+            setCarrito((c) => c.map((x, i) => (i === anotando ? { ...x, nota } : x)));
+            setAnotando(null);
+            buscador.current?.focus();
+          }}
+          onCancelar={() => { setAnotando(null); buscador.current?.focus(); }}
+        />
+      )}
+
       {descartando && (
         <ModalMotivo
           titulo="Descartar el pedido apartado"
@@ -637,11 +733,13 @@ function Caja({
         />
       )}
 
-      {pidiendoVoucher && (
-        <CobroTarjeta
-          total={total}
-          onListo={(v) => { setPidiendoVoucher(false); finalizar(v); }}
-          onCancelar={() => setPidiendoVoucher(false)}
+      {cobrandoAhora && (
+        <CobroMixto
+          total={aCobrar}
+          pidiendoVoucher={digitaVoucher}
+          onCambio={setVistaPago}
+          onCobrar={cobrarCon}
+          onCancelar={() => { setCobrandoAhora(false); setVistaPago([]); buscador.current?.focus(); }}
         />
       )}
 
@@ -714,6 +812,28 @@ function Caja({
             />
           </div>
 
+          {/* Las pestañas. Con cuarenta platos en carta, buscar por texto es
+              más lento que tocar: el cajero se sabe la carta por secciones, no
+              por nombres exactos. Se ocultan si el negocio no usa categorías,
+              porque una sola pestaña que dice "Todos" no es navegación. */}
+          {rubros.length > 1 && (
+            <div className="flex gap-1.5 overflow-x-auto flex-shrink-0 pb-1">
+              {['', ...rubros].map((r) => (
+                <button
+                  key={r || 'todos'}
+                  onClick={() => setRubro(r)}
+                  className={`flex-shrink-0 px-4 h-toque rounded-xl text-[13px] font-bold border-2 transition-colors ${
+                    rubro === r
+                      ? 'border-marca bg-marca text-sobre-marca'
+                      : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                  }`}
+                >
+                  {r || 'Todos'}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 content-start">
             {productos.map((p) => (
               <button
@@ -729,7 +849,11 @@ function Caja({
             ))}
             {productos.length === 0 && (
               <p className="col-span-full text-center text-slate-400 py-10 text-sm">
-                Sin productos. El catálogo se replica desde la nube a la base local.
+                {rubro
+                  ? `Nada en "${rubro}".`
+                  : busqueda
+                    ? `Nada que coincida con "${busqueda}".`
+                    : 'Sin productos. El catálogo se replica desde la nube a la base local.'}
               </p>
             )}
           </div>
@@ -746,12 +870,31 @@ function Caja({
                   recien.clave === `${i.producto_id}${i.variante}` ? 'recien-agregado' : ''
                 }`}
               >
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold truncate">
+                {/* Tocar el nombre abre la nota. No hay botón aparte porque
+                    en el carrito no sobra un milímetro, y el nombre es lo más
+                    grande que hay: es el objetivo más fácil de acertar. */}
+                <button
+                  onClick={() => setAnotando(indice)}
+                  title="Cómo lo pidió el cliente"
+                  className="flex-1 min-w-0 text-left group"
+                >
+                  <p className="text-[13px] font-semibold truncate flex items-center gap-1">
                     {i.nombre}{i.variante ? <span className="text-slate-400"> · {i.variante}</span> : null}
+                    <MessageSquarePlus
+                      size={13}
+                      strokeWidth={2.25}
+                      className="flex-shrink-0 text-slate-300 group-hover:text-marca"
+                    />
                   </p>
-                  <p className="text-[11px] text-slate-400 tabular-nums">{pesos(i.precio)} c/u</p>
-                </div>
+                  {i.nota ? (
+                    /* La nota se lee entera y no truncada: media nota en
+                       pantalla es peor que ninguna, porque el cajero cree que
+                       ya la revisó. */
+                    <p className="text-[11px] font-semibold text-amber-700 leading-tight">{i.nota}</p>
+                  ) : (
+                    <p className="text-[11px] text-slate-400 tabular-nums">{pesos(i.precio)} c/u</p>
+                  )}
+                </button>
                 <button
                   onClick={() => cambiarCantidad(indice, -1)}
                   title="Quitar uno"
@@ -799,50 +942,49 @@ function Caja({
           </div>
 
           <div className="p-3 border-t border-slate-200 space-y-2">
-            <div className="flex gap-1.5">
-              {(['efectivo', 'tarjeta'] as const).map((m) => {
-                const Icono = m === 'efectivo' ? Banknote : CreditCard;
-                const elegido = medioPago === m;
-                return (
-                  <button
-                    key={m}
-                    onClick={() => setMedioPago(m)}
-                    className={`flex-1 flex items-center justify-center gap-2 h-toque rounded-xl text-[13px] font-bold border-2 transition-colors ${
-                      elegido
-                        ? 'border-marca bg-marca text-sobre-marca'
-                        : 'border-slate-200 text-slate-500 hover:border-slate-300'
-                    }`}
-                  >
-                    <Icono size={17} strokeWidth={2.25} />
-                    {m === 'efectivo' ? 'Efectivo' : 'Tarjeta'}
-                  </button>
-                );
-              })}
-            </div>
+            {/* El total y nada más. Con qué se paga se decide en la pantalla de
+                cobro, porque desde que una venta puede repartirse entre varios
+                medios ya no cabe en dos botones. El carrito vuelve a ser lo que
+                es: la lista de lo que se lleva. */}
+            {descuento.monto > 0 && (
+              /* El descuento se ve en el carrito y no solo en la tirilla: el
+                 cajero tiene que poder darse cuenta de que está cobrando de
+                 menos antes de cobrar, no después. */
+              <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-amber-50">
+                <span className="text-[12px] font-bold text-amber-800 truncate">
+                  Descuento · {descuento.motivo}
+                </span>
+                <span className="text-[13px] font-black tabular-nums text-amber-800">
+                  −{pesos(descuento.monto)}
+                </span>
+                <button
+                  onClick={() => setDescuento({ monto: 0, motivo: '' })}
+                  aria-label="Quitar el descuento"
+                  className="flex items-center justify-center w-toque h-toque ml-1 rounded-lg text-amber-700 hover:bg-amber-100"
+                >
+                  <X size={15} strokeWidth={2.5} />
+                </button>
+              </div>
+            )}
 
             <div className="flex items-baseline justify-between">
               <span className="text-sm font-semibold text-slate-500">Total</span>
-              <span className="text-3xl font-black tabular-nums">{pesos(total)}</span>
+              <span className="text-3xl font-black tabular-nums">{pesos(aCobrar)}</span>
             </div>
-
-            {medioPago === 'efectivo' && (
-              <div className="flex items-center gap-2">
-                <input
-                  value={recibido}
-                  onChange={(e) => setRecibido(e.target.value.replace(/\D/g, ''))}
-                  inputMode="numeric"
-                  placeholder="Recibido"
-                  className="flex-1 h-toque px-3 rounded-xl border-2 border-slate-200 tabular-nums outline-none focus:border-marca"
-                />
-                <span className="w-28 text-right text-sm font-bold text-slate-500 tabular-nums">
-                  {vuelto > 0 ? `Cambio ${pesos(vuelto)}` : ''}
-                </span>
-              </div>
-            )}
 
             {error && <p className="text-[12.5px] font-semibold text-red-600">{error}</p>}
 
             <div className="flex gap-2">
+              <button
+                onClick={() => setPidiendoDescuento(true)}
+                disabled={!carrito.length}
+                title="Rebajarle a la cuenta. Lo autoriza un supervisor."
+                className="flex flex-col items-center justify-center gap-0.5 w-20 h-16 rounded-xl border-2 border-slate-200 text-[12px] font-bold text-slate-600 disabled:opacity-30 active:scale-95 transition-transform duration-75"
+              >
+                <Percent size={18} strokeWidth={2.25} />
+                Dcto
+                <span className="text-[10px] font-semibold text-slate-400">F3</span>
+              </button>
               <button
                 onClick={pausar}
                 disabled={!carrito.length}
@@ -863,10 +1005,8 @@ function Caja({
               >
                 {cobrando
                   ? <RefreshCw size={20} strokeWidth={2.5} className="animate-spin" />
-                  : medioPago === 'tarjeta'
-                    ? <CreditCard size={20} strokeWidth={2.5} />
-                    : <Banknote size={20} strokeWidth={2.5} />}
-                {cobrando ? 'Cobrando…' : medioPago === 'tarjeta' ? 'Cobrar tarjeta · F2' : 'Cobrar · F2'}
+                  : <Wallet size={20} strokeWidth={2.5} />}
+                {cobrando ? 'Cobrando…' : 'Cobrar · F2'}
               </button>
             </div>
           </div>
