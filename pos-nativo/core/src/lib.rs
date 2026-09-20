@@ -15,6 +15,7 @@ pub mod db;
 pub mod devoluciones;
 pub mod dinero;
 pub mod escpos;
+pub mod impuestos;
 pub mod pagos;
 pub mod pausadas;
 pub mod sync;

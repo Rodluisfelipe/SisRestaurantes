@@ -42,6 +42,13 @@ pub struct FilaCatalogo {
     /// De dónde bajar la foto. Vacío = el producto no tiene.
     #[serde(default)]
     pub foto: String,
+    /// Qué impuesto lleva, si la nube lo dice.
+    ///
+    /// Vacío = no está clasificado allá y se deduce de la categoría. Existe
+    /// para el día en que el panel tenga el campo: entonces manda el panel y
+    /// la caja deja de adivinar.
+    #[serde(default)]
+    pub tipo_impuesto: String,
     /// Los grupos de extras, tal como los manda la nube.
     ///
     /// Se guarda el JSON sin interpretar: la caja no decide qué es un extra
@@ -72,8 +79,8 @@ pub fn aplicar(conexion: &mut Connection, filas: &[FilaCatalogo]) -> Result<Opti
             /* `foto_local` no se toca en el UPDATE: el archivo que ya está en
                disco sigue sirviendo. Solo se borra cuando la dirección cambió,
                y eso se decide abajo comparando contra la que había. */
-            "INSERT INTO productos (id, nombre, precio, categoria, sku, variante, activo, actualizado, foto_url, extras)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+            "INSERT INTO productos (id, nombre, precio, categoria, sku, variante, activo, actualizado, foto_url, extras, tipo_impuesto)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
              ON CONFLICT(id) DO UPDATE SET
                nombre = excluded.nombre,
                precio = excluded.precio,
@@ -82,6 +89,7 @@ pub fn aplicar(conexion: &mut Connection, filas: &[FilaCatalogo]) -> Result<Opti
                variante = excluded.variante,
                activo = excluded.activo,
                actualizado = excluded.actualizado,
+               tipo_impuesto = excluded.tipo_impuesto,
                extras = excluded.extras,
                foto_url = excluded.foto_url,
                foto_local = CASE
@@ -101,7 +109,18 @@ pub fn aplicar(conexion: &mut Connection, filas: &[FilaCatalogo]) -> Result<Opti
                 /* Si viniera algo que no es una lista, se guarda una lista
                    vacía: un JSON corrupto en esta columna dejaría sin abrir la
                    pantalla de extras de ese producto para siempre. */
-                if fila.extras.is_array() { fila.extras.to_string() } else { "[]".to_string() }
+                if fila.extras.is_array() { fila.extras.to_string() } else { "[]".to_string() },
+                /* El régimen se deduce aquí, una vez al bajar el catálogo, y
+                   no en cada venta: es información del producto, no de la
+                   transacción. Si el servidor algún día manda el campo
+                   explícito, se respeta ese y se deja de adivinar. */
+                if fila.tipo_impuesto.trim().is_empty() {
+                    crate::impuestos::inferir(&fila.categoria).como_texto().to_string()
+                } else {
+                    crate::impuestos::TipoImpuesto::desde_texto(fila.tipo_impuesto.trim())
+                        .como_texto()
+                        .to_string()
+                }
             ],
         )?;
 
@@ -153,6 +172,7 @@ mod pruebas {
             actualizado: actualizado.into(),
             foto: String::new(),
             extras: serde_json::json!([]),
+            tipo_impuesto: String::new(),
         }
     }
 

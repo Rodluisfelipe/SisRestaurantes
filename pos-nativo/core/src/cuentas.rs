@@ -281,6 +281,7 @@ mod pruebas {
             cantidad,
             nota: String::new(),
             extras: vec![],
+            tipo_impuesto: String::new(),
         }
     }
 

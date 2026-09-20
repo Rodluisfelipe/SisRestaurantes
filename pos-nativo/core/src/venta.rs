@@ -30,6 +30,12 @@ pub struct LineaVenta {
     /// devoluciones— siga siendo exactamente la misma.
     #[serde(default)]
     pub extras: Vec<ExtraElegido>,
+    /// Qué impuesto lleva: "INC_8", "IVA_19" o "EXENTO".
+    ///
+    /// Lo pone la caja desde el catálogo. Vacío = impoconsumo, que es la regla
+    /// general de un negocio gastronómico.
+    #[serde(default)]
+    pub tipo_impuesto: String,
     /// Cómo lo pidió el cliente: "sin cebolla", "término tres cuartos".
     ///
     /// Va en la línea y no en la venta porque en una mesa de cuatro cada plato
@@ -338,7 +344,52 @@ pub fn registrar(
             .unwrap_or_else(|| "efectivo".to_string())
     };
 
-    let (_base, iva) = total.desglosar_iva(venta.iva_porcentaje);
+    /* El desglose tributario, línea por línea.
+
+       Los precios ya llevan el impuesto dentro —así se cotiza en Colombia— así
+       que aquí no se suma nada: se separa cuánto de lo cobrado es base y
+       cuánto es impuesto. El total de la venta no cambia por clasificar bien,
+       y por eso esto no toca ninguna otra cuenta de la caja.
+
+       El descuento se reparte proporcionalmente entre las líneas antes de
+       desglosar: si no, un almuerzo con 10% de descuento declararía la base
+       del precio de carta y el negocio pagaría impuesto sobre plata que no
+       cobró. */
+    let mut tributos = crate::impuestos::Totales::default();
+    let mut por_linea: Vec<(crate::impuestos::TipoImpuesto, crate::impuestos::Desglose)> =
+        Vec::with_capacity(venta.items.len());
+    let mut repartido = Pesos::CERO;
+
+    for (i, item) in venta.items.iter().enumerate() {
+        let bruto_linea = item.total().ok_or(ErrorVenta::Desbordado)?;
+
+        /* La última línea se lleva lo que falte por repartir. Sin esto, cuatro
+           líneas con un descuento de 1.000 reparten 250 cada una y se pierde
+           un peso que nadie sabe dónde quedó. */
+        let rebaja = if i + 1 == venta.items.len() {
+            venta.descuento.menos(repartido).unwrap_or(Pesos::CERO)
+        } else if bruto.0 > 0 {
+            let parte = Pesos(venta.descuento.0 * bruto_linea.0 / bruto.0);
+            repartido = repartido.mas(parte).unwrap_or(repartido);
+            parte
+        } else {
+            Pesos::CERO
+        };
+
+        let neto = bruto_linea.menos(rebaja).unwrap_or(Pesos::CERO);
+        let tipo = crate::impuestos::TipoImpuesto::desde_texto(&item.tipo_impuesto);
+        let desglose = crate::impuestos::desglosar(neto, tipo);
+
+        tributos.sumar(tipo, desglose);
+        por_linea.push((tipo, desglose));
+    }
+
+    /* `iva` de la cabecera pasa a significar "todo el impuesto de la venta",
+       sea del régimen que sea. El campo se queda con ese nombre porque es el
+       que ya leen la tirilla, el panel y los informes; cambiárselo rompería
+       más de lo que aclara. */
+    let iva = tributos.impuesto_total();
+    let _ = venta.iva_porcentaje;
 
     /* UUIDv7 y no v4: lleva el instante adelante, así los ids salen ordenados
        en el tiempo. Eso le sirve al índice de Mongo del otro lado —las
@@ -369,8 +420,10 @@ pub fn registrar(
     tx.execute(
         "INSERT INTO ventas (id, consecutivo, total, iva, recibido, vuelto, medio_pago, cajero, turno_id, creada_en,
                              pago_autorizacion, pago_ultimos4, pago_franquicia,
-                             bruto, descuento, descuento_motivo, propina)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
+                             bruto, descuento, descuento_motivo, propina,
+                             total_base_inc, total_inc, total_base_iva, total_iva, total_exento)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17,
+                 ?18, ?19, ?20, ?21, ?22)",
         params![
             id,
             consecutivo,
@@ -388,18 +441,32 @@ pub fn registrar(
             bruto.0,
             venta.descuento.0,
             venta.descuento_motivo,
-            venta.propina.0
+            venta.propina.0,
+            tributos.base_inc.0,
+            tributos.inc.0,
+            tributos.base_iva.0,
+            tributos.iva.0,
+            tributos.exento.0
         ],
     )?;
 
     for (i, item) in venta.items.iter().enumerate() {
         tx.execute(
-            "INSERT INTO venta_items (venta_id, linea, producto_id, nombre, variante, precio, cantidad, nota, extras)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            "INSERT INTO venta_items (venta_id, linea, producto_id, nombre, variante, precio, cantidad, nota, extras,
+                                      tipo_impuesto, tarifa_impuesto, base_gravable, valor_impuesto)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
             params![
                 id, i as i64 + 1, item.producto_id, item.nombre, item.variante,
                 item.precio.0, item.cantidad, item.nota,
-                serde_json::to_string(&item.extras).unwrap_or_else(|_| "[]".into())
+                serde_json::to_string(&item.extras).unwrap_or_else(|_| "[]".into()),
+                /* La copia queda **en la línea** a propósito. Si mañana el
+                   negocio reclasifica un producto, las ventas de ayer tienen
+                   que seguir declarando lo que declararon: una venta es un
+                   hecho, no una consulta al catálogo de hoy. */
+                por_linea[i].0.como_texto(),
+                por_linea[i].0.tarifa() as i64,
+                por_linea[i].1.base.0,
+                por_linea[i].1.impuesto.0
             ],
         )?;
     }
@@ -430,6 +497,15 @@ pub fn registrar(
         "descuento": venta.descuento.0,
         "descuento_motivo": venta.descuento_motivo,
         "propina": venta.propina.0,
+        /* El desglose por régimen. Es lo que permite que el panel saque la
+           declaración sin volver a clasificar nada. */
+        "impuestos": {
+            "base_inc": tributos.base_inc.0,
+            "inc": tributos.inc.0,
+            "base_iva": tributos.base_iva.0,
+            "iva": tributos.iva.0,
+            "exento": tributos.exento.0,
+        },
         "cajero": venta.cajero,
         "turno_id": venta.turno_id,
         "creada_en": ahora,
@@ -487,6 +563,21 @@ pub struct VentaCompleta {
     pub descuento_motivo: String,
     #[serde(default)]
     pub propina: Pesos,
+    /// El desglose tributario tal como se declaró al vender.
+    ///
+    /// Se relee de la base y no se recalcula: si el negocio reclasificó el
+    /// producto después, la reimpresión tiene que decir lo mismo que dijo el
+    /// papel original.
+    #[serde(default)]
+    pub total_base_inc: Pesos,
+    #[serde(default)]
+    pub total_inc: Pesos,
+    #[serde(default)]
+    pub total_base_iva: Pesos,
+    #[serde(default)]
+    pub total_iva: Pesos,
+    #[serde(default)]
+    pub total_exento: Pesos,
     /// Con qué se pagó. Una sola entrada en la venta corriente.
     ///
     /// La reimpresión tiene que poder decir "treinta mil en efectivo y veinte
@@ -500,7 +591,8 @@ pub struct VentaCompleta {
 pub fn detalle(conexion: &Connection, venta_id: &str) -> Result<Option<VentaCompleta>> {
     let base = conexion.query_row(
         "SELECT id, consecutivo, total, iva, recibido, vuelto, medio_pago, cajero, creada_en,
-                pago_autorizacion, pago_ultimos4, bruto, descuento, descuento_motivo, propina
+                pago_autorizacion, pago_ultimos4, bruto, descuento, descuento_motivo, propina,
+                total_base_inc, total_inc, total_base_iva, total_iva, total_exento
          FROM ventas WHERE id = ?1",
         [venta_id],
         |f| {
@@ -521,6 +613,11 @@ pub fn detalle(conexion: &Connection, venta_id: &str) -> Result<Option<VentaComp
                 descuento: Pesos(f.get(12)?),
                 descuento_motivo: f.get(13)?,
                 propina: Pesos(f.get(14)?),
+                total_base_inc: Pesos(f.get(15)?),
+                total_inc: Pesos(f.get(16)?),
+                total_base_iva: Pesos(f.get(17)?),
+                total_iva: Pesos(f.get(18)?),
+                total_exento: Pesos(f.get(19)?),
                 pagos: vec![],
             })
         },
@@ -545,6 +642,7 @@ pub fn detalle(conexion: &Connection, venta_id: &str) -> Result<Option<VentaComp
             cantidad: f.get(4)?,
             nota: f.get(5)?,
             extras: serde_json::from_str(&f.get::<_, String>(6)?).unwrap_or_default(),
+            tipo_impuesto: String::new(),
         })
     })?;
 
@@ -625,6 +723,7 @@ mod pruebas {
             cantidad,
             nota: String::new(),
             extras: vec![],
+            tipo_impuesto: String::new(),
         }
     }
 
@@ -721,10 +820,131 @@ mod pruebas {
 
     #[test]
     fn el_iva_se_guarda_desglosado_y_cuadra() {
+        /* El impuesto lo decide **la línea**, no un porcentaje global de la
+           venta. Un café sin clasificar es impoconsumo, que es la regla
+           general de un negocio gastronómico: 10.000 / 1,08 son 741. */
         let (mut c, t) = caja();
         let r = registrar(&mut c, &venta_de(vec![item("Café", 10_000, 1)], &t), AHORA).unwrap();
-        assert_eq!(r.iva, Pesos(1_597));
-        assert_eq!(r.total, Pesos(10_000));
+
+        assert_eq!(r.iva, Pesos(741));
+        assert_eq!(r.total, Pesos(10_000), "el precio no cambia por clasificar");
+    }
+
+    #[test]
+    fn un_almuerzo_y_una_cerveza_se_declaran_distinto() {
+        /* El caso que motivó todo esto. Con un porcentaje único, uno de los
+           dos se declara mal, y se declara mal todos los días. */
+        let (mut c, t) = caja();
+
+        let mut almuerzo = item("Almuerzo", 20_000, 1);
+        almuerzo.tipo_impuesto = "INC_8".into();
+        let mut cerveza = item("Cerveza", 10_000, 1);
+        cerveza.tipo_impuesto = "IVA_19".into();
+
+        let r = registrar(&mut c, &venta_de(vec![almuerzo, cerveza], &t), AHORA).unwrap();
+
+        let (base_inc, inc, base_iva, iva): (i64, i64, i64, i64) = c
+            .query_row(
+                "SELECT total_base_inc, total_inc, total_base_iva, total_iva FROM ventas WHERE id = ?1",
+                [&r.id],
+                |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?, f.get(3)?)),
+            )
+            .unwrap();
+
+        assert_eq!((base_inc, inc), (18_519, 1_481), "el almuerzo al 8%");
+        assert_eq!((base_iva, iva), (8_403, 1_597), "la cerveza al 19%");
+        assert_eq!(base_inc + inc + base_iva + iva, 30_000, "y la venta vale lo mismo");
+    }
+
+    #[test]
+    fn el_descuento_baja_la_base_gravable() {
+        /* Si el descuento no se repartiera antes de desglosar, el negocio
+           declararía impuesto sobre plata que nunca cobró. */
+        let (mut c, t) = caja();
+        let mut v = venta_de(vec![item("Almuerzo", 20_000, 1)], &t);
+        v.descuento = Pesos(2_000);
+
+        let r = registrar(&mut c, &v, AHORA).unwrap();
+
+        let (base, impuesto): (i64, i64) = c
+            .query_row(
+                "SELECT total_base_inc, total_inc FROM ventas WHERE id = ?1",
+                [&r.id],
+                |f| Ok((f.get(0)?, f.get(1)?)),
+            )
+            .unwrap();
+
+        // Se declara sobre 18.000, no sobre 20.000.
+        assert_eq!(base + impuesto, 18_000);
+    }
+
+    #[test]
+    fn el_reparto_del_descuento_no_pierde_pesos() {
+        /* Cuatro líneas y un descuento de 1.000 reparten 250 cada una. Con
+           cifras que no dividen exacto, la última se lleva lo que falte: si
+           no, se pierde un peso que nadie sabe dónde quedó y la suma de las
+           bases deja de dar el total. */
+        let (mut c, t) = caja();
+        let mut v = venta_de(
+            vec![item("A", 3_333, 1), item("B", 3_333, 1), item("C", 3_334, 1)],
+            &t,
+        );
+        v.descuento = Pesos(1_000);
+
+        let r = registrar(&mut c, &v, AHORA).unwrap();
+
+        let suma: i64 = c
+            .query_row(
+                "SELECT SUM(base_gravable + valor_impuesto) FROM venta_items WHERE venta_id = ?1",
+                [&r.id],
+                |f| f.get(0),
+            )
+            .unwrap();
+
+        assert_eq!(suma, 9_000, "10.000 menos 1.000, sin perder un peso");
+        assert_eq!(r.total, Pesos(9_000));
+    }
+
+    #[test]
+    fn la_linea_guarda_el_regimen_con_el_que_se_vendio() {
+        /* Si mañana el negocio reclasifica un producto, las ventas de ayer
+           tienen que seguir declarando lo que declararon. Una venta es un
+           hecho, no una consulta al catálogo de hoy. */
+        let (mut c, t) = caja();
+        let mut cerveza = item("Cerveza", 10_000, 1);
+        cerveza.tipo_impuesto = "IVA_19".into();
+
+        let r = registrar(&mut c, &venta_de(vec![cerveza], &t), AHORA).unwrap();
+
+        let (tipo, tarifa): (String, i64) = c
+            .query_row(
+                "SELECT tipo_impuesto, tarifa_impuesto FROM venta_items WHERE venta_id = ?1",
+                [&r.id],
+                |f| Ok((f.get(0)?, f.get(1)?)),
+            )
+            .unwrap();
+
+        assert_eq!(tipo, "IVA_19");
+        assert_eq!(tarifa, 19);
+    }
+
+    #[test]
+    fn el_desglose_viaja_a_la_nube() {
+        // Es lo que permite que el panel saque la declaración sin reclasificar.
+        let (mut c, t) = caja();
+        let mut cerveza = item("Cerveza", 10_000, 1);
+        cerveza.tipo_impuesto = "IVA_19".into();
+
+        registrar(&mut c, &venta_de(vec![cerveza], &t), AHORA).unwrap();
+
+        let payload: String = c
+            .query_row("SELECT payload FROM outbox WHERE entidad = 'venta'", [], |f| f.get(0))
+            .unwrap();
+        let leido: serde_json::Value = serde_json::from_str(&payload).unwrap();
+
+        assert_eq!(leido["impuestos"]["base_iva"], 8_403);
+        assert_eq!(leido["impuestos"]["iva"], 1_597);
+        assert_eq!(leido["impuestos"]["inc"], 0);
     }
 
     #[test]

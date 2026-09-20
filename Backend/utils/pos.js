@@ -163,6 +163,36 @@ function validarVenta(cuerpo) {
 
      Se compara con "mayor o igual" porque en efectivo el cliente entrega de
      más y recibe cambio: lo que no puede pasar es que sume de menos. */
+  /* El desglose por régimen: impoconsumo, IVA y exento, cada uno con su base.
+     Sin esto, un negocio que vende almuerzos y cerveza no puede declarar: el
+     panel vería un solo impuesto global y tendría que adivinar cuál. */
+  const tributos = cuerpo.impuestos && typeof cuerpo.impuestos === 'object' ? cuerpo.impuestos : {};
+  const entero = (v) => Math.max(0, Math.round(Number(v) || 0));
+
+  const desgloseTributario = {
+    baseInc: entero(tributos.base_inc),
+    inc: entero(tributos.inc),
+    baseIva: entero(tributos.base_iva),
+    iva: entero(tributos.iva),
+    exento: entero(tributos.exento),
+  };
+
+  const sumaTributos =
+    desgloseTributario.baseInc + desgloseTributario.inc +
+    desgloseTributario.baseIva + desgloseTributario.iva +
+    desgloseTributario.exento;
+
+  /* Se admite que venga en cero —las cajas que no se hayan actualizado no lo
+     mandan— pero si viene, tiene que cuadrar con lo que se cobró. Un desglose
+     inflado sería base gravable inventada, y eso es un problema con la DIAN,
+     no un error de redondeo. */
+  if (sumaTributos > 0 && sumaTributos !== Math.round(total)) {
+    return {
+      ok: false,
+      error: `El desglose de impuestos (${sumaTributos}) no cuadra con el total (${total})`,
+    };
+  }
+
   /* La propina. Va aparte del total y **no se suma a él**: no es ingreso del
      negocio ni base gravable. Si entrara al total, aparecería en las ventas
      del mes, pagaría impuestos que no le corresponden, y al liquidar el turno
@@ -194,6 +224,16 @@ function validarVenta(cuerpo) {
       pagos,
       bruto: Math.round(suma),
       propina,
+      /* El desglose tributario que calculó la caja.
+
+         **No se recalcula aquí.** Lo hizo la terminal en el momento de vender,
+         con la clasificación que tenía en ese instante, y esa es la que vale:
+         si el negocio reclasifica un producto mañana, las ventas de ayer
+         tienen que seguir declarando lo que declararon. Una venta es un hecho.
+
+         Lo que sí se comprueba es que las piezas sumen el total: un desglose
+         que no cuadra con su propia venta es un payload corrupto. */
+      impuestos: desgloseTributario,
       descuento,
       descuentoMotivo: String(cuerpo.descuento_motivo || '').trim().slice(0, 120),
       cajero: String(cuerpo.cajero || '').slice(0, 80),

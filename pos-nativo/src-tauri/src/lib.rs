@@ -137,6 +137,8 @@ pub struct Producto {
     /// válido —eso lo decide el panel— solo lo dibuja para que el cajero
     /// elija.
     extras: serde_json::Value,
+    /// "INC_8", "IVA_19" o "EXENTO". Viaja con la línea al venderse.
+    tipo_impuesto: String,
 }
 
 /// El catálogo sale de SQLite, nunca de la red: es lo que permite abrir la caja
@@ -155,7 +157,7 @@ fn catalogo(
 
     let mut consulta = base
         .prepare(
-            "SELECT id, nombre, precio, categoria, variante, foto_local, extras FROM productos
+            "SELECT id, nombre, precio, categoria, variante, foto_local, extras, tipo_impuesto FROM productos
              WHERE activo = 1
                AND (?1 = '%%' OR nombre LIKE ?1 OR sku LIKE ?1)
                AND (?2 = '' OR categoria = ?2)
@@ -176,6 +178,7 @@ fn catalogo(
                    producto se queda sin extras y los demás siguen vendiéndose. */
                 extras: serde_json::from_str(&f.get::<_, String>(6)?)
                     .unwrap_or_else(|_| serde_json::json!([])),
+                tipo_impuesto: f.get(7)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -1515,8 +1518,20 @@ fn tirilla_de(negocio: &str, ancho: usize, v: &venta::VentaCompleta, copia: bool
         );
     }
 
-    if v.iva > Pesos::CERO {
-        t.par("IVA incluido", &v.iva.to_string());
+    /* El desglose por régimen. Un local que vende almuerzo y cerveza tiene
+       que poder mostrar las dos bases por separado: es lo que el cliente
+       necesita para su contabilidad y lo que la DIAN espera ver. */
+    if v.total_inc > Pesos::CERO {
+        t.par("Base INC", &v.total_base_inc.to_string());
+        t.par("INC 8%", &v.total_inc.to_string());
+    }
+    if v.total_iva > Pesos::CERO {
+        t.par("Base IVA", &v.total_base_iva.to_string());
+        t.par("IVA 19%", &v.total_iva.to_string());
+    }
+    if v.total_exento > Pesos::CERO && (v.total_inc > Pesos::CERO || v.total_iva > Pesos::CERO) {
+        // Solo se nombra si convive con algo gravado; si no, es toda la venta.
+        t.par("Exento", &v.total_exento.to_string());
     }
 
     /* La propina va **después** del total de la venta y con su propia línea.

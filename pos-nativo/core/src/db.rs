@@ -407,6 +407,49 @@ const MIGRACIONES: &[&str] = &[
        se volvieran a pedir nunca. Misma regla que la migración 10. */
     DELETE FROM ajustes WHERE clave = 'catalogo_desde';
     "#,
+    // 14 — impoconsumo, IVA y exentos, cada uno por su lado.
+    r#"
+    /* Un local que vende almuerzos y cerveza en botella no tiene un impuesto,
+       tiene tres. Con un porcentaje único para toda la venta —que es como
+       estaba— uno de los dos se declara mal, y se declara mal todos los días.
+
+       El régimen se cachea en el producto para no volver a deducirlo en cada
+       venta, pero lo que manda es la copia que queda **en la línea**: si
+       mañana el negocio reclasifica un producto, las ventas de ayer tienen que
+       seguir declarando lo que declararon. Una venta es un hecho, no una
+       consulta. */
+    ALTER TABLE productos ADD COLUMN tipo_impuesto TEXT NOT NULL DEFAULT 'INC_8';
+
+    ALTER TABLE venta_items ADD COLUMN tipo_impuesto TEXT NOT NULL DEFAULT 'INC_8';
+    ALTER TABLE venta_items ADD COLUMN tarifa_impuesto INTEGER NOT NULL DEFAULT 8;
+    ALTER TABLE venta_items ADD COLUMN base_gravable INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE venta_items ADD COLUMN valor_impuesto INTEGER NOT NULL DEFAULT 0;
+
+    /* Los consolidados en la cabecera. Se podrían sumar desde las líneas cada
+       vez, pero la tirilla y el arqueo los piden en cada impresión y en cada
+       cierre: guardarlos es la diferencia entre un informe instantáneo y uno
+       que recorre medio millón de líneas. */
+    ALTER TABLE ventas ADD COLUMN total_base_inc INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE ventas ADD COLUMN total_inc INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE ventas ADD COLUMN total_base_iva INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE ventas ADD COLUMN total_iva INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE ventas ADD COLUMN total_exento INTEGER NOT NULL DEFAULT 0;
+
+    /* Las ventas de antes no tienen desglose y no se inventa: quedan como
+       exentas, que es la única lectura honesta de "no se clasificó". */
+    UPDATE ventas SET total_exento = total WHERE total_exento = 0;
+
+    /* Un negocio no responsable de impuestos apaga esto y todo sale exento.
+       Enciende por defecto porque el caso común es el contrario, y un negocio
+       que no declara lo nota el primer día; uno que debía declarar y no lo
+       hizo lo nota cuando llega la sanción. */
+    INSERT INTO ajustes (clave, valor) VALUES ('impuestos_activos', '1')
+    ON CONFLICT(clave) DO NOTHING;
+
+    /* Columna nueva de productos alimentada por el catálogo: hay que volver a
+       bajarlo entero. Misma regla que la migración 10. */
+    DELETE FROM ajustes WHERE clave = 'catalogo_desde';
+    "#,
 ];
 
 /// Abre (o crea) la base y la deja lista para operar.

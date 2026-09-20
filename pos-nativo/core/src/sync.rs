@@ -208,6 +208,7 @@ mod pruebas {
                     cantidad: 1,
                     nota: String::new(),
                     extras: vec![],
+                    tipo_impuesto: String::new(),
                 }],
                 medio_pago: "efectivo".into(),
                 recibido: Pesos(1_000),

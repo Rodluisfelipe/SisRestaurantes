@@ -14,6 +14,7 @@ const PosCaja = require('../Models/PosCaja');
 const PosDevolucion = require('../Models/PosDevolucion');
 const PosVinculacion = require('../Models/PosVinculacion');
 const { normalizar } = require('../utils/codigoVinculacion');
+const { conDefectos } = require('../utils/configPos');
 const rateLimit = require('express-rate-limit');
 const PosExcepcion = require('../Models/PosExcepcion');
 const {
@@ -289,6 +290,9 @@ router.post('/sync-sale', tenantAuth, cajaVigente, async (req, res) => {
       ...(venta.descuento > 0 ? { discountReason: venta.descuentoMotivo } : {}),
       ...(venta.pago ? { posPago: venta.pago } : {}),
       ...(venta.pagos.length > 1 ? { posPagos: venta.pagos } : {}),
+      ...(venta.impuestos.inc || venta.impuestos.iva || venta.impuestos.exento
+        ? { posImpuestos: venta.impuestos }
+        : {}),
       /* La hora es la de la caja, no la del servidor: una venta que se hizo sin
          internet a las 3 de la tarde no puede aparecer a las 9 de la noche,
          cuando volvió la señal. */
@@ -649,6 +653,31 @@ router.get('/catalog', tenantAuth, cajaVigente, async (req, res) => {
     const porId = Object.fromEntries(categorias.map((c) => [String(c._id), c.name]));
     const filas = aplanarCatalogo(productos, porId);
 
+    /* La configuración de esta terminal, si cambió.
+
+       Se manda solo cuando su fecha es posterior a la marca de agua que trajo
+       la caja. Mandarla siempre serían unos cientos de bytes cada treinta
+       segundos, por terminal, para decir que nada cambió; y en un negocio con
+       seis cajas eso es ruido constante en la conexión del local.
+
+       En la primera bajada —cuando la caja no manda `since`— va siempre: una
+       terminal recién instalada necesita su configuración antes que nada. */
+    let configuracion = null;
+    if (req.caja?.tokenId) {
+      const terminal = await PosCaja.findOne({ businessId, tokenId: req.caja.tokenId })
+        .select('nombre config')
+        .lean();
+
+      const cambiada =
+        !desde ||
+        !terminal?.config?.actualizadoEn ||
+        new Date(terminal.config.actualizadoEn) > desde;
+
+      if (terminal && cambiada) {
+        configuracion = { nombre: terminal.nombre, ...conDefectos(terminal.config) };
+      }
+    }
+
     /* `hay_mas` lo decide el tamaño del lote, no el de las filas: un producto
        con diez tallas son diez filas y un solo producto. Si se contaran filas,
        la caja pediría de nuevo lo mismo y nunca avanzaría. */
@@ -660,6 +689,7 @@ router.get('/catalog', tenantAuth, cajaVigente, async (req, res) => {
         color: negocio?.theme?.buttonColor || '',
         color_texto: negocio?.theme?.buttonTextColor || '',
       },
+      configuracion,
     });
   } catch (error) {
     logger.error('Error entregando el catálogo al POS', error, req);

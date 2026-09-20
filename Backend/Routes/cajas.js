@@ -6,6 +6,7 @@ const { generar, bonito } = require('../utils/codigoVinculacion');
 const { tenantAuth } = require('../middleware/tenantAuth');
 const { isValidObjectId } = require('../utils/validators');
 const logger = require('../utils/logger');
+const { conDefectos, validarConfig } = require('../utils/configPos');
 
 /**
  * Las terminales del negocio, desde el panel.
@@ -131,6 +132,64 @@ router.post('/:id/revocar', tenantAuth, async (req, res) => {
   } catch (error) {
     logger.error('Error revocando la caja', error, req);
     res.status(500).json({ message: 'No se pudo desvincular la caja' });
+  }
+});
+
+/* GET /api/cajas/:id/config — la configuración de una terminal.
+ *
+ * Solo el panel. Una caja no puede leer —ni mucho menos cambiar— su propia
+ * configuración por esta vía: la recibe con el catálogo, en un solo sentido.
+ * Si pudiera escribir aquí, una terminal robada podría apagarse los impuestos. */
+router.get('/:id/config', tenantAuth, async (req, res) => {
+  const businessId = req.user?.businessId || req.query.businessId;
+  if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
+
+  try {
+    const caja = await PosCaja.findOne({ _id: req.params.id, businessId })
+      .select('nombre config')
+      .lean();
+
+    if (!caja) return res.status(404).json({ message: 'Esa caja no existe' });
+
+    /* Se devuelve con los valores por defecto ya aplicados, no el documento
+       crudo: una caja vinculada antes de que existiera este bloque no tiene
+       `config`, y el panel se encontraría con undefined en todos los campos. */
+    res.json({ nombre: caja.nombre, config: conDefectos(caja.config) });
+  } catch (error) {
+    logger.error('Error leyendo la configuración de la caja', error, req);
+    res.status(500).json({ message: 'No se pudo cargar la configuración' });
+  }
+});
+
+/* PUT /api/cajas/:id/config — cambiarla.
+ *
+ * Mover `actualizadoEn` es lo que hace que la caja se entere: compara esa
+ * fecha contra su marca de agua en cada sincronización. Sin tocarla, el cambio
+ * se guardaría aquí y la terminal seguiría con lo de antes para siempre. */
+router.put('/:id/config', tenantAuth, async (req, res) => {
+  const businessId = req.user?.businessId || req.body.businessId;
+  if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
+
+  const limpia = validarConfig(req.body.config);
+  if (!limpia.ok) return res.status(400).json({ message: limpia.error });
+
+  try {
+    const caja = await PosCaja.findOneAndUpdate(
+      { _id: req.params.id, businessId },
+      { $set: { config: { ...limpia.config, actualizadoEn: new Date() } } },
+      { new: true },
+    ).select('nombre config');
+
+    if (!caja) return res.status(404).json({ message: 'Esa caja no existe' });
+
+    logger.info('Configuración de caja actualizada', {
+      cajaId: String(caja._id),
+      businessId: String(businessId),
+    });
+    res.json({ nombre: caja.nombre, config: caja.config });
+  } catch (error) {
+    logger.error('Error guardando la configuración de la caja', error, req);
+    res.status(500).json({ message: 'No se pudo guardar la configuración' });
   }
 });
 

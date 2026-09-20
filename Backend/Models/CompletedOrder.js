@@ -148,6 +148,20 @@ const completedOrderSchema = new mongoose.Schema({
     referencia: { type: String, trim: true, maxlength: 40, default: '' }
   }],
 
+  /* El desglose tributario de una venta de caja.
+
+     Cada régimen con su base, porque un local que vende almuerzos (impoconsumo
+     8%) y cerveza en botella (IVA 19%) declara las dos cosas por separado. Lo
+     calcula la terminal al vender y aquí solo se guarda: recalcularlo con la
+     clasificación de hoy cambiaría lo que ya se declaró. */
+  posImpuestos: {
+    baseInc: { type: Number, default: 0, min: 0 },
+    inc: { type: Number, default: 0, min: 0 },
+    baseIva: { type: Number, default: 0, min: 0 },
+    iva: { type: Number, default: 0, min: 0 },
+    exento: { type: Number, default: 0, min: 0 }
+  },
+
   /* Por qué se descontó. `discountAmount` ya decía cuánto y nunca por qué, y
      un descuento sin motivo es indistinguible de un precio mal puesto cuando
      el dueño revisa el mes. */

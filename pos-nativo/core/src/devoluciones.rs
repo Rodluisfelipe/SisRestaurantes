@@ -108,6 +108,7 @@ pub fn devolubles(conexion: &Connection, venta_id: &str) -> Result<Vec<(LineaVen
                 /* Lo que llevaba puesto. Una devolución tiene que poder decir
                    que volvió la hamburguesa **con** el queso extra. */
                 extras: serde_json::from_str(&f.get::<_, String>(6)?).unwrap_or_default(),
+                tipo_impuesto: String::new(),
             })
         })?
         .collect::<Result<Vec<_>>>()?;
@@ -317,6 +318,7 @@ mod pruebas {
             cantidad,
             nota: String::new(),
             extras: vec![],
+            tipo_impuesto: String::new(),
         }
     }
 
