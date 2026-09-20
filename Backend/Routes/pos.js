@@ -798,6 +798,88 @@ router.get('/customers', tenantAuth, cajaVigente, async (req, res) => {
   }
 });
 
+/* POST /api/pos/customers — un cliente dado de alta en el mostrador.
+ *
+ * Llega por la cola, igual que una venta: la caja ya lo registró local y ya
+ * siguió atendiendo. Esto no aprueba nada, solo lo asienta.
+ *
+ * **La llave es el teléfono, no el id.** La terminal generó un UUIDv7 para su
+ * copia local, pero aquí los ids son ObjectId y no puede adoptarse. El teléfono
+ * sirve mejor de todos modos: es con lo que el programa de puntos lleva las
+ * cuentas, y es lo que el cliente dice en el mostrador.
+ *
+ * Eso hace la operación idempotente sin esfuerzo, que es lo que necesita una
+ * cola que reintenta: el mismo envío repetido encuentra la ficha que dejó el
+ * primero. Y cubre el caso que pasa de verdad —el cliente ya existía porque
+ * pidió un domicilio el mes pasado y el cajero lo registró sin saberlo—: gana
+ * la ficha vieja, que tiene el historial y los puntos. Crear una nueva los
+ * dejaría huérfanos. */
+router.post('/customers', tenantAuth, cajaVigente, async (req, res) => {
+  const businessId = req.user?.businessId || req.body.businessId;
+  if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
+
+  const telefono = String(req.body.telefono || '').trim().slice(0, 30);
+  const nombre = String(req.body.nombre || '').trim().slice(0, 80);
+
+  if (!telefono || !nombre) {
+    /* 400 y no 500: que la cola sepa que reintentar no va a servir y lo aparte
+       en vez de taponarse con esto. */
+    return res.status(400).json({ message: 'El cliente necesita teléfono y nombre', motivo: 'payload_invalido' });
+  }
+
+  try {
+    /* Primero se mira si ya existe por teléfono, que es la llave real del
+       negocio: el mismo número es el mismo cliente aunque el cajero lo haya
+       vuelto a escribir. */
+    const existente = await Customer.findOne({ businessId, phone: telefono })
+      .select('_id name documento')
+      .lean();
+
+    if (existente) {
+      /* Se completa lo que faltaba sin pisar lo que ya había: un nombre puesto
+         hace seis meses en un domicilio vale más que el que el cajero alcanzó
+         a teclear con la fila esperando. */
+      const documento = String(req.body.documento || '').trim().slice(0, 20);
+      if (documento && !existente.documento) {
+        await Customer.updateOne({ _id: existente._id }, { $set: { documento } });
+      }
+
+      return res.json({ ok: true, duplicado: true, id: String(existente._id) });
+    }
+
+    const creado = await Customer.create({
+      businessId,
+      phone: telefono,
+      name: nombre,
+      documento: String(req.body.documento || '').trim().slice(0, 20),
+      tipoDocumento: ['CC', 'NIT', 'CE', 'PP'].includes(req.body.tipo_documento)
+        ? req.body.tipo_documento
+        : 'CC',
+    });
+
+    /* El id local de la terminal se registra en el log y no en la ficha: sirve
+       para rastrear de qué caja salió si algo no cuadra, y no vale la pena una
+       columna en la colección para eso. */
+    logger.info('Cliente dado de alta desde una caja', {
+      businessId: String(businessId),
+      telefono,
+      id: String(creado._id),
+      posClienteId: String(req.body.pos_cliente_id || ''),
+    });
+
+    res.status(201).json({ ok: true, duplicado: false, id: String(creado._id) });
+  } catch (error) {
+    /* Carrera entre dos reintentos simultáneos: el índice único por teléfono es
+       el que decide, y el que perdió devuelve la ficha que sí quedó. */
+    if (error.code === 11000) {
+      const yaEsta = await Customer.findOne({ businessId, phone: telefono }).select('_id').lean();
+      if (yaEsta) return res.json({ ok: true, duplicado: true, id: String(yaEsta._id) });
+    }
+    logger.error('Error dando de alta el cliente del POS', error, req);
+    res.status(500).json({ message: 'No se pudo registrar el cliente' });
+  }
+});
+
 /* POST /api/pos/redeem-reward — canjear puntos desde el mostrador.
  *
  * El canje del menú web vive en /api/loyalty/redeem y no sirve para esto por

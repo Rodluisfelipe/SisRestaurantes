@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  CircleUser, CloudCheck, CloudOff, Inbox, Minus, Monitor,
+  CircleUser, CloudCheck, CloudOff, Gift, Inbox, Minus, Monitor,
   LayoutGrid, MessageSquarePlus, PauseCircle, Percent, Plus, Presentation, Printer, RefreshCw, ScanLine,
-  Trash2, Undo2, UtensilsCrossed, Volume2, VolumeX, Wallet, X,
+  Star, Timer, Trash2, Undo2, UserPlus, UtensilsCrossed, Volume2, VolumeX, Wallet, X,
 } from 'lucide-react';
 import { type EstadoCliente } from './nativo';
 import {
@@ -12,16 +12,16 @@ import {
   guardarEnCuenta, hayPantallaCliente, identidad, imprimirPrecuenta, infoTerminal, listarCuentas,
   listarPausadas, mostrarAlCliente, pausarVenta, pesos, reimprimir, retomarVenta, salir,
   registrarDescuento, repartir, sincronizar, turnoActivo,
-  type CierreTurno, type Cobro, type Cuenta, type EnEspera, type ExtraElegido,
-  type LineaDevolvible, type LineaVenta, type PagoDetalle, type Producto, type Turno,
-  type Usuario, type VentaBuscada,
+  canjearRecompensa, productoPorId, recompensas as listarRecompensas,
+  type CierreTurno, type Cliente, type Cobro, type Cuenta, type EnEspera, type ExtraElegido,
+  type LineaDevolvible, type LineaVenta, type PagoDetalle, type Producto, type Recompensa,
+  type Turno, type Usuario, type VentaBuscada,
 } from './nativo';
 import ModalMotivo from './ModalMotivo';
 import CobroMixto from './CobroMixto';
 import NotaItem from './NotaItem';
 import Descuento from './Descuento';
 import Cuentas from './Cuentas';
-import FotoProducto from './FotoProducto';
 import VistaCliente from './VistaCliente';
 import Devolucion from './Devolucion';
 import Extras from './Extras';
@@ -31,6 +31,10 @@ import Impresoras from './Impresoras';
 import Nube from './Nube';
 import Autorizar from './Autorizar';
 import { AbrirTurno, PanelTurno, ResumenCierre } from './Turno';
+import ModalCliente from './ModalCliente';
+import ModalRecompensas from './ModalRecompensas';
+import CatalogoCuadrante from './CatalogoCuadrante';
+import { useSpeedOfService } from './hooks/useSpeedOfService';
 
 /** A los 90 segundos sin tocar nada, la caja se bloquea sola. */
 const INACTIVIDAD_MS = 90_000;
@@ -262,10 +266,25 @@ function Caja({
   /* La devolución va en dos pasos, igual que el descuento: primero se arma —qué
      venta, qué líneas, con qué se devuelve— y después la autoriza un
      supervisor. Entre los dos vive aquí, sin haberse ejecutado. */
+  /* El cliente de esta venta, cuando el cajero lo identificó. Vacío es lo
+     normal: la mayoría de las ventas de mostrador son anónimas, y obligar a
+     preguntar el teléfono en cada café solo alarga la fila. */
+  const [cliente, setCliente] = useState<Cliente | null>(null);
+  const [verCliente, setVerCliente] = useState(false);
+  const [verRecompensas, setVerRecompensas] = useState(false);
+  /* La recompensa elegida, todavía sin canjear. El canje de verdad ocurre al
+     cobrar y contra el servidor: hasta entonces esto es una promesa que la
+     pantalla ya está mostrando, y por eso se puede quitar. */
+  const [recompensa, setRecompensa] = useState<Recompensa | null>(null);
+  const [hayRecompensas, setHayRecompensas] = useState(false);
   const [pidiendoDevolucion, setPidiendoDevolucion] = useState(false);
   const [devolucionPorAutorizar, setDevolucionPorAutorizar] = useState<
     { venta: VentaBuscada; items: LineaVenta[]; medio: string; total: number } | null
   >(null);
+
+  /* El cronómetro de la venta. Arranca con el primer gesto y se cierra al
+     cobrar; el cajero no lo toca nunca. */
+  const sos = useSpeedOfService();
 
   useEffect(() => { infoTerminal().then((t) => setDigitaVoucher(t.requiere_digitacion)).catch(() => {}); }, []);
   const buscador = useRef<HTMLInputElement>(null);
@@ -357,6 +376,17 @@ function Caja({
   useEffect(() => { carpetaFotos().then(setCarpeta).catch(() => {}); }, []);
 
   useEffect(() => { cobroQr().then(setCodigoQr).catch(() => {}); }, []);
+
+  /* Si el cliente vinculado alcanza para al menos una recompensa, la columna
+     del cliente lo avisa. Sin esto el cajero tendría que abrir el panel de
+     canje en cada venta para averiguar si hay algo que ofrecer, y no lo haría
+     ninguna. */
+  useEffect(() => {
+    if (!cliente || cliente.puntos <= 0) { setHayRecompensas(false); return; }
+    listarRecompensas()
+      .then((rs) => setHayRecompensas(rs.some((r) => r.costo_puntos <= cliente.puntos)))
+      .catch(() => setHayRecompensas(false));
+  }, [cliente]);
 
   /* Buscar por texto manda sobre la pestaña. Si alguien escanea un código
      estando en "Bebidas" y el producto es de "Postres", tiene que aparecer:
@@ -460,8 +490,18 @@ function Caja({
         a.length === b.length &&
         a.every((x, k) => x.nombre === b[k]?.nombre && x.cantidad === b[k]?.cantidad);
 
+      /* El precio entra en la comparación, y no es un detalle.
+
+         Sin él, el café que entró gratis por una recompensa y el café que el
+         cliente pide después son "el mismo producto con los mismos extras": se
+         fusionan en la línea de precio cero y el negocio regala el segundo.
+         Dos líneas del mismo producto a precios distintos son dos líneas. */
       const i = c.findIndex(
-        (x) => x.producto_id === p.id && x.variante === p.variante && mismosExtras(x.extras, extras),
+        (x) =>
+          x.producto_id === p.id &&
+          x.variante === p.variante &&
+          x.precio === p.precio + sobreprecio &&
+          mismosExtras(x.extras, extras),
       );
       if (i >= 0) {
         const copia = [...c];
@@ -478,6 +518,10 @@ function Caja({
       }];
     });
     setRecien((r) => ({ clave: `${p.id}${p.variante}`, vez: r.vez + 1 }));
+    /* El primer producto de un carrito vacío es el comienzo real de la venta.
+       Llamarlo en cada producto no cuesta nada: el cronómetro ignora los
+       arranques posteriores. */
+    sos.arrancar();
     bip();
     // El foco vuelve al buscador siempre: el siguiente escaneo tiene que entrar.
     buscador.current?.focus();
@@ -573,6 +617,109 @@ function Caja({
     await refrescarEspera();
   };
 
+  /* Vincular a quien está enfrente. También arranca el cronómetro: para el
+     cajero que pregunta el teléfono antes de marcar nada, ese es el momento en
+     que la venta empezó de verdad. */
+  const elegirCliente = (c: Cliente) => {
+    setCliente(c);
+    setVerCliente(false);
+    sos.arrancar();
+    buscador.current?.focus();
+  };
+
+  /* Soltar al cliente suelta también la recompensa: una recompensa sin dueño
+     no se puede canjear, y dejarla puesta haría que el cobro fallara al final
+     con el cliente enfrente. */
+  const soltarCliente = () => {
+    setCliente(null);
+    setRecompensa(null);
+    buscador.current?.focus();
+  };
+
+  /* Aplicar una recompensa a la venta que se está armando.
+
+     Lo que pasa aquí es **visual**: el producto entra a cero o el descuento se
+     pinta en el total. Los puntos no se han tocado todavía; eso ocurre al
+     cobrar y contra el servidor, porque el descuento tiene que ser atómico
+     entre todas las terminales del negocio.
+
+     Es optimista a propósito. Si al cobrar el servidor dice que no alcanzan,
+     la pantalla lo avisa y la venta sigue sin la recompensa. La alternativa
+     —consultar antes de mostrar nada— pondría una espera de red en medio del
+     gesto más frecuente del día. */
+  const aplicarRecompensa = async (r: Recompensa) => {
+    setVerRecompensas(false);
+
+    if (r.tipo === 'free_product') {
+      const cual = r.producto_id ? await productoPorId(r.producto_id).catch(() => null) : null;
+      if (!cual) {
+        setError(`"${r.nombre}" apunta a un producto que ya no está en el catálogo`);
+        return;
+      }
+      /* Entra a cero y como línea propia: la cocina tiene que verlo en la
+         comanda igual que cualquier otro plato. Un producto gratis que no se
+         imprime es un producto que no se prepara. */
+      setCarrito((c) => [...c, {
+        producto_id: cual.id,
+        nombre: cual.nombre,
+        variante: cual.variante,
+        precio: 0,
+        cantidad: 1,
+        nota: `Recompensa · ${r.nombre}`,
+        extras: [],
+      }]);
+      setRecompensa(r);
+      bip();
+      buscador.current?.focus();
+      return;
+    }
+
+    /* Los descuentos por puntos **no** pasan por la autorización del
+       supervisor, y esa diferencia es deliberada: un descuento a dedo es plata
+       que el negocio regala y por eso necesita firma; este lo pagó el cliente
+       con puntos que ya se ganó. Queda registrado igual, en el canje. */
+    const rebaja = r.tipo === 'discount_percent'
+      ? Math.round((total * Math.min(100, Math.max(0, r.valor_descuento))) / 100)
+      : r.valor_descuento;
+
+    setDescuento({ monto: Math.min(total, Math.max(0, rebaja)), motivo: `Puntos · ${r.nombre}` });
+    setRecompensa(r);
+    bip();
+    buscador.current?.focus();
+  };
+
+  /* Un descuento por porcentaje tiene que seguir al total.
+
+     Si se quedara con la cifra del momento en que se aplicó, el cliente que
+     agrega dos platos después de canjear su 10% recibiría el 10% de lo que
+     llevaba antes. Se le estaría cobrando de más, y nadie lo notaría: la
+     pantalla muestra una rebaja, solo que la equivocada.
+
+     Los descuentos autorizados por un supervisor **no** se tocan: esos son una
+     cifra que alguien firmó, no una proporción. */
+  useEffect(() => {
+    if (!recompensa || recompensa.tipo !== 'discount_percent') return;
+    const bruto = carrito.reduce((t, i) => t + i.precio * i.cantidad, 0);
+    const rebaja = Math.round((bruto * Math.min(100, Math.max(0, recompensa.valor_descuento))) / 100);
+    setDescuento((d) =>
+      d.monto === Math.min(bruto, rebaja) ? d : { monto: Math.min(bruto, rebaja), motivo: d.motivo },
+    );
+  }, [carrito, recompensa]);
+
+  /* Quitar la recompensa antes de cobrar. Devuelve el carrito a como estaba:
+     si era un producto gratis se va la línea, si era descuento se va la
+     rebaja. */
+  const quitarRecompensa = () => {
+    if (!recompensa) return;
+    if (recompensa.tipo === 'free_product') {
+      setCarrito((c) => c.filter((l) => !l.nota?.startsWith('Recompensa · ')));
+    } else {
+      setDescuento({ monto: 0, motivo: '' });
+    }
+    setRecompensa(null);
+    buscador.current?.focus();
+  };
+
   /* Abre la pantalla de cobro. No cobra: decidir con qué se paga es un paso
      aparte desde que una venta puede repartirse entre varios medios. */
   const finalizar = () => {
@@ -594,6 +741,12 @@ function Caja({
          `medio_pago` y `recibido` van por compatibilidad; con `pagos` puesto,
          Rust se guía por la lista y recalcula el resumen. */
       const efectivo = pagos.filter((p) => p.metodo === 'efectivo').reduce((t, p) => t + p.monto, 0);
+
+      /* El cronómetro se cierra **antes** de guardar: lo que se mide es lo que
+         tardó el cajero en armar el ticket, no lo que tarde SQLite en
+         escribirlo ni lo que tarde la impresora en sacar la tirilla. */
+      const duracion = sos.cerrar();
+
       const r = await cobrar({
         items: carrito,
         medio_pago: pagos.length === 1 ? String(pagos[0].metodo) : 'mixto',
@@ -605,11 +758,50 @@ function Caja({
         descuento: descuento.monto,
         descuento_motivo: descuento.motivo,
         propina,
+        cliente_id: cliente?.id ?? '',
+        cliente_telefono: cliente?.telefono ?? '',
+        duracion_toma_segundos: duracion,
       });
       setUltimo(r);
+
+      /* El canje va **después** de que la venta quedó guardada, y su fallo no
+         la deshace.
+
+         El orden importa: la venta es lo irrecuperable —el cliente ya pagó y
+         ya se llevó la comida— y los puntos son un registro que se puede
+         corregir. Al revés, un canje exitoso seguido de un fallo al guardar
+         dejaría al cliente sin puntos y sin venta.
+
+         Si el canje falla, el cajero se entera por el aviso y el cliente
+         conserva sus puntos. Lo que no puede pasar es que la caja se quede
+         esperando a la nube con la fila detrás. */
+      if (recompensa && cliente) {
+        try {
+          await canjearRecompensa(
+            cliente.id,
+            cliente.telefono,
+            recompensa.id,
+            r.venta.id,
+            usuario.nombre,
+          );
+          setAvisoCuenta(`${recompensa.nombre} canjeado · ${recompensa.costo_puntos} puntos`);
+          window.setTimeout(() => setAvisoCuenta(''), 6000);
+        } catch (e) {
+          /* Se avisa y se sigue. La venta ya está cobrada con la recompensa
+             entregada; que los puntos no se hayan descontado es un problema
+             del negocio con su programa, no del cliente que está esperando su
+             vuelto. */
+          setFalloImpresion(
+            `La venta quedó, pero los puntos no se descontaron: ${String(e).replace(/^Error:\s*/, '')}`,
+          );
+        }
+      }
+
       setCarrito([]);
       setVistaPago([]);
       setDescuento({ monto: 0, motivo: '' });
+      setCliente(null);
+      setRecompensa(null);
 
       /* La cuenta se cierra **después** de que la venta quedó registrada. Al
          revés, un fallo al guardar dejaría la mesa borrada y su consumo
@@ -646,7 +838,7 @@ function Caja({
     cobrandoAhora || conExtras !== null || anulando !== null || pidiendoDescuento ||
     porAutorizar !== null || anotando !== null || pidiendoGaveta || descartando !== null ||
     pidiendoDevolucion || devolucionPorAutorizar !== null || verImpresoras || verNube ||
-    verTurno || verEspera;
+    verTurno || verEspera || verCliente || verRecompensas;
 
   useEffect(() => {
     if (hayModal) buscador.current?.blur();
@@ -665,9 +857,24 @@ function Caja({
       if (e.key === 'F2') { e.preventDefault(); finalizar(); }
       if (e.key === 'F4') { e.preventDefault(); pausar(); }
       if (e.key === 'F3') { e.preventDefault(); if (carrito.length) setPidiendoDescuento(true); }
+      if (e.key === 'F1') { e.preventDefault(); setVerCliente(true); }
+      /* F6 abre el canje. Solo con cliente vinculado: sin él no hay puntos que
+         gastar, y abrir un panel vacío es enseñarle al cajero que ese botón no
+         sirve. */
+      if (e.key === 'F6') { e.preventDefault(); if (cliente) setVerRecompensas(true); }
+      /* F8 hace lo mismo que F3. Las dos porque la carta de atajos del POS
+         industrial dice F8 y la caja venía usando F3 desde antes: quitar F3 le
+         rompería la memoria muscular a quien ya la tiene. */
+      if (e.key === 'F8') { e.preventDefault(); if (carrito.length) setPidiendoDescuento(true); }
       if (e.key === 'Escape' && !cobrandoAhora) {
         setCarrito([]);
         setDescuento({ monto: 0, motivo: '' });
+        setCliente(null);
+        setRecompensa(null);
+        /* La venta se canceló: lo medido no vale y no se guarda. Si se
+           conservara, la siguiente venta empezaría con el reloj corrido y el
+           promedio del día quedaría inflado. */
+        sos.reiniciar();
         setError('');
       }
     };
@@ -684,7 +891,7 @@ function Caja({
   };
 
   return (
-    <div className="relative h-screen flex flex-col bg-slate-100 text-slate-900">
+    <div className="relative h-screen flex flex-col bg-slate-100 text-slate-900 overflow-hidden">
       {/* La barra. Tres grupos con jerarquía, no seis rectángulos iguales:
           a la izquierda quién está en la caja, en medio el estado de la nube y
           lo que quedó en espera, a la derecha las herramientas que se usan una
@@ -705,6 +912,31 @@ function Caja({
             </span>
           </span>
         </button>
+
+        {/* El cronómetro de la venta en curso.
+
+            Solo aparece cuando hay una venta abierta: un contador en cero toda
+            la jornada es ruido, y lo que este número tiene que provocar es una
+            mirada de reojo, no un vistazo permanente.
+
+            El color es para el negocio, no una nota al cajero. Una venta de
+            veinte productos tarda más que un café y eso no es lentitud: por
+            eso no hay alarma, ni sonido, ni nada que interrumpa. */}
+        {sos.reloj && (
+          <span
+            title="Lo que lleva esta venta desde el primer producto"
+            className={`flex items-center gap-1.5 px-2.5 h-toque rounded-xl text-[13px] font-black tabular-nums ${
+              sos.ritmo === 'lento'
+                ? 'bg-red-500/20 text-red-300'
+                : sos.ritmo === 'medio'
+                  ? 'bg-amber-400/20 text-amber-300'
+                  : 'bg-emerald-500/20 text-emerald-300'
+            }`}
+          >
+            <Timer size={15} strokeWidth={2.5} />
+            {sos.reloj}
+          </span>
+        )}
 
         <span className="text-[13px] font-bold text-slate-400 truncate max-w-[220px] pl-1">
           {negocio || 'MenuBy POS'}
@@ -882,6 +1114,21 @@ function Caja({
             <X size={18} strokeWidth={2.5} />
           </button>
         </div>
+      )}
+
+      {verCliente && (
+        <ModalCliente
+          onElegir={elegirCliente}
+          onCerrar={() => { setVerCliente(false); buscador.current?.focus(); }}
+        />
+      )}
+
+      {verRecompensas && cliente && (
+        <ModalRecompensas
+          cliente={cliente}
+          onElegir={aplicarRecompensa}
+          onCerrar={() => { setVerRecompensas(false); buscador.current?.focus(); }}
+        />
       )}
 
       {verImpresoras && <Impresoras onCerrar={() => setVerImpresoras(false)} />}
@@ -1119,13 +1366,106 @@ function Caja({
         </div>
       )}
 
-      <div className="flex-1 flex min-h-0">
-        {/* Catálogo */}
-        <section className="flex-1 flex flex-col min-w-0 p-4 gap-3">
+      {/* ── La cabina: tres columnas que no se mueven ──────────────────────
+
+          Sin scroll global y sin columnas que cambien de ancho. El cajero que
+          se sabe dónde está el botón de cobrar tiene que encontrarlo en el
+          mismo sitio a las siete de la mañana y a las once de la noche, con la
+          pantalla llena o vacía.
+
+          Izquierda: quién es el cliente y en qué modo se atiende.
+          Centro: qué se vende.
+          Derecha: qué lleva y cuánto es. */}
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+
+        {/* ── Columna 1: cliente y modo de servicio ─────────────────────── */}
+        <aside className="w-[264px] flex-shrink-0 border-r border-slate-200 bg-white flex flex-col min-h-0 p-3 gap-3 overflow-hidden">
+          {/* La tarjeta del cliente. Es lo primero de la columna porque es lo
+              primero que pasa en una venta con fidelización: el cliente dice
+              su número antes de pedir. */}
+          {cliente ? (
+            <div className="flex-shrink-0 rounded-xl border-2 border-marca bg-white overflow-hidden">
+              <div className="px-3 py-2.5">
+                <p className="text-[14px] font-black truncate">{cliente.nombre || 'Sin nombre'}</p>
+                <p className="text-[11.5px] text-slate-500 tabular-nums truncate">
+                  {cliente.telefono}
+                  {cliente.documento ? ` · ${cliente.tipo_documento} ${cliente.documento}` : ''}
+                </p>
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <span className="flex items-center gap-1 px-2 h-6 rounded-md bg-slate-100 text-[11.5px] font-black tabular-nums">
+                    <Star size={11} strokeWidth={2.5} />
+                    {cliente.puntos} pts
+                  </span>
+                  {cliente.saldo_favor > 0 && (
+                    <span className="px-2 h-6 flex items-center rounded-md bg-sky-50 text-sky-700 text-[11px] font-bold tabular-nums">
+                      {pesos(cliente.saldo_favor)} a favor
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* El aviso de que hay algo que ofrecerle. Es la razón por la que
+                  el programa de puntos sirve de algo en el mostrador: sin esto,
+                  el cliente acumula y nadie le dice nunca que ya alcanza. */}
+              {hayRecompensas && !recompensa && (
+                <button
+                  onClick={() => setVerRecompensas(true)}
+                  className="w-full flex items-center gap-2 px-3 h-toque bg-emerald-600 text-white text-[12.5px] font-black hover:bg-emerald-500"
+                >
+                  <Gift size={15} strokeWidth={2.5} />
+                  Recompensa disponible
+                </button>
+              )}
+
+              <button
+                onClick={soltarCliente}
+                className="w-full flex items-center justify-center gap-1.5 px-3 h-9 border-t border-slate-100 text-[11.5px] font-bold text-slate-400 hover:text-red-600 hover:bg-red-50"
+              >
+                <X size={13} strokeWidth={2.5} />
+                Quitar cliente
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setVerCliente(true)}
+              className="flex-shrink-0 flex flex-col items-center justify-center gap-1 h-24 rounded-xl border-2 border-dashed border-slate-300 text-slate-500 hover:border-marca hover:text-slate-700 active:scale-[0.98] transition-transform duration-75"
+            >
+              <UserPlus size={22} strokeWidth={2} />
+              <span className="text-[13px] font-bold">Asociar cliente</span>
+              <span className="text-[10.5px] font-semibold text-slate-400">F1 · tel, cédula o nombre</span>
+            </button>
+          )}
+
+          {/* La recompensa puesta, con cómo quitarla. Se ve aquí y no solo en
+              el total porque el cajero tiene que poder darse cuenta antes de
+              cobrar de que está entregando algo gratis. */}
+          {recompensa && (
+            <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200">
+              <Gift size={16} strokeWidth={2.25} className="flex-shrink-0 text-emerald-700" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-black text-emerald-800 truncate">{recompensa.nombre}</p>
+                <p className="text-[10.5px] font-semibold text-emerald-700 tabular-nums">
+                  −{recompensa.costo_puntos} puntos al cobrar
+                </p>
+              </div>
+              <button
+                onClick={quitarRecompensa}
+                aria-label="Quitar la recompensa"
+                className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-lg text-emerald-700 hover:bg-emerald-100"
+              >
+                <X size={14} strokeWidth={2.5} />
+              </button>
+            </div>
+          )}
+
+          <span className="flex-shrink-0 text-[10.5px] font-black text-slate-400 uppercase tracking-wide px-1">
+            Modo de servicio
+          </span>
+
           {/* Mostrador o salón. Se ve siempre —incluso sin cuentas abiertas—
               porque si estuviera escondido hasta tener una, no habría forma de
               abrir la primera. */}
-          <div className="flex gap-1.5 flex-shrink-0">
+          <div className="flex-shrink-0 flex flex-col gap-1.5">
             {([
               { id: 'catalogo' as const, nombre: 'Mostrador', icono: LayoutGrid },
               { id: 'salon' as const, nombre: 'Mesas', icono: UtensilsCrossed },
@@ -1133,7 +1473,7 @@ function Caja({
               <button
                 key={id}
                 onClick={() => setVista(id)}
-                className={`flex items-center gap-2 px-4 h-toque rounded-xl text-[13px] font-bold border-2 transition-colors ${
+                className={`flex items-center gap-2 px-3 h-12 rounded-xl text-[13px] font-bold border-2 transition-colors ${
                   vista === id
                     ? 'border-marca bg-marca text-sobre-marca'
                     : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
@@ -1142,7 +1482,7 @@ function Caja({
                 <Icono size={16} strokeWidth={2.25} />
                 {nombre}
                 {id === 'salon' && cuentas.length > 0 && (
-                  <span className={`ml-1 px-1.5 rounded-md text-[11px] tabular-nums ${
+                  <span className={`ml-auto px-1.5 rounded-md text-[11px] tabular-nums ${
                     vista === id ? 'bg-black/20' : 'bg-slate-100 text-slate-600'
                   }`}>
                     {cuentas.length}
@@ -1150,13 +1490,59 @@ function Caja({
                 )}
               </button>
             ))}
-
-            {avisoCuenta && (
-              <span className="flex items-center px-3 h-toque rounded-xl bg-emerald-50 text-emerald-800 text-[12.5px] font-semibold truncate">
-                {avisoCuenta}
-              </span>
-            )}
           </div>
+
+          <span className="flex-shrink-0 text-[10.5px] font-black text-slate-400 uppercase tracking-wide px-1">
+            Categorías
+          </span>
+
+          {/* Las pestañas de categoría, en vertical. Con cuarenta platos en
+              carta, buscar por texto es más lento que tocar: el cajero se sabe
+              la carta por secciones, no por nombres exactos.
+
+              Es lo único de esta columna que se desplaza, y solo si el negocio
+              tiene más categorías de las que caben. */}
+          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-1.5">
+            {['', ...rubros].map((r) => (
+              <button
+                key={r || 'todos'}
+                onClick={() => setRubro(r)}
+                className={`flex-shrink-0 px-3 h-11 rounded-xl text-left text-[12.5px] font-bold border-2 transition-colors truncate ${
+                  rubro === r
+                    ? 'border-marca bg-marca text-sobre-marca'
+                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                }`}
+              >
+                {r || 'Todos'}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => {
+              setCarrito([]);
+              setDescuento({ monto: 0, motivo: '' });
+              setCliente(null);
+              setRecompensa(null);
+              sos.reiniciar();
+              setError('');
+              buscador.current?.focus();
+            }}
+            disabled={!carrito.length && !cliente}
+            className="flex-shrink-0 flex items-center justify-center gap-2 h-11 rounded-xl border-2 border-slate-200 text-[12.5px] font-bold text-slate-500 disabled:opacity-30 hover:border-slate-300 active:scale-[0.98] transition-transform duration-75"
+          >
+            <Trash2 size={15} strokeWidth={2.25} />
+            Limpiar · Esc
+          </button>
+        </aside>
+
+        {/* ── Columna 2: la rejilla ─────────────────────────────────────── */}
+        <section className="flex-1 flex flex-col min-w-0 min-h-0 p-3 gap-2.5 overflow-hidden">
+          {avisoCuenta && (
+            <span className="flex-shrink-0 flex items-center px-3 h-11 rounded-xl bg-emerald-50 text-emerald-800 text-[12.5px] font-semibold truncate">
+              {avisoCuenta}
+            </span>
+          )}
 
           {vista === 'salon' ? (
             <Cuentas
@@ -1185,85 +1571,41 @@ function Caja({
               onCobrar={cobrarCuenta}
             />
           ) : (
-          <>
-          {/* El icono no es decoración: un cajero nuevo no sabe que el lector
-              de códigos funciona sin configurar nada, y esto se lo dice. */}
-          <div className="relative flex-shrink-0">
-            <ScanLine
-              size={22}
-              strokeWidth={2}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-            />
-            <input
-              ref={buscador}
-              autoFocus
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              onKeyDown={enterEnBusqueda}
-              placeholder="Busca o escanea un producto…"
-              className="w-full h-14 pl-12 pr-4 rounded-xl border-2 border-slate-200 bg-white text-lg outline-none focus:border-marca"
-            />
-          </div>
+            <>
+              {/* El icono no es decoración: un cajero nuevo no sabe que el
+                  lector de códigos funciona sin configurar nada, y esto se lo
+                  dice. */}
+              <div className="relative flex-shrink-0">
+                <ScanLine
+                  size={20}
+                  strokeWidth={2}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                />
+                <input
+                  ref={buscador}
+                  autoFocus
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                  onKeyDown={enterEnBusqueda}
+                  placeholder="Busca o escanea un producto…"
+                  className="w-full h-12 pl-11 pr-4 rounded-xl border-2 border-slate-200 bg-white text-[15px] outline-none focus:border-marca"
+                />
+              </div>
 
-          {/* Las pestañas. Con cuarenta platos en carta, buscar por texto es
-              más lento que tocar: el cajero se sabe la carta por secciones, no
-              por nombres exactos. Se ocultan si el negocio no usa categorías,
-              porque una sola pestaña que dice "Todos" no es navegación. */}
-          {rubros.length > 1 && (
-            <div className="flex gap-1.5 overflow-x-auto flex-shrink-0 pb-1">
-              {['', ...rubros].map((r) => (
-                <button
-                  key={r || 'todos'}
-                  onClick={() => setRubro(r)}
-                  className={`flex-shrink-0 px-4 h-toque rounded-xl text-[13px] font-bold border-2 transition-colors ${
-                    rubro === r
-                      ? 'border-marca bg-marca text-sobre-marca'
-                      : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
-                  }`}
-                >
-                  {r || 'Todos'}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 content-start">
-            {productos.map((p) => (
-              <button
-                key={p.id + p.variante}
-                onClick={() => tocar(p)}
-                className="h-40 rounded-xl bg-white border border-slate-200 text-left hover:border-marca active:scale-95 active:border-marca transition-transform duration-75 flex flex-col overflow-hidden"
-              >
-                {/* La foto ocupa más que el texto a propósito: un cajero la
-                    reconoce sin leer, y eso son décimas de segundo por
-                    producto multiplicadas por trescientas ventas al día. */}
-                <div className="h-20 w-full flex-shrink-0 bg-slate-100">
-                  <FotoProducto nombre={p.nombre} archivo={p.foto} carpeta={carpeta} />
-                </div>
-                <div className="flex-1 p-2.5 flex flex-col justify-between min-h-0">
-                  <span className="text-[13px] font-semibold leading-tight line-clamp-2">
-                    {p.nombre}{p.variante ? ` · ${p.variante}` : ''}
-                  </span>
-                  <span className="text-[15px] font-black tabular-nums">{pesos(p.precio)}</span>
-                </div>
-              </button>
-            ))}
-            {productos.length === 0 && (
-              <p className="col-span-full text-center text-slate-400 py-10 text-sm">
-                {rubro
-                  ? `Nada en "${rubro}".`
-                  : busqueda
-                    ? `Nada que coincida con "${busqueda}".`
-                    : 'Sin productos. El catálogo se replica desde la nube a la base local.'}
-              </p>
-            )}
-          </div>
-          </>
+              <CatalogoCuadrante
+                productos={productos}
+                carpeta={carpeta}
+                onTocar={tocar}
+                busqueda={busqueda}
+                rubro={rubro}
+                conAtajos={!hayModal}
+              />
+            </>
           )}
         </section>
 
-        {/* Carrito */}
-        <aside className="w-[380px] flex-shrink-0 bg-white border-l border-slate-200 flex flex-col">
+        {/* ── Columna 3: la orden ───────────────────────────────────────── */}
+        <aside className="w-[352px] flex-shrink-0 bg-white border-l border-slate-200 flex flex-col min-h-0 overflow-hidden">
           {enCuenta && (
             /* Saber de qué mesa es lo que hay en pantalla. Sin esto, el error
                obvio es marcar la ronda de la mesa 3 sobre la cuenta de la 5. */
@@ -1279,14 +1621,14 @@ function Caja({
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+          <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1.5">
             {carrito.map((i, indice) => (
               <div
-                key={i.producto_id + i.variante}
+                key={i.producto_id + i.variante + indice}
                 data-linea={`${i.producto_id}${i.variante}`}
-                className={`flex items-center gap-1.5 p-2 rounded-lg bg-slate-50 ${
-                  recien.clave === `${i.producto_id}${i.variante}` ? 'recien-agregado' : ''
-                }`}
+                className={`flex items-center gap-1.5 p-2 rounded-lg ${
+                  i.precio === 0 ? 'bg-emerald-50' : 'bg-slate-50'
+                } ${recien.clave === `${i.producto_id}${i.variante}` ? 'recien-agregado' : ''}`}
               >
                 {/* Tocar el nombre abre la nota. No hay botón aparte porque
                     en el carrito no sobra un milímetro, y el nombre es lo más
@@ -1321,19 +1663,21 @@ function Caja({
                 <button
                   onClick={() => cambiarCantidad(indice, -1)}
                   title="Quitar uno"
-                  className="flex items-center justify-center w-toque h-toque rounded-lg border border-slate-200 text-slate-600 active:scale-95 transition-transform duration-75"
+                  className="flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 text-slate-600 active:scale-95 transition-transform duration-75"
                 >
                   <Minus size={16} strokeWidth={3} />
                 </button>
-                <span className="w-7 text-center font-bold tabular-nums">{i.cantidad}</span>
+                <span className="w-6 text-center font-bold tabular-nums">{i.cantidad}</span>
                 <button
                   onClick={() => cambiarCantidad(indice, 1)}
                   title="Agregar uno"
-                  className="flex items-center justify-center w-toque h-toque rounded-lg border border-slate-200 text-slate-600 active:scale-95 transition-transform duration-75"
+                  className="flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 text-slate-600 active:scale-95 transition-transform duration-75"
                 >
                   <Plus size={16} strokeWidth={3} />
                 </button>
-                <span className="w-20 text-right font-bold tabular-nums text-[13px]">{pesos(i.precio * i.cantidad)}</span>
+                <span className="w-[72px] text-right font-bold tabular-nums text-[13px]">
+                  {i.precio === 0 ? 'GRATIS' : pesos(i.precio * i.cantidad)}
+                </span>
               </div>
             ))}
 
@@ -1349,7 +1693,6 @@ function Caja({
                     Cambio {pesos(ultimo.venta.vuelto)}
                   </p>
                 )}
-
               </div>
             )}
 
@@ -1364,11 +1707,7 @@ function Caja({
             )}
           </div>
 
-          <div className="p-3 border-t border-slate-200 space-y-2">
-            {/* El total y nada más. Con qué se paga se decide en la pantalla de
-                cobro, porque desde que una venta puede repartirse entre varios
-                medios ya no cabe en dos botones. El carrito vuelve a ser lo que
-                es: la lista de lo que se lleva. */}
+          <div className="flex-shrink-0 p-3 border-t border-slate-200 space-y-2">
             {descuento.monto > 0 && (
               /* El descuento se ve en el carrito y no solo en la tirilla: el
                  cajero tiene que poder darse cuenta de que está cobrando de
@@ -1381,9 +1720,15 @@ function Caja({
                   −{pesos(descuento.monto)}
                 </span>
                 <button
-                  onClick={() => setDescuento({ monto: 0, motivo: '' })}
+                  onClick={() => {
+                    setDescuento({ monto: 0, motivo: '' });
+                    /* Si el descuento venía de una recompensa, quitarlo quita
+                       la recompensa: dejarla puesta cobraría los puntos sin
+                       darle nada al cliente. */
+                    if (recompensa && recompensa.tipo !== 'free_product') setRecompensa(null);
+                  }}
                   aria-label="Quitar el descuento"
-                  className="flex items-center justify-center w-toque h-toque ml-1 rounded-lg text-amber-700 hover:bg-amber-100"
+                  className="flex items-center justify-center w-10 h-10 ml-1 rounded-lg text-amber-700 hover:bg-amber-100"
                 >
                   <X size={15} strokeWidth={2.5} />
                 </button>
@@ -1397,27 +1742,38 @@ function Caja({
 
             {error && <p className="text-[12.5px] font-semibold text-red-600">{error}</p>}
 
-            <div className="flex gap-2">
-              <button
+            {/* Las acciones de la orden. Tres botones chicos y uno grande: el
+                que más se toca del día es el único que tiene que encontrarse
+                sin mirar. */}
+            <div className="grid grid-cols-3 gap-2">
+              <BotonOrden
+                icono={Percent}
+                texto="Dcto"
+                atajo="F3"
                 onClick={() => setPidiendoDescuento(true)}
                 disabled={!carrito.length}
                 title="Rebajarle a la cuenta. Lo autoriza un supervisor."
-                className="flex flex-col items-center justify-center gap-0.5 w-20 h-16 rounded-xl border-2 border-slate-200 text-[12px] font-bold text-slate-600 disabled:opacity-30 active:scale-95 transition-transform duration-75"
-              >
-                <Percent size={18} strokeWidth={2.25} />
-                Dcto
-                <span className="text-[10px] font-semibold text-slate-400">F3</span>
-              </button>
-              <button
+              />
+              <BotonOrden
+                icono={Gift}
+                texto="Puntos"
+                atajo="F6"
+                onClick={() => setVerRecompensas(true)}
+                disabled={!cliente}
+                resaltado={hayRecompensas && !recompensa}
+                title={cliente ? 'Canjear puntos del cliente' : 'Primero asocia un cliente (F1)'}
+              />
+              <BotonOrden
+                icono={PauseCircle}
+                texto="Espera"
+                atajo="F4"
                 onClick={pausar}
                 disabled={!carrito.length}
                 title="Aparta este pedido y atiende al siguiente"
-                className="flex flex-col items-center justify-center gap-0.5 w-32 h-16 rounded-xl border-2 border-slate-200 text-[12.5px] font-bold text-slate-600 disabled:opacity-30 active:scale-95 transition-transform duration-75"
-              >
-                <PauseCircle size={18} strokeWidth={2.25} />
-                En espera
-                <span className="text-[10px] font-semibold text-slate-400">F4</span>
-              </button>
+              />
+            </div>
+
+            <div className="flex gap-2">
               {/* Atendiendo una mesa, lo que se hace nueve de cada diez veces
                   es mandar la ronda a la cocina, no cobrar: el cobro llega una
                   vez, al final. Por eso el botón grande cambia. */}
@@ -1425,15 +1781,12 @@ function Caja({
                 <button
                   onClick={mandarACuenta}
                   disabled={!carrito.length}
-                  className="flex-1 flex flex-col items-center justify-center h-16 rounded-xl bg-marca text-sobre-marca text-[15px] font-black disabled:opacity-30 active:scale-95 transition-transform duration-75"
+                  className="flex-1 flex flex-col items-center justify-center h-16 rounded-xl bg-marca text-sobre-marca text-[14px] font-black disabled:opacity-30 active:scale-95 transition-transform duration-75"
                 >
                   Mandar a {enCuenta.identificador}
                   <span className="text-[10px] font-semibold opacity-70">solo lo nuevo va a cocina</span>
                 </button>
               )}
-              {/* El botón que más se toca del día lleva el color del negocio.
-                  Es lo único de esta pantalla que tiene que encontrarse sin
-                  mirar. */}
               <button
                 onClick={() => finalizar()}
                 disabled={!carrito.length || cobrando}
@@ -1451,5 +1804,41 @@ function Caja({
         </aside>
       </div>
     </div>
+  );
+}
+
+/**
+ * Un botón de acción de la orden.
+ *
+ * Existe por lo mismo que `BotonBarra`: para que el alto y el atajo dejen de
+ * ser una decisión que se toma tres veces y salga distinta cada vez.
+ */
+function BotonOrden({
+  icono: Icono,
+  texto,
+  atajo,
+  resaltado = false,
+  ...resto
+}: {
+  icono: typeof Percent;
+  texto: string;
+  atajo: string;
+  resaltado?: boolean;
+} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      {...resto}
+      className={`flex flex-col items-center justify-center gap-0.5 h-16 rounded-xl border-2 text-[12px] font-bold disabled:opacity-30 active:scale-95 transition-transform duration-75 ${
+        resaltado
+          ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
+          : 'border-slate-200 text-slate-600'
+      }`}
+    >
+      <Icono size={17} strokeWidth={2.25} />
+      {texto}
+      <span className={`text-[10px] font-semibold ${resaltado ? 'text-emerald-600' : 'text-slate-400'}`}>
+        {atajo}
+      </span>
+    </button>
   );
 }

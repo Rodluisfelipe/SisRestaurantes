@@ -366,6 +366,32 @@ export async function buscarClientes(texto: string): Promise<Cliente[]> {
   return invoke<Cliente[]>('buscar_clientes', { texto });
 }
 
+/**
+ * Un producto por su id. Lo necesita el canje de "producto gratis", que trae
+ * el id de la recompensa y no el producto entero.
+ */
+export async function productoPorId(id: string): Promise<Producto | null> {
+  if (!enTauri) return DEMO.find((p) => p.id === id) ?? null;
+  return invoke<Producto | null>('producto_por_id', { id });
+}
+
+/**
+ * Da de alta un cliente desde el mostrador.
+ *
+ * Entra a la copia local y a la cola en el mismo gesto: se puede usar en la
+ * venta que se está cobrando sin esperar a la nube. El id que devuelve es el
+ * de esta terminal; la nube le asignará el suyo y las dos fichas se
+ * reconcilian por teléfono en la siguiente bajada.
+ */
+export async function crearCliente(
+  telefono: string,
+  nombre: string,
+  documento = '',
+): Promise<Cliente> {
+  if (!enTauri) throw new Error('Registrar clientes necesita la caja instalada');
+  return invoke<Cliente>('crear_cliente', { telefono, nombre, documento });
+}
+
 /** Las recompensas que se pueden ofrecer ahora mismo. */
 export async function recompensas(): Promise<Recompensa[]> {
   if (!enTauri) return [];

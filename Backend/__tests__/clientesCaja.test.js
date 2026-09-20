@@ -189,6 +189,118 @@ describe('los clientes que baja la caja', () => {
   });
 });
 
+/* La otra dirección: un cliente que el cajero dio de alta en el mostrador y
+   que sube por la cola. */
+function crearAppAlta({ existentes = [] } = {}) {
+  const app = express();
+  app.use(express.json());
+
+  const guardados = [...existentes];
+
+  app.post('/customers', (req, res) => {
+    const telefono = String(req.body.telefono || '').trim().slice(0, 30);
+    const nombre = String(req.body.nombre || '').trim().slice(0, 80);
+
+    if (!telefono || !nombre) {
+      return res.status(400).json({ message: 'El cliente necesita teléfono y nombre', motivo: 'payload_invalido' });
+    }
+
+    const existente = guardados.find((c) => c.phone === telefono);
+    if (existente) {
+      const documento = String(req.body.documento || '').trim().slice(0, 20);
+      if (documento && !existente.documento) existente.documento = documento;
+      return res.json({ ok: true, duplicado: true, id: String(existente._id) });
+    }
+
+    const creado = {
+      _id: `mongo-${guardados.length + 1}`,
+      phone: telefono,
+      name: nombre,
+      documento: String(req.body.documento || '').trim().slice(0, 20),
+    };
+    guardados.push(creado);
+    res.status(201).json({ ok: true, duplicado: false, id: creado._id });
+  });
+
+  app.get('/_guardados', (_req, res) => res.json(guardados));
+  return app;
+}
+
+describe('el cliente que sube desde la caja', () => {
+  it('entra con teléfono y nombre, que es lo mínimo que sirve', async () => {
+    const app = crearAppAlta();
+    const r = await request(app)
+      .post('/customers')
+      .send({ pos_cliente_id: '0192f8a1-7c4e-7000-8000-abcdef123456', telefono: '3101234567', nombre: 'Pedro' });
+
+    expect(r.status).toBe(201);
+    expect(r.body.duplicado).toBe(false);
+  });
+
+  it('el id de la caja no se usa como identidad', async () => {
+    /* La terminal manda un UUIDv7 y aquí los ids son ObjectId. Si se
+       intentara adoptarlo, la ficha nacería con un id que no es válido en
+       Mongo. La llave es el teléfono. */
+    const app = crearAppAlta();
+    const r = await request(app)
+      .post('/customers')
+      .send({ pos_cliente_id: '0192f8a1-7c4e-7000-8000-abcdef123456', telefono: '3101234567', nombre: 'Pedro' });
+
+    expect(r.body.id).not.toBe('0192f8a1-7c4e-7000-8000-abcdef123456');
+  });
+
+  it('un reintento de la cola no crea un segundo cliente', async () => {
+    /* La cola reintenta hasta que confirmemos. Sin idempotencia, un timeout
+       deja al negocio con el mismo cliente tres veces. */
+    const app = crearAppAlta();
+    const envio = { telefono: '3101234567', nombre: 'Pedro' };
+
+    const primera = await request(app).post('/customers').send(envio);
+    const segunda = await request(app).post('/customers').send(envio);
+
+    expect(segunda.body.duplicado).toBe(true);
+    expect(segunda.body.id).toBe(primera.body.id);
+    expect((await request(app).get('/_guardados')).body).toHaveLength(1);
+  });
+
+  it('si ya existía desde antes, gana la ficha vieja', async () => {
+    /* El cliente pidió un domicilio el mes pasado y el cajero lo registra
+       otra vez sin saberlo. La ficha vieja tiene el historial y los puntos;
+       crear una nueva los dejaría huérfanos. */
+    const app = crearAppAlta({
+      existentes: [{ _id: 'viejo', phone: '3101234567', name: 'Pedro Gómez', documento: '' }],
+    });
+
+    const r = await request(app)
+      .post('/customers')
+      .send({ telefono: '3101234567', nombre: 'pedro' });
+
+    expect(r.body.duplicado).toBe(true);
+    expect(r.body.id).toBe('viejo');
+    // El nombre de antes no se pisa con lo que el cajero alcanzó a teclear.
+    expect((await request(app).get('/_guardados')).body[0].name).toBe('Pedro Gómez');
+  });
+
+  it('pero sí completa el documento que faltaba', async () => {
+    const app = crearAppAlta({
+      existentes: [{ _id: 'viejo', phone: '3101234567', name: 'Pedro', documento: '' }],
+    });
+
+    await request(app).post('/customers').send({ telefono: '3101234567', nombre: 'Pedro', documento: '1017' });
+
+    expect((await request(app).get('/_guardados')).body[0].documento).toBe('1017');
+  });
+
+  it('sin nombre se rechaza con 400, para que la cola lo aparte', async () => {
+    /* 400 y no 500: un 5xx haría que la cola reintentara para siempre y
+       taponara las ventas que vienen detrás. */
+    const r = await request(crearAppAlta()).post('/customers').send({ telefono: '3101234567' });
+
+    expect(r.status).toBe(400);
+    expect(r.body.motivo).toBe('payload_invalido');
+  });
+});
+
 describe('la forma del contrato', () => {
   it('Routes/pos.js expone la ruta y la protege como las demás', () => {
     const fs = require('fs');
@@ -196,6 +308,21 @@ describe('la forma del contrato', () => {
     const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'pos.js'), 'utf8');
 
     expect(src).toContain("router.get('/customers', tenantAuth, cajaVigente");
+    expect(src).toContain("router.post('/customers', tenantAuth, cajaVigente");
+  });
+
+  it('la cola sabe a dónde mandar un cliente', () => {
+    /* La terminal encola la entidad "cliente"; si nube.rs no tuviera su
+       ruta, la cola la rechazaría con un 422 y cada cliente registrado en un
+       mostrador se apartaría en silencio. */
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'pos-nativo', 'src-tauri', 'src', 'nube.rs'),
+      'utf8',
+    );
+
+    expect(src).toContain('"cliente" => format!("{}/pos/customers"');
   });
 
   it('vive bajo /api/pos, que es lo único que un token de caja puede tocar', () => {

@@ -187,6 +187,46 @@ fn catalogo(
     filas.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
 }
 
+/// Un producto por su id, para las recompensas.
+///
+/// El canje dice "producto gratis" y trae el id, no el nombre: hay que ir a
+/// buscarlo. Lo trae aunque esté desactivado, a propósito: si el negocio apagó
+/// el producto pero dejó la recompensa encendida, entregarlo es mejor que
+/// dejar al cliente sin lo que ya pagó con sus puntos, y el problema real —una
+/// recompensa que apunta a algo descatalogado— se arregla en el panel.
+#[tauri::command]
+fn producto_por_id(estado: State<Estado>, id: String) -> Result<Option<Producto>, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+
+    let mut consulta = base
+        .prepare(
+            "SELECT id, nombre, precio, categoria, variante, foto_local, extras, tipo_impuesto
+               FROM productos WHERE id = ?1 LIMIT 1",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let mut filas = consulta
+        .query_map(rusqlite::params![id], |f| {
+            Ok(Producto {
+                id: f.get(0)?,
+                nombre: f.get(1)?,
+                precio: f.get(2)?,
+                categoria: f.get(3)?,
+                variante: f.get(4)?,
+                foto: f.get(5)?,
+                extras: serde_json::from_str(&f.get::<_, String>(6)?)
+                    .unwrap_or_else(|_| serde_json::json!([])),
+                tipo_impuesto: f.get(7)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    match filas.next() {
+        Some(f) => Ok(Some(f.map_err(|e| e.to_string())?)),
+        None => Ok(None),
+    }
+}
+
 /// La dirección desde la que el webview puede leer las fotos.
 ///
 /// La carpeta se expone por el protocolo de recursos de Tauri, acotada a esta
@@ -1515,6 +1555,29 @@ fn buscar_clientes(
     pos_core::clientes::buscar(&base, &texto, 20).map_err(|e| e.to_string())
 }
 
+/// Da de alta un cliente desde el mostrador.
+///
+/// Entra a la copia local y a la cola en la misma transacción, así que el
+/// cajero puede usarlo en la venta que está cobrando sin esperar a la red. Si
+/// no hay internet, sube cuando la haya.
+#[tauri::command]
+fn crear_cliente(
+    estado: State<Estado>,
+    telefono: String,
+    nombre: String,
+    documento: String,
+) -> Result<pos_core::clientes::FilaCliente, String> {
+    let tel = telefono.trim();
+    let nom = nombre.trim();
+    if tel.is_empty() || nom.is_empty() {
+        return Err("El cliente necesita teléfono y nombre".into());
+    }
+
+    let mut base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    pos_core::clientes::crear_local(&mut base, tel, nom, documento.trim(), &ahora_local())
+        .map_err(|e| e.to_string())
+}
+
 /// Las recompensas que se pueden ofrecer ahora mismo.
 #[tauri::command]
 fn recompensas(
@@ -2211,9 +2274,11 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             catalogo,
+            producto_por_id,
             categorias,
             carpeta_fotos,
             buscar_clientes,
+            crear_cliente,
             recompensas,
             canjear_recompensa,
             cobrar,
