@@ -10,13 +10,14 @@
 //! que no existe.
 
 use pos_core::pagos::{self, Terminal};
-use pos_core::{auditoria, db, dinero::Pesos, escpos, pausadas, sync, turnos, usuarios, venta};
+use pos_core::{auditoria, cuentas, db, dinero::Pesos, escpos, pausadas, sync, turnos, usuarios, venta};
 use std::sync::Mutex;
 use tauri::{Manager, State};
 
 mod cliente;
 mod credenciales;
 mod datafono_red;
+mod fotos;
 mod nube;
 mod perifericos;
 use nube::Nube;
@@ -29,6 +30,8 @@ pub struct Estado {
     /// compitiendo por el mismo archivo.
     pub base: Mutex<rusqlite::Connection>,
     pub negocio: Mutex<String>,
+    /// Dónde guarda la app sus cosas. Aquí van las fotos del catálogo.
+    pub datos: std::path::PathBuf,
     /// Quién tiene la caja ahora mismo. Se cierra sola por inactividad.
     pub sesion: Mutex<Option<usuarios::Usuario>>,
 }
@@ -115,6 +118,8 @@ pub struct Producto {
     precio: i64,
     categoria: String,
     variante: String,
+    /// Nombre del archivo en la carpeta de fotos. Vacío = todavía no bajó.
+    foto: String,
 }
 
 /// El catálogo sale de SQLite, nunca de la red: es lo que permite abrir la caja
@@ -133,7 +138,7 @@ fn catalogo(
 
     let mut consulta = base
         .prepare(
-            "SELECT id, nombre, precio, categoria, variante FROM productos
+            "SELECT id, nombre, precio, categoria, variante, foto_local FROM productos
              WHERE activo = 1
                AND (?1 = '%%' OR nombre LIKE ?1 OR sku LIKE ?1)
                AND (?2 = '' OR categoria = ?2)
@@ -149,11 +154,23 @@ fn catalogo(
                 precio: f.get(2)?,
                 categoria: f.get(3)?,
                 variante: f.get(4)?,
+                foto: f.get(5)?,
             })
         })
         .map_err(|e| e.to_string())?;
 
     filas.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+/// La dirección desde la que el webview puede leer las fotos.
+///
+/// La carpeta se expone por el protocolo de recursos de Tauri, acotada a esta
+/// ruta y nada más. Es la primera vez que el webview lee del disco, y por eso
+/// está acotada: lo que hay ahí son imágenes de catálogo, no la base de datos
+/// ni el llavero.
+#[tauri::command]
+fn carpeta_fotos(estado: State<Estado>) -> String {
+    fotos::carpeta(&estado.datos).to_string_lossy().to_string()
 }
 
 /// Las categorías que de verdad tienen algo que vender.
@@ -460,6 +477,127 @@ fn pausar_venta(
     let turno = turnos::activo(&base).map_err(|e| e.to_string())?.ok_or("No hay turno abierto")?;
     pausadas::pausar(&base, &turno.id, &carrito, &etiqueta, total, items, &ahora_local())
         .map_err(|e| e.to_string())
+}
+
+/* ── Cuentas abiertas ──────────────────────────────────────────────────────
+   La mesa que pide en tandas y paga al final. No toca inventario ni entra a la
+   cola hasta que se cobra: hasta entonces no ha vendido nada. */
+
+/// Lo que devuelve guardar una ronda.
+#[derive(serde::Serialize)]
+struct RondaGuardada {
+    cuenta: cuentas::Cuenta,
+    /// Cuántas líneas bajaron a la cocina en esta ronda.
+    a_cocina: usize,
+    /// Qué salió mal con la impresora, si algo salió mal.
+    ///
+    /// La cuenta queda guardada igual: perder el pedido de una mesa porque la
+    /// impresora se quedó sin papel sería el peor intercambio posible.
+    impresion: Option<String>,
+}
+
+/// Abre la cuenta o le agrega la ronda que acaba de pedir la mesa.
+///
+/// A la cocina baja **solo lo nuevo**. Lo que decide qué es nuevo vive en el
+/// núcleo y se prueba solo; aquí únicamente se imprime y, si el papel salió, se
+/// deja constancia.
+#[tauri::command]
+fn guardar_en_cuenta(
+    estado: State<Estado>,
+    identificador: String,
+    carrito: String,
+    total: i64,
+    items: i64,
+) -> Result<RondaGuardada, String> {
+    let nombre = identificador.trim().to_string();
+    if nombre.is_empty() {
+        return Err("Ponle un nombre a la cuenta, por ejemplo \"Mesa 3\"".into());
+    }
+
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    let turno = turnos::activo(&base).map_err(|e| e.to_string())?.ok_or("No hay turno abierto")?;
+
+    let (cuenta, pendientes) =
+        cuentas::guardar(&base, &turno.id, &nombre, &carrito, total, items, &ahora_local())
+            .map_err(|e| e.to_string())?;
+
+    if pendientes.is_empty() {
+        return Ok(RondaGuardada { cuenta, a_cocina: 0, impresion: None });
+    }
+
+    let cocina = perifericos::leer_config(&base, "cocina");
+    if matches!(cocina.impresora, Impresora::Ninguna) {
+        /* Sin impresora de cocina no hay comanda que mandar, pero la ronda sí
+           se da por despachada: si no, cada vez que la mesa pidiera algo se
+           volvería a contar lo anterior como pendiente. */
+        cuentas::marcar_comandado(&base, &cuenta.id, &carrito).map_err(|e| e.to_string())?;
+        return Ok(RondaGuardada { cuenta, a_cocina: 0, impresion: None });
+    }
+
+    let bytes = comanda_de(cocina.ancho, &cuenta.identificador, &pendientes, &ahora_local());
+    let cuantas = pendientes.len();
+
+    match perifericos::enviar(&cocina.impresora, &bytes) {
+        Ok(()) => {
+            /* Se marca **después** de que el papel salió. Al revés, una
+               impresora sin papel dejaría la ronda como enviada y esos platos
+               no se cocinarían nunca. */
+            cuentas::marcar_comandado(&base, &cuenta.id, &carrito).map_err(|e| e.to_string())?;
+            Ok(RondaGuardada { cuenta, a_cocina: cuantas, impresion: None })
+        }
+        Err(e) => Ok(RondaGuardada {
+            cuenta,
+            a_cocina: 0,
+            impresion: Some(e.to_string()),
+        }),
+    }
+}
+
+#[tauri::command]
+fn listar_cuentas(estado: State<Estado>) -> Result<Vec<cuentas::Cuenta>, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    let Some(turno) = turnos::activo(&base).map_err(|e| e.to_string())? else {
+        return Ok(vec![]);
+    };
+    cuentas::listar(&base, &turno.id).map_err(|e| e.to_string())
+}
+
+/// Devuelve el pedido de una cuenta **sin cerrarla**.
+///
+/// A diferencia de retomar una venta en espera, esto no borra: la mesa sigue
+/// sentada y puede pedir más.
+#[tauri::command]
+fn abrir_cuenta(estado: State<Estado>, id: String) -> Result<Option<String>, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    Ok(cuentas::por_id(&base, &id).map_err(|e| e.to_string())?.map(|c| c.carrito))
+}
+
+/// La precuenta: lo que la mesa lleva consumido.
+///
+/// **No abre el cajón y no cierra nada.** Es el papel que el cliente revisa
+/// antes de pagar, y por eso va marcado como no válido como factura: si no lo
+/// dijera, sería un comprobante de una venta que todavía no existe.
+#[tauri::command]
+fn imprimir_precuenta(estado: State<Estado>, id: String) -> Result<(), String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+
+    let cuenta = cuentas::por_id(&base, &id)
+        .map_err(|e| e.to_string())?
+        .ok_or("Esa cuenta ya no está abierta")?;
+
+    let items: Vec<venta::LineaVenta> = serde_json::from_str(&cuenta.carrito).unwrap_or_default();
+    let caja = perifericos::leer_config(&base, "caja");
+    let negocio = estado.negocio.lock().map(|n| n.clone()).unwrap_or_default();
+
+    let bytes = precuenta(&negocio, caja.ancho, &cuenta, &items, &ahora_local());
+    perifericos::enviar(&caja.impresora, &bytes).map_err(|e| e.to_string())
+}
+
+/// Cierra la cuenta después de que su venta ya quedó registrada.
+#[tauri::command]
+fn cerrar_cuenta(estado: State<Estado>, id: String) -> Result<(), String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    cuentas::cerrar(&base, &id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -973,6 +1111,13 @@ fn sincronizar(estado: State<Estado>) -> ResumenSync {
         Err(e) => (0, Some(e)),
     };
 
+    /* Las fotos, al final y sin poder estropear nada. Van después del
+       catálogo porque es el catálogo el que dice cuáles faltan, y su fallo no
+       se reporta: un producto sin foto se dibuja con sus iniciales, que es
+       infinitamente mejor que una caja que no sincroniza porque un CDN está
+       lento. */
+    fotos::bajar_pendientes(&base, &estado.datos);
+
     /* Si el dueño le cambió el nombre al negocio en el panel, la próxima
        tirilla ya sale con el nuevo. Sin esto habría que reiniciar la caja. */
     if let Ok(nombre) = base.query_row::<String, _, _>(
@@ -1094,6 +1239,104 @@ fn tirilla_de(negocio: &str, ancho: usize, v: &venta::VentaCompleta, copia: bool
 ///
 /// Letra grande y una línea por producto. Quien la lee está de pie frente a una
 /// plancha, no sentado revisando una cuenta.
+/// La comanda de una ronda de mesa.
+///
+/// Lleva el nombre de la mesa en grande y arriba, porque en una cocina con seis
+/// comandas colgadas lo primero que hay que saber es para dónde va el plato. Y
+/// lleva solo lo nuevo: lo anterior ya está cocinado o cocinándose.
+fn comanda_de(
+    ancho: usize,
+    identificador: &str,
+    nuevos: &[venta::LineaVenta],
+    ahora: &str,
+) -> Vec<u8> {
+    let mut t = escpos::Tirilla::nueva(ancho);
+
+    t.alinear(escpos::Alineacion::Centro)
+        .doble(true)
+        .linea(&identificador.to_uppercase())
+        .doble(false)
+        .linea(ahora)
+        .alinear(escpos::Alineacion::Izquierda)
+        .separador();
+
+    for item in nuevos {
+        let nombre = if item.variante.is_empty() {
+            item.nombre.clone()
+        } else {
+            format!("{} ({})", item.nombre, item.variante)
+        };
+        t.doble(true).linea(&format!("{} x{}", item.cantidad, nombre));
+
+        // La nota, igual de grande que el plato: es lo que se lee de reojo
+        // desde el otro lado de la plancha.
+        if !item.nota.is_empty() {
+            t.linea(&format!("  >> {}", item.nota.to_uppercase()));
+        }
+        t.doble(false);
+    }
+
+    t.separador().cortar();
+    t.terminar()
+}
+
+/// La precuenta que el cliente revisa antes de pagar.
+///
+/// Va marcada como no válida como factura, y no es una formalidad: es el
+/// comprobante de una venta que **todavía no existe**. Sin ese aviso, un
+/// cliente podría irse con este papel creyendo que pagó, y el negocio tendría
+/// un consumo sin venta y sin forma de explicarlo.
+fn precuenta(
+    negocio: &str,
+    ancho: usize,
+    cuenta: &cuentas::Cuenta,
+    items: &[venta::LineaVenta],
+    ahora: &str,
+) -> Vec<u8> {
+    let mut t = escpos::Tirilla::nueva(ancho);
+
+    t.alinear(escpos::Alineacion::Centro)
+        .negrita(true)
+        .linea(negocio)
+        .doble(true)
+        .linea("PRE-CUENTA")
+        .doble(false)
+        .linea("NO VALIDO COMO FACTURA")
+        .negrita(false)
+        .linea(&cuenta.identificador)
+        .linea(ahora)
+        .alinear(escpos::Alineacion::Izquierda)
+        .separador();
+
+    let mut suma = Pesos::CERO;
+    for item in items {
+        let nombre = if item.variante.is_empty() {
+            item.nombre.clone()
+        } else {
+            format!("{} ({})", item.nombre, item.variante)
+        };
+        let linea = item.total().unwrap_or(Pesos::CERO);
+        suma = suma.mas(linea).unwrap_or(suma);
+        t.par(&format!("{} x{}", nombre, item.cantidad), &linea.to_string());
+
+        if !item.nota.is_empty() {
+            t.linea(&format!("   {}", item.nota));
+        }
+    }
+
+    t.separador()
+        .doble(true)
+        .par("TOTAL", &suma.to_string())
+        .doble(false)
+        .salto()
+        .alinear(escpos::Alineacion::Centro)
+        .linea("Pide tu factura en la caja")
+        // Sin cortar el cajón: aquí no se ha cobrado nada todavía.
+        .cortar();
+
+    t.terminar()
+}
+
 fn comanda(ancho: usize, nueva: &venta::NuevaVenta, registrada: &venta::VentaRegistrada) -> Vec<u8> {
     let mut t = escpos::Tirilla::nueva(ancho);
 
@@ -1219,6 +1462,7 @@ pub fn run() {
                 .unwrap_or_default();
 
             app.manage(Estado {
+                datos: carpeta.clone(),
                 base: Mutex::new(base),
                 negocio: Mutex::new(if nombre.is_empty() { "MenuBy POS".into() } else { nombre }),
                 sesion: Mutex::new(None),
@@ -1243,6 +1487,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             catalogo,
             categorias,
+            carpeta_fotos,
             cobrar,
             abrir_cajon,
             estado_sync,
@@ -1276,6 +1521,11 @@ pub fn run() {
             cerrar_turno,
             pausar_venta,
             listar_pausadas,
+            guardar_en_cuenta,
+            listar_cuentas,
+            abrir_cuenta,
+            imprimir_precuenta,
+            cerrar_cuenta,
             retomar_venta,
             descartar_pausada,
             autorizar,

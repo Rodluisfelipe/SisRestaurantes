@@ -15,7 +15,10 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 pos-core = { path = "../core" }
-tauri = { version = "2", features = [] }
+# `protocol-asset`: deja que el webview lea archivos del disco por asset://.
+# Es lo que permite mostrar las fotos del catálogo sin internet. El alcance
+# está acotado en tauri.conf.json a $APPDATA/fotos y a nada más.
+tauri = { version = "2", features = ["protocol-asset"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # Los ids de operación del datáfono, ordenados en el tiempo como los de venta.

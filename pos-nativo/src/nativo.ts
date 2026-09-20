@@ -19,6 +19,8 @@ export interface Producto {
   precio: number;
   categoria: string;
   variante: string;
+  /** Nombre del archivo de su foto en disco. Vacío = no tiene o no bajó aún. */
+  foto: string;
 }
 
 export interface LineaVenta {
@@ -101,12 +103,12 @@ export interface Cobro {
 
 /* Catálogo de prueba para trabajar la interfaz en el navegador. */
 const DEMO: Producto[] = [
-  { id: 'd1', nombre: 'Café americano', precio: 4500, categoria: 'Bebidas', variante: '' },
-  { id: 'd2', nombre: 'Capuchino', precio: 7000, categoria: 'Bebidas', variante: '' },
-  { id: 'd3', nombre: 'Croissant', precio: 5500, categoria: 'Panadería', variante: '' },
-  { id: 'd4', nombre: 'Sándwich de pollo', precio: 15900, categoria: 'Comida', variante: '' },
-  { id: 'd5', nombre: 'Jugo de naranja', precio: 6500, categoria: 'Bebidas', variante: '' },
-  { id: 'd6', nombre: 'Torta de chocolate', precio: 8900, categoria: 'Postres', variante: '' },
+  { id: 'd1', nombre: 'Café americano', precio: 4500, categoria: 'Bebidas', variante: '', foto: '' },
+  { id: 'd2', nombre: 'Capuchino', precio: 7000, categoria: 'Bebidas', variante: '', foto: '' },
+  { id: 'd3', nombre: 'Croissant', precio: 5500, categoria: 'Panadería', variante: '', foto: '' },
+  { id: 'd4', nombre: 'Sándwich de pollo', precio: 15900, categoria: 'Comida', variante: '', foto: '' },
+  { id: 'd5', nombre: 'Jugo de naranja', precio: 6500, categoria: 'Bebidas', variante: '', foto: '' },
+  { id: 'd6', nombre: 'Torta de chocolate', precio: 8900, categoria: 'Postres', variante: '', foto: '' },
 ];
 
 export async function catalogo(busqueda: string, categoria = ''): Promise<Producto[]> {
@@ -129,6 +131,17 @@ export async function catalogo(busqueda: string, categoria = ''): Promise<Produc
 export async function categorias(): Promise<string[]> {
   if (!enTauri) return [...new Set(DEMO.map((p) => p.categoria))].sort();
   return invoke<string[]>('categorias');
+}
+
+/**
+ * Dónde guarda la caja las fotos del catálogo.
+ *
+ * La resuelve Rust porque depende del sistema operativo y del usuario. Se pide
+ * una vez al arrancar: no cambia mientras la app corre.
+ */
+export async function carpetaFotos(): Promise<string> {
+  if (!enTauri) return '';
+  return invoke<string>('carpeta_fotos');
 }
 
 export interface Voucher {
@@ -264,6 +277,86 @@ function luminancia(hex: string): number | null {
   const [r, g, b] = [0, 2, 4].map((i) => parseInt(largo.slice(i, i + 2), 16) / 255);
   // Pesos de la percepción humana: el verde ilumina mucho más que el azul.
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/* ── Cuentas abiertas ───────────────────────────────────────────────────────
+   La mesa que pide en tandas y paga al final. */
+
+export interface Cuenta {
+  id: string;
+  turno_id: string;
+  /** "Mesa 3", "Barra 1". Es lo que el mesero dice en voz alta. */
+  identificador: string;
+  total: number;
+  items: number;
+  creada_en: string;
+  actualizada_en: string;
+  /** El pedido completo, en JSON. */
+  carrito: string;
+}
+
+export interface RondaGuardada {
+  cuenta: Cuenta;
+  /** Cuántas líneas bajaron a la cocina en esta ronda. */
+  a_cocina: number;
+  /** Qué salió mal con la impresora. La cuenta quedó guardada igual. */
+  impresion: string | null;
+}
+
+/**
+ * Abre la cuenta o le agrega la ronda que acaba de pedir la mesa.
+ *
+ * A la cocina baja **solo lo nuevo**. Quién decide qué es nuevo vive en Rust y
+ * se apoya en lo que ya se imprimió, guardado en disco: por eso un corte de luz
+ * entre dos rondas no hace que la mesa reciba dos veces su comida.
+ */
+export async function guardarEnCuenta(
+  identificador: string,
+  carrito: LineaVenta[],
+  total: number,
+  items: number,
+): Promise<RondaGuardada> {
+  if (!enTauri) {
+    return {
+      cuenta: {
+        id: 'demo', turno_id: 't', identificador, total, items,
+        creada_en: new Date().toISOString(), actualizada_en: new Date().toISOString(),
+        carrito: JSON.stringify(carrito),
+      },
+      a_cocina: carrito.length,
+      impresion: null,
+    };
+  }
+  return invoke<RondaGuardada>('guardar_en_cuenta', {
+    identificador,
+    carrito: JSON.stringify(carrito),
+    total,
+    items,
+  });
+}
+
+export async function listarCuentas(): Promise<Cuenta[]> {
+  if (!enTauri) return [];
+  return invoke<Cuenta[]>('listar_cuentas');
+}
+
+/** Devuelve el pedido de la cuenta **sin cerrarla**: la mesa sigue sentada. */
+export async function abrirCuenta(id: string): Promise<LineaVenta[] | null> {
+  if (!enTauri) return null;
+  const crudo = await invoke<string | null>('abrir_cuenta', { id });
+  return crudo ? (JSON.parse(crudo) as LineaVenta[]) : null;
+}
+
+/** El papel que el cliente revisa antes de pagar. No abre el cajón. */
+export async function imprimirPrecuenta(id: string): Promise<void> {
+  if (!enTauri) throw new Error('Solo en la app instalada');
+  await invoke('imprimir_precuenta', { id });
+}
+
+/** Se llama después de que la venta de esa cuenta ya quedó registrada. */
+export async function cerrarCuenta(id: string): Promise<void> {
+  if (!enTauri) return;
+  await invoke('cerrar_cuenta', { id });
 }
 
 /** Abrir la gaveta sin venta. No pide supervisor, pero queda registrado. */

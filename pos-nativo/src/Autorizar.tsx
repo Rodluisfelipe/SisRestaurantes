@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { autorizar } from './nativo';
+import { error as bipError } from './sonido';
 
 /**
  * El supervisor pone su PIN, autoriza y se va.
@@ -40,6 +41,7 @@ export default function Autorizar({
       onListo(motivo.trim(), quien);
     } catch (e) {
       setError(String(e).replace(/^Error:\s*/, ''));
+      bipError();
       setPin('');
     } finally {
       setOcupado(false);

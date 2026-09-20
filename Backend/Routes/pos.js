@@ -526,7 +526,7 @@ router.get('/catalog', tenantAuth, cajaVigente, async (req, res) => {
 
     const [productos, categorias, negocio] = await Promise.all([
       Product.find(filtro)
-        .select('name price active category sku variantes updatedAt createdAt')
+        .select('name price active category sku variantes updatedAt createdAt image images')
         .sort({ updatedAt: 1 })
         .limit(limite)
         .lean(),

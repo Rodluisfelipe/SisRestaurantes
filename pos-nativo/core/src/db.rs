@@ -258,6 +258,52 @@ const MIGRACIONES: &[&str] = &[
        las dos cifras vería un descuento del 100%. */
     UPDATE ventas SET bruto = total WHERE bruto = 0;
     "#,
+    // 8 — la mesa que pide en tandas y paga al final.
+    r#"
+    /* Una cuenta abierta es una venta en espera que en vez de esperar, crece.
+       Es la misma tabla porque es la misma idea —un carrito en disco que
+       todavía no se cobró— y partirla en dos habría dejado dos sitios donde
+       mirar antes de cerrar el turno.
+
+       Sigue sin tocar inventario y sin entrar a la cola: a la nube le importa
+       lo que se cobró, y una mesa que lleva una hora pidiendo todavía no se
+       cobró. */
+    ALTER TABLE ventas_pausadas ADD COLUMN identificador TEXT NOT NULL DEFAULT '';
+
+    /* Lo que ya se mandó a la cocina, guardado tal cual se mandó.
+
+       Es la pieza de la que depende que una mesa no reciba dos veces el mismo
+       plato: cuando llega una ronda nueva, se compara lo que hay contra esta
+       foto y solo se imprime la diferencia. Está en disco y no en memoria
+       porque el corte de luz entre la primera y la segunda ronda es
+       exactamente el momento en que se duplicaría. */
+    ALTER TABLE ventas_pausadas ADD COLUMN comandado TEXT NOT NULL DEFAULT '[]';
+
+    ALTER TABLE ventas_pausadas ADD COLUMN actualizada_en TEXT NOT NULL DEFAULT '';
+    UPDATE ventas_pausadas SET actualizada_en = creada_en WHERE actualizada_en = '';
+
+    /* Dos mesas con el mismo nombre en el mismo turno serían dos cuentas que
+       el mesero cree que son una. El índice es parcial porque las ventas en
+       espera de mostrador no tienen identificador y son muchas. */
+    CREATE UNIQUE INDEX idx_cuenta_unica
+        ON ventas_pausadas(turno_id, identificador)
+        WHERE identificador != '';
+    "#,
+    // 9 — la foto del producto, guardada en el disco de la caja.
+    r#"
+    /* Dos columnas y no una, y la diferencia importa:
+
+       `foto_url` es la dirección que mandó la nube y sirve para saber si la
+       imagen cambió —si llega una distinta, hay que volver a bajarla—.
+       `foto_local` es el archivo que ya está en disco, y es la única que mira
+       la pantalla.
+
+       Con una sola columna no se podría distinguir "todavía no se ha
+       descargado" de "el dueño le cambió la foto", y una de las dos cosas no
+       se actualizaría nunca. */
+    ALTER TABLE productos ADD COLUMN foto_url TEXT NOT NULL DEFAULT '';
+    ALTER TABLE productos ADD COLUMN foto_local TEXT NOT NULL DEFAULT '';
+    "#,
 ];
 
 /// Abre (o crea) la base y la deja lista para operar.

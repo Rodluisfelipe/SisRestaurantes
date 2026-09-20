@@ -39,6 +39,9 @@ pub struct FilaCatalogo {
     /// Fecha del cambio en la nube. Es lo que alimenta la marca de agua.
     #[serde(default)]
     pub actualizado: String,
+    /// De dónde bajar la foto. Vacío = el producto no tiene.
+    #[serde(default)]
+    pub foto: String,
 }
 
 fn verdadero() -> bool {
@@ -59,8 +62,11 @@ pub fn aplicar(conexion: &mut Connection, filas: &[FilaCatalogo]) -> Result<Opti
 
     for fila in filas {
         tx.execute(
-            "INSERT INTO productos (id, nombre, precio, categoria, sku, variante, activo, actualizado)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+            /* `foto_local` no se toca en el UPDATE: el archivo que ya está en
+               disco sigue sirviendo. Solo se borra cuando la dirección cambió,
+               y eso se decide abajo comparando contra la que había. */
+            "INSERT INTO productos (id, nombre, precio, categoria, sku, variante, activo, actualizado, foto_url)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
              ON CONFLICT(id) DO UPDATE SET
                nombre = excluded.nombre,
                precio = excluded.precio,
@@ -68,7 +74,12 @@ pub fn aplicar(conexion: &mut Connection, filas: &[FilaCatalogo]) -> Result<Opti
                sku = excluded.sku,
                variante = excluded.variante,
                activo = excluded.activo,
-               actualizado = excluded.actualizado",
+               actualizado = excluded.actualizado,
+               foto_url = excluded.foto_url,
+               foto_local = CASE
+                   WHEN productos.foto_url = excluded.foto_url THEN productos.foto_local
+                   ELSE ''
+               END",
             params![
                 fila.id,
                 fila.nombre,
@@ -77,7 +88,8 @@ pub fn aplicar(conexion: &mut Connection, filas: &[FilaCatalogo]) -> Result<Opti
                 fila.sku,
                 fila.variante,
                 fila.activo as i64,
-                fila.actualizado
+                fila.actualizado,
+                fila.foto
             ],
         )?;
 
@@ -127,6 +139,7 @@ mod pruebas {
             variante: String::new(),
             activo: true,
             actualizado: actualizado.into(),
+            foto: String::new(),
         }
     }
 

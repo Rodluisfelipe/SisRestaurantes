@@ -180,6 +180,16 @@ function aplanarCatalogo(productos, categoriasPorId = {}) {
     const categoria = categoriasPorId[String(p.category)] || '';
     const activoProducto = p.active !== false;
 
+    /* La foto del producto. La caja la descarga una vez y la guarda en disco,
+       así que lo que viaja aquí es la dirección, no la imagen.
+
+       Se toma la principal y no la galería: en una rejilla de mostrador cabe
+       una sola, y bajar cinco por producto llenaría el disco de una terminal
+       por fotos que nadie va a ver. Las variantes heredan la del producto
+       —una talla M no tiene foto propia— y por eso se calcula una vez aquí
+       arriba y no dentro de cada rama. */
+    const foto = String(p.image || (Array.isArray(p.images) ? p.images[0] : '') || '').trim();
+
     const variantes = Array.isArray(p.variantes) ? p.variantes : [];
 
     if (!variantes.length) {
@@ -192,6 +202,7 @@ function aplanarCatalogo(productos, categoriasPorId = {}) {
         variante: '',
         activo: activoProducto,
         actualizado,
+        foto,
       });
       continue;
     }
@@ -215,6 +226,7 @@ function aplanarCatalogo(productos, categoriasPorId = {}) {
         // Una talla apagada tampoco se vende, aunque el producto esté activo.
         activo: activoProducto && v.activo !== false,
         actualizado,
+        foto,
       });
     }
   }

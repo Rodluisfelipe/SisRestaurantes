@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Delete, Lock } from 'lucide-react';
 import { crearUsuario, entrar, hayUsuarios, type Usuario } from './nativo';
+import { error as bipError } from './sonido';
 
 /**
  * La puerta de la caja.
@@ -46,6 +47,9 @@ export default function PantallaPin({
       onEntrar(usuario);
     } catch (e) {
       setError(String(e).replace(/^Error:\s*/, ''));
+      /* El PIN equivocado suena: el cajero está mirando el teclado, no la
+         pantalla, y el mensaje rojo se lo pierde. */
+      bipError();
       setPin('');
     } finally {
       setOcupado(false);

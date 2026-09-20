@@ -1,20 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CircleUser, CloudCheck, CloudOff, Inbox, Minus, Monitor,
-  MessageSquarePlus, PauseCircle, Percent, Plus, Printer, RefreshCw, ScanLine, Trash2, Wallet, X,
+  LayoutGrid, MessageSquarePlus, PauseCircle, Percent, Plus, Printer, RefreshCw, ScanLine,
+  Trash2, UtensilsCrossed, Volume2, VolumeX, Wallet, X,
 } from 'lucide-react';
 import {
   abrirCajon, abrirPantallaCliente, anularItem, aplicarMarca, catalogo, cerrarPantallaCliente,
-  categorias, cobrar, descartarPausada, enTauri, estadoSync, hayPantallaCliente, identidad, infoTerminal,
+  abrirCuenta, carpetaFotos, categorias, cerrarCuenta, cobrar, descartarPausada, enTauri, estadoSync,
+  guardarEnCuenta, hayPantallaCliente, identidad, imprimirPrecuenta, infoTerminal, listarCuentas,
   listarPausadas, mostrarAlCliente, pausarVenta, pesos, reimprimir, retomarVenta, salir,
   registrarDescuento, repartir, sincronizar, turnoActivo,
-  type CierreTurno, type Cobro, type EnEspera, type LineaVenta, type PagoDetalle, type Producto,
-  type Turno, type Usuario,
+  type CierreTurno, type Cobro, type Cuenta, type EnEspera, type LineaVenta, type PagoDetalle,
+  type Producto, type Turno, type Usuario,
 } from './nativo';
 import ModalMotivo from './ModalMotivo';
 import CobroMixto from './CobroMixto';
 import NotaItem from './NotaItem';
 import Descuento from './Descuento';
+import Cuentas from './Cuentas';
+import FotoProducto from './FotoProducto';
+import { activarSonido, bip, error as bipError, sonidoActivo } from './sonido';
 import PantallaPin from './PantallaPin';
 import Impresoras from './Impresoras';
 import Nube from './Nube';
@@ -219,6 +224,18 @@ function Caja({
   const [porAutorizar, setPorAutorizar] = useState<{ monto: number; detalle: string } | null>(null);
   /* El descuento ya autorizado, que se rebaja al cobrar. */
   const [descuento, setDescuento] = useState({ monto: 0, motivo: '' });
+  /* El salón. `vista` alterna entre el catálogo de mostrador y el tablero de
+     mesas; un negocio que no usa mesas nunca sale del catálogo. */
+  const [vista, setVista] = useState<'catalogo' | 'salon'>('catalogo');
+  const [cuentas, setCuentas] = useState<Cuenta[]>([]);
+  /* La cuenta que se está atendiendo. Mientras esté puesta, lo que se marca no
+     va a un cobro sino a esa mesa. */
+  const [enCuenta, setEnCuenta] = useState<Cuenta | null>(null);
+  const [avisoCuenta, setAvisoCuenta] = useState('');
+  /* Dónde están las fotos en este equipo. Se resuelve una vez: no cambia
+     mientras la app corre. */
+  const [carpeta, setCarpeta] = useState('');
+  const [conSonido, setConSonido] = useState(sonidoActivo);
 
   useEffect(() => { infoTerminal().then((t) => setDigitaVoucher(t.requiere_digitacion)).catch(() => {}); }, []);
   const buscador = useRef<HTMLInputElement>(null);
@@ -228,6 +245,64 @@ function Caja({
   const refrescarEspera = () => listarPausadas().then(setEnEspera).catch(() => {});
   useEffect(() => { refrescarEspera(); }, []);
 
+  const refrescarCuentas = () => listarCuentas().then(setCuentas).catch(() => {});
+  useEffect(() => { refrescarCuentas(); }, []);
+
+  /* Guarda lo marcado en la mesa que se está atendiendo y manda a la cocina
+     solo lo nuevo. Quién decide qué es nuevo vive en Rust: esta pantalla no
+     tiene forma de saber qué se imprimió antes de que la abrieran. */
+  const mandarACuenta = async () => {
+    if (!enCuenta || !carrito.length) return;
+    try {
+      const r = await guardarEnCuenta(enCuenta.identificador, carrito, total, carrito.length);
+      setCarrito([]);
+      setEnCuenta(null);
+      setVista('salon');
+      await refrescarCuentas();
+      setAvisoCuenta(
+        r.impresion
+          ? `Guardado en ${r.cuenta.identificador}, pero la comanda no salió: ${r.impresion}`
+          : r.a_cocina > 0
+            ? `${r.a_cocina} ítem(s) a la cocina · ${r.cuenta.identificador}`
+            : `Guardado en ${r.cuenta.identificador}`,
+      );
+      window.setTimeout(() => setAvisoCuenta(''), 6000);
+    } catch (e) {
+      setError(String(e).replace(/^Error:\s*/, ''));
+    } finally {
+      buscador.current?.focus();
+    }
+  };
+
+  /* Traer el pedido de la mesa a la pantalla para agregarle la ronda nueva.
+     **No la cierra**: la mesa sigue sentada. */
+  const atender = async (c: Cuenta) => {
+    if (carrito.length && !enCuenta) {
+      setError('Termina lo que tienes marcado antes de abrir una mesa');
+      return;
+    }
+    const pedido = await abrirCuenta(c.id);
+    setCarrito(pedido ?? []);
+    setEnCuenta(c);
+    setVista('catalogo');
+    buscador.current?.focus();
+  };
+
+  /* Cobrar una mesa: se trae su pedido y se abre el cobro normal. La cuenta se
+     cierra sola cuando la venta quedó registrada, no antes. */
+  const cobrarCuenta = async (c: Cuenta) => {
+    const pedido = await abrirCuenta(c.id);
+    if (!pedido?.length) {
+      setError(`${c.identificador} no tiene nada consumido`);
+      return;
+    }
+    setCarrito(pedido);
+    setEnCuenta(c);
+    setVista('catalogo');
+    setVistaPago([]);
+    setCobrandoAhora(true);
+  };
+
   useEffect(() => {
     catalogo(busqueda, rubro).then(setProductos).catch(() => setProductos([]));
   }, [busqueda, rubro]);
@@ -235,6 +310,8 @@ function Caja({
   /* Las categorías se piden una vez: cambian cuando baja catálogo nuevo, no
      mientras el cajero atiende. */
   useEffect(() => { categorias().then(setRubros).catch(() => {}); }, []);
+
+  useEffect(() => { carpetaFotos().then(setCarpeta).catch(() => {}); }, []);
 
   /* Buscar por texto manda sobre la pestaña. Si alguien escanea un código
      estando en "Bebidas" y el producto es de "Postres", tiene que aparecer:
@@ -313,6 +390,7 @@ function Caja({
       }];
     });
     setRecien((r) => ({ clave: `${p.id}${p.variante}`, vez: r.vez + 1 }));
+    bip();
     // El foco vuelve al buscador siempre: el siguiente escaneo tiene que entrar.
     buscador.current?.focus();
   };
@@ -439,6 +517,15 @@ function Caja({
       setCarrito([]);
       setVistaPago([]);
       setDescuento({ monto: 0, motivo: '' });
+
+      /* La cuenta se cierra **después** de que la venta quedó registrada. Al
+         revés, un fallo al guardar dejaría la mesa borrada y su consumo
+         perdido. */
+      if (enCuenta) {
+        await cerrarCuenta(enCuenta.id).catch(() => {});
+        setEnCuenta(null);
+        refrescarCuentas();
+      }
       setFalloImpresion(r.impresion ?? '');
       refrescarEspera();
 
@@ -448,6 +535,7 @@ function Caja({
       window.setTimeout(() => mostrarAlCliente({ modo: 'espera', negocio: negocio || 'MenuBy' }), 8000);
     } catch (e) {
       setError(String(e));
+      bipError();
     } finally {
       setCobrando(false);
       buscador.current?.focus();
@@ -608,6 +696,22 @@ function Caja({
         <BotonBarra icono={CloudCheck} onClick={() => setVerNube(true)} title="Conectar esta caja con MenuBy">
           MenuBy
         </BotonBarra>
+
+        {/* El bip se apaga desde la barra y no desde una pantalla de ajustes:
+            es lo que un cajero quiere silenciar a las once de la noche con el
+            local vacío, y buscarlo en un menú sería motivo para no usarlo. */}
+        <button
+          onClick={() => {
+            const nuevo = !conSonido;
+            activarSonido(nuevo);
+            setConSonido(nuevo);
+            if (nuevo) bip();
+          }}
+          title={conSonido ? 'Silenciar la caja' : 'Activar el sonido de la caja'}
+          className="flex items-center justify-center w-toque h-toque rounded-xl bg-slate-700/70 hover:bg-slate-600 text-slate-100"
+        >
+          {conSonido ? <Volume2 size={16} strokeWidth={2.25} /> : <VolumeX size={16} strokeWidth={2.25} />}
+        </button>
       </header>
 
       {falloImpresion && (
@@ -793,6 +897,70 @@ function Caja({
       <div className="flex-1 flex min-h-0">
         {/* Catálogo */}
         <section className="flex-1 flex flex-col min-w-0 p-4 gap-3">
+          {/* Mostrador o salón. Se ve siempre —incluso sin cuentas abiertas—
+              porque si estuviera escondido hasta tener una, no habría forma de
+              abrir la primera. */}
+          <div className="flex gap-1.5 flex-shrink-0">
+            {([
+              { id: 'catalogo' as const, nombre: 'Mostrador', icono: LayoutGrid },
+              { id: 'salon' as const, nombre: 'Mesas', icono: UtensilsCrossed },
+            ]).map(({ id, nombre, icono: Icono }) => (
+              <button
+                key={id}
+                onClick={() => setVista(id)}
+                className={`flex items-center gap-2 px-4 h-toque rounded-xl text-[13px] font-bold border-2 transition-colors ${
+                  vista === id
+                    ? 'border-marca bg-marca text-sobre-marca'
+                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                }`}
+              >
+                <Icono size={16} strokeWidth={2.25} />
+                {nombre}
+                {id === 'salon' && cuentas.length > 0 && (
+                  <span className={`ml-1 px-1.5 rounded-md text-[11px] tabular-nums ${
+                    vista === id ? 'bg-black/20' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {cuentas.length}
+                  </span>
+                )}
+              </button>
+            ))}
+
+            {avisoCuenta && (
+              <span className="flex items-center px-3 h-toque rounded-xl bg-emerald-50 text-emerald-800 text-[12.5px] font-semibold truncate">
+                {avisoCuenta}
+              </span>
+            )}
+          </div>
+
+          {vista === 'salon' ? (
+            <Cuentas
+              cuentas={cuentas}
+              onAbrir={atender}
+              onNueva={(identificador) => {
+                /* Abrir una mesa vacía es solo ponerle nombre a lo que se va a
+                   marcar: la cuenta nace cuando se guarda la primera ronda. */
+                setEnCuenta({
+                  id: '', turno_id: '', identificador, total: 0, items: 0,
+                  creada_en: new Date().toISOString(), actualizada_en: '', carrito: '[]',
+                });
+                setCarrito([]);
+                setVista('catalogo');
+                buscador.current?.focus();
+              }}
+              onPrecuenta={async (c) => {
+                try {
+                  await imprimirPrecuenta(c.id);
+                  setAvisoCuenta(`Precuenta de ${c.identificador} impresa`);
+                  window.setTimeout(() => setAvisoCuenta(''), 5000);
+                } catch (e) {
+                  setError(String(e).replace(/^Error:\s*/, ''));
+                }
+              }}
+              onCobrar={cobrarCuenta}
+            />
+          ) : (
+          <>
           {/* El icono no es decoración: un cajero nuevo no sabe que el lector
               de códigos funciona sin configurar nada, y esto se lo dice. */}
           <div className="relative flex-shrink-0">
@@ -839,12 +1007,20 @@ function Caja({
               <button
                 key={p.id + p.variante}
                 onClick={() => agregar(p)}
-                className="h-24 p-3 rounded-xl bg-white border border-slate-200 text-left hover:border-marca active:scale-95 active:border-marca transition-transform duration-75 flex flex-col justify-between"
+                className="h-40 rounded-xl bg-white border border-slate-200 text-left hover:border-marca active:scale-95 active:border-marca transition-transform duration-75 flex flex-col overflow-hidden"
               >
-                <span className="text-[13px] font-semibold leading-tight line-clamp-2">
-                  {p.nombre}{p.variante ? ` · ${p.variante}` : ''}
-                </span>
-                <span className="text-[15px] font-black tabular-nums">{pesos(p.precio)}</span>
+                {/* La foto ocupa más que el texto a propósito: un cajero la
+                    reconoce sin leer, y eso son décimas de segundo por
+                    producto multiplicadas por trescientas ventas al día. */}
+                <div className="h-20 w-full flex-shrink-0 bg-slate-100">
+                  <FotoProducto nombre={p.nombre} archivo={p.foto} carpeta={carpeta} />
+                </div>
+                <div className="flex-1 p-2.5 flex flex-col justify-between min-h-0">
+                  <span className="text-[13px] font-semibold leading-tight line-clamp-2">
+                    {p.nombre}{p.variante ? ` · ${p.variante}` : ''}
+                  </span>
+                  <span className="text-[15px] font-black tabular-nums">{pesos(p.precio)}</span>
+                </div>
               </button>
             ))}
             {productos.length === 0 && (
@@ -857,10 +1033,27 @@ function Caja({
               </p>
             )}
           </div>
+          </>
+          )}
         </section>
 
         {/* Carrito */}
         <aside className="w-[380px] flex-shrink-0 bg-white border-l border-slate-200 flex flex-col">
+          {enCuenta && (
+            /* Saber de qué mesa es lo que hay en pantalla. Sin esto, el error
+               obvio es marcar la ronda de la mesa 3 sobre la cuenta de la 5. */
+            <div className="flex items-center justify-between px-3 py-2 bg-marca text-sobre-marca flex-shrink-0">
+              <span className="text-[13.5px] font-black truncate">{enCuenta.identificador}</span>
+              <button
+                onClick={() => { setEnCuenta(null); setCarrito([]); setVista('salon'); }}
+                className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-black/20"
+                aria-label="Salir de esta mesa"
+              >
+                <X size={16} strokeWidth={2.5} />
+              </button>
+            </div>
+          )}
+
           <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
             {carrito.map((i, indice) => (
               <div
@@ -995,13 +1188,28 @@ function Caja({
                 En espera
                 <span className="text-[10px] font-semibold text-slate-400">F4</span>
               </button>
+              {/* Atendiendo una mesa, lo que se hace nueve de cada diez veces
+                  es mandar la ronda a la cocina, no cobrar: el cobro llega una
+                  vez, al final. Por eso el botón grande cambia. */}
+              {enCuenta && (
+                <button
+                  onClick={mandarACuenta}
+                  disabled={!carrito.length}
+                  className="flex-1 flex flex-col items-center justify-center h-16 rounded-xl bg-marca text-sobre-marca text-[15px] font-black disabled:opacity-30 active:scale-95 transition-transform duration-75"
+                >
+                  Mandar a {enCuenta.identificador}
+                  <span className="text-[10px] font-semibold opacity-70">solo lo nuevo va a cocina</span>
+                </button>
+              )}
               {/* El botón que más se toca del día lleva el color del negocio.
                   Es lo único de esta pantalla que tiene que encontrarse sin
                   mirar. */}
               <button
                 onClick={() => finalizar()}
                 disabled={!carrito.length || cobrando}
-                className="flex-1 flex items-center justify-center gap-2.5 h-16 rounded-xl bg-marca text-sobre-marca text-lg font-black disabled:opacity-30 active:scale-95 transition-transform duration-75"
+                className={`${enCuenta ? 'w-24' : 'flex-1'} flex items-center justify-center gap-2.5 h-16 rounded-xl ${
+                  enCuenta ? 'border-2 border-slate-200 text-slate-600' : 'bg-marca text-sobre-marca'
+                } text-lg font-black disabled:opacity-30 active:scale-95 transition-transform duration-75`}
               >
                 {cobrando
                   ? <RefreshCw size={20} strokeWidth={2.5} className="animate-spin" />
