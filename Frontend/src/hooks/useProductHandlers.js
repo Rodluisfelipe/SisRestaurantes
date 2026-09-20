@@ -348,6 +348,13 @@ export default function useProductHandlers({ businessId, products, setProducts, 
       price: product.price.toString(),
       category: product.category,
       image: product.image,
+      /* Sin esto, editar un producto guardaba la galería y las variantes
+         vacías: el formulario mandaba lo que nunca llegó a cargar. */
+      images: Array.isArray(product.images) && product.images.length
+        ? product.images.filter(Boolean)
+        : (product.image ? [product.image] : []),
+      opciones: Array.isArray(product.opciones) ? product.opciones : [],
+      variantes: Array.isArray(product.variantes) ? product.variantes : [],
       toppingGroups: product.toppingGroups || [],
       itemType: product.itemType || 'product',
       durationMinutes: product.durationMinutes ? product.durationMinutes.toString() : '',
