@@ -168,6 +168,11 @@ struct RespuestaCatalogo {
     hay_mas: bool,
     #[serde(default)]
     negocio: Option<Identidad>,
+    /* La configuración de esta terminal, cuando cambió. El servidor la manda
+       solo si es posterior a la marca de agua; el resto de las veces viene
+       nula y no hay nada que aplicar. */
+    #[serde(default)]
+    configuracion: Option<crate::configuracion::ConfigRemota>,
 }
 
 /// Cómo se llama el negocio y de qué color es.
@@ -190,11 +195,19 @@ pub struct Identidad {
 /// diga que no hay más: un negocio con 5.000 productos no cabe en una sola
 /// respuesta, y bajar "lo que quepa" dejaría la caja con medio catálogo sin
 /// que nadie se enterara.
+/// Lo que trajo una bajada de catálogo.
+pub struct Bajada {
+    pub filas: usize,
+    /// La configuración nueva, si el panel la cambió.
+    pub configuracion: Option<crate::configuracion::Aplicada>,
+}
+
 pub fn bajar_catalogo(
     conexion: &mut rusqlite::Connection,
     nube: &Nube,
-) -> Result<usize, String> {
+) -> Result<Bajada, String> {
     let mut total = 0usize;
+    let mut aplicada: Option<crate::configuracion::Aplicada> = None;
 
     for _ in 0..20 {
         let desde = catalogo::marca_de_agua(conexion).map_err(|e| e.to_string())?;
@@ -235,6 +248,21 @@ pub fn bajar_catalogo(
         if let Some(quien) = &respuesta.negocio {
             guardar_identidad(conexion, quien);
         }
+
+        /* La configuración del panel. Su fallo **no** se propaga: si algo del
+           bloque viniera mal, lo que no puede pasar es que esta caja deje de
+           bajar catálogo y de subir ventas por una casilla mal puesta en una
+           pantalla de administración. */
+        if let Some(config) = &respuesta.configuracion {
+            match crate::configuracion::aplicar(conexion, config) {
+                Ok(r) => {
+                    aplicada = Some(r);
+                }
+                Err(e) => {
+                    println!("La configuración del panel no se pudo aplicar: {e}");
+                }
+            }
+        }
         total += cuantas;
 
         /* Se corta si no hay más, o si el lote no movió la marca de agua: sin
@@ -245,7 +273,7 @@ pub fn bajar_catalogo(
         }
     }
 
-    Ok(total)
+    Ok(Bajada { filas: total, configuracion: aplicada })
 }
 
 /// Deja el nombre y el color del negocio en los ajustes locales.

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
 import { useBusinessConfig } from '../../Context/BusinessContext';
+import ConfigCaja from './ConfigCaja';
 
 /**
  * Las cajas registradoras del negocio.
@@ -22,6 +23,9 @@ export default function Cajas() {
   const [nombre, setNombre] = useState('Caja principal');
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
+  /* La caja cuya configuración se está editando. Mientras esté puesta, se ve
+     el panel de ajustes encima de la lista. */
+  const [configurando, setConfigurando] = useState(null);
 
   const cargar = useCallback(async () => {
     if (!businessId) return;
@@ -123,6 +127,10 @@ export default function Cajas() {
 
       {error && <p className="text-[13px] font-semibold text-red-600">{error}</p>}
 
+      {configurando && (
+        <ConfigCaja caja={configurando} onCerrar={() => setConfigurando(null)} />
+      )}
+
       {/* Las que ya existen */}
       <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
         {cargando && <p className="p-4 text-[13px] text-slate-400">Cargando…</p>}
@@ -165,12 +173,22 @@ export default function Cajas() {
             </div>
 
             {!c.revocada && (
-              <button
-                onClick={() => revocar(c)}
-                className="h-9 px-3 rounded-lg text-[12px] font-semibold text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-              >
-                Desvincular
-              </button>
+              <>
+                {/* Configurar va antes que desvincular: lo primero se hace
+                    muchas veces y lo segundo casi nunca. */}
+                <button
+                  onClick={() => setConfigurando(c)}
+                  className="h-9 px-3 rounded-lg text-[12px] font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  Configurar
+                </button>
+                <button
+                  onClick={() => revocar(c)}
+                  className="h-9 px-3 rounded-lg text-[12px] font-semibold text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  Desvincular
+                </button>
+              </>
             )}
           </div>
         ))}

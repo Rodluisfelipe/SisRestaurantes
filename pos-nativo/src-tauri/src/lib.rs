@@ -15,11 +15,12 @@ use pos_core::{
     venta,
 };
 use std::sync::Mutex;
-use tauri::{Manager, State};
+use tauri::{Emitter, Manager, State};
 
 mod cliente;
 mod credenciales;
 mod datafono_red;
+mod configuracion;
 mod fotos;
 mod nube;
 mod reloj;
@@ -1096,6 +1097,9 @@ fn configurar_impresora(
         return Err("Solo hay impresora de caja y de cocina".into());
     }
     let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+
+    // Mismo criterio que con el datáfono: el mostrador manda sobre su hardware.
+    configuracion::soltar_del_panel(&base);
     perifericos::guardar_config(&base, &rol, &config)
 }
 
@@ -1219,6 +1223,13 @@ fn configurar_datafono(
     let segundos = espera.unwrap_or(60).clamp(5, 180);
 
     let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+
+    /* Quien está frente al aparato sabe más que el panel sobre en qué IP
+       responde. A partir de aquí, la nube deja de pisarle el hardware a esta
+       caja: cambiaron el router un domingo, el técnico ajustó la dirección, y
+       un guardado cualquiera en el panel el lunes se la volvería a poner mal. */
+    configuracion::soltar_del_panel(&base);
+
     for (clave, valor) in [
         ("datafono_tipo", if red { "red" } else { "manual" }.to_string()),
         ("datafono_host", anfitrion),
@@ -1323,6 +1334,25 @@ async fn probar_datafono(host: String, puerto: u16) -> Result<PruebaDatafono, St
     .unwrap_or_else(|e| Err(format!("la prueba se interrumpió: {e}")))
 }
 
+/// ¿Manda el panel sobre los aparatos de esta caja?
+#[tauri::command]
+fn hardware_del_panel(estado: State<Estado>) -> Result<bool, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    Ok(configuracion::sincronizar_hardware(&base))
+}
+
+/// Devuelve el mando de los periféricos al panel.
+///
+/// Se usa cuando el ajuste local ya no hace falta —se arregló la red, se
+/// cambió la impresora— y el negocio quiere volver a administrarlo todo desde
+/// un solo sitio. Lo que llegue en la próxima sincronización pisará lo local.
+#[tauri::command]
+fn devolver_hardware_al_panel(estado: State<Estado>) -> Result<(), String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    configuracion::devolver_al_panel(&base);
+    Ok(())
+}
+
 /* ── La pantalla del cliente ───────────────────────────────────────────── */
 
 /// Abre la segunda pantalla. Si no hay, lo dice y la caja sigue igual.
@@ -1390,7 +1420,7 @@ fn identidad(estado: State<Estado>) -> Identidad {
 /// **No baja fotos.** Eso lo hace el hilo de fondo después de llamar aquí: son
 /// hasta veinticinco descargas y no pueden estar dentro de la operación que el
 /// cajero dispara con un botón.
-fn sincronizar_ahora(estado: &Estado) -> ResumenSync {
+fn sincronizar_ahora(estado: &Estado, app: &tauri::AppHandle) -> ResumenSync {
     let mut base = match estado.base.lock() {
         Ok(b) => b,
         Err(_) => return ResumenSync { error: Some("base ocupada".into()), ..Default::default() },
@@ -1406,9 +1436,9 @@ fn sincronizar_ahora(estado: &Estado) -> ResumenSync {
     let cola = sync::procesar_cola(&base, &destino, 200, ahora_epoch(), &ahora_local())
         .unwrap_or_default();
 
-    let (catalogo, error) = match nube::bajar_catalogo(&mut base, &destino) {
-        Ok(n) => (n, None),
-        Err(e) => (0, Some(e)),
+    let (catalogo, config_nueva, error) = match nube::bajar_catalogo(&mut base, &destino) {
+        Ok(b) => (b.filas, b.configuracion, None),
+        Err(e) => (0, None, Some(e)),
     };
 
     /* Si el dueño le cambió el nombre al negocio en el panel, la próxima
@@ -1421,6 +1451,26 @@ fn sincronizar_ahora(estado: &Estado) -> ResumenSync {
                 *actual = nombre;
             }
         }
+    }
+
+    /* Si el panel cambió algo, la pantalla se entera y se redibuja sola. No
+       hace falta reiniciar la caja ni cerrar el turno: el cajero ve el nombre
+       nuevo, el color nuevo o el selector de propina aparecer mientras
+       atiende, sin que nada se interrumpa. */
+    if let Some(aplicada) = config_nueva {
+        /* Se suelta el candado antes de avisar. El manejador de la pantalla
+           corre en otro hilo y podría querer leer la base: avisar con el
+           candado puesto es la forma más fácil de trabar las dos cosas. */
+        drop(base);
+        let _ = app.emit("pos:configuracion_actualizada", aplicada);
+
+        return ResumenSync {
+            enviadas: cola.enviadas,
+            fallidas: cola.fallidas,
+            apartadas: cola.apartadas,
+            catalogo,
+            error,
+        };
     }
 
     ResumenSync {
@@ -1445,7 +1495,7 @@ fn sincronizar_ahora(estado: &Estado) -> ResumenSync {
 async fn sincronizar(app: tauri::AppHandle) -> ResumenSync {
     tauri::async_runtime::spawn_blocking(move || {
         let estado = app.state::<Estado>();
-        sincronizar_ahora(&estado)
+        sincronizar_ahora(&estado, &app)
     })
     .await
     .unwrap_or_else(|e| ResumenSync {
@@ -1943,7 +1993,7 @@ pub fn run() {
             std::thread::spawn(move || loop {
                 std::thread::sleep(std::time::Duration::from_secs(30));
                 let estado = mango.state::<Estado>();
-                sincronizar_ahora(&estado);
+                sincronizar_ahora(&estado, &mango);
 
                 /* Las fotos van aquí y **solo** aquí: este hilo puede tardar lo
                    que sea sin que nadie lo note, y el cajero nunca las está
@@ -1994,6 +2044,8 @@ pub fn run() {
             info_terminal,
             configurar_datafono,
             config_datafono,
+            hardware_del_panel,
+            devolver_hardware_al_panel,
             probar_datafono,
             abrir_pantalla_cliente,
             cerrar_pantalla_cliente,
