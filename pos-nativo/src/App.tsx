@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CircleUser, CloudCheck, CloudOff, Gift, Inbox, Minus, Monitor,
   LayoutGrid, MessageSquarePlus, PauseCircle, Percent, Plus, Presentation, Printer, RefreshCw, ScanLine,
-  Star, Timer, Trash2, Undo2, UserPlus, UtensilsCrossed, Volume2, VolumeX, Wallet, X,
+  Star, Timer, Trash2, Undo2, UserPlus, UtensilsCrossed, Volume2, VolumeX, Wallet, X, XCircle,
 } from 'lucide-react';
 import { type EstadoCliente } from './nativo';
 import {
@@ -34,7 +34,12 @@ import { AbrirTurno, PanelTurno, ResumenCierre } from './Turno';
 import ModalCliente from './ModalCliente';
 import ModalRecompensas from './ModalRecompensas';
 import CatalogoCuadrante from './CatalogoCuadrante';
+import PestanasCategoria from './PestanasCategoria';
+import SelectorVariante, { enVariante, variantesDe } from './SelectorVariante';
 import { useSpeedOfService } from './hooks/useSpeedOfService';
+import {
+  agregarAlCarrito, brutoDe, lineaDeRecompensa, quitarLineasDeRecompensa, rebajaPorRecompensa,
+} from './carrito';
 
 /** A los 90 segundos sin tocar nada, la caja se bloquea sola. */
 const INACTIVIDAD_MS = 90_000;
@@ -269,6 +274,23 @@ function Caja({
   /* El cliente de esta venta, cuando el cajero lo identificó. Vacío es lo
      normal: la mayoría de las ventas de mostrador son anónimas, y obligar a
      preguntar el teléfono en cada café solo alarga la fila. */
+  /* La línea que el cajero tiene señalada. Es lo que anula F4 y lo que abre
+     la nota: un toque selecciona, y las acciones actúan sobre lo señalado. Sin
+     esto, anular obligaba a bajar la cantidad de a uno —ocho toques para un
+     ítem de ocho unidades— antes de llegar siquiera a la autorización. */
+  const [lineaActiva, setLineaActiva] = useState<number | null>(null);
+  /* Cuántas de las líneas que hay en pantalla ya salieron hacia la cocina.
+
+     Solo tiene sentido atendiendo una mesa: en mostrador no ha salido nada. Se
+     fija al abrir la cuenta, y como lo que se marca después se agrega al
+     final, las primeras `comandadas` posiciones son las que la cocina ya
+     tiene. Si una de esas suma unidades nuevas, la línea entera cuenta como
+     comandada —que es el lado seguro: pide autorización de más, nunca de
+     menos—. */
+  const [comandadas, setComandadas] = useState(0);
+  /* La presentación que el cajero dejó puesta: "Mediana", "Litro", lo que el
+     negocio haya escrito. Vacío = cada producto entra como esté en su casilla. */
+  const [variante, setVariante] = useState('');
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [verCliente, setVerCliente] = useState(false);
   const [verRecompensas, setVerRecompensas] = useState(false);
@@ -305,6 +327,8 @@ function Caja({
     try {
       const r = await guardarEnCuenta(enCuenta.identificador, carrito, total, carrito.length);
       setCarrito([]);
+      setComandadas(0);
+      setLineaActiva(null);
       setEnCuenta(null);
       setVista('salon');
       await refrescarCuentas();
@@ -332,6 +356,11 @@ function Caja({
     }
     const pedido = await abrirCuenta(c.id);
     setCarrito(pedido ?? []);
+    /* Lo que ya estaba en la mesa es lo que la cocina ya preparó: quitarlo
+       necesita autorización, y hay que avisarle a la cocina. Lo que se marque
+       a partir de ahora todavía no existe para nadie. */
+    setComandadas(pedido?.length ?? 0);
+    setLineaActiva(null);
     setEnCuenta(c);
     setVista('catalogo');
     buscador.current?.focus();
@@ -346,6 +375,8 @@ function Caja({
       return;
     }
     setCarrito(pedido);
+    setComandadas(pedido.length);
+    setLineaActiva(null);
     setEnCuenta(c);
     setVista('catalogo');
     setVistaPago([]);
@@ -425,6 +456,20 @@ function Caja({
   /* Lo que de verdad se cobra. Rust vuelve a hacer esta resta al guardar —es
      él quien manda— pero la pantalla tiene que mostrar la cifra correcta desde
      que se autoriza el descuento. */
+  /* Las presentaciones que hay en lo que se está mostrando ahora mismo.
+
+     Se recalcula con el catálogo filtrado y no una sola vez al arrancar:
+     las bebidas vienen en tres tamaños y los postres en ninguno, así que
+     el conmutador tiene que aparecer y desaparecer con la categoría. */
+  const variantesDisponibles = useMemo(() => variantesDe(productos), [productos]);
+
+  /* Una presentación que ya no existe en lo que se ve no puede quedarse
+     puesta: el cajero pasa de Bebidas a Postres y, sin esto, seguiría
+     marcando con [Litro] señalado sin que ningún botón lo muestre. */
+  useEffect(() => {
+    if (variante && !variantesDisponibles.includes(variante)) setVariante('');
+  }, [variante, variantesDisponibles]);
+
   const aCobrar = Math.max(0, total - descuento.monto);
   const { falta, vuelto } = useMemo(() => repartir(aCobrar, vistaPago), [aCobrar, vistaPago]);
   const entregado = useMemo(
@@ -474,49 +519,24 @@ function Caja({
     if (ahora - ultimoToque.current < 150) return;
     ultimoToque.current = ahora;
 
-    if (Array.isArray(p.extras) && p.extras.length) {
-      setConExtras(p);
+    /* La presentación puesta manda sobre la casilla: con [Mediana] elegida,
+       tocar "Gaseosa" marca la mediana. Si este producto no viene en esa
+       presentación —hay gaseosa mediana pero no hay pan mediano— entra tal
+       cual, que es lo que el cajero espera al tocar el pan. */
+    const cual = enVariante(p, variante, productos);
+
+    if (Array.isArray(cual.extras) && cual.extras.length) {
+      setConExtras(cual);
       return;
     }
-    agregar(p);
+    agregar(cual);
   };
 
   const agregar = (p: Producto, extras: ExtraElegido[] = [], sobreprecio = 0) => {
-    setCarrito((c) => {
-      /* Dos líneas del mismo producto con extras distintos son dos líneas
-         distintas: una hamburguesa con queso y otra sin él no se pueden sumar,
-         porque la cocina tiene que recibir las dos por separado. */
-      const mismosExtras = (a: ExtraElegido[] = [], b: ExtraElegido[] = []) =>
-        a.length === b.length &&
-        a.every((x, k) => x.nombre === b[k]?.nombre && x.cantidad === b[k]?.cantidad);
-
-      /* El precio entra en la comparación, y no es un detalle.
-
-         Sin él, el café que entró gratis por una recompensa y el café que el
-         cliente pide después son "el mismo producto con los mismos extras": se
-         fusionan en la línea de precio cero y el negocio regala el segundo.
-         Dos líneas del mismo producto a precios distintos son dos líneas. */
-      const i = c.findIndex(
-        (x) =>
-          x.producto_id === p.id &&
-          x.variante === p.variante &&
-          x.precio === p.precio + sobreprecio &&
-          mismosExtras(x.extras, extras),
-      );
-      if (i >= 0) {
-        const copia = [...c];
-        copia[i] = { ...copia[i], cantidad: copia[i].cantidad + 1 };
-        return copia;
-      }
-      return [...c, {
-        producto_id: p.id, nombre: p.nombre, variante: p.variante,
-        /* El precio de la línea es el precio **como se vendió**: base más
-           extras. Que sea así es lo que permite que toda la aritmética de la
-           caja —totales, vuelto, arqueo, devoluciones— siga intacta. */
-        precio: p.precio + sobreprecio,
-        cantidad: 1, nota: '', extras,
-      }];
-    });
+    /* Cómo se agrupa vive en `carrito.ts`, no acá: es aritmética que decide
+       cuánto paga el cliente y equivocarse no se ve, así que tiene que poder
+       probarse sin montar la caja entera. */
+    setCarrito((c) => agregarAlCarrito(c, p, extras, sobreprecio));
     setRecien((r) => ({ clave: `${p.id}${p.variante}`, vez: r.vez + 1 }));
     /* El primer producto de un carrito vacío es el comienzo real de la venta.
        Llamarlo en cada producto no cuesta nada: el cronómetro ignora los
@@ -545,16 +565,45 @@ function Caja({
       ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [recien, carrito]);
 
-  /* Bajar de 1 es quitar la línea, y quitar una línea ya marcada necesita
-     supervisor. Subir o bajar dentro de lo marcado, no: en hora pico eso sería
-     insostenible. */
+  /* Bajar de 1 es quitar la línea, así que pasa por la misma puerta que el
+     botón de anular: con autorización si la cocina ya la tiene, directo si es
+     un borrador. Subir o bajar dentro de lo marcado no pide nada: en hora pico
+     eso sería insostenible. */
   const cambiarCantidad = (indice: number, delta: number) => {
     const linea = carrito[indice];
     if (delta < 0 && linea.cantidad <= 1) {
-      setAnulando({ indice, linea });
+      anularLinea(indice);
       return;
     }
     setCarrito((c) => c.map((x, i) => (i === indice ? { ...x, cantidad: x.cantidad + delta } : x)));
+  };
+
+  /** Si esta línea ya salió hacia la cocina. En mostrador, nunca. */
+  const yaComandada = (indice: number) => Boolean(enCuenta) && indice < comandadas;
+
+  /* Quitar una línea entera.
+
+     La bifurcación es la que pidió la operación, y conviene tenerla escrita:
+
+     - **Ya comandada**: la cocina la preparó. Sale plata del negocio, hay que
+       avisarle a la cocina y tiene que quedar constancia de quién lo autorizó.
+       PIN de supervisor, igual que siempre.
+     - **Borrador**: no ha ido a cocina ni se ha impreso nada. Se quita y ya.
+       Es una corrección de tecleo, y pedir un supervisor por cada dedo mal
+       puesto convierte la autorización en un trámite que se firma sin leer
+       —que es justo lo que la vuelve inútil cuando hace falta de verdad—. */
+  const anularLinea = (indice: number) => {
+    const linea = carrito[indice];
+    if (!linea) return;
+
+    if (yaComandada(indice)) {
+      setAnulando({ indice, linea });
+      return;
+    }
+
+    setCarrito((c) => c.filter((_, i) => i !== indice));
+    setLineaActiva(null);
+    buscador.current?.focus();
   };
 
   const confirmarAnulacion = async (motivo: string, autorizo: string) => {
@@ -572,6 +621,11 @@ function Caja({
         enCuenta?.identificador,
       );
       setCarrito((c) => c.filter((_, i) => i !== indice));
+      /* La cocina tenía una línea menos a partir de ahora. Sin esto, la
+         siguiente línea heredaría la posición de la anulada y se le pediría
+         autorización para quitar algo que nunca salió. */
+      if (yaComandada(indice)) setComandadas((n) => Math.max(0, n - 1));
+      setLineaActiva(null);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -656,18 +710,8 @@ function Caja({
         setError(`"${r.nombre}" apunta a un producto que ya no está en el catálogo`);
         return;
       }
-      /* Entra a cero y como línea propia: la cocina tiene que verlo en la
-         comanda igual que cualquier otro plato. Un producto gratis que no se
-         imprime es un producto que no se prepara. */
-      setCarrito((c) => [...c, {
-        producto_id: cual.id,
-        nombre: cual.nombre,
-        variante: cual.variante,
-        precio: 0,
-        cantidad: 1,
-        nota: `Recompensa · ${r.nombre}`,
-        extras: [],
-      }]);
+      // Entra a cero y como línea propia, con su marca. Ver `carrito.ts`.
+      setCarrito((c) => [...c, lineaDeRecompensa(cual, r)]);
       setRecompensa(r);
       bip();
       buscador.current?.focus();
@@ -678,11 +722,7 @@ function Caja({
        supervisor, y esa diferencia es deliberada: un descuento a dedo es plata
        que el negocio regala y por eso necesita firma; este lo pagó el cliente
        con puntos que ya se ganó. Queda registrado igual, en el canje. */
-    const rebaja = r.tipo === 'discount_percent'
-      ? Math.round((total * Math.min(100, Math.max(0, r.valor_descuento))) / 100)
-      : r.valor_descuento;
-
-    setDescuento({ monto: Math.min(total, Math.max(0, rebaja)), motivo: `Puntos · ${r.nombre}` });
+    setDescuento({ monto: rebajaPorRecompensa(r, total), motivo: `Puntos · ${r.nombre}` });
     setRecompensa(r);
     bip();
     buscador.current?.focus();
@@ -699,11 +739,8 @@ function Caja({
      cifra que alguien firmó, no una proporción. */
   useEffect(() => {
     if (!recompensa || recompensa.tipo !== 'discount_percent') return;
-    const bruto = carrito.reduce((t, i) => t + i.precio * i.cantidad, 0);
-    const rebaja = Math.round((bruto * Math.min(100, Math.max(0, recompensa.valor_descuento))) / 100);
-    setDescuento((d) =>
-      d.monto === Math.min(bruto, rebaja) ? d : { monto: Math.min(bruto, rebaja), motivo: d.motivo },
-    );
+    const rebaja = rebajaPorRecompensa(recompensa, brutoDe(carrito));
+    setDescuento((d) => (d.monto === rebaja ? d : { monto: rebaja, motivo: d.motivo }));
   }, [carrito, recompensa]);
 
   /* Quitar la recompensa antes de cobrar. Devuelve el carrito a como estaba:
@@ -712,7 +749,7 @@ function Caja({
   const quitarRecompensa = () => {
     if (!recompensa) return;
     if (recompensa.tipo === 'free_product') {
-      setCarrito((c) => c.filter((l) => !l.nota?.startsWith('Recompensa · ')));
+      setCarrito(quitarLineasDeRecompensa);
     } else {
       setDescuento({ monto: 0, motivo: '' });
     }
@@ -802,6 +839,8 @@ function Caja({
       setDescuento({ monto: 0, motivo: '' });
       setCliente(null);
       setRecompensa(null);
+      setLineaActiva(null);
+      setComandadas(0);
 
       /* La cuenta se cierra **después** de que la venta quedó registrada. Al
          revés, un fallo al guardar dejaría la mesa borrada y su consumo
@@ -855,7 +894,15 @@ function Caja({
       if (hayModal) return;
 
       if (e.key === 'F2') { e.preventDefault(); finalizar(); }
-      if (e.key === 'F4') { e.preventDefault(); pausar(); }
+      /* F4 anula la línea señalada y F5 aparta la venta. F4 era "en espera"
+         hasta esta versión: se movió a F5 porque la carta de atajos del POS
+         industrial pone la anulación ahí, y tener dos cosas distintas en la
+         misma tecla entre terminales es peor que mover una. */
+      if (e.key === 'F4') {
+        e.preventDefault();
+        if (lineaActiva !== null) anularLinea(lineaActiva);
+      }
+      if (e.key === 'F5') { e.preventDefault(); pausar(); }
       if (e.key === 'F3') { e.preventDefault(); if (carrito.length) setPidiendoDescuento(true); }
       if (e.key === 'F1') { e.preventDefault(); setVerCliente(true); }
       /* F6 abre el canje. Solo con cliente vinculado: sin él no hay puntos que
@@ -871,6 +918,8 @@ function Caja({
         setDescuento({ monto: 0, motivo: '' });
         setCliente(null);
         setRecompensa(null);
+        setLineaActiva(null);
+        setComandadas(0);
         /* La venta se canceló: lo medido no vale y no se guarda. Si se
            conservara, la siguiente venta empezaría con el reloj corrido y el
            promedio del día quedaría inflado. */
@@ -1492,31 +1541,23 @@ function Caja({
             ))}
           </div>
 
-          <span className="flex-shrink-0 text-[10.5px] font-black text-slate-400 uppercase tracking-wide px-1">
-            Categorías
-          </span>
+          {/* El tamaño o la presentación, para no abrir un modal por algo
+              que se decide con un toque. Las opciones salen del catálogo que
+              se está viendo: en este sistema la variante es texto libre del
+              comerciante, así que un [S][M][L] fijo sería un control muerto.
+              Ver `SelectorVariante`. */}
+          <SelectorVariante
+            variantes={variantesDisponibles}
+            elegida={variante}
+            onElegir={setVariante}
+          />
 
-          {/* Las pestañas de categoría, en vertical. Con cuarenta platos en
-              carta, buscar por texto es más lento que tocar: el cajero se sabe
-              la carta por secciones, no por nombres exactos.
-
-              Es lo único de esta columna que se desplaza, y solo si el negocio
-              tiene más categorías de las que caben. */}
-          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-1.5">
-            {['', ...rubros].map((r) => (
-              <button
-                key={r || 'todos'}
-                onClick={() => setRubro(r)}
-                className={`flex-shrink-0 px-3 h-11 rounded-xl text-left text-[12.5px] font-bold border-2 transition-colors truncate ${
-                  rubro === r
-                    ? 'border-marca bg-marca text-sobre-marca'
-                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
-                }`}
-              >
-                {r || 'Todos'}
-              </button>
-            ))}
-          </div>
+          {/* El espacio que sobra queda vacío y es deliberado: las categorías
+              se fueron arriba de la rejilla, y esta columna vale más con aire
+              que con algo metido para llenarla. Lo que viva aquí tiene que ser
+              lo que el cajero mira antes de marcar —quién es el cliente y cómo
+              se atiende—, no una lista para explorar. */}
+          <div className="flex-1 min-h-0" />
 
           <button
             onClick={() => {
@@ -1592,6 +1633,10 @@ function Caja({
                 />
               </div>
 
+              {/* Las categorías, donde el dedo ya está: sobre la rejilla y
+                  no en una lista lateral que hay que arrastrar. */}
+              <PestanasCategoria rubros={rubros} rubro={rubro} onElegir={setRubro} />
+
               <CatalogoCuadrante
                 productos={productos}
                 carpeta={carpeta}
@@ -1626,25 +1671,33 @@ function Caja({
               <div
                 key={i.producto_id + i.variante + indice}
                 data-linea={`${i.producto_id}${i.variante}`}
-                className={`flex items-center gap-1.5 p-2 rounded-lg ${
-                  i.precio === 0 ? 'bg-emerald-50' : 'bg-slate-50'
-                } ${recien.clave === `${i.producto_id}${i.variante}` ? 'recien-agregado' : ''}`}
+                onClick={() => setLineaActiva(indice)}
+                className={`flex items-center gap-1.5 p-2 rounded-lg border-2 transition-colors ${
+                  lineaActiva === indice
+                    ? 'border-marca'
+                    : 'border-transparent'
+                } ${i.precio === 0 ? 'bg-emerald-50' : 'bg-slate-50'} ${
+                  recien.clave === `${i.producto_id}${i.variante}` ? 'recien-agregado' : ''
+                }`}
               >
-                {/* Tocar el nombre abre la nota. No hay botón aparte porque
-                    en el carrito no sobra un milímetro, y el nombre es lo más
-                    grande que hay: es el objetivo más fácil de acertar. */}
-                <button
-                  onClick={() => setAnotando(indice)}
-                  title="Cómo lo pidió el cliente"
-                  className="flex-1 min-w-0 text-left group"
-                >
+                {/* Tocar la línea la señala; el icono abre la nota. Antes el
+                    nombre entero abría la nota, y con la anulación por línea
+                    eso dejó de servir: señalar es lo que se hace a cada rato y
+                    anotar una vez cada tantas ventas. El icono tiene 44 px de
+                    zona tocable aunque se dibuje pequeño. */}
+                <div className="flex-1 min-w-0 text-left">
                   <p className="text-[13px] font-semibold truncate flex items-center gap-1">
                     {i.nombre}{i.variante ? <span className="text-slate-400"> · {i.variante}</span> : null}
-                    <MessageSquarePlus
-                      size={13}
-                      strokeWidth={2.25}
-                      className="flex-shrink-0 text-slate-300 group-hover:text-marca"
-                    />
+                    {yaComandada(indice) && (
+                      /* Lo que la cocina ya tiene. Quitarlo pide supervisor, y
+                         el cajero tiene que saberlo antes de intentarlo. */
+                      <span
+                        title="Ya salió a la cocina"
+                        className="flex-shrink-0 px-1 rounded text-[9.5px] font-black bg-slate-200 text-slate-500 uppercase"
+                      >
+                        cocina
+                      </span>
+                    )}
                   </p>
                   {/* Los extras se leen enteros, igual que la nota: media
                       línea en pantalla es peor que ninguna, porque el cajero
@@ -1659,6 +1712,16 @@ function Caja({
                   ) : (
                     <p className="text-[11px] text-slate-400 tabular-nums">{pesos(i.precio)} c/u</p>
                   )}
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setAnotando(indice); }}
+                  title="Cómo lo pidió el cliente"
+                  aria-label="Nota de la línea"
+                  className={`flex items-center justify-center w-9 h-10 rounded-lg transition-colors ${
+                    i.nota ? 'text-amber-600 bg-amber-50' : 'text-slate-300 hover:text-marca'
+                  }`}
+                >
+                  <MessageSquarePlus size={15} strokeWidth={2.25} />
                 </button>
                 <button
                   onClick={() => cambiarCantidad(indice, -1)}
@@ -1742,10 +1805,24 @@ function Caja({
 
             {error && <p className="text-[12.5px] font-semibold text-red-600">{error}</p>}
 
-            {/* Las acciones de la orden. Tres botones chicos y uno grande: el
-                que más se toca del día es el único que tiene que encontrarse
-                sin mirar. */}
-            <div className="grid grid-cols-3 gap-2">
+            {/* Las acciones de la orden, en un riel de cuatro. El que más se
+                toca del día —cobrar— va aparte y grande: es el único que tiene
+                que encontrarse sin mirar. */}
+            <div className="grid grid-cols-4 gap-1.5">
+              <BotonOrden
+                icono={XCircle}
+                texto="Anular"
+                atajo="F4"
+                onClick={() => lineaActiva !== null && anularLinea(lineaActiva)}
+                disabled={lineaActiva === null}
+                title={
+                  lineaActiva === null
+                    ? 'Toca primero la línea que quieres quitar'
+                    : yaComandada(lineaActiva)
+                      ? 'Ya salió a cocina: lo autoriza un supervisor'
+                      : 'Quitar esta línea del pedido'
+                }
+              />
               <BotonOrden
                 icono={Percent}
                 texto="Dcto"
@@ -1766,7 +1843,7 @@ function Caja({
               <BotonOrden
                 icono={PauseCircle}
                 texto="Espera"
-                atajo="F4"
+                atajo="F5"
                 onClick={pausar}
                 disabled={!carrito.length}
                 title="Aparta este pedido y atiende al siguiente"
