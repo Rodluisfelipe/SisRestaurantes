@@ -234,6 +234,30 @@ pub fn por_id(conexion: &Connection, id: &str) -> Result<Option<Cuenta>> {
     filas.next().transpose()
 }
 
+/// Pasa al turno nuevo las mesas que quedaron abiertas del anterior.
+///
+/// Es el relevo de las seis de la tarde: el cajero del día se va, seis mesas
+/// siguen comiendo, y el de la noche tiene que encontrarlas en su tablero.
+///
+/// Se re-apuntan al turno entrante y no se dejan huérfanas porque el turno es
+/// quien responde por ellas: la venta de esa mesa se le imputa a quien
+/// **cobre** el dinero, que es quien lo va a tener en su gaveta al cerrar. Si
+/// se quedaran con el turno viejo, el arqueo de la noche saldría corto por
+/// todo lo que esas mesas consumieron.
+///
+/// Devuelve cuántas se recibieron, para poder decírselo al cajero que entra.
+pub fn traspasar(conexion: &Connection, turno_nuevo: &str) -> Result<usize> {
+    let cuantas = conexion.execute(
+        "UPDATE ventas_pausadas
+         SET turno_id = ?1
+         WHERE identificador != ''
+           AND turno_id != ?1
+           AND turno_id IN (SELECT id FROM turnos WHERE estado != 'ABIERTO')",
+        [turno_nuevo],
+    )?;
+    Ok(cuantas)
+}
+
 /// Cierra la cuenta. Se llama cuando la venta ya quedó registrada.
 pub fn cerrar(conexion: &Connection, id: &str) -> Result<()> {
     conexion.execute("DELETE FROM ventas_pausadas WHERE id = ?1", [id])?;
@@ -409,14 +433,79 @@ mod pruebas {
     fn las_cuentas_no_se_mezclan_con_las_ventas_en_espera() {
         /* El mostrador y el salón comparten tabla pero no lista: una venta
            apartada de mostrador no es una mesa y no puede aparecer en el
-           tablero. */
+           tablero.
+
+           Y al cerrar turno tampoco pesan igual. Una venta apartada de
+           mostrador es un carrito que nadie va a reclamar y hay que resolverla
+           antes de irse; una mesa con gente sentada no. Contar las dos —que
+           es como estaba— dejaba a un restaurante sin poder cerrar turno a las
+           seis de la tarde. */
         let c = db::abrir_en_memoria().unwrap();
 
         crate::pausadas::pausar(&c, "t1", "[]", "Café +2", 5_000, 1, AHORA).unwrap();
         guardar(&c, "t1", "Mesa 3", &json(&[linea("Sopa", 1)]), 10_000, 1, AHORA).unwrap();
 
-        assert_eq!(listar(&c, "t1").unwrap().len(), 1, "solo la mesa");
-        assert_eq!(crate::pausadas::cuantas(&c, "t1").unwrap(), 2, "el cierre ve las dos");
+        assert_eq!(listar(&c, "t1").unwrap().len(), 1, "solo la mesa en el tablero");
+        assert_eq!(
+            crate::pausadas::cuantas(&c, "t1").unwrap(),
+            1,
+            "el cierre solo se traba con la de mostrador",
+        );
+    }
+
+    #[test]
+    fn el_turno_cierra_aunque_queden_mesas_comiendo() {
+        /* El relevo de las seis de la tarde. Sin esto, el cajero del día no se
+           puede ir a su casa hasta que se vacíe el salón. */
+        let mut c = db::abrir_en_memoria().unwrap();
+        let t = crate::turnos::abrir(&c, "u1", "Ana", Pesos(100_000), AHORA).unwrap();
+
+        guardar(&c, &t.id, "Mesa 3", &json(&[linea("Sopa", 1)]), 10_000, 1, AHORA).unwrap();
+        guardar(&c, &t.id, "Mesa 5", &json(&[linea("Arroz", 2)]), 20_000, 2, AHORA).unwrap();
+
+        assert!(crate::turnos::cerrar(&mut c, Pesos(100_000), AHORA).is_ok());
+    }
+
+    #[test]
+    fn el_turno_que_entra_recibe_las_mesas_del_que_sale() {
+        /* Y tienen que aparecer en **su** tablero: si se quedaran con el turno
+           viejo, el cajero de la noche abriría una pantalla vacía con seis
+           mesas comiendo en el salón, y al cobrarlas esa plata se le imputaría
+           a un turno ya cerrado. */
+        let mut c = db::abrir_en_memoria().unwrap();
+        let dia = crate::turnos::abrir(&c, "u1", "Ana", Pesos(100_000), AHORA).unwrap();
+
+        guardar(&c, &dia.id, "Mesa 3", &json(&[linea("Sopa", 1)]), 10_000, 1, AHORA).unwrap();
+        crate::turnos::cerrar(&mut c, Pesos(100_000), AHORA).unwrap();
+
+        /* Entre cerrar y abrir, la mesa sigue apuntando al turno viejo: el
+           traspaso ocurre cuando alguien entra a hacerse cargo, no cuando el
+           anterior se va. Es lo correcto —una mesa sin turno no tendría a
+           quién imputarle la venta— y por eso se comprueba después. */
+        let noche = crate::turnos::abrir(&c, "u2", "Luis", Pesos(100_000), AHORA).unwrap();
+
+        assert!(
+            listar(&c, &dia.id).unwrap().is_empty(),
+            "el turno que se fue ya no responde por ellas",
+        );
+
+        let recibidas = listar(&c, &noche.id).unwrap();
+        assert_eq!(recibidas.len(), 1);
+        assert_eq!(recibidas[0].identificador, "Mesa 3");
+    }
+
+    #[test]
+    fn el_traspaso_no_toca_las_mesas_del_turno_abierto() {
+        /* Abrir un turno no puede robarle las mesas a otro que siga vivo. No
+           pasa hoy —no se permiten dos turnos abiertos— pero es la clase de
+           cosa que se rompe el día que se permita multicaja. */
+        let c = db::abrir_en_memoria().unwrap();
+        let t = crate::turnos::abrir(&c, "u1", "Ana", Pesos(100_000), AHORA).unwrap();
+
+        guardar(&c, &t.id, "Mesa 3", &json(&[linea("Sopa", 1)]), 10_000, 1, AHORA).unwrap();
+
+        assert_eq!(traspasar(&c, "otro-turno").unwrap(), 0);
+        assert_eq!(listar(&c, &t.id).unwrap().len(), 1);
     }
 
     #[test]

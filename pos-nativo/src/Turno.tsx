@@ -324,6 +324,30 @@ export function ResumenCierre({ cierre, onListo }: { cierre: CierreTurno; onList
             Además {pesos(cierre.ventas_otros)} en tarjeta o transferencia, que no pasan por la gaveta.
           </p>
         )}
+
+        {cierre.propina_efectivo > 0 && (
+          /* La propina está **dentro** de lo contado: es plata que el cliente
+             dejó y que hay que sacar de la gaveta al liquidar. Decirlo aquí es
+             lo que evita que mañana aparezca como un faltante sin explicación. */
+          <p className="pt-2 text-[11.5px] font-semibold text-emerald-700">
+            De lo contado, {pesos(cierre.propina_efectivo)} son propina: no son del negocio.
+          </p>
+        )}
+
+        {cierre.devoluciones_efectivo > 0 && (
+          <p className="pt-1 text-[11.5px] text-slate-400">
+            Se devolvieron {pesos(cierre.devoluciones_efectivo)} en efectivo, ya restados.
+          </p>
+        )}
+
+        {cierre.aperturas_sin_venta > 5 && (
+          /* No acusa a nadie: cuenta. Abrir la gaveta sin vender es normal una
+             o dos veces por turno —dar cambio, revisar el fondo—; ocho veces es
+             un patrón, y el patrón solo se ve si alguien lo cuenta. */
+          <p className="mt-2 px-2 py-1.5 rounded-lg bg-amber-50 text-[11.5px] font-semibold text-amber-800">
+            La gaveta se abrió {cierre.aperturas_sin_venta} veces sin una venta detrás.
+          </p>
+        )}
       </div>
 
       <p className="text-[11.5px] text-slate-400 max-w-sm text-center">

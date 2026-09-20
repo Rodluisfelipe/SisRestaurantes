@@ -104,10 +104,21 @@ pub fn descartar(conexion: &Connection, id: &str) -> Result<()> {
     Ok(())
 }
 
-/// Cuántas quedan sueltas. Lo mira el cierre de turno antes de dejar cerrar.
+/// Cuántas ventas de mostrador quedan apartadas. El cierre no deja cerrar
+/// con ninguna.
+///
+/// **No cuenta las mesas abiertas**, y la diferencia es el día y la noche de
+/// un restaurante: a las seis de la tarde hay seis mesas comiendo y el cajero
+/// del turno diurno tiene que poder irse a su casa. Una venta apartada de
+/// mostrador sí es un carrito que nadie va a reclamar; una mesa con gente
+/// sentada no.
+///
+/// Las mesas pasan al turno siguiente con [`crate::cuentas::traspasar`], y su
+/// venta se le imputa al turno que **cobra** la plata, que es el que la tiene
+/// en la gaveta.
 pub fn cuantas(conexion: &Connection, turno_id: &str) -> Result<i64> {
     conexion.query_row(
-        "SELECT COUNT(*) FROM ventas_pausadas WHERE turno_id = ?1",
+        "SELECT COUNT(*) FROM ventas_pausadas WHERE turno_id = ?1 AND identificador = ''",
         [turno_id],
         |f| f.get(0),
     )

@@ -199,7 +199,7 @@ pub fn bajar_catalogo(
     for _ in 0..20 {
         let desde = catalogo::marca_de_agua(conexion).map_err(|e| e.to_string())?;
 
-        let respuesta: RespuestaCatalogo = ureq::get(&format!("{}/pos/catalog", nube.base))
+        let cruda = ureq::get(&format!("{}/pos/catalog", nube.base))
             .timeout(ESPERA)
             .set("Authorization", &format!("Bearer {}", nube.token))
             .query("since", &desde)
@@ -208,7 +208,25 @@ pub fn bajar_catalogo(
                 sync::FalloEnvio::Red(m) => format!("Sin conexión: {m}"),
                 sync::FalloEnvio::Servidor(c, _) => format!("El servidor falló ({c})"),
                 sync::FalloEnvio::Rechazado(c, m) => format!("Rechazado ({c}): {m}"),
-            })?
+            })?;
+
+        /* De paso, la hora. Toda respuesta HTTP trae una cabecera `Date`, y es
+           gratis: sirve para detectar que la pila de la placa está agotada y
+           que este equipo cree estar en 1970. Sin esto, las ventas de esa
+           mañana se estampan cincuenta y seis años atrás y ningún informe del
+           negocio vuelve a cuadrar. */
+        if let Some(fecha) = cruda.header("Date") {
+            if let Some(epoch) = crate::reloj::epoch_de_cabecera(fecha) {
+                if crate::reloj::sincronizar(epoch) {
+                    println!(
+                        "El reloj de esta caja estaba corrido {} s y se corrigió",
+                        crate::reloj::desfase_segundos(),
+                    );
+                }
+            }
+        }
+
+        let respuesta: RespuestaCatalogo = cruda
             .into_json()
             .map_err(|e| format!("Respuesta ilegible: {e}"))?;
 

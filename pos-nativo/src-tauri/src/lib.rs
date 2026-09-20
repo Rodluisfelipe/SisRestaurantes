@@ -22,6 +22,7 @@ mod credenciales;
 mod datafono_red;
 mod fotos;
 mod nube;
+mod reloj;
 mod perifericos;
 use nube::Nube;
 use perifericos::Impresora;
@@ -112,11 +113,13 @@ pub(crate) fn escpos_ancho_por_defecto() -> usize {
     escpos::ANCHO_80MM
 }
 
+/// El instante en segundos, ya corregido contra el servidor.
+///
+/// Lo usa la espera de la cola. Con un reloj en 1970, una venta encolada
+/// quedaría con un "reintentar después de" cincuenta y seis años en el pasado
+/// —o en el futuro al cambiar la pila— y no se subiría nunca.
 fn ahora_epoch() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0)
+    reloj::ahora_epoch()
 }
 
 #[derive(serde::Serialize)]
@@ -684,6 +687,8 @@ fn anular_item(
     monto: i64,
     motivo: String,
     autorizo: String,
+    // De qué mesa se quita, si la línea ya se mandó a la cocina.
+    cuenta: Option<String>,
 ) -> Result<(), String> {
     if autorizo.trim().is_empty() {
         return Err("Falta la autorización de un supervisor".into());
@@ -691,7 +696,42 @@ fn anular_item(
     if motivo.trim().len() < 3 {
         return Err("Dile por qué se anula".into());
     }
+
+    let cajero = estado
+        .sesion
+        .lock()
+        .ok()
+        .and_then(|s| s.clone())
+        .map(|u| u.nombre)
+        .unwrap_or_default();
+
     anotar_excepcion(&estado, auditoria::TipoExcepcion::AnularItem, &detalle, monto, &motivo, &autorizo);
+
+    /* Si el plato ya bajó a la cocina, la cocina tiene que enterarse **en
+       papel**. Es el hueco por el que se va la plata: el cliente se come el
+       plato, el cajero lo quita de la cuenta con un PIN, cobra de viva voz y
+       ese dinero no entra al arqueo. Nadie lo descubre porque en la cuenta no
+       queda nada que mirar.
+
+       Con el papel encima del comandero, el jefe de cocina coteja lo anulado
+       contra lo que tiene en la plancha. Si el plato ya salió, lo dice.
+
+       Solo se imprime cuando la línea venía de una mesa: en mostrador se
+       anula antes de cobrar y la cocina todavía no sabe que ese plato
+       existía. */
+    if let Some(mesa) = cuenta.filter(|m| !m.trim().is_empty()) {
+        let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+        let cocina = perifericos::leer_config(&base, "cocina");
+
+        if !matches!(cocina.impresora, Impresora::Ninguna) {
+            let bytes = comanda_anulacion(cocina.ancho, &mesa, &detalle, &cajero, &autorizo, &motivo, &ahora_local());
+            /* Que falle no revierte la anulación: la línea ya se quitó y el
+               supervisor ya autorizó. Lo que se pierde es el aviso, y eso se
+               resuelve hablando, no deshaciendo una operación autorizada. */
+            let _ = perifericos::enviar(&cocina.impresora, &bytes);
+        }
+    }
+
     Ok(())
 }
 
@@ -884,12 +924,23 @@ fn mover_efectivo(
 /// El conteo entra como parámetro y el esperado se calcula después: no existe
 /// ningún comando que devuelva el esperado antes de contar, porque sería el
 /// final del arqueo ciego.
+/// Cierra el turno y aprovecha para dejar la base compacta.
+///
+/// Es el único momento del día en que la caja está garantizadamente quieta, y
+/// el único donde se puede hacer un `TRUNCATE` del WAL sin frenar a nadie.
 #[tauri::command]
 fn cerrar_turno(estado: State<Estado>, contado: i64) -> Result<turnos::CierreTurno, String> {
     let cierre = {
         let mut base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
         turnos::cerrar(&mut base, Pesos(contado), &ahora_local()).map_err(|e| e.to_string())?
     };
+
+    /* La base, compacta. Aquí y no en mitad del servicio: un TRUNCATE del
+       WAL sí bloquea, y el cierre es el único momento en que no hay nadie
+       cobrando. */
+    if let Ok(base) = estado.base.lock() {
+        db::compactar(&base);
+    }
 
     // Terminado el turno, la caja queda bloqueada esperando el próximo PIN.
     if let Ok(mut s) = estado.sesion.lock() {
@@ -1578,6 +1629,52 @@ fn comprobante_devolucion(
     t.terminar()
 }
 
+/// El aviso de que un plato ya mandado se anuló.
+///
+/// Va en grande y con marco, y no es estética: este papel tiene que saltar a
+/// la vista entre diez comandas colgadas en el comandero. Si se confunde con
+/// una comanda normal, el cocinero prepara el plato que acaban de anular.
+#[allow(clippy::too_many_arguments)]
+fn comanda_anulacion(
+    ancho: usize,
+    mesa: &str,
+    detalle: &str,
+    cajero: &str,
+    autorizo: &str,
+    motivo: &str,
+    ahora: &str,
+) -> Vec<u8> {
+    let mut t = escpos::Tirilla::nueva(ancho);
+    let marco = "*".repeat(ancho.min(48));
+
+    t.alinear(escpos::Alineacion::Centro)
+        .linea(&marco)
+        .doble(true)
+        .linea("ANULACION")
+        .doble(false)
+        .linea("NO PREPARAR")
+        .linea(&marco)
+        .alinear(escpos::Alineacion::Izquierda)
+        .salto();
+
+    t.doble(true).linea(&mesa.to_uppercase()).doble(false);
+    t.linea(ahora).separador();
+
+    t.doble(true).linea(&detalle.to_uppercase()).doble(false);
+
+    t.separador()
+        .linea(&format!("Quitó:    {cajero}"))
+        .linea(&format!("Autorizó: {autorizo}"))
+        .linea(&format!("Motivo:   {motivo}"))
+        .salto()
+        .alinear(escpos::Alineacion::Centro)
+        .linea("Si ya salió, avisa a caja")
+        .linea(&marco)
+        .cortar_parcial();
+
+    t.terminar()
+}
+
 /// La comanda de una ronda de mesa.
 ///
 /// Lleva el nombre de la mesa en grande y arriba, porque en una cocina con seis
@@ -1619,7 +1716,8 @@ fn comanda_de(
         t.doble(false);
     }
 
-    t.separador().cortar();
+    // Parcial: si cae, cae al piso de la cocina o dentro de una freidora.
+    t.separador().cortar_parcial();
     t.terminar()
 }
 
@@ -1714,7 +1812,8 @@ fn comanda(ancho: usize, nueva: &venta::NuevaVenta, registrada: &venta::VentaReg
         t.doble(false);
     }
 
-    t.separador().cortar();
+    // Parcial: la comanda se queda colgando hasta que el cocinero la arranque.
+    t.separador().cortar_parcial();
     t.terminar()
 }
 
@@ -1775,13 +1874,14 @@ fn tirilla(
     t.terminar()
 }
 
+/// La hora que se estampa en cada venta, turno y excepción.
+///
+/// Sale del reloj del equipo **corregido** con el desfase que se mide contra
+/// el servidor en cada sincronización. Si la pila de la placa está agotada y
+/// la máquina arranca en 1970, la corrección la trae de vuelta; mientras tanto
+/// sigue avanzando con el reloj local, que avanza bien aunque arranque mal.
 fn ahora_local() -> String {
-    // Hora del equipo: la caja es la fuente de la hora de la venta, no la nube.
-    // Si el reloj está corrido, lo que se corrige es el equipo.
-    time::OffsetDateTime::now_local()
-        .unwrap_or_else(|_| time::OffsetDateTime::now_utc())
-        .format(&time::format_description::well_known::Rfc3339)
-        .unwrap_or_default()
+    reloj::ahora()
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -1824,6 +1924,7 @@ pub fn run() {
                pasó, y el backoff de la cola manda sobre esta frecuencia cuando
                el backend está caído. */
             let mango = app.handle().clone();
+            let mut vueltas: u64 = 0;
             std::thread::spawn(move || loop {
                 std::thread::sleep(std::time::Duration::from_secs(30));
                 let estado = mango.state::<Estado>();
@@ -1834,6 +1935,25 @@ pub fn run() {
                    esperando. Si fallan, en la próxima vuelta se reintentan y
                    mientras tanto el producto se dibuja con sus iniciales. */
                 fotos::bajar_pendientes(&estado.base, &estado.datos);
+
+                vueltas += 1;
+
+                /* Cada media hora, el mantenimiento que evita que una terminal
+                   encendida durante semanas se degrade sola: consolidar el WAL
+                   —que si no crece hasta hacer lento cada cobro— y borrar las
+                   fotos de productos que el negocio ya quitó de la carta.
+
+                   Las dos cosas son `PASSIVE` o no bloqueantes: si hay alguien
+                   cobrando, no hacen nada y se reintentan en la próxima vuelta. */
+                if vueltas % 60 == 0 {
+                    if let Ok(base) = estado.base.lock() {
+                        db::mantener(&base);
+                    }
+                    let borradas = fotos::purgar_huerfanas(&estado.base, &estado.datos);
+                    if borradas > 0 {
+                        println!("Se borraron {borradas} foto(s) de productos que ya no están");
+                    }
+                }
             });
 
             Ok(())

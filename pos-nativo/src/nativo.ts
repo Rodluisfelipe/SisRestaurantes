@@ -568,6 +568,14 @@ export interface CierreTurno {
   /** Negativo = falta plata en la gaveta. */
   diferencia: number;
   ventas: number;
+  /** Propina cobrada en efectivo. **Ya está dentro del esperado.** */
+  propina_efectivo: number;
+  /** Propina cobrada con tarjeta o transferencia. No pasó por la gaveta. */
+  propina_otros: number;
+  /** Lo devuelto en efectivo. Ya se restó del esperado. */
+  devoluciones_efectivo: number;
+  /** Veces que se abrió la gaveta sin una venta detrás. */
+  aperturas_sin_venta: number;
 }
 
 /* En modo navegador hay una sesión de mentira para poder diseñar las pantallas
@@ -633,6 +641,8 @@ export async function cerrarTurno(contado: number): Promise<CierreTurno> {
       turno_id: 'demo', cajero: 'Demo', abierto_en: '', cerrado_en: new Date().toISOString(),
       fondo_inicial: 0, ventas_efectivo: 0, ventas_otros: 0, entradas: 0, salidas: 0,
       esperado: 0, contado, diferencia: contado, ventas: 0,
+      propina_efectivo: 0, propina_otros: 0, devoluciones_efectivo: 0,
+      aperturas_sin_venta: 0,
     };
   }
   return invoke<CierreTurno>('cerrar_turno', { contado });
@@ -712,14 +722,24 @@ export async function autorizar(pin: string): Promise<string> {
   return invoke<string>('autorizar', { pin });
 }
 
+/**
+ * Quita una línea ya marcada. Exige el nombre de quien autorizó.
+ *
+ * Si la línea venía de una mesa —es decir, la cocina ya la recibió— se le
+ * manda un aviso en papel. Es el hueco por el que se va la plata: el cliente
+ * se come el plato, el cajero lo quita con un PIN, cobra de viva voz, y en la
+ * cuenta no queda nada que mirar.
+ */
 export async function anularItem(
   detalle: string,
   monto: number,
   motivo: string,
   autorizo: string,
+  /** De qué mesa. Vacío en mostrador, donde la cocina aún no sabe del plato. */
+  cuenta?: string,
 ): Promise<void> {
   if (!enTauri) return;
-  await invoke('anular_item', { detalle, monto, motivo, autorizo });
+  await invoke('anular_item', { detalle, monto, motivo, autorizo, cuenta: cuenta ?? null });
 }
 
 export async function registrarDescuento(

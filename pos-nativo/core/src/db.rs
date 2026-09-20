@@ -416,6 +416,24 @@ pub fn abrir(ruta: &Path) -> Result<Connection> {
     Ok(conexion)
 }
 
+/// Consolida el WAL y deja la base compacta.
+///
+/// `PASSIVE` no bloquea: si hay alguien escribiendo, no hace nada y se
+/// reintenta en la próxima vuelta. Es lo que permite llamarlo desde el hilo de
+/// fondo sin frenar una venta.
+pub fn mantener(conexion: &Connection) {
+    let _ = conexion.execute_batch("PRAGMA wal_checkpoint(PASSIVE); PRAGMA optimize;");
+}
+
+/// El mantenimiento a fondo, para el cierre de turno.
+///
+/// `TRUNCATE` deja el archivo WAL en cero bytes. Se hace al cerrar porque es
+/// el único momento del día en que la caja está garantizadamente quieta: hacerlo
+/// en mitad del servicio sí bloquearía a quien esté cobrando.
+pub fn compactar(conexion: &Connection) {
+    let _ = conexion.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");
+}
+
 /// Una base en memoria, para las pruebas.
 pub fn abrir_en_memoria() -> Result<Connection> {
     let conexion = Connection::open_in_memory()?;
@@ -428,6 +446,15 @@ fn preparar(conexion: &Connection) -> Result<()> {
     // 'memory'. Por eso no se verifica el resultado.
     conexion.pragma_update(None, "journal_mode", "WAL")?;
     conexion.pragma_update(None, "synchronous", "NORMAL")?;
+
+    /* Cada mil páginas —unos 4 MB— el WAL se consolida solo.
+
+       Una terminal de mostrador pasa semanas encendida sin reiniciarse. Sin
+       este tope, el archivo `.sqlite-wal` crece hasta cientos de megas, y en
+       los discos eMMC lentos que llevan estos equipos abrir una transacción
+       pasa de un milisegundo a medio segundo. Eso se siente como un
+       micro-congelamiento cada vez que el cajero cobra. */
+    conexion.pragma_update(None, "wal_autocheckpoint", 1000)?;
     conexion.pragma_update(None, "foreign_keys", "ON")?;
     // Si otra ventana del POS está escribiendo, se espera en vez de reventar.
     conexion.busy_timeout(std::time::Duration::from_secs(5))?;

@@ -64,6 +64,13 @@ pub struct CierreTurno {
     pub propina_otros: Pesos,
     /// Lo devuelto en efectivo durante el turno. Sale de la gaveta.
     pub devoluciones_efectivo: Pesos,
+    /// Cuántas veces se abrió la gaveta sin una venta detrás.
+    ///
+    /// No es un delito: dar cambio a otro cajero o revisar el fondo son cosas
+    /// que pasan. Lo que dice algo es la **frecuencia**. Un turno normal abre
+    /// la gaveta sin vender una o dos veces; ocho es un patrón, y el patrón
+    /// solo se ve si alguien lo cuenta.
+    pub aperturas_sin_venta: i64,
 }
 
 #[derive(Debug)]
@@ -151,6 +158,14 @@ pub fn abrir(
          VALUES (?1, ?2, ?3, ?4, ?5, 'ABIERTO')",
         params![turno.id, turno.usuario_id, turno.cajero, turno.abierto_en, fondo_inicial.0],
     )?;
+
+    /* Las mesas que dejó abiertas el turno anterior pasan a este. Si no, el
+       cajero que entra abriría su tablero vacío mientras seis mesas comen en
+       el salón, y al cobrarlas el dinero se le imputaría a un turno cerrado.
+
+       Que falle no puede impedir abrir el turno: sin turno no se vende, y eso
+       es peor que un tablero incompleto que se arregla reiniciando. */
+    let _ = crate::cuentas::traspasar(conexion, &turno.id);
 
     Ok(turno)
 }
@@ -256,6 +271,15 @@ fn esperado_de(conexion: &Connection, turno: &Turno) -> Result<CierreTurno> {
     let devuelto = crate::devoluciones::efectivo_del_turno(conexion, &turno.id)
         .unwrap_or(Pesos::CERO);
 
+    let aperturas: i64 = conexion
+        .query_row(
+            "SELECT COUNT(*) FROM auditoria_operaciones
+             WHERE turno_id = ?1 AND tipo = 'abrir_cajon'",
+            [&turno.id],
+            |f| f.get(0),
+        )
+        .unwrap_or(0);
+
     let esperado = turno.fondo_inicial.0 + ventas_efectivo + entradas - salidas - devuelto.0;
 
     Ok(CierreTurno {
@@ -268,6 +292,7 @@ fn esperado_de(conexion: &Connection, turno: &Turno) -> Result<CierreTurno> {
         propina_efectivo: Pesos(propina_efectivo),
         propina_otros: Pesos(propina_otros),
         devoluciones_efectivo: devuelto,
+        aperturas_sin_venta: aperturas,
         ventas_otros: Pesos(ventas_otros),
         entradas: Pesos(entradas),
         salidas: Pesos(salidas),

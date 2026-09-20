@@ -105,6 +105,58 @@ pub fn bajar_pendientes(base: &std::sync::Mutex<rusqlite::Connection>, datos: &P
     listas
 }
 
+/// Borra las fotos que ya no referencia ningún producto.
+///
+/// Un negocio que rota su carta —menús de temporada, promociones semanales,
+/// fotos que el dueño cambia desde el panel— va dejando archivos atrás. La
+/// caja no los borra al actualizar el catálogo porque en ese momento no sabe
+/// si otra fila los usa.
+///
+/// En un año de operación eso llena el disco de una terminal con eMMC de
+/// 32 GB, y un disco lleno no es "van lentas las fotos": es SQLite sin poder
+/// escribir y una caja que no cobra.
+///
+/// Devuelve cuántas se borraron.
+pub fn purgar_huerfanas(base: &std::sync::Mutex<rusqlite::Connection>, datos: &Path) -> usize {
+    let carpeta_fotos = carpeta(datos);
+
+    // Qué archivos sigue nombrando la base. Se suelta el candado enseguida.
+    let vivas: std::collections::HashSet<String> = {
+        let Ok(conexion) = base.lock() else { return 0 };
+        let Ok(mut consulta) = conexion.prepare("SELECT DISTINCT foto_local FROM productos WHERE foto_local != ''")
+        else {
+            return 0;
+        };
+        let Ok(filas) = consulta.query_map([], |f| f.get::<_, String>(0)) else { return 0 };
+        filas.flatten().collect()
+    };
+
+    /* Si la consulta no devolvió nada, no se borra nada. Podría ser que el
+       catálogo esté vacío de verdad, pero también que la base esté a medio
+       migrar: borrar todas las fotos por una lectura rara sale mucho más caro
+       que dejarlas un día más. */
+    if vivas.is_empty() {
+        return 0;
+    }
+
+    let Ok(entradas) = std::fs::read_dir(&carpeta_fotos) else { return 0 };
+    let mut borradas = 0;
+
+    for entrada in entradas.flatten() {
+        let ruta = entrada.path();
+        if !ruta.is_file() {
+            continue;
+        }
+        let Some(nombre) = ruta.file_name().and_then(|n| n.to_str()) else { continue };
+
+        if !vivas.contains(nombre) && std::fs::remove_file(&ruta).is_ok() {
+            borradas += 1;
+        }
+    }
+
+    borradas
+}
+
 /// Los productos con foto en la nube y sin foto en disco.
 ///
 /// Se agrupa por dirección y no por producto: diez tallas de la misma camisa

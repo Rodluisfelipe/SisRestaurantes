@@ -225,6 +225,10 @@ function Caja({
      todavía no entró al carrito: si entrara antes, el cajero que cancela la
      pantalla se quedaría con el producto marcado sin sus adiciones. */
   const [conExtras, setConExtras] = useState<Producto | null>(null);
+  /* El último toque en una tarjeta. Un monitor táctil de mostrador rebota: un
+     toque firme genera dos eventos separados por unas decenas de milisegundos,
+     y el cliente termina pagando dos cafés. */
+  const ultimoToque = useRef(0);
   /* El descuento va en dos pasos: primero se arma el monto, después lo autoriza
      un supervisor. Entre los dos vive aquí, sin haberse aplicado todavía. */
   const [pidiendoDescuento, setPidiendoDescuento] = useState(false);
@@ -317,8 +321,21 @@ function Caja({
     setCobrandoAhora(true);
   };
 
+  /* El filtrado espera a que el tecleo pare.
+
+     Un lector de códigos es un teclado que escribe a menos de 10 ms por
+     carácter: un EAN-13 dispara trece consultas a SQLite y trece re-dibujados
+     de la rejilla en cien milisegundos. En el Celeron de un todo-en-uno eso
+     atasca el hilo de la interfaz y **se pierden caracteres**, así que el
+     código llega incompleto y el producto no aparece.
+
+     60 ms es más que el intervalo del lector —así que una ráfaga entera cuenta
+     como una sola consulta— y menos de lo que nadie nota escribiendo a mano. */
   useEffect(() => {
-    catalogo(busqueda, rubro).then(setProductos).catch(() => setProductos([]));
+    const id = window.setTimeout(() => {
+      catalogo(busqueda, rubro).then(setProductos).catch(() => setProductos([]));
+    }, 60);
+    return () => window.clearTimeout(id);
   }, [busqueda, rubro]);
 
   /* Las categorías se piden una vez: cambian cuando baja catálogo nuevo, no
@@ -395,6 +412,13 @@ function Caja({
      hamburguesa, entraba el precio base, y ni el cliente pagaba el queso ni la
      cocina se enteraba de que lo llevaba. */
   const tocar = (p: Producto) => {
+    /* 150 ms: por encima del rebote de cualquier pantalla resistiva y muy por
+       debajo de lo que tarda un dedo en volver a la misma tarjeta a propósito.
+       Nadie marca dos unidades en menos de eso. */
+    const ahora = Date.now();
+    if (ahora - ultimoToque.current < 150) return;
+    ultimoToque.current = ahora;
+
     if (Array.isArray(p.extras) && p.extras.length) {
       setConExtras(p);
       return;
@@ -473,6 +497,10 @@ function Caja({
         linea.precio * linea.cantidad,
         motivo,
         autorizo,
+        /* De qué mesa sale. Si hay mesa, la cocina ya recibió ese plato y
+           tiene que enterarse de que se anuló; en mostrador todavía no sabe
+           que existía. */
+        enCuenta?.identificador,
       );
       setCarrito((c) => c.filter((_, i) => i !== indice));
     } catch (e) {
@@ -582,10 +610,33 @@ function Caja({
     }
   };
 
+  /* Con cualquier ventana abierta encima, el lector no puede escribir en la
+     caja: sus dígitos se meterían en el campo de texto que tenga el foco y su
+     Enter final confirmaría el modal sin que nadie lo tocara.
+
+     No hace falta interceptar nada: basta con que el buscador **no** tenga el
+     foco mientras hay algo abierto, y que lo recupere al cerrarse. Cada modal
+     ya devuelve el foco al cerrar; esto lo quita al abrir. */
+  const hayModal =
+    cobrandoAhora || conExtras !== null || anulando !== null || pidiendoDescuento ||
+    porAutorizar !== null || anotando !== null || pidiendoGaveta || descartando !== null ||
+    pidiendoDevolucion || devolucionPorAutorizar !== null || verImpresoras || verNube ||
+    verTurno || verEspera;
+
+  useEffect(() => {
+    if (hayModal) buscador.current?.blur();
+    else buscador.current?.focus();
+  }, [hayModal]);
+
   /* F2 cobra y Escape limpia. Se escucha en la ventana y no en un botón para
      que funcione sin importar dónde esté el foco. */
   useEffect(() => {
     const tecla = (e: KeyboardEvent) => {
+      /* Con una ventana abierta, las teclas son de esa ventana. Sin esto, el
+         Enter final de un escaneo o un F2 accidental cobran por debajo de un
+         modal que el cajero todavía está llenando. */
+      if (hayModal) return;
+
       if (e.key === 'F2') { e.preventDefault(); finalizar(); }
       if (e.key === 'F4') { e.preventDefault(); pausar(); }
       if (e.key === 'F3') { e.preventDefault(); if (carrito.length) setPidiendoDescuento(true); }

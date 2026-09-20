@@ -132,6 +132,21 @@ impl Tirilla {
         self
     }
 
+    /// Corta dejando un punto de unión de un milímetro.
+    ///
+    /// Es el corte de la cocina, y la diferencia no es un detalle: con corte
+    /// total la comanda se suelta y cae —al suelo, a la freidora, sobre la
+    /// plancha—. Con corte parcial se queda colgando hasta que el cocinero la
+    /// arranca con la mano y la pone en su comandero.
+    ///
+    /// En el mostrador es al revés: ahí el papel tiene que soltarse solo para
+    /// llegar a la mano del cliente.
+    pub fn cortar_parcial(&mut self) -> &mut Self {
+        self.bytes.extend_from_slice(&[LF, LF, LF, LF]);
+        self.bytes.extend_from_slice(&[GS, b'V', 66, 1]);
+        self
+    }
+
     pub fn terminar(self) -> Vec<u8> {
         self.bytes
     }
@@ -213,6 +228,18 @@ mod pruebas {
         t.abrir_cajon();
         let bytes = t.terminar();
         assert_eq!(&bytes[5..], &[ESC, b'p', 0, 25, 250]);
+    }
+
+    #[test]
+    fn el_corte_de_cocina_deja_la_comanda_colgando() {
+        /* Con corte total la comanda se suelta y cae a la freidora. El 1 final
+           es lo que deja el milímetro de unión. */
+        let mut t = Tirilla::nueva(ANCHO_80MM);
+        t.cortar_parcial();
+        let bytes = t.terminar();
+
+        assert_eq!(&bytes[bytes.len() - 4..], &[GS, b'V', 66, 1]);
+        assert_eq!(&bytes[bytes.len() - 8..bytes.len() - 4], &[LF, LF, LF, LF], "también avanza");
     }
 
     #[test]
