@@ -10,6 +10,7 @@
 //! que no existe.
 
 use pos_core::pagos::{self, Terminal};
+use pos_core::negocio;
 use pos_core::{
     auditoria, cuentas, db, devoluciones, dinero::Pesos, escpos, pausadas, sync, turnos, usuarios,
     venta,
@@ -509,6 +510,17 @@ fn hay_usuarios(estado: State<Estado>) -> bool {
 /// Mientras no exista ninguno, cualquiera puede crear el primero: es la
 /// instalación. Después hace falta ser supervisor, porque si no, un cajero se
 /// crearía a sí mismo un usuario con permisos y el control se acabó.
+///
+/// **El primero además entra.** La pantalla del PIN usa este comando cuando
+/// la caja no tiene usuarios, así que quien acaba de poner su PIN espera
+/// estar dentro —y la pantalla ya lo saluda por su nombre—. Sin abrirle la
+/// sesión aquí, el núcleo seguía sin nadie en la caja y lo primero que hacía
+/// esa persona, abrir el turno, fallaba con un "entra con tu PIN" delante de
+/// una pantalla que decía "Hola, Daniel".
+///
+/// Un usuario creado **por un supervisor** no entra: el supervisor sigue
+/// siendo quien está en la caja. Cambiar la sesión ahí le pondría las ventas
+/// a nombre del cajero recién creado, que ni siquiera está en el mostrador.
 #[tauri::command]
 fn crear_usuario(
     estado: State<Estado>,
@@ -533,7 +545,18 @@ fn crear_usuario(
     }
 
     let rol = if supervisor || primeros { usuarios::Rol::Supervisor } else { usuarios::Rol::Cajero };
-    usuarios::guardar(&base, &nombre, &pin, rol).map_err(|e| e.to_string())
+    let creado = usuarios::guardar(&base, &nombre, &pin, rol).map_err(|e| e.to_string())?;
+
+    if primeros {
+        /* Se suelta la base antes de tomar la sesión. Los dos candados nunca
+           se piden en este orden en ningún otro sitio, así que hoy no hay
+           abrazo mortal posible; soltarlo igual es lo que hace que siga sin
+           haberlo cuando alguien agregue el que falta. */
+        drop(base);
+        *estado.sesion.lock().map_err(|_| "sesión ocupada".to_string())? = Some(creado.clone());
+    }
+
+    Ok(creado)
 }
 
 /* ── La fila de la hora pico ───────────────────────────────────────────── */
@@ -1123,6 +1146,18 @@ async fn vincular(
     .await
     .map_err(|e| e.to_string())??;
 
+    /* El negocio se resuelve **antes** de guardar el token.
+
+       Si la caja venía de otro local, lo replicado de ese local se tira aquí.
+       Y si quedan ventas suyas sin subir, esto falla y no se guarda nada: la
+       caja sigue siendo del negocio anterior, que es la única forma de que
+       esas ventas todavía puedan llegar a donde tienen que llegar. */
+    {
+        let mut conexion = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+        let quien = nube::negocio_del_token(&resultado.token);
+        negocio::cambiar_a(&mut conexion, &quien, &ahora_local()).map_err(|e| e.to_string())?;
+    }
+
     credenciales::guardar(&resultado.token)?;
 
     let conexion = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
@@ -1157,6 +1192,18 @@ async fn emparejar(
     })
     .await
     .map_err(|e| e.to_string())??;
+
+    /* El negocio se resuelve **antes** de guardar el token.
+
+       Si la caja venía de otro local, lo replicado de ese local se tira aquí.
+       Y si quedan ventas suyas sin subir, esto falla y no se guarda nada: la
+       caja sigue siendo del negocio anterior, que es la única forma de que
+       esas ventas todavía puedan llegar a donde tienen que llegar. */
+    {
+        let mut conexion = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+        let quien = nube::negocio_del_token(&resultado.token);
+        negocio::cambiar_a(&mut conexion, &quien, &ahora_local()).map_err(|e| e.to_string())?;
+    }
 
     credenciales::guardar(&resultado.token)?;
 

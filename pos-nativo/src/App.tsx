@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CircleUser, CloudCheck, CloudOff, Gift, Inbox, Minus, Monitor,
   LayoutGrid, MessageSquarePlus, PauseCircle, Percent, Plus, Presentation, Printer, RefreshCw, ScanLine,
-  Star, Timer, Trash2, Undo2, UserPlus, UtensilsCrossed, Volume2, VolumeX, Wallet, X, XCircle,
+  Pencil, Star, Timer, Trash2, Undo2, UserPlus, UtensilsCrossed, Volume2, VolumeX, Wallet, X,
+  XCircle,
 } from 'lucide-react';
 import { type EstadoCliente } from './nativo';
 import {
@@ -37,7 +38,9 @@ import CatalogoCuadrante from './CatalogoCuadrante';
 import PestanasCategoria from './PestanasCategoria';
 import SelectorVariante, { enVariante, variantesDe } from './SelectorVariante';
 import ModalExtrasBatch from './ModalExtrasBatch';
-import { derivar, preseleccionarTamano, type Elegidas } from './reglasExtras';
+import {
+  derivar, predeterminadas, preseleccionarTamano, reconstruirElegidas, type Elegidas,
+} from './reglasExtras';
 import { useSpeedOfService } from './hooks/useSpeedOfService';
 import {
   agregarAlCarrito, brutoDe, fijarCantidad, lineaDeRecompensa, quitarLineasDeRecompensa,
@@ -256,6 +259,10 @@ function Caja({
   /* Varias unidades del mismo producto, esperando configurarse de una. Es lo
      que evita abrir tres modales seguidos cuando el cliente pide tres combos. */
   const [enLote, setEnLote] = useState<{ producto: Producto; cantidad: number } | null>(null);
+  /* La línea que se está personalizando, cuando el modal se abrió desde el
+     carrito y no desde la rejilla. Null = lo que se elija entra como línea
+     nueva. */
+  const [editando, setEditando] = useState<number | null>(null);
   /* El último toque en una tarjeta. Un monitor táctil de mostrador rebota: un
      toque firme genera dos eventos separados por unas decenas de milisegundos,
      y el cliente termina pagando dos cafés. */
@@ -289,18 +296,24 @@ function Caja({
      esto, anular obligaba a bajar la cantidad de a uno —ocho toques para un
      ítem de ocho unidades— antes de llegar siquiera a la autorización. */
   const [lineaActiva, setLineaActiva] = useState<number | null>(null);
-  /* El multiplicador pendiente. 1 = ninguno.
+/* La cantidad que se está tecleando, como cadena y no como número.
 
-     Es "pre-multiplicador": se teclea **antes** del producto. El cajero pulsa
-     3, toca Empanada, y entran tres. Al revés —tocar y después multiplicar—
-     obligaría a mirar el ticket para confirmar sobre qué línea se está
-     aplicando, y eso es justo el vistazo que se quiere ahorrar.
+     Es un **buffer que concatena**: 1 y después 9 componen 19, no 9 ni 10. Con
+     un solo dígito, cualquier pedido de más de nueve unidades obligaba a tocar
+     el producto varias veces o a corregir la línea después.
 
-     Se vuelve solo a 1 después de marcar. Un multiplicador que se queda puesto
-     es la forma más fácil de vender doce empanadas cuando el cliente pidió
-     tres: el cajero lo usó una vez, se le olvidó, y el siguiente producto
-     entró multiplicado sin que nadie lo notara. */
-  const [multiplicador, setMultiplicador] = useState(1);
+     Cadena y no número porque lo que se acumula son pulsaciones: "1" seguido de
+     "9" es una operación de texto. Convertirlo en número en cada tecla obligaría
+     a multiplicar por diez y sumar, que es la misma cuenta escrita más difícil.
+
+     Vacío = ninguna cantidad tecleada, y entonces entra una unidad.
+
+     Se vacía solo después de marcar. Un multiplicador que se queda puesto es la
+     forma más fácil de vender doce empanadas cuando el cliente pidió tres: el
+     cajero lo usó una vez, se le olvidó, y el siguiente producto entró
+     multiplicado sin que nadie lo notara. */
+  const [cantidadTecleada, setCantidadTecleada] = useState('');
+  const multiplicador = Math.max(1, parseInt(cantidadTecleada, 10) || 1);
   /* Cuántas de las líneas que hay en pantalla ya salieron hacia la cocina.
 
      Solo tiene sentido atendiendo una mesa: en mostrador no ha salido nada. Se
@@ -559,29 +572,35 @@ function Caja({
       return;
     }
 
-    /* Lo que quedaría elegido solo con el tamaño, y qué falta todavía. */
-    const conElTamano = derivar(grupos, conTamano ?? {});
-    const falta = conElTamano.faltan.length > 0;
+    /* Los obligatorios, resueltos con la opción estándar.
 
-    /* Si lo único obligatorio era el tamaño y ya quedó resuelto, no hay nada
-       que preguntar: entra directo. Es el caso que hace rápido el mostrador —
-       tocar [Mediano] una vez y marcar cinco gaseosas sin un solo modal. */
-    if (!falta && conTamano) {
-      agregar(cual, conElTamano.extras, conElTamano.sobreprecio);
+       Aquí está el cambio que quita el cuello de botella: el combo entra con
+       sus papas y su gaseosa sin abrir nada. Si el cliente quiere otra cosa,
+       el cajero toca [Modificar] sobre la línea, que es el 20 % de las veces
+       en lugar del 100 %. */
+    const resueltos = derivar(grupos, predeterminadas(grupos, conTamano ?? {}));
+
+    if (resueltos.faltan.length === 0) {
+      agregar(cual, resueltos.extras, resueltos.sobreprecio);
       return;
     }
 
-    /* Con más de una unidad y algo obligatorio pendiente, las N se configuran
-       en una sola pantalla: tres modales seguidos para tres combos es
-       exactamente lo que destruye la fila en hora pico. */
-    if (falta && multiplicador > 1) {
+    /* Queda algo que ningún defecto puede resolver: un grupo obligatorio de
+       varias opciones, donde el negocio dijo "elige las que quieras" y no hay
+       una respuesta estándar que adivinar. Ahí sí hay que preguntar.
+
+       Con más de una unidad, las N se configuran en una sola pantalla: tres
+       modales seguidos para tres combos es lo que destruye la fila. */
+    const partida = predeterminadas(grupos, conTamano ?? {});
+
+    if (multiplicador > 1) {
       setEnLote({ producto: cual, cantidad: multiplicador });
-      setExtrasInicial(conTamano);
+      setExtrasInicial(partida);
       return;
     }
 
     setConExtras(cual);
-    setExtrasInicial(conTamano);
+    setExtrasInicial(partida);
   };
 
   const agregar = (p: Producto, extras: ExtraElegido[] = [], sobreprecio = 0) => {
@@ -591,7 +610,7 @@ function Caja({
     const unidades = multiplicador;
     setCarrito((c) => agregarAlCarrito(c, p, extras, sobreprecio, unidades));
     // Se gasta al usarse. Ver por qué en la declaración.
-    setMultiplicador(1);
+    setCantidadTecleada('');
     setRecien((r) => ({ clave: `${p.id}${p.variante}`, vez: r.vez + 1 }));
     /* El primer producto de un carrito vacío es el comienzo real de la venta.
        Llamarlo en cada producto no cuesta nada: el cronómetro ignora los
@@ -652,14 +671,55 @@ function Caja({
         bipError();
         return;
       }
+      /* Sobre una línea señalada el dígito **fija** la cantidad en vez de
+         acumular: el cajero está corrigiendo un 1x a 4x, y ahí sí es una sola
+         pulsación con un solo significado. Si concatenara, teclear 4 dos veces
+         dejaría la línea en 44. */
       setCarrito((c) => fijarCantidad(c, lineaActiva, n));
-      setMultiplicador(1);
+      setCantidadTecleada('');
       buscador.current?.focus();
       return;
     }
 
-    setMultiplicador(n);
+    setCantidadTecleada((previo) => {
+      // Un cero al principio no empieza una cantidad: no existe "0 empanadas".
+      if (!previo && n === 0) return '';
+      // Tres dígitos. Más que 999 unidades de algo no es un pedido, es un error.
+      if (previo.length >= 3) return previo;
+      return previo + String(n);
+    });
     buscador.current?.focus();
+  };
+
+  /* Abrir la personalización sobre una línea que ya está en el carrito.
+
+     Es la otra mitad del combo sin modal: entra con lo estándar, y si el
+     cliente dice "cámbieme las papas por cascos" se abre aquí, ya marcado con
+     lo que la línea lleva, para cambiar solo eso.
+
+     Una línea que la cocina ya tiene no se modifica: cambiarle los extras a un
+     plato que se está preparando es una anulación disfrazada, y esa tiene su
+     propia puerta con firma (F4). */
+  const modificarLinea = async (indice: number) => {
+    const linea = carrito[indice];
+    if (!linea) return;
+
+    if (yaComandada(indice)) {
+      setError('Ese plato ya está en cocina: para cambiarlo, anúlalo con F4');
+      bipError();
+      return;
+    }
+
+    const producto = await productoPorId(linea.producto_id).catch(() => null);
+    const grupos = Array.isArray(producto?.extras) ? producto!.extras : [];
+    if (!producto || !grupos.length) {
+      setError('Ese producto no tiene nada que personalizar');
+      return;
+    }
+
+    setEditando(indice);
+    setConExtras(producto);
+    setExtrasInicial(reconstruirElegidas(grupos, linea.extras ?? []));
   };
 
   /** Si esta línea ya salió hacia la cocina. En mostrador, nunca. */
@@ -935,7 +995,7 @@ function Caja({
       setRecompensa(null);
       setLineaActiva(null);
       setComandadas(0);
-      setMultiplicador(1);
+      setCantidadTecleada('');
 
       /* La cuenta se cierra **después** de que la venta quedó registrada. Al
          revés, un fallo al guardar dejaría la mesa borrada y su consumo
@@ -998,6 +1058,10 @@ function Caja({
         if (lineaActiva !== null) anularLinea(lineaActiva);
       }
       if (e.key === 'F5') { e.preventDefault(); pausar(); }
+      if (e.key === 'F7') {
+        e.preventDefault();
+        if (lineaActiva !== null) modificarLinea(lineaActiva);
+      }
       if (e.key === 'F3') { e.preventDefault(); if (carrito.length) setPidiendoDescuento(true); }
       if (e.key === 'F1') { e.preventDefault(); setVerCliente(true); }
       /* F6 abre el canje. Solo con cliente vinculado: sin él no hay puntos que
@@ -1015,7 +1079,7 @@ function Caja({
         setRecompensa(null);
         setLineaActiva(null);
         setComandadas(0);
-        setMultiplicador(1);
+        setCantidadTecleada('');
         /* La venta se canceló: lo medido no vale y no se guarda. Si se
            conservara, la siguiente venta empezaría con el reloj corrido y el
            promedio del día quedaría inflado. */
@@ -1244,43 +1308,38 @@ function Caja({
           Cantidad
         </span>
 
-        {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => {
-          /* Activo significa dos cosas distintas y el cajero necesita
-             distinguirlas: con una línea señalada, el dígito la va a dejar en
-             esa cantidad; sin ella, queda esperando al siguiente producto. */
-          const esperando = lineaActiva === null && multiplicador === n && n > 1;
-          return (
-            <button
-              key={n}
-              onClick={() => teclearMultiplicador(n)}
-              className={`flex-1 h-9 rounded-lg text-[14px] font-black tabular-nums transition-colors ${
-                esperando
-                  ? 'bg-amber-400 text-amber-950'
-                  : 'bg-slate-700/70 text-slate-200 hover:bg-slate-600'
-              }`}
-            >
-              {n}
-            </button>
-          );
-        })}
+        {/* Un teclado numérico completo, no un selector de un dígito. Los
+            dígitos **concatenan**: 1 y después 9 componen 19. Sin eso, un
+            pedido de más de nueve unidades obligaba a tocar el producto varias
+            veces o a corregir la línea después. */}
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((n) => (
+          <button
+            key={n}
+            onClick={() => teclearMultiplicador(n)}
+            className="flex-1 h-9 rounded-lg bg-slate-700/70 text-slate-200 text-[14px] font-black tabular-nums hover:bg-slate-600 active:scale-95 transition-transform duration-75"
+          >
+            {n}
+          </button>
+        ))}
 
         <button
-          onClick={() => { setMultiplicador(1); buscador.current?.focus(); }}
-          title="Cancelar el multiplicador"
+          onClick={() => { setCantidadTecleada(''); buscador.current?.focus(); }}
+          title="Borrar la cantidad tecleada"
           className="flex-shrink-0 px-3 h-9 rounded-lg bg-slate-700/70 text-slate-300 text-[12px] font-bold hover:bg-slate-600"
         >
           C
         </button>
 
-        {/* Lo que va a pasar, dicho con palabras. Un botón encendido en ámbar
-            no explica por sí solo que el siguiente toque entra por tres. */}
+        {/* La confirmación antes de tocar el producto. Un botón encendido no
+            basta cuando la cantidad tiene dos cifras: hay que poder leer "19x"
+            y no deducirlo de qué tecla quedó iluminada. */}
         {lineaActiva !== null && carrito[lineaActiva] ? (
-          <span className="flex-shrink-0 pl-2 text-[11.5px] font-bold text-slate-400 truncate max-w-[280px]">
+          <span className="flex-shrink-0 pl-2 text-[11.5px] font-bold text-slate-400 truncate max-w-[260px]">
             Cambia la cantidad de {carrito[lineaActiva].nombre}
           </span>
-        ) : multiplicador > 1 ? (
-          <span className="flex-shrink-0 pl-2 text-[11.5px] font-black text-amber-300">
-            El siguiente producto entra x{multiplicador}
+        ) : cantidadTecleada ? (
+          <span className="flex-shrink-0 ml-2 px-3 h-9 flex items-center rounded-lg bg-amber-400 text-amber-950 text-[13px] font-black tabular-nums">
+            CANTIDAD: {cantidadTecleada}x
           </span>
         ) : null}
       </div>
@@ -1380,13 +1439,32 @@ function Caja({
           inicial={extrasInicial}
           onListo={(extras, sobreprecio) => {
             const cual = conExtras;
+            const indice = editando;
             setConExtras(null);
             setExtrasInicial(undefined);
+            setEditando(null);
+
+            if (indice !== null) {
+              /* Reemplaza lo que la línea llevaba, conservando su cantidad: el
+                 cliente cambió de papas, no de cantidad. El precio se recalcula
+                 porque los extras nuevos pueden costar distinto. */
+              setCarrito((c) =>
+                c.map((l, i) =>
+                  i === indice
+                    ? { ...l, precio: cual.precio + sobreprecio, extras }
+                    : l,
+                ),
+              );
+              buscador.current?.focus();
+              return;
+            }
+
             agregar(cual, extras, sobreprecio);
           }}
           onCancelar={() => {
             setConExtras(null);
             setExtrasInicial(undefined);
+            setEditando(null);
             buscador.current?.focus();
           }}
         />
@@ -1401,7 +1479,7 @@ function Caja({
             const cual = enLote.producto;
             setEnLote(null);
             setExtrasInicial(undefined);
-            setMultiplicador(1);
+            setCantidadTecleada('');
 
             /* Cada unidad entra por separado y `agregarAlCarrito` decide si se
                agrupa: dos combos con exactamente los mismos extras quedan como
@@ -2002,7 +2080,23 @@ function Caja({
             {/* Las acciones de la orden, en un riel de cuatro. El que más se
                 toca del día —cobrar— va aparte y grande: es el único que tiene
                 que encontrarse sin mirar. */}
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-5 gap-1.5">
+              {/* La otra mitad del combo sin modal: entra con lo estándar y
+                  esto es lo que se toca cuando el cliente pide algo distinto.
+                  Va primero porque en un mostrador se modifica más de lo que se
+                  anula. */}
+              <BotonOrden
+                icono={Pencil}
+                texto="Modificar"
+                atajo="F7"
+                onClick={() => lineaActiva !== null && modificarLinea(lineaActiva)}
+                disabled={lineaActiva === null}
+                title={
+                  lineaActiva === null
+                    ? 'Toca primero la línea que quieres cambiar'
+                    : 'Cambiar los extras de esta línea'
+                }
+              />
               <BotonOrden
                 icono={XCircle}
                 texto="Anular"

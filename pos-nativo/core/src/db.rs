@@ -514,6 +514,36 @@ const MIGRACIONES: &[&str] = &[
        agua del catálogo se queda: no hay por qué obligar a cada terminal del
        país a rebajar el catálogo entero. La de clientes nace vacía sola. */
     "#,
+    // 16 — lo que queda del negocio anterior cuando la caja cambia de dueño.
+    r#"
+    /* Una caja se re-vincula a otro negocio y hay que tirar lo replicado.
+       El outbox no se tira: se aparta aquí con el negocio del que era.
+
+       Son las ventas que el servidor rechazó y el historial de lo ya
+       enviado. Borrarlas dejaría a soporte sin nada que mirar el día que
+       alguien pregunte por una venta del mes pasado; dejarlas en su sitio
+       las mezclaría con las del negocio nuevo, que es justo el fallo que
+       este cambio existe para cerrar.
+
+       Sin índices: nadie consulta esta tabla en caliente. Se lee cuando
+       alguien va a buscar algo, y entonces da igual que tarde. */
+    CREATE TABLE outbox_archivado (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        negocio_id    TEXT NOT NULL,
+        entidad       TEXT NOT NULL,
+        entidad_id    TEXT NOT NULL,
+        operacion     TEXT NOT NULL,
+        payload       TEXT NOT NULL,
+        intentos      INTEGER NOT NULL DEFAULT 0,
+        ultimo_error  TEXT NOT NULL DEFAULT '',
+        creado_en     TEXT NOT NULL,
+        archivado_en  TEXT NOT NULL
+    );
+
+    /* No se toca la marca de agua del catálogo: esta migración no agrega
+       ninguna columna a `productos`, así que no hay por qué obligar a cada
+       terminal del país a rebajarlo entero. */
+    "#,
 ];
 
 /// Abre (o crea) la base y la deja lista para operar.

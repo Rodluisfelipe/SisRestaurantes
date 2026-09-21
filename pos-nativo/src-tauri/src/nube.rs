@@ -90,6 +90,109 @@ pub struct Emparejamiento {
     pub vence_en_dias: i64,
 }
 
+/// A qué negocio pertenece un token de caja.
+///
+/// Se lee del propio token y no se le pregunta al servidor, por dos razones:
+/// está disponible justo cuando hace falta —en el momento de vincular, antes
+/// de la primera sincronización— y no cuesta una llamada de red en el peor
+/// momento para hacerla.
+///
+/// **No se verifica la firma, y no hace falta.** Esto no autoriza nada: el
+/// valor solo se compara contra el que la caja ya tenía guardado para decidir
+/// si hay que tirar el catálogo replicado. Un token falsificado no consigue
+/// nada por este camino —lo peor que puede provocar es que la caja vuelva a
+/// bajar su catálogo— y de todos modos el servidor lo rechazaría en la
+/// primera petición.
+pub fn negocio_del_token(token: &str) -> String {
+    let Some(carga) = token.split('.').nth(1) else { return String::new() };
+
+    /* Base64 URL-safe y sin relleno, que es como viaja un JWT. `base64` no
+       está entre las dependencias y traerla por doce líneas no se justifica:
+       el alfabeto es fijo y la decodificación cabe aquí. */
+    let bytes = match descodificar_base64url(carga) {
+        Some(b) => b,
+        None => return String::new(),
+    };
+
+    let Ok(texto) = String::from_utf8(bytes) else { return String::new() };
+    let Ok(json) = serde_json::from_str::<serde_json::Value>(&texto) else { return String::new() };
+
+    json.get("businessId")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
+        .to_string()
+}
+
+fn descodificar_base64url(texto: &str) -> Option<Vec<u8>> {
+    const ALFABETO: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+
+    let mut acumulado: u32 = 0;
+    let mut bits = 0u32;
+    let mut salida = Vec::with_capacity(texto.len() * 3 / 4);
+
+    for c in texto.bytes() {
+        if c == b'=' {
+            break;
+        }
+        let valor = ALFABETO.iter().position(|&a| a == c)? as u32;
+        acumulado = (acumulado << 6) | valor;
+        bits += 6;
+
+        if bits >= 8 {
+            bits -= 8;
+            salida.push((acumulado >> bits) as u8);
+        }
+    }
+
+    Some(salida)
+}
+
+#[cfg(test)]
+mod pruebas_token {
+    use super::negocio_del_token;
+
+    /* Un token firmado por el backend de verdad, con `jsonwebtoken` y la
+       misma carga que arma `Routes/pos.js`. No es uno inventado a mano:
+       el relleno, el alfabeto url-safe y el orden de los campos son los
+       que van a llegar en producción. */
+    const TOKEN_REAL: &str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjUwN2YxZjc3YmNmODZjZDc5OTQzOTAxMSIsImJ1c2luZXNzSWQiOiI1MDdmMWY3N2JjZjg2Y2Q3OTk0MzkwMTEiLCJyb2xlIjoiYWRtaW4iLCJzY29wZSI6InBvcyIsImNhamEiOiJDYWphIHByaW5jaXBhbCIsImp0aSI6ImFiYy0xMjMiLCJpYXQiOjE3ODk5NTIyMjQsImV4cCI6MTc5NzcyODIyNH0.aavpJ8H22TMLrKoZKsa885zkavDH4fDPMoKjs3Z_xzI";
+
+    #[test]
+    fn saca_el_negocio_de_un_token_del_backend() {
+        assert_eq!(negocio_del_token(TOKEN_REAL), "507f1f77bcf86cd799439011");
+    }
+
+    #[test]
+    fn lo_que_no_es_un_token_devuelve_vacio() {
+        /* Y vacío significa "no sé de qué negocio es", que `cambiar_a`
+           trata sin tocar nada. Fallar hacia no-hacer-nada es lo correcto:
+           lo contrario sería borrarle el catálogo a una caja por un token
+           que llegó raro. */
+        assert_eq!(negocio_del_token(""), "");
+        assert_eq!(negocio_del_token("no-es-un-jwt"), "");
+        assert_eq!(negocio_del_token("a.b.c"), "");
+        assert_eq!(negocio_del_token("a..c"), "");
+    }
+
+    #[test]
+    fn un_token_sin_business_id_devuelve_vacio() {
+        // {"scope":"pos"} en base64url, sin relleno.
+        let sin = "eyJhbGciOiJIUzI1NiJ9.eyJzY29wZSI6InBvcyJ9.firma";
+        assert_eq!(negocio_del_token(sin), "");
+    }
+
+    #[test]
+    fn dos_tokens_de_negocios_distintos_no_se_confunden() {
+        /* Es la comparación de la que depende todo el mecanismo: si
+           devolviera lo mismo para dos negocios, la caja nunca limpiaría. */
+        // {"businessId":"otro-negocio"}
+        let otro = "eyJhbGciOiJIUzI1NiJ9.eyJidXNpbmVzc0lkIjoib3Ryby1uZWdvY2lvIn0.firma";
+
+        assert_eq!(negocio_del_token(otro), "otro-negocio");
+        assert_ne!(negocio_del_token(otro), negocio_del_token(TOKEN_REAL));
+    }
+}
+
 /// Canjea el código que el dueño sacó del panel por el token de esta caja.
 ///
 /// Es la vía normal: ocho caracteres que alguien puede dictar por teléfono. La

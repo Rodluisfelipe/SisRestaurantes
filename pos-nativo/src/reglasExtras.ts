@@ -152,6 +152,108 @@ export function pideAlgo(grupos: GrupoExtra[]): boolean {
   return derivar(grupos, {}).faltan.length > 0;
 }
 
+/* ── Lo que entra sin preguntar ─────────────────────────────────────────
+ *
+ * El 80 % de los clientes pide el combo tal como está en la carta. Abrir una
+ * pantalla para confirmar papas y gaseosa en el 100 % de los pedidos es lo
+ * que mantiene vivo el cuello de botella: son dos toques y una interrupción
+ * de la vista por cada combo, multiplicados por la fila del mediodía.
+ *
+ * Así que cada grupo obligatorio entra resuelto y el cajero solo abre el
+ * modal cuando el cliente pide algo distinto.
+ *
+ * **Cuál es la opción por defecto** es la parte delicada. El catálogo no
+ * tiene forma de marcar una favorita —`toppingOptionSchema` solo lleva
+ * nombre, precio, activa e imagen— así que lo único disponible es el orden
+ * en que el dueño las escribió en el panel.
+ *
+ * Sobre ese orden se aplica una regla que no es preferencia sino aritmética:
+ * **gana la primera que no cobre de más**. Un combo anunciado en la carta a
+ * 25.000 tiene que entrar a 25.000; si la primera opción de la lista fuera
+ * "aros de cebolla +2.000", el defecto cobraría 27.000 en cada combo del día
+ * sin que nadie lo note. Si todas cuestan, gana la más barata, que es la
+ * lectura más cercana a "el combo normal".
+ */
+
+/** La opción que entra sola en un grupo: la primera sin recargo. */
+function porDefecto(opciones: { nombre: string; precio: number }[]) {
+  if (!opciones.length) return null;
+  return (
+    opciones.find((o) => o.precio <= 0) ??
+    opciones.reduce((mejor, o) => (o.precio < mejor.precio ? o : mejor))
+  );
+}
+
+/**
+ * Deja resueltos todos los grupos obligatorios de un producto.
+ *
+ * Solo los obligatorios: un grupo opcional es algo que el cliente **pidió**
+ * —tocineta extra, doble queso— y meterlo por defecto sería venderle algo
+ * que no pidió y cobrárselo.
+ *
+ * Tampoco toca los grupos de varias opciones aunque sean obligatorios: ahí el
+ * negocio dijo "elige las que quieras" y no hay una respuesta estándar que
+ * adivinar.
+ *
+ * `partida` se respeta: si el cajero tenía un tamaño puesto en la columna,
+ * ese grupo ya viene decidido y no se pisa.
+ */
+export function predeterminadas(grupos: GrupoExtra[], partida: Elegidas = {}): Elegidas {
+  let salida: Elegidas = { ...partida };
+
+  for (const g of grupos) {
+    if (g.obligatorio && !g.multiple && cuantasEn(salida, g.id, '') === 0) {
+      const opcion = porDefecto(g.opciones || []);
+      if (opcion) salida = { ...salida, [clave(g.id, '', opcion.nombre)]: 1 };
+    }
+
+    for (const sg of g.subgrupos || []) {
+      if (sg.obligatorio && !sg.multiple && cuantasEn(salida, g.id, sg.titulo) === 0) {
+        const opcion = porDefecto(sg.opciones || []);
+        if (opcion) salida = { ...salida, [clave(g.id, sg.titulo, opcion.nombre)]: 1 };
+      }
+    }
+  }
+
+  return salida;
+}
+
+/**
+ * El camino de vuelta: de lo que lleva una línea a lo que marca el modal.
+ *
+ * Lo necesita el botón de modificar, que abre la personalización sobre una
+ * línea **ya en el carrito**: hay que volver a marcar lo que esa línea tiene
+ * para que el cajero vea de qué está partiendo y solo cambie lo que el
+ * cliente pidió cambiar.
+ *
+ * El emparejamiento es por nombre porque es lo único que guarda la línea: un
+ * `ExtraElegido` lleva el nombre del grupo, no su id. Una opción que ya no
+ * exista en el catálogo —el negocio la quitó— simplemente no se vuelve a
+ * marcar, y el grupo obligatorio aparecerá pendiente, que es la señal
+ * correcta.
+ */
+export function reconstruirElegidas(grupos: GrupoExtra[], extras: ExtraElegido[]): Elegidas {
+  const salida: Elegidas = {};
+
+  for (const e of extras) {
+    for (const g of grupos) {
+      if (normalizar(g.nombre) === normalizar(e.grupo)
+        && (g.opciones || []).some((o) => o.nombre === e.nombre)) {
+        salida[clave(g.id, '', e.nombre)] = e.cantidad;
+      }
+
+      for (const sg of g.subgrupos || []) {
+        if (normalizar(sg.titulo || g.nombre) === normalizar(e.grupo)
+          && (sg.opciones || []).some((o) => o.nombre === e.nombre)) {
+          salida[clave(g.id, sg.titulo, e.nombre)] = e.cantidad;
+        }
+      }
+    }
+  }
+
+  return salida;
+}
+
 /* ── El grupo que hace de tamaño ────────────────────────────────────────
  *
  * En Colombia casi ningún restaurante configura un módulo de combos: crea el

@@ -292,6 +292,53 @@ mod pruebas {
         texto.split("#[cfg(test)]").next().unwrap_or_default().to_string()
     }
 
+    /// Lo que devuelve `crear_usuario` entre llaves, sin las pruebas.
+    fn cuerpo_de_crear_usuario() -> String {
+        let texto = codigo("src/lib.rs");
+        let desde = texto.find("fn crear_usuario(").expect("no existe crear_usuario");
+        let resto = &texto[desde..];
+        let hasta = resto.find("
+}").expect("no encuentro el final");
+        resto[..hasta].to_string()
+    }
+
+    #[test]
+    fn el_primer_usuario_queda_dentro_de_la_caja() {
+        /* El fallo real, y se vio en una instalación nueva: la pantalla del
+           PIN crea el primer usuario con `crear_usuario`, no con `entrar`.
+           Como solo `entrar` abría la sesión, el núcleo se quedaba sin
+           nadie en la caja mientras la pantalla ya decía \"Hola, Daniel\", y
+           lo primero que esa persona intentaba —abrir el turno— fallaba con
+           un \"entra con tu PIN\".
+
+           Se comprueba leyendo el código porque la sesión vive en el estado
+           de Tauri y no hay forma de montarlo en una prueba unitaria. Lo
+           que se fija es la forma: que este comando toque `estado.sesion`. */
+        let cuerpo = cuerpo_de_crear_usuario();
+
+        assert!(
+            cuerpo.contains("estado.sesion"),
+            "crear_usuario tiene que dejar dentro al primer usuario",
+        );
+    }
+
+    #[test]
+    fn crear_un_cajero_no_le_quita_la_caja_al_supervisor() {
+        /* La otra mitad, y la que importa para el control: un supervisor que
+           da de alta a un cajero sigue siendo quien está en la caja. Si la
+           sesión cambiara al recién creado, las ventas de esa noche saldrían
+           a nombre de alguien que ni siquiera está en el mostrador. */
+        let cuerpo = cuerpo_de_crear_usuario();
+
+        let sesion = cuerpo.find("estado.sesion").expect("sin sesión");
+        let guarda = cuerpo.find("if primeros").expect("sin guarda de primeros");
+
+        assert!(
+            guarda < sesion,
+            "la sesión solo se abre para el primero, dentro de `if primeros`",
+        );
+    }
+
     #[test]
     fn la_descarga_no_retiene_el_candado_de_la_base() {
         /* El cuelgue real: `bajar_pendientes` recibía una `&Connection` —es

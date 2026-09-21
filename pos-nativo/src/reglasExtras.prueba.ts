@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   clave, cuantasEn, derivar, grupoDeTamano, marcar, normalizar,
-  preseleccionarTamano, quitar,
+  predeterminadas, preseleccionarTamano, quitar, reconstruirElegidas,
 } from './reglasExtras';
 import type { GrupoExtra } from './nativo';
 
@@ -153,6 +153,105 @@ describe('marcar y desmarcar', () => {
 
     expect(Object.keys(antes)).toHaveLength(1);
     expect(Object.keys(despues)).toHaveLength(2);
+  });
+});
+
+describe('lo que entra sin preguntar', () => {
+  it('un combo entra con papas y bebida resueltas', () => {
+    /* Es el cambio que quita el cuello de botella: el 80 % pide el combo
+       tal como está en la carta, y abrir una pantalla para confirmarlo en el
+       100 % de los pedidos es lo que mantiene la fila. */
+    const salida = derivar(COMBO, predeterminadas(COMBO));
+
+    expect(salida.faltan).toEqual([]);
+    expect(salida.extras.map((e) => e.nombre)).toEqual(['Francesa', 'Coca-Cola']);
+  });
+
+  it('el defecto no cobra de más', () => {
+    /* La regla que no es preferencia sino aritmética: un combo anunciado a
+       25.000 tiene que entrar a 25.000. Si la primera opción de la lista
+       cobrara, el defecto subiría el precio de cada combo del día sin que
+       nadie lo note. */
+    const caro = [
+      grupo('g-p', 'Papas', [
+        { nombre: 'Aros de cebolla', precio: 2000 },
+        { nombre: 'Francesa', precio: 0 },
+      ]),
+    ];
+
+    const salida = derivar(caro, predeterminadas(caro));
+
+    expect(salida.extras[0].nombre).toBe('Francesa');
+    expect(salida.sobreprecio).toBe(0);
+  });
+
+  it('si todas cuestan, gana la más barata', () => {
+    const todasCobran = [
+      grupo('g-p', 'Papas', [
+        { nombre: 'Rústicas', precio: 3000 },
+        { nombre: 'Francesa', precio: 1000 },
+      ]),
+    ];
+
+    expect(derivar(todasCobran, predeterminadas(todasCobran)).sobreprecio).toBe(1000);
+  });
+
+  it('no mete nada de un grupo opcional', () => {
+    /* Un grupo opcional es algo que el cliente **pidió** —tocineta extra—.
+       Meterlo por defecto sería venderle algo que no pidió y cobrárselo. */
+    const conOpcional = [
+      ...COMBO,
+      grupo('g-ad', 'Adiciones', [{ nombre: 'Tocineta', precio: 4000 }], false),
+    ];
+
+    const salida = derivar(conOpcional, predeterminadas(conOpcional));
+
+    expect(salida.extras.map((e) => e.nombre)).not.toContain('Tocineta');
+    expect(salida.sobreprecio).toBe(0);
+  });
+
+  it('no adivina en un grupo obligatorio de varias opciones', () => {
+    /* Ahí el negocio dijo "elige las que quieras" y no hay respuesta
+       estándar. Ese sí abre el modal. */
+    const varias = [grupo('g-s', 'Salsas', [{ nombre: 'BBQ', precio: 0 }], true, true)];
+
+    expect(predeterminadas(varias)).toEqual({});
+  });
+
+  it('respeta el tamaño que el cajero ya tenía puesto', () => {
+    const conTamano = [
+      grupo('g-t', 'Tamaño', [{ nombre: 'Mediano', precio: 0 }, { nombre: 'Grande', precio: 3000 }]),
+      ...COMBO,
+    ];
+    const partida = preseleccionarTamano(conTamano, 'Grande')!;
+
+    const salida = derivar(conTamano, predeterminadas(conTamano, partida));
+
+    // Grande, aunque Mediano sea el que no cobra: lo eligió el cajero.
+    expect(salida.extras.map((e) => e.nombre)).toContain('Grande');
+    expect(salida.sobreprecio).toBe(3000);
+  });
+});
+
+describe('volver a marcar lo que una línea lleva', () => {
+  it('deja el modal como estaba para cambiar solo una cosa', () => {
+    /* Lo usa el botón de modificar: el cliente dice "cámbieme las papas" y
+       el cajero tiene que ver la bebida ya puesta, no empezar de cero. */
+    const elegidas = predeterminadas(COMBO);
+    const { extras } = derivar(COMBO, elegidas);
+
+    expect(reconstruirElegidas(COMBO, extras)).toEqual(elegidas);
+  });
+
+  it('una opción que el negocio quitó del catálogo no se vuelve a marcar', () => {
+    /* Y entonces el grupo aparece pendiente, que es la señal correcta: hay
+       que preguntarle al cliente otra vez. */
+    const extras = [{ grupo: 'Papas', nombre: 'Descatalogada', precio: 0, cantidad: 1 }];
+
+    const vueltas = reconstruirElegidas(COMBO, extras);
+
+    expect(vueltas).toEqual({});
+    expect(derivar(COMBO, vueltas).faltan).toContain('Papas');
   });
 });
 
