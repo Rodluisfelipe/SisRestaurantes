@@ -12,6 +12,7 @@ const { tenantAuth } = require("../middleware/tenantAuth");
 const { audit } = require('../utils/auditLog');
 const BusinessConfig = require('../Models/BusinessConfig');
 const { getSubscriptionForBusiness, isFeatureEnabledForPlan } = require('../utils/subscriptionHelper');
+const { tocarProductosDe } = require('../utils/catalogoPos');
 
 const ensureToppingsFeatureEnabled = async (businessId, req, res) => {
   const { planConfig, commercialPlan } = await getSubscriptionForBusiness(businessId);
@@ -215,6 +216,11 @@ router.put("/:id", tenantAuth, async (req, res) => {
       logger.error("Error emitiendo WebSocket (no crítico)", wsError, req);
     }
     
+    /* Las cajas bajan el catálogo por marca de agua sobre el producto, y
+       los extras viajan dentro de él. Sin esto, el cambio se guarda y
+       ninguna terminal se entera. Ver `utils/catalogoPos`. */
+    await tocarProductosDe(req.params.id);
+
     res.json(updatedGroup);
   } catch (error) {
     logger.error("Error updating topping group", error, req);
@@ -284,6 +290,9 @@ router.delete("/:id", tenantAuth, async (req, res) => {
       logger.error("Error emitiendo WebSocket (no crítico)", wsError, req);
     }
     logger.info('Topping group deleted', { id: deleted._id, name: deleted.name }, req);
+    // Mismo motivo que en la edición: si no, las cajas siguen ofreciéndolo.
+    await tocarProductosDe(req.params.id);
+
     res.json({ message: "Grupo de toppings eliminado" });
   } catch (error) {
     logger.error("Error eliminando topping group", error, req);
@@ -344,6 +353,10 @@ router.patch("/:groupId/options/:optionId/toggle", tenantAuth, async (req, res) 
     });
     
     logger.info('Option toggled successfully', { groupId, optionId }, req);
+    /* Apagar una opción es lo que más se hace —se acabó la Sprite— y es
+       justo el cambio que la caja tiene que recibir hoy, no mañana. */
+    await tocarProductosDe(groupId);
+
     res.json({ success: true, message: "Estado de la opción actualizado", group });
   } catch (error) {
     logger.error("Error toggling option", error, req);
