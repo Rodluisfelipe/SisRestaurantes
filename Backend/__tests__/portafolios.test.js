@@ -110,6 +110,39 @@ describe('la ruta del portafolio', () => {
     expect(raiz).toBeLessThan(comodin);
   });
 
+  it('funciona cuando quien entra es un superadmin', () => {
+    /* El fallo real, y se vio el primer día: el token de un superadmin trae
+       **su** id, que no es el de ningún `Admin`. Buscar negocios con él
+       devolvía cero, y la pantalla decía "solo tienes un negocio" a un dueño
+       que tenía dos.
+
+       Configurarle la página a un cliente desde soporte es justo lo que
+       alguien va a querer hacer, así que tiene que resolver el dueño desde
+       el negocio al que el superadmin entró. */
+    expect(src).toContain('async function duenoDe(req)');
+    expect(src).toContain('req.user?.isSuperAdmin');
+    expect(src).toContain('req.resolvedBusinessId || req.user?.businessId');
+  });
+
+  it('el portafolio se guarda a nombre del dueño, no del superadmin', () => {
+    /* Si se guardara con el id del superadmin, el dueño no volvería a ver su
+       propia página al entrar con su cuenta. */
+    expect(src).toContain('adminId: dueno,');
+    expect(src).toContain('{ adminId: dueno },');
+    expect(src).not.toContain('adminId: req.user.id');
+  });
+
+  it('un empleado no cuenta como dueño', () => {
+    /* `staff` atiende pedidos; no configura la página del negocio. */
+    expect(src).toContain("role: { $in: ['brand_admin', 'admin'] }");
+  });
+
+  it('sin negocio elegido lo dice con palabras', () => {
+    /* Un superadmin que no entró a ningún negocio. Una lista vacía se lee
+       como "no tienes negocios", que es una respuesta distinta y falsa. */
+    expect(src).toContain('sin_negocio');
+  });
+
   it('está montada en el servidor', () => {
     const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
 
