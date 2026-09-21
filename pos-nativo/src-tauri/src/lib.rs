@@ -2033,6 +2033,38 @@ fn comanda_anulacion(
 /// Lleva el nombre de la mesa en grande y arriba, porque en una cocina con seis
 /// comandas colgadas lo primero que hay que saber es para dónde va el plato. Y
 /// lleva solo lo nuevo: lo anterior ya está cocinado o cocinándose.
+/// Cómo se leen los extras de una línea en la cocina.
+///
+/// El detalle que parece menor y no lo es: en una línea de dos unidades, los
+/// extras son **de cada una**. Un `2 COMBO HAMBURGUESA / + PAPAS FRANCESA`
+/// se lee como "dos combos y una papa", y el cocinero arma una bandeja
+/// incompleta. Con el `(cada una)` no hay forma de leerlo mal.
+///
+/// Una línea con varias unidades tiene siempre los mismos extras: el carrito
+/// solo agrupa lo que coincide exactamente, y lo que difiere queda en líneas
+/// separadas. Por eso no hace falta numerar unidad por unidad —serían dos
+/// bloques idénticos— y basta con decir que aplican a cada una.
+fn extras_de_comanda(item: &venta::LineaVenta) -> Vec<String> {
+    let mut salida = Vec::new();
+
+    for extra in &item.extras {
+        /* `x2` en el extra es "dos porciones de papa en este plato", que es
+           distinto de `(cada una)`. Las dos cosas pueden aparecer juntas y
+           significan cosas distintas: dos combos, con dos papas cada uno. */
+        let veces = if extra.cantidad > 1 {
+            format!(" x{}", extra.cantidad)
+        } else {
+            String::new()
+        };
+
+        let cada = if item.cantidad > 1 { "  (CADA UNA)" } else { "" };
+
+        salida.push(format!("  + {}{}{}", extra.nombre.to_uppercase(), veces, cada));
+    }
+
+    salida
+}
+
 fn comanda_de(
     ancho: usize,
     identificador: &str,
@@ -2059,9 +2091,8 @@ fn comanda_de(
 
         // Los extras y la nota, igual de grandes que el plato: es lo que se
         // lee de reojo desde el otro lado de la plancha.
-        for extra in &item.extras {
-            let veces = if extra.cantidad > 1 { format!(" x{}", extra.cantidad) } else { String::new() };
-            t.linea(&format!("  + {}{}", extra.nombre.to_uppercase(), veces));
+        for linea in extras_de_comanda(item) {
+            t.linea(&linea);
         }
         if !item.nota.is_empty() {
             t.linea(&format!("  >> {}", item.nota.to_uppercase()));
@@ -2155,9 +2186,8 @@ fn comanda(ancho: usize, nueva: &venta::NuevaVenta, registrada: &venta::VentaReg
            plancha: un "sin cebolla" que no se ve es un plato devuelto y una
            mesa perdida, y un "queso extra" que no se ve es un plato que el
            cliente pagó y no recibió. */
-        for extra in &item.extras {
-            let veces = if extra.cantidad > 1 { format!(" x{}", extra.cantidad) } else { String::new() };
-            t.linea(&format!("  + {}{}", extra.nombre.to_uppercase(), veces));
+        for linea in extras_de_comanda(item) {
+            t.linea(&linea);
         }
         if !item.nota.is_empty() {
             t.linea(&format!("  >> {}", item.nota.to_uppercase()));

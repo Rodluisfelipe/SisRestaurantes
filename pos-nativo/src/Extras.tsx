@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Minus, Plus } from 'lucide-react';
 import { pesos, type ExtraElegido, type GrupoExtra, type Producto } from './nativo';
-
-/** Una opción elegida, identificada por dónde salió. */
-type Clave = string;
-
-const clave = (grupo: string, sub: string, opcion: string): Clave =>
-  `${grupo}\u0001${sub}\u0001${opcion}`;
+import {
+  clave, cuantasEn as cuantasDe, derivar, marcar as marcarEn, quitar as quitarDe,
+  type Elegidas,
+} from './reglasExtras';
 
 /**
  * Los extras de un producto: adiciones, salsas, términos.
@@ -23,10 +21,15 @@ const clave = (grupo: string, sub: string, opcion: string): Clave =>
  */
 export default function Extras({
   producto,
+  inicial,
   onListo,
   onCancelar,
 }: {
   producto: Producto;
+  /* Lo que ya viene marcado al abrir. Lo usa el conmutador de tamaño de la
+     columna izquierda: si el cajero tiene [Mediano] puesto, ese grupo llega
+     resuelto y solo quedan las papas y la bebida por preguntar. */
+  inicial?: Elegidas;
   /** Los extras elegidos y cuánto suman por unidad. */
   onListo: (extras: ExtraElegido[], sobreprecio: number) => void;
   onCancelar: () => void;
@@ -39,7 +42,7 @@ export default function Extras({
   /* Cuántas veces se eligió cada opción. Cero o ausente = no elegida. Se
      guarda la cuenta y no un booleano porque hay grupos repetibles —"zanahoria
      x2"— y un booleano no sabría decirlo. */
-  const [elegidas, setElegidas] = useState<Record<Clave, number>>({});
+  const [elegidas, setElegidas] = useState<Elegidas>(inicial ?? {});
   const [intentado, setIntentado] = useState(false);
 
   useEffect(() => {
@@ -50,11 +53,10 @@ export default function Extras({
     return () => window.removeEventListener('keydown', tecla);
   }, [onCancelar]);
 
-  /** Cuántas hay marcadas dentro de un grupo o subgrupo. */
-  const cuantasEn = (grupo: string, sub: string) =>
-    Object.entries(elegidas)
-      .filter(([k, n]) => n > 0 && k.startsWith(`${grupo}\u0001${sub}\u0001`))
-      .reduce((t, [, n]) => t + n, 0);
+  /* Las reglas viven en `extras.ts` y no acá: son las mismas que aplica el
+     modal en lote, y dos copias de "qué falta por elegir" terminan dejando
+     pasar a la cocina un plato que la otra pantalla habría frenado. */
+  const cuantasEn = (grupo: string, sub: string) => cuantasDe(elegidas, grupo, sub);
 
   const marcar = (
     grupo: string,
@@ -63,95 +65,16 @@ export default function Extras({
     multiple: boolean,
     maximo: number | null,
     repetible: boolean,
-  ) => {
-    const k = clave(grupo, sub, opcion);
+  ) => setElegidas((previas) => marcarEn(previas, grupo, sub, opcion, multiple, maximo, repetible));
 
-    setElegidas((previas) => {
-      const actual = previas[k] || 0;
+  const quitar = (grupo: string, sub: string, opcion: string) =>
+    setElegidas((previas) => quitarDe(previas, grupo, sub, opcion));
 
-      /* De una sola opción: elegir otra reemplaza. Es lo que espera quien pulsa
-         "término medio" después de haber pulsado "bien asado", y obligarlo a
-         desmarcar primero sería un toque de más en cada venta. */
-      if (!multiple) {
-        const limpias = Object.fromEntries(
-          Object.entries(previas).filter(([otra]) => !otra.startsWith(`${grupo}\u0001${sub}\u0001`)),
-        );
-        return actual > 0 ? limpias : { ...limpias, [k]: 1 };
-      }
-
-      // Repetible: cada toque suma uno, hasta el tope.
-      if (repetible) {
-        if (maximo !== null && cuantasEn(grupo, sub) >= maximo) return previas;
-        return { ...previas, [k]: actual + 1 };
-      }
-
-      // Normal: enciende y apaga.
-      if (actual > 0) {
-        const { [k]: _fuera, ...resto } = previas;
-        return resto;
-      }
-      if (maximo !== null && cuantasEn(grupo, sub) >= maximo) return previas;
-      return { ...previas, [k]: 1 };
-    });
-  };
-
-  const quitar = (grupo: string, sub: string, opcion: string) => {
-    const k = clave(grupo, sub, opcion);
-    setElegidas((previas) => {
-      const actual = previas[k] || 0;
-      if (actual <= 1) {
-        const { [k]: _fuera, ...resto } = previas;
-        return resto;
-      }
-      return { ...previas, [k]: actual - 1 };
-    });
-  };
-
-  /** Lo elegido, en la forma que viaja con la venta. */
-  const { extras, sobreprecio, faltan } = useMemo(() => {
-    const salida: ExtraElegido[] = [];
-    let suma = 0;
-    const pendientes: string[] = [];
-
-    for (const g of grupos) {
-      // Las opciones que cuelgan del grupo, sin subgrupo.
-      for (const o of g.opciones || []) {
-        const n = elegidas[clave(g.id, '', o.nombre)] || 0;
-        if (n > 0) {
-          salida.push({ grupo: g.nombre, nombre: o.nombre, precio: o.precio, cantidad: n });
-          suma += o.precio * n;
-        }
-      }
-      if (g.obligatorio && cuantasEn(g.id, '') === 0 && (g.opciones || []).length) {
-        pendientes.push(g.nombre);
-      }
-
-      for (const sg of g.subgrupos || []) {
-        for (const o of sg.opciones || []) {
-          const n = elegidas[clave(g.id, sg.titulo, o.nombre)] || 0;
-          if (n > 0) {
-            salida.push({
-              grupo: sg.titulo || g.nombre,
-              nombre: o.nombre,
-              precio: o.precio,
-              cantidad: n,
-            });
-            suma += o.precio * n;
-          }
-        }
-        if (sg.obligatorio && cuantasEn(g.id, sg.titulo) === 0) {
-          pendientes.push(sg.titulo || g.nombre);
-        }
-      }
-
-      // El grupo puede cobrar por sí mismo, aparte de sus opciones.
-      if (g.precio_base > 0 && salida.some((e) => e.grupo === g.nombre)) {
-        suma += g.precio_base;
-      }
-    }
-
-    return { extras: salida, sobreprecio: suma, faltan: pendientes };
-  }, [grupos, elegidas]);
+  /** Lo elegido y lo que falta. Misma función que usa el modal en lote. */
+  const { extras, sobreprecio, faltan } = useMemo(
+    () => derivar(grupos, elegidas),
+    [grupos, elegidas],
+  );
 
   const listo = faltan.length === 0;
 

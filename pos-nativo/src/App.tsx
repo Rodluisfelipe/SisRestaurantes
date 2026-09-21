@@ -36,6 +36,8 @@ import ModalRecompensas from './ModalRecompensas';
 import CatalogoCuadrante from './CatalogoCuadrante';
 import PestanasCategoria from './PestanasCategoria';
 import SelectorVariante, { enVariante, variantesDe } from './SelectorVariante';
+import ModalExtrasBatch from './ModalExtrasBatch';
+import { derivar, preseleccionarTamano, type Elegidas } from './reglasExtras';
 import { useSpeedOfService } from './hooks/useSpeedOfService';
 import {
   agregarAlCarrito, brutoDe, fijarCantidad, lineaDeRecompensa, quitarLineasDeRecompensa,
@@ -247,6 +249,13 @@ function Caja({
      todavía no entró al carrito: si entrara antes, el cajero que cancela la
      pantalla se quedaría con el producto marcado sin sus adiciones. */
   const [conExtras, setConExtras] = useState<Producto | null>(null);
+  /* Lo que ya viene resuelto al abrir el modal: el tamaño que el cajero tiene
+     puesto en la columna. Viaja aparte del producto porque depende de lo que
+     esté seleccionado en ese momento, no del producto. */
+  const [extrasInicial, setExtrasInicial] = useState<Elegidas | undefined>(undefined);
+  /* Varias unidades del mismo producto, esperando configurarse de una. Es lo
+     que evita abrir tres modales seguidos cuando el cliente pide tres combos. */
+  const [enLote, setEnLote] = useState<{ producto: Producto; cantidad: number } | null>(null);
   /* El último toque en una tarjeta. Un monitor táctil de mostrador rebota: un
      toque firme genera dos eventos separados por unas decenas de milisegundos,
      y el cliente termina pagando dos cafés. */
@@ -537,12 +546,42 @@ function Caja({
        presentación —hay gaseosa mediana pero no hay pan mediano— entra tal
        cual, que es lo que el cajero espera al tocar el pan. */
     const cual = enVariante(p, variante, productos);
+    const grupos = Array.isArray(cual.extras) ? cual.extras : [];
 
-    if (Array.isArray(cual.extras) && cual.extras.length) {
-      setConExtras(cual);
+    /* El tamaño puesto en la columna, ya resuelto dentro de los extras. Con
+       [Mediano] elegido, ese grupo llega marcado y al cajero solo le queda
+       decir papas y bebida. Devuelve null si este producto no tiene ese
+       tamaño, y entonces no hay nada que preseleccionar. */
+    const conTamano = preseleccionarTamano(grupos, variante) ?? undefined;
+
+    if (!grupos.length) {
+      agregar(cual);
       return;
     }
-    agregar(cual);
+
+    /* Lo que quedaría elegido solo con el tamaño, y qué falta todavía. */
+    const conElTamano = derivar(grupos, conTamano ?? {});
+    const falta = conElTamano.faltan.length > 0;
+
+    /* Si lo único obligatorio era el tamaño y ya quedó resuelto, no hay nada
+       que preguntar: entra directo. Es el caso que hace rápido el mostrador —
+       tocar [Mediano] una vez y marcar cinco gaseosas sin un solo modal. */
+    if (!falta && conTamano) {
+      agregar(cual, conElTamano.extras, conElTamano.sobreprecio);
+      return;
+    }
+
+    /* Con más de una unidad y algo obligatorio pendiente, las N se configuran
+       en una sola pantalla: tres modales seguidos para tres combos es
+       exactamente lo que destruye la fila en hora pico. */
+    if (falta && multiplicador > 1) {
+      setEnLote({ producto: cual, cantidad: multiplicador });
+      setExtrasInicial(conTamano);
+      return;
+    }
+
+    setConExtras(cual);
+    setExtrasInicial(conTamano);
   };
 
   const agregar = (p: Producto, extras: ExtraElegido[] = [], sobreprecio = 0) => {
@@ -930,7 +969,7 @@ function Caja({
      foco mientras hay algo abierto, y que lo recupere al cerrarse. Cada modal
      ya devuelve el foco al cerrar; esto lo quita al abrir. */
   const hayModal =
-    cobrandoAhora || conExtras !== null || anulando !== null || pidiendoDescuento ||
+    cobrandoAhora || conExtras !== null || enLote !== null || anulando !== null || pidiendoDescuento ||
     porAutorizar !== null || anotando !== null || pidiendoGaveta || descartando !== null ||
     pidiendoDevolucion || devolucionPorAutorizar !== null || verImpresoras || verNube ||
     verTurno || verEspera || verCliente || verRecompensas;
@@ -1338,12 +1377,53 @@ function Caja({
       {conExtras && (
         <Extras
           producto={conExtras}
+          inicial={extrasInicial}
           onListo={(extras, sobreprecio) => {
             const cual = conExtras;
             setConExtras(null);
+            setExtrasInicial(undefined);
             agregar(cual, extras, sobreprecio);
           }}
-          onCancelar={() => { setConExtras(null); buscador.current?.focus(); }}
+          onCancelar={() => {
+            setConExtras(null);
+            setExtrasInicial(undefined);
+            buscador.current?.focus();
+          }}
+        />
+      )}
+
+      {enLote && (
+        <ModalExtrasBatch
+          producto={enLote.producto}
+          cantidad={enLote.cantidad}
+          inicial={extrasInicial}
+          onListo={(unidades) => {
+            const cual = enLote.producto;
+            setEnLote(null);
+            setExtrasInicial(undefined);
+            setMultiplicador(1);
+
+            /* Cada unidad entra por separado y `agregarAlCarrito` decide si se
+               agrupa: dos combos con exactamente los mismos extras quedan como
+               una línea de 2, y los que difieren quedan sueltos. Esa es la
+               regla que hace que la cocina reciba una comanda legible sin que
+               esta pantalla tenga que saber nada de agrupar. */
+            setCarrito((c) =>
+              unidades.reduce(
+                (acumulado, u) => agregarAlCarrito(acumulado, cual, u.extras, u.sobreprecio),
+                c,
+              ),
+            );
+            setRecien((r) => ({ clave: `${cual.id}${cual.variante}`, vez: r.vez + 1 }));
+            sos.arrancar();
+            bip();
+            buscador.current?.focus();
+          }}
+          onCancelar={() => {
+            setEnLote(null);
+            setExtrasInicial(undefined);
+            buscador.current?.focus();
+          }}
         />
       )}
 

@@ -1,4 +1,5 @@
 import type { Producto } from './nativo';
+import { grupoDeTamano } from './reglasExtras';
 
 /**
  * El tamaño o la presentación, elegido antes de tocar el producto.
@@ -35,13 +36,40 @@ export function idBase(id: string): string {
   return corte < 0 ? id : id.slice(0, corte);
 }
 
+/**
+ * Las presentaciones que hay en lo que se está mostrando.
+ *
+ * Salen de dos sitios distintos porque los negocios las configuran de dos
+ * maneras distintas, y las dos son legítimas:
+ *
+ * - Como **variantes** del producto: el panel las aplana en filas propias
+ *   ("Gaseosa · Mediana"), cada una con su precio.
+ * - Como un **grupo de extras obligatorio** llamado "Tamaño" o "Combo". Es
+ *   lo que hace casi todo restaurante colombiano: crea "Combo Hamburguesa"
+ *   y le cuelga los grupos, sin tocar el módulo de variantes.
+ *
+ * El conmutador no distingue: para el cajero son los mismos botones. Quien
+ * distingue es `enVariante` —que cambia de fila— y `preseleccionarTamano`
+ * —que deja el grupo resuelto en el modal—.
+ */
 /** Las presentaciones distintas que hay en lo que se está mostrando. */
 export function variantesDe(productos: Producto[]): string[] {
   const vistas = new Set<string>();
+
   for (const p of productos) {
     if (p.variante) vistas.add(p.variante);
+
+    /* Y el grupo que hace de tamaño, si lo tiene. Sus opciones son
+       presentaciones igual que una variante, solo que configuradas por el
+       otro camino. */
+    const grupo = grupoDeTamano(Array.isArray(p.extras) ? p.extras : []);
+    for (const o of grupo?.opciones ?? []) {
+      vistas.add(o.nombre);
+    }
+
     if (vistas.size > MAXIMO) return [];
   }
+
   return [...vistas].sort();
 }
 
