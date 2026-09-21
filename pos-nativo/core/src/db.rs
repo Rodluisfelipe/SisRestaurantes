@@ -544,6 +544,21 @@ const MIGRACIONES: &[&str] = &[
        ninguna columna a `productos`, así que no hay por qué obligar a cada
        terminal del país a rebajarlo entero. */
     "#,
+    // 17 — las categorías, en el orden que el dueño puso en el panel.
+    r#"
+    /* Hasta aquí la caja ordenaba las categorías alfabéticamente, y eso
+       pone "Adiciones" antes que "Hamburguesas". El cajero se sabe su carta
+       por el orden del panel —el mismo que ve el cliente en el menú— y
+       buscarla en otro orden le cuesta una mirada en cada venta.
+
+       999 por defecto para las filas que ya estaban: quedan al final hasta
+       que bajen de nuevo, que es justo lo que hace la línea de abajo. */
+    ALTER TABLE productos ADD COLUMN categoria_orden INTEGER NOT NULL DEFAULT 999;
+
+    /* Columna nueva de `productos` alimentada por el catálogo: hay que
+       bajarlo entero otra vez. Misma regla que la migración 10. */
+    DELETE FROM ajustes WHERE clave = 'catalogo_desde';
+    "#,
 ];
 
 /// Abre (o crea) la base y la deja lista para operar.

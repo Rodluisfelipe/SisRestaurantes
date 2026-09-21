@@ -277,7 +277,18 @@ function aplanarCatalogo(productos, categoriasPorId = {}) {
 
   for (const p of productos) {
     const actualizado = (p.updatedAt || p.createdAt || new Date()).toISOString();
-    const categoria = categoriasPorId[String(p.category)] || '';
+    /* El mapa trae nombre y orden. Se acepta también la forma vieja —solo el
+       nombre— porque este módulo lo usan otras rutas y no tienen por qué
+       enterarse de que la caja ahora ordena las categorías. */
+    const cat = categoriasPorId[String(p.category)];
+    const categoria = (typeof cat === 'string' ? cat : cat?.nombre) || '';
+    const categoriaOrden = typeof cat === 'object' && cat ? Number(cat.orden) || 999 : 999;
+
+    /* Si este producto se vende en la caja. Los que no, **bajan igual** pero
+       marcados inactivos: si se omitieran, uno que ya estaba replicado se
+       quedaría en la terminal para siempre y se seguiría vendiendo. Es la
+       misma razón por la que un producto desactivado tampoco se omite. */
+    const enPos = p.enPos !== false;
     const activoProducto = p.active !== false;
 
     /* La foto del producto. La caja la descarga una vez y la guarda en disco,
@@ -338,7 +349,8 @@ function aplanarCatalogo(productos, categoriasPorId = {}) {
         categoria,
         sku: p.sku || '',
         variante: '',
-        activo: activoProducto,
+        activo: activoProducto && enPos,
+        categoria_orden: categoriaOrden,
         actualizado,
         foto,
         extras,
@@ -363,7 +375,8 @@ function aplanarCatalogo(productos, categoriasPorId = {}) {
         sku: v.sku || p.sku || '',
         variante: valores.join(' · '),
         // Una talla apagada tampoco se vende, aunque el producto esté activo.
-        activo: activoProducto && v.activo !== false,
+        activo: activoProducto && enPos && v.activo !== false,
+        categoria_orden: categoriaOrden,
         actualizado,
         foto,
         /* Las variantes heredan los extras del producto: una camiseta talla M

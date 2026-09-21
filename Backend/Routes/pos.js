@@ -642,7 +642,7 @@ router.get('/catalog', tenantAuth, cajaVigente, async (req, res) => {
 
     const [productos, categorias, negocio] = await Promise.all([
       Product.find(filtro)
-        .select('name price active category sku variantes updatedAt createdAt image images toppingGroups')
+        .select('name price active category sku variantes updatedAt createdAt image images toppingGroups enPos')
         /* Los extras viajan **dentro** de cada producto y no como catálogo
            aparte. Duplica datos —dos hamburguesas comparten el grupo "salsas"—
            pero es lo que permite que la caja arme la pantalla de extras sin
@@ -656,7 +656,11 @@ router.get('/catalog', tenantAuth, cajaVigente, async (req, res) => {
         .sort({ updatedAt: 1 })
         .limit(limite)
         .lean(),
-      Category.find({ businessId }).select('name').lean(),
+      /* El orden viaja con el nombre: la caja muestra las categorías en el
+         mismo orden que el panel, que es el que el dueño decidió. Ordenar
+         alfabéticamente —como hacía la caja— pone "Adiciones" antes que
+         "Hamburguesas", y el cajero busca donde no está. */
+      Category.find({ businessId }).select('name displayOrder').lean(),
       /* La identidad del negocio viaja por aquí y no por el emparejamiento
          porque el emparejamiento pasa una vez en la vida de la caja: si el
          dueño cambia su color en el panel, la caja tendría el viejo para
@@ -664,7 +668,9 @@ router.get('/catalog', tenantAuth, cajaVigente, async (req, res) => {
       BusinessConfig.findById(businessId).select('businessName theme.buttonColor theme.buttonTextColor').lean(),
     ]);
 
-    const porId = Object.fromEntries(categorias.map((c) => [String(c._id), c.name]));
+    const porId = Object.fromEntries(
+      categorias.map((c) => [String(c._id), { nombre: c.name, orden: c.displayOrder ?? 999 }]),
+    );
     const filas = aplanarCatalogo(productos, porId);
 
     /* La configuración de esta terminal, si cambió.

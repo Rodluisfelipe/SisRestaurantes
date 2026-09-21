@@ -239,20 +239,29 @@ fn carpeta_fotos(estado: State<Estado>) -> String {
     fotos::carpeta(&estado.datos).to_string_lossy().to_string()
 }
 
-/// Las categorías que de verdad tienen algo que vender.
+/// Las categorías que de verdad tienen algo que vender, **en el orden del panel**.
 ///
 /// Salen de los productos y no de una tabla aparte: una categoría vacía en
-/// pantalla es una pestaña que el cajero toca y no le muestra nada, y con
+/// pantalla es un botón que el cajero toca y no le muestra nada, y con
 /// cuarenta platos en carta eso pasa seguido.
+///
+/// El orden es el que el dueño puso en MenuBy, no el alfabético. Alfabético
+/// pone "Adiciones" antes que "Hamburguesas", y el cajero se sabe su carta
+/// por el orden del panel —el mismo que ve el cliente en el menú—.
+///
+/// `MIN` porque la categoría se agrupa: todas sus filas traen el mismo orden,
+/// pero SQLite necesita una función para agregarlo. El nombre desempata, para
+/// que dos categorías con el mismo orden no bailen entre bajadas.
 #[tauri::command]
 fn categorias(estado: State<Estado>) -> Result<Vec<String>, String> {
     let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
 
     let mut consulta = base
         .prepare(
-            "SELECT DISTINCT categoria FROM productos
+            "SELECT categoria FROM productos
              WHERE activo = 1 AND categoria != ''
-             ORDER BY categoria",
+             GROUP BY categoria
+             ORDER BY MIN(categoria_orden), categoria",
         )
         .map_err(|e| e.to_string())?;
 

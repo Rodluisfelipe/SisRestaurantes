@@ -30,6 +30,9 @@ pub struct FilaCatalogo {
     pub precio: i64,
     #[serde(default)]
     pub categoria: String,
+    /// En qué posición la puso el dueño en el panel. 999 = al final.
+    #[serde(default = "al_final")]
+    pub categoria_orden: i64,
     #[serde(default)]
     pub sku: String,
     #[serde(default)]
@@ -58,6 +61,10 @@ pub struct FilaCatalogo {
     pub extras: serde_json::Value,
 }
 
+fn al_final() -> i64 {
+    999
+}
+
 fn verdadero() -> bool {
     true
 }
@@ -79,12 +86,13 @@ pub fn aplicar(conexion: &mut Connection, filas: &[FilaCatalogo]) -> Result<Opti
             /* `foto_local` no se toca en el UPDATE: el archivo que ya está en
                disco sigue sirviendo. Solo se borra cuando la dirección cambió,
                y eso se decide abajo comparando contra la que había. */
-            "INSERT INTO productos (id, nombre, precio, categoria, sku, variante, activo, actualizado, foto_url, extras, tipo_impuesto)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+            "INSERT INTO productos (id, nombre, precio, categoria, categoria_orden, sku, variante, activo, actualizado, foto_url, extras, tipo_impuesto)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
              ON CONFLICT(id) DO UPDATE SET
                nombre = excluded.nombre,
                precio = excluded.precio,
                categoria = excluded.categoria,
+               categoria_orden = excluded.categoria_orden,
                sku = excluded.sku,
                variante = excluded.variante,
                activo = excluded.activo,
@@ -101,6 +109,7 @@ pub fn aplicar(conexion: &mut Connection, filas: &[FilaCatalogo]) -> Result<Opti
                 fila.nombre,
                 fila.precio,
                 fila.categoria,
+                fila.categoria_orden,
                 fila.sku,
                 fila.variante,
                 fila.activo as i64,
@@ -160,12 +169,21 @@ mod pruebas {
     use super::*;
     use crate::db;
 
+    fn fila_en(id: &str, categoria: &str, orden: i64) -> FilaCatalogo {
+        FilaCatalogo {
+            categoria: categoria.into(),
+            categoria_orden: orden,
+            ..fila(id, id, 1000, "2026-09-20T10:00:00Z")
+        }
+    }
+
     fn fila(id: &str, nombre: &str, precio: i64, actualizado: &str) -> FilaCatalogo {
         FilaCatalogo {
             id: id.into(),
             nombre: nombre.into(),
             precio,
             categoria: "General".into(),
+            categoria_orden: 1,
             sku: String::new(),
             variante: String::new(),
             activo: true,
@@ -253,5 +271,49 @@ mod pruebas {
             .query_row("SELECT COUNT(*) FROM productos WHERE nombre = 'Camiseta'", [], |f| f.get(0))
             .unwrap();
         assert_eq!(cuantas, 2);
+    }
+
+    #[test]
+    fn la_categoria_se_guarda_con_el_orden_del_panel() {
+        /* La caja ordenaba alfabéticamente, y eso pone "Adiciones" antes que
+           "Hamburguesas". El cajero se sabe su carta por el orden del panel
+           —el mismo que ve el cliente en el menú— y buscarla en otro orden le
+           cuesta una mirada en cada venta. */
+        let mut c = db::abrir_en_memoria().unwrap();
+        aplicar(
+            &mut c,
+            &[
+                fila_en("p1", "Adiciones", 5),
+                fila_en("p2", "Hamburguesas", 1),
+                fila_en("p3", "Bebidas", 2),
+            ],
+        )
+        .unwrap();
+
+        let mut consulta = c
+            .prepare(
+                "SELECT categoria FROM productos WHERE activo = 1 AND categoria != ''
+                 GROUP BY categoria ORDER BY MIN(categoria_orden), categoria",
+            )
+            .unwrap();
+        let orden: Vec<String> = consulta
+            .query_map([], |f| f.get(0))
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect();
+
+        assert_eq!(orden, vec!["Hamburguesas", "Bebidas", "Adiciones"]);
+    }
+
+    #[test]
+    fn una_fila_sin_orden_queda_al_final() {
+        /* Las cajas que todavía no han bajado el catálogo nuevo, y los
+           negocios que nunca ordenaron sus categorías. */
+        let sin: FilaCatalogo = serde_json::from_str(
+            r#"{"id":"p1","nombre":"X","precio":1000}"#,
+        )
+        .unwrap();
+
+        assert_eq!(sin.categoria_orden, 999);
     }
 }

@@ -290,6 +290,7 @@ mod pruebas {
                 nombre: "Hamburguesa".into(),
                 precio: 18_000,
                 categoria: "Platos".into(),
+                categoria_orden: 1,
                 sku: String::new(),
                 variante: String::new(),
                 activo: true,

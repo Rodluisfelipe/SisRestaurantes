@@ -20,6 +20,7 @@ const DeliveryTracker = lazy(() => import("./Components/Delivery/DeliveryTracker
 const DeliveryQRPage = lazy(() => import("./Components/Delivery/DeliveryQRPage"));
 const PartnerPortal = lazy(() => import("./Components/Delivery/PartnerPortal"));
 const MenuByCatalog = lazy(() => import("./Pages/Catalog/MenuByCatalog"));
+const PortafolioPublico = lazy(() => import('./Components/PortafolioPublico'));
 const RestaurantDetail = lazy(() => import("./Pages/Catalog/RestaurantDetail"));
 const LeadCapturePage = lazy(() => import("./Pages/LeadCapturePage"));
 const PaymentResult = lazy(() => import("./Pages/PaymentResult"));
@@ -184,6 +185,8 @@ function App() {
         </Route>
 
         {/* Redirección de rutas antiguas para compatibilidad */}
+        {/* La vitrina de un dueño con varios negocios: menuby.tech/p/tura */}
+        <Route path="/p/:slug" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-400"></div></div>}><PortafolioPublico /></Suspense>} />
         <Route path="/catalog" element={<Navigate to="/restaurantes" replace />} />
         <Route path="/catalog/*" element={<Navigate to="/restaurantes" replace />} />
 

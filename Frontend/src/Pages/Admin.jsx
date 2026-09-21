@@ -69,6 +69,7 @@ const ToolsPanel = lazy(() => import("../Components/Admin/ToolsPanel"));
 const ExtensionChrome = lazy(() => import("../Components/Admin/ExtensionChrome"));
 const BranchManager = lazy(() => import("../Components/Admin/BranchManager"));
 const LinkPageSettings = lazy(() => import("../Components/Admin/LinkPageSettings"));
+const PortafolioManager = lazy(() => import("../Components/Admin/PortafolioManager"));
 
 // Custom hooks
 import useAdminAuth from "../hooks/useAdminAuth";
@@ -677,6 +678,13 @@ function Admin() {
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Mi Link" onGoBack={() => setActiveTab('dashboard')}>
                       <LinkPageSettings businessId={businessId} />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'portafolio' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Mi página de negocios" onGoBack={() => setActiveTab('dashboard')}>
+                      <PortafolioManager />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}

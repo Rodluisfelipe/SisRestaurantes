@@ -141,6 +141,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
         { id: 'subscription', label: 'Suscripción', Icon: FaCreditCard, badge: null },
         ...(!isStaff ? [{ id: 'branches', label: 'Sucursales', Icon: FaCodeBranch, badge: null }] : []),
         ...(!isStaff ? [{ id: 'milink', label: 'Mi Link', Icon: FaLink, badge: null }] : []),
+        ...(!isStaff ? [{ id: 'portafolio', label: 'Mi página de negocios', Icon: FaLink, badge: null }] : []),
         { id: 'team', label: 'Equipo', Icon: FaUsers, badge: null },
         { id: 'business', label: 'Negocio', Icon: FaStore, badge: null },
         { id: 'printer', label: 'Impresoras', Icon: FaPrint, badge: null },

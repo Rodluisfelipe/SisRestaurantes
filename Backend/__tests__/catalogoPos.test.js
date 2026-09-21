@@ -92,3 +92,75 @@ describe('la bandera de tamaño llega hasta la caja', () => {
     expect(src).toContain('es_combo: g.esCombo === true');
   });
 });
+
+describe('dónde se vende cada producto', () => {
+  const { aplanarCatalogo } = require('../utils/pos');
+
+  const producto = (id, nombre, extra = {}) => ({
+    _id: id,
+    name: nombre,
+    price: 5000,
+    category: 'c1',
+    active: true,
+    updatedAt: new Date('2026-09-20T10:00:00Z'),
+    ...extra,
+  });
+
+  const CATS = { c1: { nombre: 'Domicilios', orden: 3 } };
+
+  it('un producto solo de caja baja activo', () => {
+    /* El caso que lo pidió: un costo de envío existe para cobrarlo en el
+       mostrador, no para que un cliente lo pida desde el menú. */
+    const [fila] = aplanarCatalogo([producto('p1', 'Costo de envío', { enPos: true, enMenu: false })], CATS);
+
+    expect(fila.activo).toBe(true);
+    expect(fila.nombre).toBe('Costo de envío');
+  });
+
+  it('un producto oculto en la caja baja igual, pero apagado', () => {
+    /* **No se omite.** Si se omitiera, uno que ya estaba replicado se quedaría
+       en la terminal para siempre y se seguiría vendiendo: es la misma razón
+       por la que un producto desactivado tampoco se omite. */
+    const [fila] = aplanarCatalogo([producto('p2', 'Solo domicilio', { enPos: false })], CATS);
+
+    expect(fila).toBeDefined();
+    expect(fila.activo).toBe(false);
+  });
+
+  it('un producto viejo sin los campos sale en los dos sitios', () => {
+    /* Los creados antes de que esto existiera no los tienen, y ausente
+       significa "sale donde salía". */
+    const [fila] = aplanarCatalogo([producto('p3', 'De siempre')], CATS);
+
+    expect(fila.activo).toBe(true);
+  });
+
+  it('desactivar el producto sigue mandando sobre el canal', () => {
+    const [fila] = aplanarCatalogo([producto('p4', 'Agotado', { active: false, enPos: true })], CATS);
+
+    expect(fila.activo).toBe(false);
+  });
+
+  it('la fila lleva el orden de su categoría', () => {
+    const [fila] = aplanarCatalogo([producto('p5', 'X')], CATS);
+
+    expect(fila.categoria).toBe('Domicilios');
+    expect(fila.categoria_orden).toBe(3);
+  });
+
+  it('una categoría sin orden queda al final', () => {
+    const [fila] = aplanarCatalogo([producto('p6', 'X')], { c1: { nombre: 'Sin orden' } });
+
+    expect(fila.categoria_orden).toBe(999);
+  });
+
+  it('el menú web esconde lo que es solo de caja', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'products.js'), 'utf8');
+
+    /* `$ne: false` y no `true`: los productos creados antes de que el campo
+       existiera no lo tienen, y desaparecerían del menú de golpe. */
+    expect(src).toContain('filter.enMenu = { $ne: false }');
+  });
+});

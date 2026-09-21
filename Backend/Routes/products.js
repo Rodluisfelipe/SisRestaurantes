@@ -83,6 +83,14 @@ router.get("/", publicProductLimiter, async (req, res) => {
 
     // Crear filtro basado en businessId o slug
     const filter = await createBusinessFilter(businessId);
+
+    /* Lo que el dueño marcó como "solo en la caja" no sale en el menú: un
+       costo de envío o un cubierto existen para cobrarlos en el mostrador, no
+       para que un cliente los pida.
+
+       `$ne: false` y no `true`: los productos creados antes de que este campo
+       existiera no lo tienen, y ausente significa "sale donde salía". */
+    filter.enMenu = { $ne: false };
     
     logger.debug('Searching products with filter', filter);
     

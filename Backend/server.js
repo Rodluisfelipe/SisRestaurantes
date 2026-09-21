@@ -281,6 +281,7 @@ app.use("/api/admin/referrals", require("./Routes/adminReferrals"));
 app.use("/api/whatsapp-templates", require("./Routes/whatsappTemplates"));
 app.use("/api/announcements", require("./Routes/announcements")); // Sistema de anuncios/novedades
 app.use("/api/loyalty", require("./Routes/loyalty")); // Programa de fidelidad
+app.use("/api/portafolios", require("./Routes/portafolios")); // Varios negocios de un mismo dueño, en una página
 app.use("/api/epayco", require("./Routes/epaycoPayments")); // Pagos automáticos ePayco
 app.use("/api/dlocal", require("./Routes/dlocalPayments")); // Pagos automáticos dLocal Go
 app.use("/api/print-agent", require("./Routes/printAgent")); // Print Agent SSE para auto-impresión

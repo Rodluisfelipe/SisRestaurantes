@@ -98,7 +98,7 @@ export default function ProductManager({
   const openCreate = () => {
     setShowProductModal(true);
     setEditingProduct(null);
-    setForm({ name: '', description: '', price: '', category: '', image: '', images: [], sku: '', opciones: [], variantes: [], toppingGroups: [], itemType: 'product', durationMinutes: '', trackStock: false, stock: '', lowStockAlert: '5' });
+    setForm({ name: '', description: '', price: '', category: '', image: '', images: [], sku: '', opciones: [], variantes: [], toppingGroups: [], itemType: 'product', durationMinutes: '', trackStock: false, stock: '', lowStockAlert: '5', enMenu: true, enPos: true });
     setTouchedFields({});
     setCurrentStep(1);
     setShowToppingsSection(false);
@@ -351,6 +351,47 @@ export default function ProductManager({
                           <p className="text-red-500 text-xs flex items-center gap-1"><FaExclamationTriangle className="text-[10px]" />Precio inválido</p>
                         )}
                       </div>
+                      {/* Dónde se vende.
+
+                          Son dos preguntas distintas de "está activo": un costo
+                          de envío existe para cobrarlo en la caja y no para que
+                          un cliente lo pida, y un plato que solo se despacha a
+                          domicilio no tiene por qué ocupar una casilla del
+                          mostrador. Los dos encendidos por defecto, que es como
+                          se comportaba todo antes de que esto existiera. */}
+                      <div className="space-y-2">
+                        <button
+                          type="button"
+                          onClick={() => setForm(prev => ({ ...prev, enMenu: prev.enMenu === false }))}
+                          className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
+                            form.enMenu !== false ? 'border-blue-300 bg-blue-50/40' : 'border-slate-200 bg-slate-50/50'
+                          }`}
+                        >
+                          <div className="flex-1">
+                            <p className={`text-sm font-semibold ${form.enMenu !== false ? 'text-blue-700' : 'text-slate-500'}`}>Mostrar en el menú</p>
+                            <p className="text-xs text-slate-400">{form.enMenu !== false ? 'Los clientes lo ven y lo pueden pedir' : 'Oculto para los clientes'}</p>
+                          </div>
+                          <div className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${form.enMenu !== false ? 'bg-blue-500' : 'bg-slate-300'}`}>
+                            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${form.enMenu !== false ? 'left-[22px]' : 'left-0.5'}`} />
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setForm(prev => ({ ...prev, enPos: prev.enPos === false }))}
+                          className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
+                            form.enPos !== false ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200 bg-slate-50/50'
+                          }`}
+                        >
+                          <div className="flex-1">
+                            <p className={`text-sm font-semibold ${form.enPos !== false ? 'text-amber-700' : 'text-slate-500'}`}>Mostrar en la caja</p>
+                            <p className="text-xs text-slate-400">{form.enPos !== false ? 'Sale en la rejilla del POS' : 'Oculto para el cajero'}</p>
+                          </div>
+                          <div className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${form.enPos !== false ? 'bg-amber-500' : 'bg-slate-300'}`}>
+                            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${form.enPos !== false ? 'left-[22px]' : 'left-0.5'}`} />
+                          </div>
+                        </button>
+                      </div>
+
                       {/* Control de inventario */}
                       <div className="space-y-2">
                         <button

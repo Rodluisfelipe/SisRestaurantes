@@ -98,6 +98,31 @@ const ProductSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+
+  /* ── En qué canales se vende ──────────────────────────────────────────
+
+     `active` dice si el producto se vende. Esto dice **dónde**, que es otra
+     pregunta y hasta ahora no tenía respuesta: todo lo que existía salía en
+     los dos sitios.
+
+     Los dos casos que lo pedían son opuestos y los dos son reales:
+
+     - Un **costo de envío** o un **cubierto** existe para cobrarlo en la
+       caja, no para que un cliente lo pida desde el menú.
+     - Un plato que **solo se toma por domicilio** no tiene por qué ocupar
+       una casilla de la rejilla del mostrador.
+
+     Los dos en `true` por defecto: así se comportaba todo antes de que esto
+     existiera, y un producto que alguien creó sin pensar en canales tiene
+     que seguir saliendo donde salía. */
+  enMenu: {
+    type: Boolean,
+    default: true
+  },
+  enPos: {
+    type: Boolean,
+    default: true
+  },
   displayOrder: {
     type: Number,
     default: 0
