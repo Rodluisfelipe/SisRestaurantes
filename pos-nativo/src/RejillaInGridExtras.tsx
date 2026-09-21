@@ -17,10 +17,14 @@ import { clave, cuantasEn, derivar, marcar, type Elegidas } from './reglasExtras
  * que el dedo caiga donde ya sabe. Si las opciones aparecieran con otro tamaño,
  * el primer toque después de la transformación fallaría siempre.
  *
- * **Avanza sola.** Tocar una opción excluyente marca y pasa al grupo siguiente;
- * al resolver el último, la línea entra al carrito y vuelve la carta. Sin
- * botones de confirmar: cada confirmación es un toque que el cajero hace
- * trescientas veces al día para decir que sí a lo que acaba de tocar.
+ * **Llega premarcada y avanza sola.** Los grupos obligatorios vienen con la
+ * opción estándar puesta, así que el combo normal se confirma de un toque y
+ * el distinto se cambia tocando la opción. Tocar una excluyente marca y pasa
+ * al grupo siguiente; al resolver el último, la línea entra al carrito y
+ * vuelve la carta.
+ *
+ * Con varias unidades, "los N restantes iguales" cierra todo de una: tres
+ * combos normales son dos toques —el producto y ese botón—.
  */
 export default function RejillaInGridExtras({
   producto,
@@ -34,7 +38,10 @@ export default function RejillaInGridExtras({
   producto: Producto;
   /** Cuántas unidades hay que configurar. 1 o más. */
   cantidad: number;
-  /** Qué grupos hay que preguntar. Los ya resueltos no vienen. */
+  /* Qué grupos se muestran. Vienen **todos** los que tengan opciones,
+     resueltos o no: el punto de abrir la rejilla es ver qué lleva cada
+     unidad, y un grupo escondido por tener respuesta es justo el que después
+     nadie sabe qué trae. */
   grupos: GrupoExtra[];
   inicial?: Elegidas;
   /** Las mismas que la carta, para que las casillas no cambien de tamaño. */
@@ -204,8 +211,12 @@ export default function RejillaInGridExtras({
           {paso === 0 && unidad === 0 ? 'Cancelar' : 'Atrás'}
         </button>
 
-        {/* Copiar al resto solo cuando hay resto y esta unidad ya está lista.
-            Antes de eso copiaría algo a medias. */}
+        {/* El camino rápido del caso frecuente: los N iguales.
+
+            Aparece en cuanto la unidad que se está armando está completa, que
+            con las opciones premarcadas es desde el primer momento. Tres
+            combos normales quedan resueltos en dos toques: el producto y
+            este botón. */}
         {cantidad > 1 && unidad + 1 < cantidad && estaCompleta && (
           <button
             onClick={copiarAlResto}
@@ -216,17 +227,24 @@ export default function RejillaInGridExtras({
           </button>
         )}
 
-        {/* Seguir, solo para los grupos de varias opciones: los excluyentes
-            avanzan con el toque y no necesitan que nadie confirme. */}
-        {grupo.multiple && (
-          <button
-            onClick={() => avanzar(porUnidad)}
-            disabled={grupo.obligatorio && faltaEnEste}
-            className="ml-auto px-6 h-12 rounded-xl bg-marca text-sobre-marca text-[14px] font-black disabled:opacity-30 active:scale-95 transition-transform duration-75"
-          >
-            {paso + 1 < grupos.length ? 'Siguiente' : 'Confirmar'}
-          </button>
-        )}
+        {/* Seguir o confirmar, **siempre a la vista**.
+
+            Estuvo un tiempo solo en los grupos de varias opciones, con el
+            argumento de que los excluyentes ya avanzan con el toque. Dejó de
+            valer cuando las opciones empezaron a llegar premarcadas: el combo
+            normal no necesita que se toque nada, y sin este botón no había
+            forma de decir que está bien así. */}
+        <button
+          onClick={() => avanzar(porUnidad)}
+          disabled={grupo.obligatorio && faltaEnEste}
+          className="ml-auto px-6 h-12 rounded-xl bg-marca text-sobre-marca text-[14px] font-black disabled:opacity-30 active:scale-95 transition-transform duration-75"
+        >
+          {paso + 1 < grupos.length
+            ? 'Siguiente'
+            : unidad + 1 < cantidad
+              ? `Siguiente combo (${unidad + 2} de ${cantidad})`
+              : 'Confirmar'}
+        </button>
       </div>
     </div>
   );

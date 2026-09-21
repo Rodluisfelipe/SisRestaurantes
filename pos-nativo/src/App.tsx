@@ -37,10 +37,7 @@ import ModalCliente from './ModalCliente';
 import ModalRecompensas from './ModalRecompensas';
 import CatalogoCuadrante, { COLUMNAS_POR_MODO } from './CatalogoCuadrante';
 import RejillaInGridExtras from './RejillaInGridExtras';
-import SelectorVariante, { enVariante, variantesDe } from './SelectorVariante';
-import {
-  derivar, predeterminadas, preseleccionarTamano, reconstruirElegidas, type Elegidas,
-} from './reglasExtras';
+import { predeterminadas, reconstruirElegidas, type Elegidas } from './reglasExtras';
 import { useSpeedOfService } from './hooks/useSpeedOfService';
 import {
   agregarAlCarrito, brutoDe, fijarCantidad, lineaDeRecompensa, quitarLineasDeRecompensa,
@@ -329,9 +326,7 @@ function Caja({
      comandada —que es el lado seguro: pide autorización de más, nunca de
      menos—. */
   const [comandadas, setComandadas] = useState(0);
-  /* La presentación que el cajero dejó puesta: "Mediana", "Litro", lo que el
-     negocio haya escrito. Vacío = cada producto entra como esté en su casilla. */
-  const [variante, setVariante] = useState('');
+
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [verCliente, setVerCliente] = useState(false);
   const [verRecompensas, setVerRecompensas] = useState(false);
@@ -506,20 +501,6 @@ function Caja({
   /* Lo que de verdad se cobra. Rust vuelve a hacer esta resta al guardar —es
      él quien manda— pero la pantalla tiene que mostrar la cifra correcta desde
      que se autoriza el descuento. */
-  /* Las presentaciones que hay en lo que se está mostrando ahora mismo.
-
-     Se recalcula con el catálogo filtrado y no una sola vez al arrancar:
-     las bebidas vienen en tres tamaños y los postres en ninguno, así que
-     el conmutador tiene que aparecer y desaparecer con la categoría. */
-  const variantesDisponibles = useMemo(() => variantesDe(productos), [productos]);
-
-  /* Una presentación que ya no existe en lo que se ve no puede quedarse
-     puesta: el cajero pasa de Bebidas a Postres y, sin esto, seguiría
-     marcando con [Litro] señalado sin que ningún botón lo muestre. */
-  useEffect(() => {
-    if (variante && !variantesDisponibles.includes(variante)) setVariante('');
-  }, [variante, variantesDisponibles]);
-
   const aCobrar = Math.max(0, total - descuento.monto);
   const { falta, vuelto } = useMemo(() => repartir(aCobrar, vistaPago), [aCobrar, vistaPago]);
   const entregado = useMemo(
@@ -569,51 +550,32 @@ function Caja({
     if (ahora - ultimoToque.current < 150) return;
     ultimoToque.current = ahora;
 
-    /* La presentación puesta manda sobre la casilla: con [Mediana] elegida,
-       tocar "Gaseosa" marca la mediana. Si este producto no viene en esa
-       presentación —hay gaseosa mediana pero no hay pan mediano— entra tal
-       cual, que es lo que el cajero espera al tocar el pan. */
-    const cual = enVariante(p, variante, productos);
-    const grupos = Array.isArray(cual.extras) ? cual.extras : [];
-
-    /* El tamaño puesto en la columna, ya resuelto dentro de los extras. Con
-       [Mediano] elegido, ese grupo llega marcado y al cajero solo le queda
-       decir papas y bebida. Devuelve null si este producto no tiene ese
-       tamaño, y entonces no hay nada que preseleccionar. */
-    const conTamano = preseleccionarTamano(grupos, variante) ?? undefined;
+    const grupos = Array.isArray(p.extras) ? p.extras : [];
 
     if (!grupos.length) {
-      agregar(cual);
+      agregar(p);
       return;
     }
 
-    /* Los obligatorios, resueltos con la opción estándar.
+    /* Con extras, la rejilla se transforma y se eligen las N unidades ahí
+       mismo.
 
-       Aquí está el cambio que quita el cuello de botella: el combo entra con
-       sus papas y su gaseosa sin abrir nada. Si el cliente quiere otra cosa,
-       el cajero toca [Modificar] sobre la línea, que es el 20 % de las veces
-       en lugar del 100 %. */
-    const resueltos = derivar(grupos, predeterminadas(grupos, conTamano ?? {}));
+       Durante un tiempo los obligatorios entraban resueltos con la opción
+       estándar y no se preguntaba nada. Ahorraba toques, pero deja al cajero
+       sin ver qué bebida lleva cada combo hasta después de marcarlo, y con
+       tres combos iguales en pantalla no hay forma de saber cuál es cuál.
 
-    if (resueltos.faltan.length === 0) {
-      agregar(cual, resueltos.extras, resueltos.sobreprecio);
-      return;
-    }
-
-    /* Queda algo que ningún defecto puede resolver: un grupo obligatorio de
-       varias opciones, donde el negocio dijo "elige las que quieras" y no hay
-       una respuesta estándar que adivinar. Ahí sí hay que preguntar —y se
-       pregunta **en la rejilla**, no encima de ella. */
-    const partida = predeterminadas(grupos, conTamano ?? {});
-
+       Ahora se abre siempre, pero **ya marcado con lo estándar**: el combo
+       normal se confirma de un toque y el distinto se cambia tocando la
+       opción. Se ve lo que se está vendiendo sin pagar el precio de elegirlo
+       todo desde cero. */
     setEnGrid({
-      producto: cual,
+      producto: p,
       cantidad: multiplicador,
-      grupos: pendientesDe(grupos, partida),
-      inicial: partida,
+      grupos: gruposQuePreguntar(grupos),
+      inicial: predeterminadas(grupos),
       linea: null,
-    });
-  };
+    });  };
 
   const agregar = (p: Producto, extras: ExtraElegido[] = [], sobreprecio = 0) => {
     /* Cómo se agrupa vive en `carrito.ts`, no acá: es aritmética que decide
@@ -740,18 +702,19 @@ function Caja({
     });
   };
 
-  /* Qué grupos hay que preguntar de verdad, dado lo que ya está resuelto.
+  /* Qué grupos se le muestran al cajero.
 
-     Con los defectos puestos, de un combo normal no queda ninguno y la rejilla
-     no se transforma: el combo entra y el cajero sigue marcando. Lo que llega
-     aquí son los grupos de varias opciones, donde no hay estándar que adivinar. */
-  const pendientesDe = (grupos: GrupoExtra[], puestas: Elegidas): GrupoExtra[] => {
-    const faltan = derivar(grupos, puestas).faltan;
-    return grupos.filter(
-      (g) => faltan.includes(g.nombre)
-        || (g.subgrupos || []).some((sg) => faltan.includes(sg.titulo || g.nombre)),
+     Todos los que tengan opciones, resueltos o no: el punto de abrir la
+     rejilla es **ver** qué lleva cada unidad, y un grupo escondido porque ya
+     tenía respuesta es justo el que después nadie sabe qué trae.
+
+     Los que no tienen ninguna opción sí se saltan: serían una pantalla vacía
+     con un botón de seguir. */
+  const gruposQuePreguntar = (grupos: GrupoExtra[]): GrupoExtra[] =>
+    grupos.filter(
+      (g) => (g.opciones || []).length > 0
+        || (g.subgrupos || []).some((sg) => (sg.opciones || []).length > 0),
     );
-  };
 
   /** Si esta línea ya salió hacia la cocina. En mostrador, nunca. */
   const yaComandada = (indice: number) => Boolean(enCuenta) && indice < comandadas;
@@ -1781,17 +1744,6 @@ function Caja({
               </button>
             ))}
           </div>
-
-          {/* El tamaño o la presentación, para no abrir un modal por algo
-              que se decide con un toque. Las opciones salen del catálogo que
-              se está viendo: en este sistema la variante es texto libre del
-              comerciante, así que un [S][M][L] fijo sería un control muerto.
-              Ver `SelectorVariante`. */}
-          <SelectorVariante
-            variantes={variantesDisponibles}
-            elegida={variante}
-            onElegir={setVariante}
-          />
 
           {rubros.length > 1 && (
             <span className="flex-shrink-0 text-[10.5px] font-black text-slate-400 uppercase tracking-wide px-1">
