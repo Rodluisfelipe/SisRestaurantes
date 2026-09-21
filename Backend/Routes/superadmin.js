@@ -10,6 +10,7 @@ const PaymentRequest = require('../Models/PaymentRequest');
 const Subscription = require('../Models/Subscription');
 const AuditLog = require('../Models/AuditLog');
 const { audit } = require('../utils/auditLog');
+const Admin = require('../Models/Admin');
 const { Worker } = require('../Models/Worker');
 const CrewWalletTxn = require('../Models/CrewWalletTxn');
 const CrewWithdrawalRequest = require('../Models/CrewWithdrawalRequest');
@@ -97,6 +98,120 @@ router.patch('/business/:id/marketplace', requireRole('admin'), async (req, res)
   } catch (error) {
     logger.error('Error toggling marketplace visibility', error);
     res.status(500).json({ message: 'Error al cambiar la visibilidad' });
+  }
+});
+
+/* ── Negocios de un mismo dueño ─────────────────────────────────────────
+
+   Distinto de las marcas con sucursales, y por eso no reutiliza
+   `/api/brands/:id/assign`.
+
+   Esa ruta existe para locales gemelos: además de dar acceso, pone
+   `brandId`, `isMainBranch`, `useSharedMenu` y `mainBranchId`. Usarla para
+   una pizzería y una heladería del mismo dueño las convertiría en
+   sucursales la una de la otra: el panel las listaría bajo "Sucursales" y
+   la lógica de menú compartido empezaría a aplicarles.
+
+   Aquí solo se da **acceso**. Nada de lo que hace a una sucursal una
+   sucursal se toca.  */
+
+/** GET /api/superadmin/duenos/:adminId — a qué negocios entra este dueño. */
+router.get('/duenos/:adminId', requireRole('support'), async (req, res) => {
+  try {
+    const admin = await Admin.findById(
+      req.params.adminId,
+      'username email role businessId accessibleBusinessIds brandId',
+    ).lean();
+    if (!admin) return res.status(404).json({ message: 'Cuenta no encontrada' });
+
+    const ids = [...new Set([
+      ...(admin.accessibleBusinessIds || []).map(String),
+      ...(admin.businessId ? [String(admin.businessId)] : []),
+    ])];
+
+    const negocios = await BusinessConfig.find(
+      { _id: { $in: ids } },
+      'businessName slug city isActive',
+    ).lean();
+
+    res.json({ admin, negocios });
+  } catch (error) {
+    logger.error('Error leyendo los negocios del dueño', error);
+    res.status(500).json({ message: 'Error al consultar' });
+  }
+});
+
+/* PUT /api/superadmin/duenos/:adminId/negocios — a qué negocios entra.
+ *
+ * Reemplaza la lista entera, no suma: es lo que hace que quitar un negocio
+ * sea posible sin una segunda ruta.
+ *
+ * Pone `role: 'brand_admin'` porque es la bandera que el login ya mira para
+ * ofrecer el cambio de negocio. El nombre del rol viene de cuando esto solo
+ * servía para marcas con sucursales; renombrarlo tocaría media docena de
+ * sitios y no cambiaría nada de lo que hace. */
+router.put('/duenos/:adminId/negocios', requireRole('admin'), async (req, res) => {
+  try {
+    const pedidos = Array.isArray(req.body.negocios) ? req.body.negocios.map(String) : [];
+
+    if (!pedidos.length) {
+      return res.status(400).json({ message: 'Manda al menos un negocio' });
+    }
+
+    /* Que existan de verdad. Un id inventado dejaría al dueño con una
+       entrada a un negocio fantasma, y el síntoma —una tarjeta que no
+       carga— no diría de dónde vino. */
+    const existentes = await BusinessConfig.find(
+      { _id: { $in: pedidos } },
+      '_id businessName',
+    ).lean();
+
+    if (existentes.length !== pedidos.length) {
+      return res.status(400).json({
+        message: 'Alguno de los negocios no existe',
+        motivo: 'negocio_inexistente',
+      });
+    }
+
+    const admin = await Admin.findById(req.params.adminId);
+    if (!admin) return res.status(404).json({ message: 'Cuenta no encontrada' });
+
+    /* `businessId` es el negocio con el que entra por defecto. Se conserva si
+       sigue en la lista; si lo quitaron, pasa a ser el primero de los nuevos,
+       porque un dueño cuyo negocio por defecto ya no es suyo no podría
+       iniciar sesión. */
+    const sigue = admin.businessId && pedidos.includes(String(admin.businessId));
+
+    admin.accessibleBusinessIds = pedidos;
+    admin.role = 'brand_admin';
+    if (!sigue) admin.businessId = pedidos[0];
+
+    await admin.save();
+
+    await audit(req, 'duenos.negocios', {
+      adminId: String(admin._id),
+      negocios: existentes.map((b) => b.businessName),
+    });
+
+    logger.info('Negocios de un dueño actualizados', {
+      adminId: String(admin._id),
+      cuantos: pedidos.length,
+    });
+
+    res.json({
+      ok: true,
+      admin: {
+        _id: admin._id,
+        username: admin.username,
+        role: admin.role,
+        businessId: admin.businessId,
+        accessibleBusinessIds: admin.accessibleBusinessIds,
+      },
+      negocios: existentes,
+    });
+  } catch (error) {
+    logger.error('Error asociando negocios a un dueño', error);
+    res.status(500).json({ message: 'Error al asociar' });
   }
 });
 
