@@ -265,6 +265,48 @@ describe('reconocer el grupo que hace de tamaño', () => {
     }
   });
 
+  it('la bandera del panel manda sobre el nombre', () => {
+    /* Es el punto del campo nuevo: el dueño llamó a su grupo
+       "Presentaciones" —que no está en ninguna lista— y lo marcó. Eso es lo
+       que dijo, y vale más que cualquier deducción nuestra. */
+    const marcado: GrupoExtra = {
+      ...grupo('g-pres', 'Presentaciones', [
+        { nombre: 'Personal', precio: 0 },
+        { nombre: 'Familiar', precio: 5000 },
+      ]),
+      es_combo: true,
+    };
+
+    expect(grupoDeTamano([marcado])?.id).toBe('g-pres');
+  });
+
+  it('la bandera gana cuando hay dos candidatos', () => {
+    /* Un negocio con un grupo llamado "Combo" que son adiciones, y otro
+       marcado de verdad. Sin prioridad, la heurística se llevaría el
+       equivocado por estar primero. */
+    const senuelo = grupo('g-falso', 'Combo', [{ nombre: 'Tocineta', precio: 3000 }]);
+    const real: GrupoExtra = {
+      ...grupo('g-real', 'Presentaciones', [{ nombre: 'Personal', precio: 0 }]),
+      es_combo: true,
+    };
+
+    expect(grupoDeTamano([senuelo, real])?.id).toBe('g-real');
+  });
+
+  it('sin bandera sigue funcionando el nombre', () => {
+    /* La red para los negocios que todavía no han marcado nada: el campo
+       acaba de existir y nadie ha entrado al panel a tocarlo. */
+    expect(grupoDeTamano([tamano('Tamaño')])?.id).toBe('g-t');
+  });
+
+  it('un grupo múltiple marcado como combo tampoco cuenta', () => {
+    /* La bandera dice "esto es el tamaño", no "sáltate las reglas". Un
+       tamaño sigue siendo excluyente. */
+    const mal: GrupoExtra = { ...tamano('Presentaciones', true), es_combo: true };
+
+    expect(grupoDeTamano([mal])).toBeNull();
+  });
+
   it('ignora un grupo que no es de tamaño', () => {
     /* La convención es por nombre y tiene que fallar hacia "no es": confundir
        las salsas con el tamaño pondría el conmutador de la columna lleno de

@@ -14,6 +14,7 @@ function ToppingGroupsManager() {
     basePrice: 0,
     isMultipleChoice: false,
     isRequired: false,
+    esCombo: false,
     options: [],
     subGroups: []
   });
@@ -194,6 +195,7 @@ function ToppingGroupsManager() {
       basePrice: 0,
       isMultipleChoice: false,
       isRequired: false,
+      esCombo: false,
       options: [],
       subGroups: []
     });
@@ -388,6 +390,27 @@ function ToppingGroupsManager() {
                         <div className="flex-1 min-w-0">
                           <span className="text-xs font-medium text-slate-700 block">Obligatorio</span>
                           <span className="text-[11px] text-slate-400">Debe elegir al menos una opción</span>
+                        </div>
+                      </label>
+                      {/* Lo que la caja necesita para poner estas opciones en su
+                          botonera de tamaños. Sin esta casilla el POS tenía que
+                          adivinarlo por el nombre del grupo, y adivinar deja fuera
+                          al negocio que lo llamó de otra forma. */}
+                      <label className="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-amber-300 transition-colors sm:col-span-2">
+                        <input
+                          type="checkbox"
+                          checked={currentGroup.esCombo || false}
+                          onChange={(e) => setCurrentGroup({ ...currentGroup, esCombo: e.target.checked })}
+                          className="w-4 h-4 text-amber-500 rounded border-slate-300 focus:ring-amber-500"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs font-medium text-slate-700 block">
+                            Es el tamaño o la presentación
+                          </span>
+                          <span className="text-[11px] text-slate-400">
+                            En la caja, estas opciones salen como botones fijos (Personal /
+                            Mediano / Grande) y se eligen con un toque, sin abrir nada
+                          </span>
                         </div>
                       </label>
                     </div>

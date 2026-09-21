@@ -281,14 +281,30 @@ export function normalizar(texto: string): string {
     .trim();
 }
 
-/** El grupo que representa el tamaño de este producto, si lo hay. */
+/**
+ * El grupo que representa el tamaño de este producto, si lo hay.
+ *
+ * Dos caminos, y el orden importa:
+ *
+ * 1. **La bandera del panel** (`es_combo`). Es lo que el dueño dijo, así que
+ *    manda sobre cualquier deducción. Si marcó un grupo llamado
+ *    "Presentaciones", ese es, aunque el nombre no esté en ninguna lista.
+ * 2. **El nombre**, como red. Ningún negocio ha marcado nada todavía —el
+ *    campo acaba de existir— y quitar la heurística les dejaría la botonera
+ *    vacía hasta que alguien entre al panel a tocar una casilla que no sabe
+ *    que existe. Se puede retirar cuando la adopción lo justifique.
+ *
+ * La condición de excluyente se aplica a los dos caminos: un tamaño no puede
+ * ser mediano y grande a la vez, y un grupo múltiple marcado como combo por
+ * error llenaría la botonera de cosas que no son tamaños.
+ */
 export function grupoDeTamano(grupos: GrupoExtra[]): GrupoExtra | null {
-  for (const g of grupos) {
-    if (g.multiple) continue;
-    if (!(g.opciones || []).length) continue;
-    if (NOMBRES_DE_TAMANO.includes(normalizar(g.nombre))) return g;
-  }
-  return null;
+  const sirve = (g: GrupoExtra) => !g.multiple && (g.opciones || []).length > 0;
+
+  const marcado = grupos.find((g) => g.es_combo === true && sirve(g));
+  if (marcado) return marcado;
+
+  return grupos.find((g) => sirve(g) && NOMBRES_DE_TAMANO.includes(normalizar(g.nombre))) ?? null;
 }
 
 /**

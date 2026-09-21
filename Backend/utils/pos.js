@@ -306,6 +306,9 @@ function aplanarCatalogo(productos, categoriasPorId = {}) {
            que hacen que una comanda llegue completa a la cocina. */
         multiple: g.isMultipleChoice === true,
         obligatorio: g.isRequired === true,
+        /* Si el dueño marcó este grupo como el tamaño del producto. La caja
+           pone sus opciones en la botonera del mostrador. */
+        es_combo: g.esCombo === true,
         precio_base: Math.round(Number(g.basePrice) || 0),
         opciones: (Array.isArray(g.options) ? g.options : [])
           .filter((o) => o && o.active !== false && o.name)

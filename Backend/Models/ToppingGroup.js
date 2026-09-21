@@ -73,6 +73,24 @@ const toppingGroupSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  /* Este grupo es el tamaño o la presentación del producto.
+
+     Lo marca el dueño en el panel y la caja lo lee para poner sus opciones
+     en la botonera de tamaños del mostrador: con [Mediano] puesto, tocar la
+     gaseosa marca la mediana sin abrir nada.
+
+     Existe porque la caja lo venía adivinando por el nombre del grupo
+     —'Tamaño', 'Combo', 'Porción'— y adivinar siempre deja bordes sueltos:
+     el negocio que llama a su grupo 'Presentaciones' no aparecía, y el que
+     llama 'Combo' a un grupo de adiciones aparecía mal.
+
+     Por defecto `false`: un grupo que nadie marcó no debe colarse en esa
+     botonera. La heurística por nombre sigue viva en la caja como red para
+     los negocios que todavía no han marcado nada. */
+  esCombo: {
+    type: Boolean,
+    default: false
+  },
   // Opciones directas en el grupo principal
   options: [toppingOptionSchema],
   // Subgrupos

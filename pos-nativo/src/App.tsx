@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CircleUser, CloudCheck, CloudOff, Gift, Inbox, Minus, Monitor,
   LayoutGrid, MessageSquarePlus, PauseCircle, Percent, Plus, Presentation, Printer, RefreshCw, ScanLine,
-  Pencil, Star, Timer, Trash2, Undo2, UserPlus, UtensilsCrossed, Volume2, VolumeX, Wallet, X,
-  XCircle,
+  LayoutList, Pencil, Star, Timer, Trash2, Undo2, UserPlus, UtensilsCrossed, Volume2, VolumeX,
+  Wallet, X, XCircle,
 } from 'lucide-react';
 import { type EstadoCliente } from './nativo';
 import {
@@ -14,8 +14,10 @@ import {
   listarPausadas, mostrarAlCliente, pausarVenta, pesos, reimprimir, retomarVenta, salir,
   registrarDescuento, repartir, sincronizar, turnoActivo,
   canjearRecompensa, productoPorId, recompensas as listarRecompensas,
+  guardarModoVista, modoVista as leerModoVista, type ModoVista,
   type CierreTurno, type Cliente, type Cobro, type Cuenta, type EnEspera, type ExtraElegido,
-  type LineaDevolvible, type LineaVenta, type PagoDetalle, type Producto, type Recompensa,
+  type GrupoExtra, type LineaDevolvible, type LineaVenta, type PagoDetalle, type Producto,
+  type Recompensa,
   type Turno, type Usuario, type VentaBuscada,
 } from './nativo';
 import ModalMotivo from './ModalMotivo';
@@ -25,7 +27,6 @@ import Descuento from './Descuento';
 import Cuentas from './Cuentas';
 import VistaCliente from './VistaCliente';
 import Devolucion from './Devolucion';
-import Extras from './Extras';
 import { activarSonido, bip, error as bipError, sonidoActivo } from './sonido';
 import PantallaPin from './PantallaPin';
 import Impresoras from './Impresoras';
@@ -34,10 +35,10 @@ import Autorizar from './Autorizar';
 import { AbrirTurno, PanelTurno, ResumenCierre } from './Turno';
 import ModalCliente from './ModalCliente';
 import ModalRecompensas from './ModalRecompensas';
-import CatalogoCuadrante from './CatalogoCuadrante';
+import CatalogoCuadrante, { COLUMNAS_POR_MODO } from './CatalogoCuadrante';
+import RejillaInGridExtras from './RejillaInGridExtras';
 import PestanasCategoria from './PestanasCategoria';
 import SelectorVariante, { enVariante, variantesDe } from './SelectorVariante';
-import ModalExtrasBatch from './ModalExtrasBatch';
 import {
   derivar, predeterminadas, preseleccionarTamano, reconstruirElegidas, type Elegidas,
 } from './reglasExtras';
@@ -251,18 +252,24 @@ function Caja({
   /* El producto al que se le están eligiendo los extras. Mientras esté puesto,
      todavía no entró al carrito: si entrara antes, el cajero que cancela la
      pantalla se quedaría con el producto marcado sin sus adiciones. */
-  const [conExtras, setConExtras] = useState<Producto | null>(null);
   /* Lo que ya viene resuelto al abrir el modal: el tamaño que el cajero tiene
      puesto en la columna. Viaja aparte del producto porque depende de lo que
      esté seleccionado en ese momento, no del producto. */
-  const [extrasInicial, setExtrasInicial] = useState<Elegidas | undefined>(undefined);
   /* Varias unidades del mismo producto, esperando configurarse de una. Es lo
      que evita abrir tres modales seguidos cuando el cliente pide tres combos. */
-  const [enLote, setEnLote] = useState<{ producto: Producto; cantidad: number } | null>(null);
   /* La línea que se está personalizando, cuando el modal se abrió desde el
      carrito y no desde la rejilla. Null = lo que se elija entra como línea
      nueva. */
-  const [editando, setEditando] = useState<number | null>(null);
+  /* Con fotos o denso. De la terminal, no del cajero: la pantalla grande del
+     mostrador y la chica de la barra quieren densidades distintas. */
+  const [modo, setModo] = useState<ModoVista>('visual');
+  /* Lo que está pidiendo la rejilla ahora mismo. Mientras esté puesto, el
+     centro muestra opciones en vez de la carta —y las dos columnas laterales
+     siguen a la vista, que es la razón de haber dejado los modales—. */
+  const [enGrid, setEnGrid] = useState<
+    { producto: Producto; cantidad: number; grupos: GrupoExtra[]; inicial: Elegidas; linea: number | null }
+    | null
+  >(null);
   /* El último toque en una tarjeta. Un monitor táctil de mostrador rebota: un
      toque firme genera dos eventos separados por unas decenas de milisegundos,
      y el cliente termina pagando dos cafés. */
@@ -441,6 +448,15 @@ function Caja({
 
   useEffect(() => { carpetaFotos().then(setCarpeta).catch(() => {}); }, []);
 
+  useEffect(() => { leerModoVista().then(setModo).catch(() => {}); }, []);
+
+  const alternarModo = () => {
+    const otro: ModoVista = modo === 'visual' ? 'compacto' : 'visual';
+    setModo(otro);
+    guardarModoVista(otro).catch(() => {});
+    buscador.current?.focus();
+  };
+
   useEffect(() => { cobroQr().then(setCodigoQr).catch(() => {}); }, []);
 
   /* Si el cliente vinculado alcanza para al menos una recompensa, la columna
@@ -587,20 +603,17 @@ function Caja({
 
     /* Queda algo que ningún defecto puede resolver: un grupo obligatorio de
        varias opciones, donde el negocio dijo "elige las que quieras" y no hay
-       una respuesta estándar que adivinar. Ahí sí hay que preguntar.
-
-       Con más de una unidad, las N se configuran en una sola pantalla: tres
-       modales seguidos para tres combos es lo que destruye la fila. */
+       una respuesta estándar que adivinar. Ahí sí hay que preguntar —y se
+       pregunta **en la rejilla**, no encima de ella. */
     const partida = predeterminadas(grupos, conTamano ?? {});
 
-    if (multiplicador > 1) {
-      setEnLote({ producto: cual, cantidad: multiplicador });
-      setExtrasInicial(partida);
-      return;
-    }
-
-    setConExtras(cual);
-    setExtrasInicial(partida);
+    setEnGrid({
+      producto: cual,
+      cantidad: multiplicador,
+      grupos: pendientesDe(grupos, partida),
+      inicial: partida,
+      linea: null,
+    });
   };
 
   const agregar = (p: Producto, extras: ExtraElegido[] = [], sobreprecio = 0) => {
@@ -717,9 +730,28 @@ function Caja({
       return;
     }
 
-    setEditando(indice);
-    setConExtras(producto);
-    setExtrasInicial(reconstruirElegidas(grupos, linea.extras ?? []));
+    /* Todos los grupos, no solo los pendientes: el cajero viene a cambiar
+       algo que **ya está elegido**, así que tiene que poder tocarlo. */
+    setEnGrid({
+      producto,
+      cantidad: 1,
+      grupos,
+      inicial: reconstruirElegidas(grupos, linea.extras ?? []),
+      linea: indice,
+    });
+  };
+
+  /* Qué grupos hay que preguntar de verdad, dado lo que ya está resuelto.
+
+     Con los defectos puestos, de un combo normal no queda ninguno y la rejilla
+     no se transforma: el combo entra y el cajero sigue marcando. Lo que llega
+     aquí son los grupos de varias opciones, donde no hay estándar que adivinar. */
+  const pendientesDe = (grupos: GrupoExtra[], puestas: Elegidas): GrupoExtra[] => {
+    const faltan = derivar(grupos, puestas).faltan;
+    return grupos.filter(
+      (g) => faltan.includes(g.nombre)
+        || (g.subgrupos || []).some((sg) => faltan.includes(sg.titulo || g.nombre)),
+    );
   };
 
   /** Si esta línea ya salió hacia la cocina. En mostrador, nunca. */
@@ -1029,10 +1061,10 @@ function Caja({
      foco mientras hay algo abierto, y que lo recupere al cerrarse. Cada modal
      ya devuelve el foco al cerrar; esto lo quita al abrir. */
   const hayModal =
-    cobrandoAhora || conExtras !== null || enLote !== null || anulando !== null || pidiendoDescuento ||
+    cobrandoAhora || anulando !== null || pidiendoDescuento ||
     porAutorizar !== null || anotando !== null || pidiendoGaveta || descartando !== null ||
     pidiendoDevolucion || devolucionPorAutorizar !== null || verImpresoras || verNube ||
-    verTurno || verEspera || verCliente || verRecompensas;
+    verTurno || verEspera || verCliente || verRecompensas || enGrid !== null;
 
   useEffect(() => {
     if (hayModal) buscador.current?.blur();
@@ -1058,6 +1090,7 @@ function Caja({
         if (lineaActiva !== null) anularLinea(lineaActiva);
       }
       if (e.key === 'F5') { e.preventDefault(); pausar(); }
+      if (e.key === 'F9') { e.preventDefault(); alternarModo(); }
       if (e.key === 'F7') {
         e.preventDefault();
         if (lineaActiva !== null) modificarLinea(lineaActiva);
@@ -1241,6 +1274,15 @@ function Caja({
           title="Mostrar el pedido en la pantalla del cliente"
         >
           Cliente
+        </BotonBarra>
+
+        <BotonBarra
+          icono={LayoutList}
+          activo={modo === 'compacto'}
+          onClick={alternarModo}
+          title="Cambiar entre carta con fotos y carta compacta (F9)"
+        >
+          {modo === 'compacto' ? 'Compacto' : 'Fotos'}
         </BotonBarra>
 
         <BotonBarra
@@ -1431,78 +1473,6 @@ function Caja({
             Volver a la caja
           </button>
         </div>
-      )}
-
-      {conExtras && (
-        <Extras
-          producto={conExtras}
-          inicial={extrasInicial}
-          onListo={(extras, sobreprecio) => {
-            const cual = conExtras;
-            const indice = editando;
-            setConExtras(null);
-            setExtrasInicial(undefined);
-            setEditando(null);
-
-            if (indice !== null) {
-              /* Reemplaza lo que la línea llevaba, conservando su cantidad: el
-                 cliente cambió de papas, no de cantidad. El precio se recalcula
-                 porque los extras nuevos pueden costar distinto. */
-              setCarrito((c) =>
-                c.map((l, i) =>
-                  i === indice
-                    ? { ...l, precio: cual.precio + sobreprecio, extras }
-                    : l,
-                ),
-              );
-              buscador.current?.focus();
-              return;
-            }
-
-            agregar(cual, extras, sobreprecio);
-          }}
-          onCancelar={() => {
-            setConExtras(null);
-            setExtrasInicial(undefined);
-            setEditando(null);
-            buscador.current?.focus();
-          }}
-        />
-      )}
-
-      {enLote && (
-        <ModalExtrasBatch
-          producto={enLote.producto}
-          cantidad={enLote.cantidad}
-          inicial={extrasInicial}
-          onListo={(unidades) => {
-            const cual = enLote.producto;
-            setEnLote(null);
-            setExtrasInicial(undefined);
-            setCantidadTecleada('');
-
-            /* Cada unidad entra por separado y `agregarAlCarrito` decide si se
-               agrupa: dos combos con exactamente los mismos extras quedan como
-               una línea de 2, y los que difieren quedan sueltos. Esa es la
-               regla que hace que la cocina reciba una comanda legible sin que
-               esta pantalla tenga que saber nada de agrupar. */
-            setCarrito((c) =>
-              unidades.reduce(
-                (acumulado, u) => agregarAlCarrito(acumulado, cual, u.extras, u.sobreprecio),
-                c,
-              ),
-            );
-            setRecien((r) => ({ clave: `${cual.id}${cual.variante}`, vez: r.vez + 1 }));
-            sos.arrancar();
-            bip();
-            buscador.current?.focus();
-          }}
-          onCancelar={() => {
-            setEnLote(null);
-            setExtrasInicial(undefined);
-            buscador.current?.focus();
-          }}
-        />
       )}
 
       {pidiendoDevolucion && (
@@ -1909,14 +1879,59 @@ function Caja({
                   no en una lista lateral que hay que arrastrar. */}
               <PestanasCategoria rubros={rubros} rubro={rubro} onElegir={setRubro} />
 
-              <CatalogoCuadrante
-                productos={productos}
-                carpeta={carpeta}
-                onTocar={tocar}
-                busqueda={busqueda}
-                rubro={rubro}
-                conAtajos={!hayModal}
-              />
+              {enGrid ? (
+                <RejillaInGridExtras
+                  producto={enGrid.producto}
+                  cantidad={enGrid.cantidad}
+                  grupos={enGrid.grupos}
+                  inicial={enGrid.inicial}
+                  /* Cuatro como mucho, aunque la carta compacta use seis.
+                     Las opciones llevan nombre y precio en la misma casilla
+                     y en seis columnas estrechas se recortarían los dos; y
+                     además son pocas, así que la densidad no compra nada. */
+                  columnas={Math.min(4, COLUMNAS_POR_MODO[modo])}
+                  onListo={(unidades) => {
+                    const { producto: cual, linea } = enGrid;
+                    setEnGrid(null);
+                    setCantidadTecleada('');
+
+                    if (linea !== null) {
+                      /* Modificar: reemplaza lo que la línea llevaba y conserva
+                         su cantidad. El cliente cambió de bebida, no de cuántas. */
+                      const u = unidades[0];
+                      setCarrito((c) =>
+                        c.map((l, i) =>
+                          i === linea ? { ...l, precio: cual.precio + u.sobreprecio, extras: u.extras } : l,
+                        ),
+                      );
+                      buscador.current?.focus();
+                      return;
+                    }
+
+                    setCarrito((c) =>
+                      unidades.reduce(
+                        (acc, u) => agregarAlCarrito(acc, cual, u.extras, u.sobreprecio),
+                        c,
+                      ),
+                    );
+                    setRecien((r) => ({ clave: `${cual.id}${cual.variante}`, vez: r.vez + 1 }));
+                    sos.arrancar();
+                    bip();
+                    buscador.current?.focus();
+                  }}
+                  onCancelar={() => { setEnGrid(null); buscador.current?.focus(); }}
+                />
+              ) : (
+                <CatalogoCuadrante
+                  productos={productos}
+                  carpeta={carpeta}
+                  onTocar={tocar}
+                  busqueda={busqueda}
+                  rubro={rubro}
+                  conAtajos={!hayModal}
+                  modo={modo}
+                />
+              )}
             </>
           )}
         </section>

@@ -474,6 +474,49 @@ fn puertos_serie() -> Vec<String> {
     perifericos::puertos_serie()
 }
 
+/* ── Cómo se ve la rejilla ─────────────────────────────────────────────
+
+   Dos comandos propios en vez de un `guardar_ajuste(clave, valor)` genérico.
+   La tabla `ajustes` guarda también el negocio al que responde la caja, la
+   URL de la nube y las marcas de agua del catálogo: una escritura libre
+   desde el webview dejaría todo eso al alcance de cualquier cosa que corra
+   dentro. Dos comandos que solo saben de una clave no tienen esa superficie. */
+
+/// Visual (con fotos) o expandido (denso, sin imágenes).
+#[tauri::command]
+fn modo_vista(estado: State<Estado>) -> String {
+    let Ok(base) = estado.base.lock() else { return "visual".into() };
+    let guardado: String = base
+        .query_row("SELECT valor FROM ajustes WHERE clave = 'modo_vista'", [], |f| f.get(0))
+        .unwrap_or_default();
+
+    if guardado == "compacto" || guardado == "expandido" { "compacto".into() } else { "visual".into() }
+}
+
+/// Guarda cómo prefiere ver la carta esta terminal.
+///
+/// Es de la **terminal y no del cajero**: la pantalla grande del mostrador y
+/// la chica de la barra quieren densidades distintas, y quien las conoce es
+/// quien está parado ahí, no quien entra con su PIN esa tarde.
+#[tauri::command]
+fn guardar_modo_vista(estado: State<Estado>, modo: String) -> Result<(), String> {
+    // Solo los dos que existen: cualquier otra cosa dejaría la rejilla en blanco.
+    /* `expandido` es como se llamaba antes de encoger las casillas. Se sigue
+       aceptando para que una terminal que lo tenía guardado no despierte en
+       modo visual sin que nadie haya tocado nada. */
+    let limpio = if modo == "compacto" || modo == "expandido" { "compacto" } else { "visual" };
+
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    base.execute(
+        "INSERT INTO ajustes (clave, valor) VALUES ('modo_vista', ?1)
+         ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor",
+        rusqlite::params![limpio],
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 /* ── Quién está en la caja ─────────────────────────────────────────────── */
 
 #[tauri::command]
@@ -2391,6 +2434,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             catalogo,
             producto_por_id,
+            modo_vista,
+            guardar_modo_vista,
             categorias,
             carpeta_fotos,
             buscar_clientes,

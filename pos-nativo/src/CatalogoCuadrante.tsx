@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, ScanLine } from 'lucide-react';
 import FotoProducto from './FotoProducto';
-import { pesos, type Producto } from './nativo';
+import { pesos, type ModoVista, type Producto } from './nativo';
+import { colorDeCategoria } from './coloresCategoria';
 
 /**
  * El catálogo como una rejilla que no se mueve.
@@ -30,8 +31,39 @@ import { pesos, type Producto } from './nativo';
  * equipo, no cuántos productos haya.
  */
 
-/** Las columnas son cuatro siempre: es lo que cabe con celdas cuadradas. */
-const COLUMNAS = 4;
+/* Cuántas casillas caben según el modo.
+
+   En visual la casilla lleva foto y necesita alto; en expandido es un
+   rectángulo de color con el nombre, y ahí caben más en el mismo monitor.
+
+   Los dos son rígidos: el modo decide cuántas, la pantalla decide cuántas
+   filas, y el contenido no decide nada. Una rejilla que se acomoda a cuántos
+   productos haya es una rejilla en la que el cajero no puede memorizar nada. */
+export const COLUMNAS_POR_MODO: Record<ModoVista, number> = {
+  visual: 4,
+  compacto: 6,
+};
+
+/* Alto de una casilla más su separación.
+
+   Los 52 px del compacto no son una cifra estética: es el mínimo que un pulgar
+   acierta en un monitor resistivo descalibrado, que es el que hay en un
+   mostrador. Por debajo de eso la densidad deja de ser una ventaja porque cada
+   toque fallido cuesta más de lo que ahorró ver la carta entera. */
+const ALTO_CASILLA: Record<ModoVista, number> = {
+  visual: 190,
+  compacto: 52,
+};
+
+/* Cuántas filas como mucho.
+
+   Seis por seis son treinta y seis productos de un vistazo: la carta completa
+   de la mayoría de los negocios sin pasar de página, que es exactamente para
+   lo que sirve este modo. */
+const FILAS_MAXIMAS: Record<ModoVista, number> = {
+  visual: 4,
+  compacto: 6,
+};
 
 export default function CatalogoCuadrante({
   productos,
@@ -42,6 +74,7 @@ export default function CatalogoCuadrante({
   rubro,
   /** Se desactivan los atajos mientras hay un modal encima. */
   conAtajos = true,
+  modo = 'visual',
 }: {
   productos: Producto[];
   carpeta: string;
@@ -49,9 +82,11 @@ export default function CatalogoCuadrante({
   busqueda: string;
   rubro: string;
   conAtajos?: boolean;
+  modo?: ModoVista;
 }) {
   const [pagina, setPagina] = useState(0);
   const [filas, setFilas] = useState(3);
+  const COLUMNAS = COLUMNAS_POR_MODO[modo];
 
   /* Cuántas filas caben. Se mide una vez y en cada cambio de tamaño de ventana,
      no en cada render: la rejilla tiene que ser estable mientras se atiende.
@@ -65,12 +100,13 @@ export default function CatalogoCuadrante({
   useEffect(() => {
     const medir = () => {
       const alto = window.innerHeight;
-      setFilas(Math.min(4, Math.max(2, Math.floor((alto - 368) / 190))));
+      const cuantas = Math.floor((alto - 368) / ALTO_CASILLA[modo]);
+      setFilas(Math.min(FILAS_MAXIMAS[modo], Math.max(2, cuantas)));
     };
     medir();
     window.addEventListener('resize', medir);
     return () => window.removeEventListener('resize', medir);
-  }, []);
+  }, [modo]);
 
   const porPagina = COLUMNAS * filas;
   const paginas = Math.max(1, Math.ceil(productos.length / porPagina));
@@ -159,24 +195,50 @@ export default function CatalogoCuadrante({
           <button
             key={p.id + p.variante}
             onClick={() => onTocar(p)}
-            className="relative min-h-0 rounded-xl bg-white border border-slate-200 text-left hover:border-marca active:scale-95 active:border-marca transition-transform duration-75 flex flex-col overflow-hidden"
+            className={`relative min-h-0 text-left active:scale-95 transition-transform duration-75 overflow-hidden ${
+              modo === 'compacto'
+                ? `${colorDeCategoria(p.categoria)} rounded-lg flex items-center gap-1.5 px-2`
+                : 'rounded-xl bg-white border border-slate-200 hover:border-marca active:border-marca flex flex-col'
+            }`}
           >
-            {/* El número de la casilla. Arriba a la izquierda y siempre en el
-                mismo sitio: es una referencia, no una etiqueta que se lee. */}
-            <span className="absolute top-1.5 left-1.5 z-10 flex items-center justify-center min-w-[22px] h-[22px] px-1 rounded-md bg-slate-900/70 text-white text-[11px] font-black tabular-nums backdrop-blur-sm">
-              {i + 1}
-            </span>
+            {modo === 'compacto' ? (
+              /* Una sola línea: número, nombre y precio.
 
-            <div className="flex-1 min-h-0 w-full bg-slate-100">
-              <FotoProducto nombre={p.nombre} archivo={p.foto} carpeta={carpeta} />
-            </div>
+                 En 52 px no caben dos renglones legibles, así que se reparte a
+                 lo ancho. El nombre se recorta con `truncate` y no con
+                 `line-clamp-2`: media palabra cortada al final se entiende, dos
+                 líneas apretadas no se leen. */
+              <>
+                <span className="flex-shrink-0 w-[18px] text-[10px] font-black tabular-nums opacity-60">
+                  {i + 1}
+                </span>
+                <span className="flex-1 min-w-0 text-[12px] font-bold leading-tight truncate">
+                  {p.nombre}{p.variante ? ` · ${p.variante}` : ''}
+                </span>
+                <span className="flex-shrink-0 text-[12px] font-black tabular-nums font-mono">
+                  {pesos(p.precio)}
+                </span>
+              </>
+            ) : (
+              <>
+                {/* El número de la casilla. Arriba a la izquierda y siempre en
+                    el mismo sitio: es una referencia, no algo que se lee. */}
+                <span className="absolute top-1.5 left-1.5 z-10 flex items-center justify-center min-w-[22px] h-[22px] px-1 rounded-md bg-slate-900/70 text-white text-[11px] font-black tabular-nums backdrop-blur-sm">
+                  {i + 1}
+                </span>
 
-            <div className="flex-shrink-0 p-2 flex flex-col gap-0.5">
-              <span className="text-[12.5px] font-semibold leading-tight line-clamp-2">
-                {p.nombre}{p.variante ? ` · ${p.variante}` : ''}
-              </span>
-              <span className="text-[15px] font-black tabular-nums font-mono">{pesos(p.precio)}</span>
-            </div>
+                <div className="flex-1 min-h-0 w-full bg-slate-100">
+                  <FotoProducto nombre={p.nombre} archivo={p.foto} carpeta={carpeta} />
+                </div>
+
+                <div className="flex-shrink-0 p-2 flex flex-col gap-0.5">
+                  <span className="text-[12.5px] font-semibold leading-tight line-clamp-2">
+                    {p.nombre}{p.variante ? ` · ${p.variante}` : ''}
+                  </span>
+                  <span className="text-[15px] font-black tabular-nums font-mono">{pesos(p.precio)}</span>
+                </div>
+              </>
+            )}
           </button>
         ))}
       </div>

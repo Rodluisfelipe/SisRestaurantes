@@ -42,6 +42,14 @@ export interface GrupoExtra {
   nombre: string;
   multiple: boolean;
   obligatorio: boolean;
+  /**
+   * El dueño marcó este grupo como el tamaño o la presentación del producto.
+   *
+   * Cuando viene en `true`, sus opciones van a la botonera de tamaños del
+   * mostrador. Opcional porque las cajas que todavía no han vuelto a bajar
+   * catálogo no lo reciben: ahí manda la heurística por nombre.
+   */
+  es_combo?: boolean;
   /** Lo que cuesta el grupo por sí mismo, aparte de sus opciones. */
   precio_base: number;
   opciones: OpcionExtra[];
@@ -364,6 +372,27 @@ export interface Recompensa {
 export async function buscarClientes(texto: string): Promise<Cliente[]> {
   if (!enTauri) return [];
   return invoke<Cliente[]>('buscar_clientes', { texto });
+}
+
+/** Con fotos, o compacto: botones pequeños y la carta entera de un vistazo. */
+export type ModoVista = 'visual' | 'compacto';
+
+/**
+ * Cómo prefiere ver la carta esta terminal.
+ *
+ * De la terminal y no del cajero: la pantalla grande del mostrador y la chica
+ * de la barra quieren densidades distintas, y eso no cambia con quien entre
+ * con su PIN esa tarde.
+ */
+export async function modoVista(): Promise<ModoVista> {
+  if (!enTauri) return 'visual';
+  const m = await invoke<string>('modo_vista');
+  return m === 'compacto' ? 'compacto' : 'visual';
+}
+
+export async function guardarModoVista(modo: ModoVista): Promise<void> {
+  if (!enTauri) return;
+  await invoke('guardar_modo_vista', { modo });
 }
 
 /**
