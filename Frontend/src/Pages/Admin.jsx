@@ -684,7 +684,7 @@ function Admin() {
                 {activeTab === 'portafolio' && (
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Mi página de negocios" onGoBack={() => setActiveTab('dashboard')}>
-                      <PortafolioManager />
+                      <PortafolioManager businessId={businessId} />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}

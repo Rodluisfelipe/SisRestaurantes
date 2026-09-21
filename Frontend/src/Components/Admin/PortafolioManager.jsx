@@ -10,7 +10,16 @@ import api from '../../services/api';
  * **No toca la configuración de ningún negocio.** Cada uno conserva su panel,
  * su carta, sus precios y sus impresoras. Esto solo los agrupa para mostrarlos.
  */
-export default function PortafolioManager() {
+export default function PortafolioManager({ businessId }) {
+  /* El negocio va como parámetro **para el superadmin**.
+
+     Un dueño normal no lo necesita: su token ya dice a qué negocio entra. El
+     superadmin no —su token es suyo, no de ningún negocio— y `tenantAuth` lo
+     resuelve de `?businessId=`. Sin mandarlo, el servidor no sabe de qué
+     cliente es la página que se está configurando.
+
+     Se manda siempre para no tener dos caminos: al dueño no le estorba. */
+  const conNegocio = (ruta) => (businessId ? `${ruta}?businessId=${businessId}` : ruta);
   const [form, setForm] = useState({
     nombre: '',
     slug: '',
@@ -29,8 +38,8 @@ export default function PortafolioManager() {
 
   useEffect(() => {
     Promise.all([
-      api.get('/portafolios').catch(() => ({ data: { portafolio: null } })),
-      api.get('/portafolios/mios/negocios').catch(() => ({ data: { negocios: [] } })),
+      api.get(conNegocio('/portafolios')).catch(() => ({ data: { portafolio: null } })),
+      api.get(conNegocio('/portafolios/mios/negocios')).catch(() => ({ data: { negocios: [] } })),
     ])
       .then(([mio, negocios]) => {
         setDisponibles(negocios.data.negocios || []);
@@ -49,7 +58,8 @@ export default function PortafolioManager() {
         }
       })
       .finally(() => setCargando(false));
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [businessId]);
 
   /* Entrar y salir de la vitrina. Al entrar se va **al final**: el orden lo
      decide el dueño moviéndolos, no el azar de en qué orden los tocó. */
@@ -78,7 +88,7 @@ export default function PortafolioManager() {
     setError('');
     setAviso('');
     try {
-      await api.put('/portafolios', form);
+      await api.put(conNegocio('/portafolios'), form);
       setAviso('Guardado');
       window.setTimeout(() => setAviso(''), 4000);
     } catch (e) {
