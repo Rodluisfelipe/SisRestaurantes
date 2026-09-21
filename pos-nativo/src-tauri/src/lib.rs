@@ -1011,6 +1011,45 @@ fn mover_efectivo(
     Ok(())
 }
 
+/// Anota que se quitó una línea que todavía era borrador.
+///
+/// No pide nada y no puede fallar hacia afuera: el cajero ya quitó la línea en
+/// la pantalla y la fila sigue avanzando. Si el registro falla, queda en el log
+/// de la app —igual que cualquier otra excepción— pero la caja no se detiene.
+///
+/// Que exista este registro es lo que permite que el arqueo cuente el patrón:
+/// marcar diez productos y borrarlos antes de cobrar es como se ve un cobro de
+/// palabra sin registro fiscal, y sin contarlo no se ve nunca.
+#[tauri::command]
+fn anular_borrador(estado: State<Estado>, detalle: String, monto: i64) {
+    anotar_excepcion(
+        &estado,
+        auditoria::TipoExcepcion::AnularBorrador,
+        &detalle,
+        monto.max(0),
+        "Quitado antes de mandar a cocina",
+        "",
+    );
+}
+
+/// Imprime el acta del cierre.
+///
+/// Va aparte de `cerrar_turno` a propósito: el turno tiene que quedar cerrado
+/// aunque la impresora esté sin papel. Si el cierre dependiera de imprimir, un
+/// rollo acabado a las once de la noche dejaría la caja con el turno abierto y
+/// al cajero sin poder irse.
+#[tauri::command]
+async fn imprimir_arqueo(app: tauri::AppHandle, cierre: turnos::CierreTurno) -> Result<(), String> {
+    let (config, negocio) = {
+        let estado = app.state::<Estado>();
+        let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+        let quien = estado.negocio.lock().ok().map(|n| n.clone()).unwrap_or_default();
+        (perifericos::leer_config(&base, "caja"), quien)
+    };
+
+    imprimir(config.impresora, turnos::tirilla_arqueo(&cierre, &negocio, config.ancho)).await
+}
+
 /// Cierra el turno con lo que el cajero contó.
 ///
 /// El conteo entra como parámetro y el esperado se calcula después: no existe
@@ -2317,6 +2356,8 @@ pub fn run() {
             abrir_turno,
             mover_efectivo,
             cerrar_turno,
+            anular_borrador,
+            imprimir_arqueo,
             pausar_venta,
             listar_pausadas,
             guardar_en_cuenta,

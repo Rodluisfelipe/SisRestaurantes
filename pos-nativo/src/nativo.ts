@@ -695,6 +695,21 @@ export interface CierreTurno {
   devoluciones_efectivo: number;
   /** Veces que se abrió la gaveta sin una venta detrás. */
   aperturas_sin_venta: number;
+  /* ── Auditoría operativa del turno ────────────────────────────────────
+   *
+   * Nada de esto entra en el efectivo esperado: son cosas que no movieron
+   * dinero. Están para que el cierre diga algo más que si la gaveta cuadró.
+   */
+  /** Líneas quitadas antes de mandarlas a cocina. */
+  borradores_anulados: number;
+  borradores_monto: number;
+  /** Líneas anuladas cuando la cocina ya las tenía. */
+  anulaciones_comanda: number;
+  anulaciones_monto: number;
+  /** Lo vendido antes de descuentos, para leer lo anterior en proporción. */
+  venta_bruta: number;
+  /** Este cierre merece una mirada. No bloquea nada. */
+  alerta_borradores: boolean;
 }
 
 /* En modo navegador hay una sesión de mentira para poder diseñar las pantallas
@@ -762,6 +777,12 @@ export async function cerrarTurno(contado: number): Promise<CierreTurno> {
       esperado: 0, contado, diferencia: contado, ventas: 0,
       propina_efectivo: 0, propina_otros: 0, devoluciones_efectivo: 0,
       aperturas_sin_venta: 0,
+      borradores_anulados: 0,
+      borradores_monto: 0,
+      anulaciones_comanda: 0,
+      anulaciones_monto: 0,
+      venta_bruta: 0,
+      alerta_borradores: false,
     };
   }
   return invoke<CierreTurno>('cerrar_turno', { contado });
@@ -859,6 +880,23 @@ export async function anularItem(
 ): Promise<void> {
   if (!enTauri) return;
   await invoke('anular_item', { detalle, monto, motivo, autorizo, cuenta: cuenta ?? null });
+}
+
+/**
+ * Anota que se quitó una línea de borrador.
+ *
+ * Sin autorización y sin motivo: el cajero ya la quitó y la fila avanza. Lo
+ * que importa de esto es el conteo que aparece en el arqueo.
+ */
+export async function anularBorrador(detalle: string, monto: number): Promise<void> {
+  if (!enTauri) return;
+  await invoke('anular_borrador', { detalle, monto });
+}
+
+/** Saca el acta del cierre por la impresora de la caja. */
+export async function imprimirArqueo(cierre: CierreTurno): Promise<void> {
+  if (!enTauri) return;
+  await invoke('imprimir_arqueo', { cierre });
 }
 
 export async function registrarDescuento(

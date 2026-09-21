@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { type EstadoCliente } from './nativo';
 import {
-  abrirCajon, abrirPantallaCliente, anularItem, aplicarMarca, catalogo, cerrarPantallaCliente,
+  abrirCajon, abrirPantallaCliente, anularBorrador, anularItem, aplicarMarca, catalogo, cerrarPantallaCliente,
   abrirCuenta, armarQr, carpetaFotos, categorias, cerrarCuenta, cobrar, cobroQr, descartarPausada,
   devolver, enTauri, estadoSync, qrLlevaMonto,
   guardarEnCuenta, hayPantallaCliente, identidad, imprimirPrecuenta, infoTerminal, listarCuentas,
@@ -38,7 +38,8 @@ import PestanasCategoria from './PestanasCategoria';
 import SelectorVariante, { enVariante, variantesDe } from './SelectorVariante';
 import { useSpeedOfService } from './hooks/useSpeedOfService';
 import {
-  agregarAlCarrito, brutoDe, lineaDeRecompensa, quitarLineasDeRecompensa, rebajaPorRecompensa,
+  agregarAlCarrito, brutoDe, fijarCantidad, lineaDeRecompensa, quitarLineasDeRecompensa,
+  rebajaPorRecompensa,
 } from './carrito';
 
 /** A los 90 segundos sin tocar nada, la caja se bloquea sola. */
@@ -279,6 +280,18 @@ function Caja({
      esto, anular obligaba a bajar la cantidad de a uno —ocho toques para un
      ítem de ocho unidades— antes de llegar siquiera a la autorización. */
   const [lineaActiva, setLineaActiva] = useState<number | null>(null);
+  /* El multiplicador pendiente. 1 = ninguno.
+
+     Es "pre-multiplicador": se teclea **antes** del producto. El cajero pulsa
+     3, toca Empanada, y entran tres. Al revés —tocar y después multiplicar—
+     obligaría a mirar el ticket para confirmar sobre qué línea se está
+     aplicando, y eso es justo el vistazo que se quiere ahorrar.
+
+     Se vuelve solo a 1 después de marcar. Un multiplicador que se queda puesto
+     es la forma más fácil de vender doce empanadas cuando el cliente pidió
+     tres: el cajero lo usó una vez, se le olvidó, y el siguiente producto
+     entró multiplicado sin que nadie lo notara. */
+  const [multiplicador, setMultiplicador] = useState(1);
   /* Cuántas de las líneas que hay en pantalla ya salieron hacia la cocina.
 
      Solo tiene sentido atendiendo una mesa: en mostrador no ha salido nada. Se
@@ -536,7 +549,10 @@ function Caja({
     /* Cómo se agrupa vive en `carrito.ts`, no acá: es aritmética que decide
        cuánto paga el cliente y equivocarse no se ve, así que tiene que poder
        probarse sin montar la caja entera. */
-    setCarrito((c) => agregarAlCarrito(c, p, extras, sobreprecio));
+    const unidades = multiplicador;
+    setCarrito((c) => agregarAlCarrito(c, p, extras, sobreprecio, unidades));
+    // Se gasta al usarse. Ver por qué en la declaración.
+    setMultiplicador(1);
     setRecien((r) => ({ clave: `${p.id}${p.variante}`, vez: r.vez + 1 }));
     /* El primer producto de un carrito vacío es el comienzo real de la venta.
        Llamarlo en cada producto no cuesta nada: el cronómetro ignora los
@@ -578,6 +594,35 @@ function Caja({
     setCarrito((c) => c.map((x, i) => (i === indice ? { ...x, cantidad: x.cantidad + delta } : x)));
   };
 
+  /* Un dígito del multiplicador.
+
+     Hace dos cosas distintas según haya o no una línea señalada, y la
+     diferencia es la que pidió la operación:
+
+     - **Sin línea señalada**: queda pendiente para el siguiente producto.
+     - **Con línea señalada**: le fija la cantidad ahí mismo. Es corregir un
+       "1x" a "4x" sin tocar `+` tres veces.
+
+     Sobre una línea que la cocina ya tiene, no hace nada: cambiarle la
+     cantidad a un plato que ya se está preparando es una anulación disfrazada,
+     y esa tiene su propia puerta con firma de supervisor (F4). */
+  const teclearMultiplicador = (n: number) => {
+    if (lineaActiva !== null && carrito[lineaActiva]) {
+      if (yaComandada(lineaActiva)) {
+        setError('Ese plato ya está en cocina: para cambiarlo, anúlalo con F4');
+        bipError();
+        return;
+      }
+      setCarrito((c) => fijarCantidad(c, lineaActiva, n));
+      setMultiplicador(1);
+      buscador.current?.focus();
+      return;
+    }
+
+    setMultiplicador(n);
+    buscador.current?.focus();
+  };
+
   /** Si esta línea ya salió hacia la cocina. En mostrador, nunca. */
   const yaComandada = (indice: number) => Boolean(enCuenta) && indice < comandadas;
 
@@ -603,6 +648,16 @@ function Caja({
 
     setCarrito((c) => c.filter((_, i) => i !== indice));
     setLineaActiva(null);
+
+    /* Se anota sin pedirle nada al cajero y sin esperar la escritura: la línea
+       ya salió de la pantalla y la fila avanza. Lo que importa de este registro
+       no es la fila suelta sino el conteo que sale en el arqueo —diez productos
+       marcados y borrados antes de cobrar es como se ve un cobro de palabra—. */
+    anularBorrador(
+      `${linea.nombre}${linea.variante ? ` (${linea.variante})` : ''} x${linea.cantidad}`,
+      linea.precio * linea.cantidad,
+    ).catch(() => {});
+
     buscador.current?.focus();
   };
 
@@ -841,6 +896,7 @@ function Caja({
       setRecompensa(null);
       setLineaActiva(null);
       setComandadas(0);
+      setMultiplicador(1);
 
       /* La cuenta se cierra **después** de que la venta quedó registrada. Al
          revés, un fallo al guardar dejaría la mesa borrada y su consumo
@@ -920,6 +976,7 @@ function Caja({
         setRecompensa(null);
         setLineaActiva(null);
         setComandadas(0);
+        setMultiplicador(1);
         /* La venta se canceló: lo medido no vale y no se guarda. Si se
            conservara, la siguiente venta empezaría con el reloj corrido y el
            promedio del día quedaría inflado. */
@@ -1131,6 +1188,63 @@ function Caja({
           {conSonido ? <Volume2 size={16} strokeWidth={2.25} /> : <VolumeX size={16} strokeWidth={2.25} />}
         </button>
       </header>
+
+      {/* ── El multiplicador ───────────────────────────────────────────
+
+          Full width bajo la cabecera y no dentro de una columna: es la fila que
+          el pulgar alcanza sin mover el brazo, y se usa antes de cada producto
+          que lleva más de una unidad.
+
+          Los dígitos **no** están en el teclado físico a propósito. El campo de
+          búsqueda tiene el foco de forma permanente —es lo que hace que el
+          lector de códigos funcione sin configurar nada— y hay productos que se
+          buscan tecleando su código. Un "3" que multiplicara en vez de
+          escribirse rompería ese flujo todos los días. */}
+      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 flex-shrink-0">
+        <span className="text-[10.5px] font-black text-slate-500 uppercase tracking-wide pr-1">
+          Cantidad
+        </span>
+
+        {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => {
+          /* Activo significa dos cosas distintas y el cajero necesita
+             distinguirlas: con una línea señalada, el dígito la va a dejar en
+             esa cantidad; sin ella, queda esperando al siguiente producto. */
+          const esperando = lineaActiva === null && multiplicador === n && n > 1;
+          return (
+            <button
+              key={n}
+              onClick={() => teclearMultiplicador(n)}
+              className={`flex-1 h-9 rounded-lg text-[14px] font-black tabular-nums transition-colors ${
+                esperando
+                  ? 'bg-amber-400 text-amber-950'
+                  : 'bg-slate-700/70 text-slate-200 hover:bg-slate-600'
+              }`}
+            >
+              {n}
+            </button>
+          );
+        })}
+
+        <button
+          onClick={() => { setMultiplicador(1); buscador.current?.focus(); }}
+          title="Cancelar el multiplicador"
+          className="flex-shrink-0 px-3 h-9 rounded-lg bg-slate-700/70 text-slate-300 text-[12px] font-bold hover:bg-slate-600"
+        >
+          C
+        </button>
+
+        {/* Lo que va a pasar, dicho con palabras. Un botón encendido en ámbar
+            no explica por sí solo que el siguiente toque entra por tres. */}
+        {lineaActiva !== null && carrito[lineaActiva] ? (
+          <span className="flex-shrink-0 pl-2 text-[11.5px] font-bold text-slate-400 truncate max-w-[280px]">
+            Cambia la cantidad de {carrito[lineaActiva].nombre}
+          </span>
+        ) : multiplicador > 1 ? (
+          <span className="flex-shrink-0 pl-2 text-[11.5px] font-black text-amber-300">
+            El siguiente producto entra x{multiplicador}
+          </span>
+        ) : null}
+      </div>
 
       {falloImpresion && (
         <div className="absolute bottom-4 left-4 z-40 max-w-md rounded-2xl bg-slate-900 text-white shadow-xl px-4 py-3 flex items-center gap-3">

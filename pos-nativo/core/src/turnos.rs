@@ -64,6 +64,29 @@ pub struct CierreTurno {
     pub propina_otros: Pesos,
     /// Lo devuelto en efectivo durante el turno. Sale de la gaveta.
     pub devoluciones_efectivo: Pesos,
+    /* ── Auditoría operativa del turno ─────────────────────────────────
+
+       Nada de este bloque toca el efectivo esperado, y es a propósito: son
+       cosas que **no movieron dinero**. Están aquí porque el dinero cuadrado
+       no es lo único que hay que mirar al cerrar un turno. */
+    /// Líneas quitadas antes de mandarlas a cocina. Correcciones de tecleo…
+    /// o un cobro de palabra sin registro. La diferencia está en la cantidad.
+    pub borradores_anulados: i64,
+    /// Lo que sumaban esas líneas. No salió de la gaveta: nunca entró.
+    pub borradores_monto: Pesos,
+    /// Líneas anuladas **después** de que la cocina ya las tenía.
+    pub anulaciones_comanda: i64,
+    pub anulaciones_monto: Pesos,
+    /// Lo que se vendió antes de descuentos, para poder leer lo de arriba en
+    /// proporción: cuatro borradores en un turno de dos millones no es lo
+    /// mismo que cuatro en uno de ochenta mil.
+    pub venta_bruta: Pesos,
+    /* Señal de que este cierre merece una mirada.
+
+       No bloquea ni acusa: el turno cierra igual. Es el equivalente del
+       aviso de la gaveta, y se calcula aquí y no en la pantalla para que la
+       tirilla impresa y el panel digan exactamente lo mismo. */
+    pub alerta_borradores: bool,
     /// Cuántas veces se abrió la gaveta sin una venta detrás.
     ///
     /// No es un delito: dar cambio a otro cajero o revisar el fondo son cosas
@@ -280,6 +303,44 @@ fn esperado_de(conexion: &Connection, turno: &Turno) -> Result<CierreTurno> {
         )
         .unwrap_or(0);
 
+    /* Las anulaciones del turno, separadas por si la cocina alcanzó a verlas.
+
+       Las dos en una sola consulta: son la misma tabla y el cierre corre con
+       el cajero esperando frente a la pantalla. */
+    let (borradores, borradores_monto, anuladas, anuladas_monto): (i64, i64, i64, i64) = conexion
+        .query_row(
+            "SELECT
+                COALESCE(SUM(CASE WHEN tipo = 'anular_borrador' THEN 1 ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN tipo = 'anular_borrador' THEN monto ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN tipo = 'anular_item' THEN 1 ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN tipo = 'anular_item' THEN monto ELSE 0 END), 0)
+             FROM auditoria_operaciones WHERE turno_id = ?1",
+            [&turno.id],
+            |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?, f.get(3)?)),
+        )
+        .unwrap_or((0, 0, 0, 0));
+
+    /* Lo vendido antes de descuentos. Es el denominador de la alerta: sin él,
+       el umbral del 10 % no significaría nada. */
+    let bruto: i64 = conexion
+        .query_row(
+            "SELECT COALESCE(SUM(bruto), 0) FROM ventas WHERE turno_id = ?1",
+            [&turno.id],
+            |f| f.get(0),
+        )
+        .unwrap_or(0);
+
+    /* Ámbar por cualquiera de los dos caminos.
+
+       Por cantidad, porque nueve correcciones en un turno ya es un hábito y no
+       un accidente. Y por monto, porque cuatro borradores de doscientos mil en
+       un turno de un millón dicen más que veinte de mil pesos.
+
+       El monto solo cuenta si hubo ventas: en un turno que no vendió nada,
+       cualquier borrador sería "más del 10 %" y la alerta se encendería por
+       una caja que estuvo abierta sin clientes. */
+    let alerta = borradores > 8 || (bruto > 0 && borradores_monto * 10 > bruto);
+
     let esperado = turno.fondo_inicial.0 + ventas_efectivo + entradas - salidas - devuelto.0;
 
     Ok(CierreTurno {
@@ -293,6 +354,12 @@ fn esperado_de(conexion: &Connection, turno: &Turno) -> Result<CierreTurno> {
         propina_otros: Pesos(propina_otros),
         devoluciones_efectivo: devuelto,
         aperturas_sin_venta: aperturas,
+        borradores_anulados: borradores,
+        borradores_monto: Pesos(borradores_monto),
+        anulaciones_comanda: anuladas,
+        anulaciones_monto: Pesos(anuladas_monto),
+        venta_bruta: Pesos(bruto),
+        alerta_borradores: alerta,
         ventas_otros: Pesos(ventas_otros),
         entradas: Pesos(entradas),
         salidas: Pesos(salidas),
@@ -352,12 +419,127 @@ pub fn cerrar(
     Ok(cierre)
 }
 
+/// El acta de arqueo, para la impresora.
+///
+/// Existe porque hasta ahora el cierre solo vivía en la pantalla: el cajero
+/// tocaba "Listo" y el papel no decía nada. En un relevo de turno eso obliga
+/// a confiar en la memoria de quien entregó la caja, y un descuadre que se
+/// discute al día siguiente sin un papel firmado no se resuelve nunca.
+///
+/// Va en el núcleo y no en la capa de Tauri para poder probar el texto sin
+/// una impresora conectada: lo que importa de esta función es **qué dice**.
+pub fn tirilla_arqueo(cierre: &CierreTurno, negocio: &str, ancho: usize) -> Vec<u8> {
+    use crate::escpos::{Alineacion, Tirilla};
+
+    let mut t = Tirilla::nueva(ancho);
+
+    t.alinear(Alineacion::Centro).negrita(true);
+    t.linea(if negocio.is_empty() { "MenuBy POS" } else { negocio });
+    t.linea("CIERRE DE TURNO");
+    t.negrita(false).alinear(Alineacion::Izquierda);
+    t.separador();
+
+    t.par("Cajero", &cierre.cajero);
+    t.par("Abierto", &cierre.abierto_en);
+    t.par("Cerrado", &cierre.cerrado_en);
+    t.par("Ventas", &cierre.ventas.to_string());
+    t.separador();
+
+    t.par("Fondo inicial", &cierre.fondo_inicial.to_string());
+    t.par("Ventas efectivo", &cierre.ventas_efectivo.to_string());
+    t.par("Entradas", &cierre.entradas.to_string());
+    t.par("Salidas", &format!("-{}", cierre.salidas));
+    t.par("Devoluciones", &format!("-{}", cierre.devoluciones_efectivo));
+    t.separador();
+
+    t.negrita(true);
+    t.par("DEBIA HABER", &cierre.esperado.to_string());
+    t.par("CONTADO", &cierre.contado.to_string());
+
+    /* La diferencia con su palabra, no con un signo. Un "-12.000" en un
+       papel que alguien firma se lee mal a las once de la noche; "FALTAN"
+       no se lee mal nunca. */
+    let d = cierre.diferencia;
+    let etiqueta = if d.0 < 0 { "FALTAN" } else if d.0 > 0 { "SOBRAN" } else { "CUADRO" };
+    t.par(etiqueta, &Pesos(d.0.abs()).to_string());
+    t.negrita(false);
+    t.separador();
+
+    /* Lo que no pasó por la gaveta. Va después del cuadre y no antes: quien
+       lee esto de pie busca primero si cuadró. */
+    if cierre.ventas_otros.0 > 0 {
+        t.par("Tarjeta / transferencia", &cierre.ventas_otros.to_string());
+    }
+    if cierre.propina_efectivo.0 > 0 {
+        t.par("Propina en efectivo", &cierre.propina_efectivo.to_string());
+        t.linea("  (esta dentro de lo contado)");
+    }
+    if cierre.propina_otros.0 > 0 {
+        t.par("Propina otros medios", &cierre.propina_otros.to_string());
+    }
+
+    /* ── El bloque de auditoría ───────────────────────────────────────
+
+       Nada de aquí movió dinero, y por eso va aparte y después del cuadre:
+       meterlo entre las cifras invitaría a sumarlo o restarlo, que es
+       justo lo que no hay que hacer.
+
+       Se imprime siempre, incluso en ceros. Un bloque que solo aparece
+       cuando hay algo que esconder le enseña al cajero que su ausencia es
+       lo normal, y el día que aparece ya es tarde. */
+    t.separador();
+    t.negrita(true);
+    t.linea("AUDITORIA OPERATIVA DEL TURNO");
+    t.negrita(false);
+
+    t.par(
+        "Lineas borrador anuladas",
+        &format!("{}  ({})", cierre.borradores_anulados, cierre.borradores_monto),
+    );
+    t.par(
+        "Anulaciones post-comanda",
+        &format!("{}  ({})", cierre.anulaciones_comanda, cierre.anulaciones_monto),
+    );
+    t.par("Aperturas de gaveta", &cierre.aperturas_sin_venta.to_string());
+
+    if cierre.alerta_borradores {
+        /* En mayúsculas y en negrita porque este papel se revisa a ojo en
+           una pila de treinta. No dice que alguien robó: dice que este
+           turno hay que mirarlo. */
+        t.salto();
+        t.negrita(true);
+        t.linea("** REVISAR: BORRADORES POR ENCIMA");
+        t.linea("** DE LO HABITUAL EN ESTE TURNO");
+        t.negrita(false);
+    }
+
+    t.separador();
+    t.alinear(Alineacion::Centro);
+    t.linea("Firma del cajero");
+    t.salto();
+    t.salto();
+    t.linea("____________________");
+    t.salto();
+
+    t.cortar();
+    t.terminar()
+}
+
 #[cfg(test)]
 mod pruebas {
     use super::*;
     use crate::{db, venta};
 
     const AHORA: &str = "2026-09-20T18:00:00-05:00";
+
+    /// Quita una línea de borrador, como lo hace el mostrador.
+    fn anular_borrador(c: &mut Connection, turno: &Turno, monto: i64) {
+        crate::auditoria::registrar(
+            c, &turno.id, crate::auditoria::TipoExcepcion::AnularBorrador,
+            "Café", monto, "Borrador", "Ana", "", AHORA,
+        )
+        .unwrap();
+    }
 
     fn caja_con_turno() -> (Connection, Turno) {
         let c = db::abrir_en_memoria().unwrap();
@@ -684,4 +866,143 @@ mod pruebas {
         assert_eq!(cierre.diferencia, Pesos::CERO, "la caja cuadra");
     }
 
+    #[test]
+    fn los_borradores_anulados_no_tocan_el_efectivo_esperado() {
+        /* Es la regla que no se puede romper: una línea que nunca fue a la
+           cocina ni se cobró no movió un peso de la gaveta. Si entrara en
+           la fórmula, el cajero cerraría con un faltante por haberse
+           equivocado al teclear. */
+        let (mut c, t) = caja_con_turno();
+        vender(&mut c, &t, 50_000, "efectivo");
+
+        let sin_borradores = cerrar(&mut c, Pesos(150_000), AHORA).unwrap();
+        assert_eq!(sin_borradores.diferencia, Pesos::CERO);
+
+        // El mismo turno, pero con cuatro borradores descartados.
+        let (mut c2, t2) = caja_con_turno();
+        vender(&mut c2, &t2, 50_000, "efectivo");
+        for _ in 0..4 {
+            anular_borrador(&mut c2, &t2, 9_000);
+        }
+
+        let con_borradores = cerrar(&mut c2, Pesos(150_000), AHORA).unwrap();
+
+        assert_eq!(con_borradores.esperado, sin_borradores.esperado);
+        assert_eq!(con_borradores.diferencia, Pesos::CERO);
+        // Pero sí quedan contados.
+        assert_eq!(con_borradores.borradores_anulados, 4);
+        assert_eq!(con_borradores.borradores_monto, Pesos(36_000));
+    }
+
+    #[test]
+    fn nueve_borradores_encienden_la_alerta() {
+        /* Ocho pasa; el noveno ya es un hábito y no un accidente. */
+        let (mut c, t) = caja_con_turno();
+        vender(&mut c, &t, 2_000_000, "efectivo");
+        for _ in 0..8 {
+            anular_borrador(&mut c, &t, 1_000);
+        }
+        assert!(!cerrar(&mut c, Pesos(2_100_000), AHORA).unwrap().alerta_borradores);
+
+        let (mut c2, t2) = caja_con_turno();
+        vender(&mut c2, &t2, 2_000_000, "efectivo");
+        for _ in 0..9 {
+            anular_borrador(&mut c2, &t2, 1_000);
+        }
+        assert!(cerrar(&mut c2, Pesos(2_100_000), AHORA).unwrap().alerta_borradores);
+    }
+
+    #[test]
+    fn pocos_borradores_pero_muy_grandes_tambien_alertan() {
+        /* Dos borradores de cien mil en un turno de un millón dicen más que
+           veinte de mil pesos. Por eso hay dos caminos a la alerta. */
+        let (mut c, t) = caja_con_turno();
+        vender(&mut c, &t, 1_000_000, "efectivo");
+        anular_borrador(&mut c, &t, 60_000);
+        anular_borrador(&mut c, &t, 60_000);
+
+        let cierre = cerrar(&mut c, Pesos(1_100_000), AHORA).unwrap();
+
+        assert_eq!(cierre.borradores_anulados, 2);
+        assert!(cierre.alerta_borradores);
+    }
+
+    #[test]
+    fn un_turno_sin_ventas_no_dispara_la_alerta_por_monto() {
+        /* Sin denominador, cualquier borrador sería "más del 10 %". Una caja
+           que estuvo abierta sin clientes no es un turno sospechoso. */
+        let (mut c, t) = caja_con_turno();
+        anular_borrador(&mut c, &t, 500_000);
+
+        let cierre = cerrar(&mut c, Pesos(100_000), AHORA).unwrap();
+
+        assert_eq!(cierre.borradores_anulados, 1);
+        assert!(!cierre.alerta_borradores);
+    }
+
+    #[test]
+    fn el_borrador_y_la_anulacion_de_cocina_se_cuentan_por_separado() {
+        /* Mezclarlas volvería inútil el número: los borradores son cientos al
+           día y las anulaciones post-comanda son las que cuestan plata. */
+        let (mut c, t) = caja_con_turno();
+        vender(&mut c, &t, 100_000, "efectivo");
+        anular_borrador(&mut c, &t, 5_000);
+        crate::auditoria::registrar(
+            &mut c, &t.id, crate::auditoria::TipoExcepcion::AnularItem,
+            "Hamburguesa", 18_000, "Salio mal", "Ana", "Sup", AHORA,
+        )
+        .unwrap();
+
+        let cierre = cerrar(&mut c, Pesos(200_000), AHORA).unwrap();
+
+        assert_eq!(cierre.borradores_anulados, 1);
+        assert_eq!(cierre.borradores_monto, Pesos(5_000));
+        assert_eq!(cierre.anulaciones_comanda, 1);
+        assert_eq!(cierre.anulaciones_monto, Pesos(18_000));
+    }
+
+    #[test]
+    fn el_acta_dice_lo_que_paso_aunque_todo_este_en_cero() {
+        /* El bloque se imprime siempre. Uno que solo aparece cuando hay algo
+           que mirar le enseña al cajero que su ausencia es lo normal. */
+        let (mut c, t) = caja_con_turno();
+        vender(&mut c, &t, 50_000, "efectivo");
+        let cierre = cerrar(&mut c, Pesos(150_000), AHORA).unwrap();
+
+        let papel = String::from_utf8_lossy(&tirilla_arqueo(&cierre, "Mi Negocio", 48)).to_string();
+
+        assert!(papel.contains("AUDITORIA OPERATIVA DEL TURNO"));
+        assert!(papel.contains("Lineas borrador anuladas"));
+        assert!(papel.contains("CUADRO"));
+        assert!(!papel.contains("REVISAR"));
+    }
+
+    #[test]
+    fn el_acta_marca_el_turno_que_hay_que_revisar() {
+        let (mut c, t) = caja_con_turno();
+        vender(&mut c, &t, 100_000, "efectivo");
+        for _ in 0..9 {
+            anular_borrador(&mut c, &t, 1_000);
+        }
+        let cierre = cerrar(&mut c, Pesos(200_000), AHORA).unwrap();
+
+        let papel = String::from_utf8_lossy(&tirilla_arqueo(&cierre, "Mi Negocio", 48)).to_string();
+
+        assert!(papel.contains("REVISAR"));
+    }
+
+    #[test]
+    fn el_acta_dice_faltan_y_no_un_numero_negativo() {
+        /* Un "-12.000" en un papel que alguien firma a las once de la noche
+           se lee mal. "FALTAN" no se lee mal nunca. */
+        let (mut c, t) = caja_con_turno();
+        vender(&mut c, &t, 50_000, "efectivo");
+        let cierre = cerrar(&mut c, Pesos(138_000), AHORA).unwrap();
+
+        let papel = String::from_utf8_lossy(&tirilla_arqueo(&cierre, "Mi Negocio", 48)).to_string();
+
+        assert!(papel.contains("FALTAN"));
+        assert!(papel.contains("12.000"));
+        assert!(!papel.contains("-12.000"));
+    }
 }

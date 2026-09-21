@@ -22,8 +22,20 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TipoExcepcion {
-    /// Se quitó una línea que ya estaba marcada.
+    /// Se quitó una línea que ya estaba marcada y **ya salió a la cocina**.
     AnularItem,
+    /* Se quitó una línea que todavía era borrador: no fue a la cocina, no se
+       imprimió y no movió dinero.
+
+       Tiene su propio tipo y no se mezcla con `AnularItem` por una razón
+       práctica: son cientos al día —el dedo se equivoca— y metidas en la misma
+       bolsa que las anulaciones de verdad volverían inútil el log de
+       excepciones, que es donde se busca cuando algo no cuadra.
+
+       Se registra igualmente, sin pedirle nada al cajero, porque el patrón sí
+       dice algo: marcar diez productos y borrarlos todos antes de cobrar es
+       cómo se ve un cobro de palabra sin registro fiscal. */
+    AnularBorrador,
     /// Descuento puesto a mano sobre el total o sobre una línea.
     Descuento,
     /// Se abrió el cajón sin que hubiera una venta detrás.
@@ -36,6 +48,7 @@ impl TipoExcepcion {
     fn como_texto(&self) -> &'static str {
         match self {
             TipoExcepcion::AnularItem => "anular_item",
+            TipoExcepcion::AnularBorrador => "anular_borrador",
             TipoExcepcion::Descuento => "descuento",
             TipoExcepcion::AbrirCajon => "abrir_cajon",
             TipoExcepcion::DescartarPausada => "descartar_pausada",
@@ -44,9 +57,11 @@ impl TipoExcepcion {
 
     /// ¿Necesita que un supervisor ponga su PIN?
     ///
-    /// Abrir el cajón queda registrado pero no se pide autorización: en plena
-    /// hora pico, pedir un supervisor para dar un cambio paraliza la fila, y el
-    /// registro ya deja ver quién lo abre de más.
+    /// Abrir el cajón y quitar un borrador quedan registrados pero no piden
+    /// autorización: en plena hora pico, llamar a un supervisor por cada dedo
+    /// mal puesto paraliza la fila y convierte la firma en un trámite que se
+    /// da sin leer —que es justo lo que la vuelve inútil cuando hace falta—.
+    /// El conteo en el arqueo es lo que deja ver el patrón.
     pub fn requiere_supervisor(&self) -> bool {
         matches!(self, TipoExcepcion::AnularItem | TipoExcepcion::Descuento)
     }

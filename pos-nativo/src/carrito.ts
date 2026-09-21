@@ -49,7 +49,12 @@ export function agregarAlCarrito(
   producto: Producto,
   extras: ExtraElegido[] = [],
   sobreprecio = 0,
+  /* Cuántas unidades entran de una. Lo pone el multiplicador: el cajero
+     teclea 3 y toca Empanada en vez de tocarla tres veces. Se acota porque
+     el multiplicador es de un dígito y nada más que eso puede llegar aquí. */
+  unidades = 1,
 ): LineaVenta[] {
+  const cuantas = Math.min(99, Math.max(1, Math.floor(unidades) || 1));
   /* El precio de la línea es el precio **como se vendió**: base más extras.
      Que sea así es lo que permite que toda la aritmética de la caja —totales,
      vuelto, arqueo, devoluciones— siga intacta. */
@@ -65,7 +70,7 @@ export function agregarAlCarrito(
 
   if (i >= 0) {
     const copia = [...carrito];
-    copia[i] = { ...copia[i], cantidad: copia[i].cantidad + 1 };
+    copia[i] = { ...copia[i], cantidad: copia[i].cantidad + cuantas };
     return copia;
   }
 
@@ -74,10 +79,36 @@ export function agregarAlCarrito(
     nombre: producto.nombre,
     variante: producto.variante,
     precio,
-    cantidad: 1,
+    cantidad: cuantas,
     nota: '',
     extras,
   }];
+}
+
+/**
+ * Deja una línea en exactamente esta cantidad.
+ *
+ * Es lo que hace el multiplicador cuando hay una línea señalada: el cajero
+ * toca la línea de 1x y teclea 4 para dejarla en 4, en vez de tocar `+` tres
+ * veces. **Fija**, no suma: teclear 4 dos veces seguidas deja 4, no 8, que es
+ * lo que espera quien está corrigiendo una cantidad.
+ */
+export function fijarCantidad(
+  carrito: LineaVenta[],
+  indice: number,
+  cantidad: number,
+): LineaVenta[] {
+  if (indice < 0 || indice >= carrito.length) return carrito;
+
+  /* Nunca baja de uno. Dejar una línea en cero sería quitarla, y quitar una
+     línea pasa por su propia puerta —con autorización si la cocina ya la
+     tiene—; colarse por aquí saltaría ese control. */
+  const cuantas = Math.min(99, Math.max(1, Math.floor(cantidad) || 1));
+  if (carrito[indice].cantidad === cuantas) return carrito;
+
+  const copia = [...carrito];
+  copia[indice] = { ...copia[indice], cantidad: cuantas };
+  return copia;
 }
 
 /** Una línea de producto gratis, entregada por un canje de puntos. */

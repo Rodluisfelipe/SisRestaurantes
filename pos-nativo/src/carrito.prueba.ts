@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  agregarAlCarrito, brutoDe, esRecompensa, lineaDeRecompensa,
+  agregarAlCarrito, brutoDe, esRecompensa, fijarCantidad, lineaDeRecompensa,
   quitarLineasDeRecompensa, rebajaPorRecompensa,
 } from './carrito';
 import type { LineaVenta, Producto, Recompensa } from './nativo';
@@ -126,6 +126,89 @@ describe('cómo se agrupan las líneas del carrito', () => {
     const sinRegalo = quitarLineasDeRecompensa(carrito);
     expect(sinRegalo).toHaveLength(1);
     expect(sinRegalo[0].precio).toBe(5000);
+  });
+});
+
+describe('el multiplicador de cantidad', () => {
+  it('con 3 puesto, tocar el producto mete tres unidades', () => {
+    /* Es todo el punto: tocar tres veces la misma casilla son tres toques
+       y tres rebotes posibles en un monitor resistivo. */
+    const empanada = producto('p3', 3000);
+
+    const carrito = agregarAlCarrito([], empanada, [], 0, 3);
+
+    expect(carrito).toHaveLength(1);
+    expect(carrito[0].cantidad).toBe(3);
+    expect(brutoDe(carrito)).toBe(9000);
+  });
+
+  it('suma sobre lo que ya había de ese producto', () => {
+    const empanada = producto('p3', 3000);
+    const una = agregarAlCarrito([], empanada);
+
+    expect(agregarAlCarrito(una, empanada, [], 0, 3)[0].cantidad).toBe(4);
+  });
+
+  it('sin multiplicador entra una sola, como siempre', () => {
+    /* Las llamadas que ya existían no pasan unidades: tienen que seguir
+       comportándose igual. */
+    expect(agregarAlCarrito([], producto('p3', 3000))[0].cantidad).toBe(1);
+  });
+
+  it('un multiplicador absurdo no entra', () => {
+    /* Cero o negativo dejaría una línea que no se puede cobrar; un número
+       enorme, una venta de un millón de empanadas por un dedo mal puesto. */
+    const empanada = producto('p3', 3000);
+
+    expect(agregarAlCarrito([], empanada, [], 0, 0)[0].cantidad).toBe(1);
+    expect(agregarAlCarrito([], empanada, [], 0, -5)[0].cantidad).toBe(1);
+    expect(agregarAlCarrito([], empanada, [], 0, 9999)[0].cantidad).toBe(99);
+  });
+});
+
+describe('fijar la cantidad de una línea', () => {
+  const dosLineas = () => {
+    const uno = agregarAlCarrito([], producto('p1', 5000));
+    return agregarAlCarrito(uno, producto('p2', 8000));
+  };
+
+  it('deja la línea en esa cantidad exacta, no suma', () => {
+    /* El cajero corrige un 1x a 4x. Teclear 4 dos veces tiene que dejar 4,
+       no 8: quien corrige espera que el número que teclea sea el final. */
+    const carrito = fijarCantidad(dosLineas(), 0, 4);
+
+    expect(carrito[0].cantidad).toBe(4);
+    expect(fijarCantidad(carrito, 0, 4)[0].cantidad).toBe(4);
+  });
+
+  it('no toca las demás líneas', () => {
+    const carrito = fijarCantidad(dosLineas(), 0, 4);
+
+    expect(carrito[1].cantidad).toBe(1);
+    expect(carrito[1].producto_id).toBe('p2');
+  });
+
+  it('nunca deja una línea en cero', () => {
+    /* Dejarla en cero sería quitarla, y quitar una línea pasa por su propia
+       puerta —con autorización si la cocina ya la tiene—. Colarse por aquí
+       saltaría ese control. */
+    expect(fijarCantidad(dosLineas(), 0, 0)[0].cantidad).toBe(1);
+    expect(fijarCantidad(dosLineas(), 0, -3)[0].cantidad).toBe(1);
+  });
+
+  it('un índice que no existe no rompe el carrito', () => {
+    const antes = dosLineas();
+
+    expect(fijarCantidad(antes, 9, 4)).toBe(antes);
+    expect(fijarCantidad(antes, -1, 4)).toBe(antes);
+  });
+
+  it('no muta el carrito que recibe', () => {
+    const antes = dosLineas();
+    const despues = fijarCantidad(antes, 0, 4);
+
+    expect(antes[0].cantidad).toBe(1);
+    expect(despues).not.toBe(antes);
   });
 });
 

@@ -1,5 +1,9 @@
 import { useMemo, useState } from 'react';
-import { abrirTurno, cerrarTurno, moverEfectivo, pesos, type CierreTurno, type Turno, type Usuario } from './nativo';
+import { Printer } from 'lucide-react';
+import {
+  abrirTurno, cerrarTurno, imprimirArqueo, moverEfectivo, pesos,
+  type CierreTurno, type Turno, type Usuario,
+} from './nativo';
 
 /**
  * Abrir el turno: cuánto hay en la gaveta para arrancar.
@@ -283,6 +287,8 @@ export function PanelTurno({
 export function ResumenCierre({ cierre, onListo }: { cierre: CierreTurno; onListo: () => void }) {
   const falta = cierre.diferencia < 0;
   const sobra = cierre.diferencia > 0;
+  const [imprimiendo, setImprimiendo] = useState(false);
+  const [falloPapel, setFalloPapel] = useState('');
 
   return (
     <div className="h-screen flex flex-col items-center justify-center bg-slate-100 gap-4 p-6">
@@ -340,12 +346,62 @@ export function ResumenCierre({ cierre, onListo }: { cierre: CierreTurno; onList
           </p>
         )}
 
+        {/* ── Auditoría operativa ──────────────────────────────────────
+
+            Va después del cuadre y separado por una línea, porque **nada de
+            esto movió dinero**: meterlo entre las cifras invitaría a sumarlo.
+
+            Se muestra siempre, aunque esté en ceros. Un bloque que solo
+            aparece cuando hay algo que mirar le enseña al cajero que su
+            ausencia es lo normal, y el día que aparece ya es tarde. */}
+        <div className="pt-3 mt-2 border-t border-slate-100 space-y-1">
+          <p className="text-[10.5px] font-black text-slate-400 uppercase tracking-wide">
+            Auditoría del turno
+          </p>
+
+          <div className="flex justify-between text-[12px] text-slate-500">
+            <span>Líneas borrador anuladas</span>
+            <span className="tabular-nums">
+              {cierre.borradores_anulados}
+              {cierre.borradores_monto > 0 && ` · ${pesos(cierre.borradores_monto)}`}
+            </span>
+          </div>
+
+          <div className="flex justify-between text-[12px] text-slate-500">
+            <span>Anulaciones post-comanda</span>
+            <span className="tabular-nums">
+              {cierre.anulaciones_comanda}
+              {cierre.anulaciones_monto > 0 && ` · ${pesos(cierre.anulaciones_monto)}`}
+            </span>
+          </div>
+
+          <div className="flex justify-between text-[12px] text-slate-500">
+            <span>Aperturas de gaveta</span>
+            <span className="tabular-nums">{cierre.aperturas_sin_venta}</span>
+          </div>
+
+          <p className="text-[10.5px] text-slate-400 pt-1">
+            Ninguno de estos entra en el efectivo esperado: no movieron plata.
+          </p>
+        </div>
+
         {cierre.aperturas_sin_venta > 5 && (
           /* No acusa a nadie: cuenta. Abrir la gaveta sin vender es normal una
              o dos veces por turno —dar cambio, revisar el fondo—; ocho veces es
              un patrón, y el patrón solo se ve si alguien lo cuenta. */
           <p className="mt-2 px-2 py-1.5 rounded-lg bg-amber-50 text-[11.5px] font-semibold text-amber-800">
             La gaveta se abrió {cierre.aperturas_sin_venta} veces sin una venta detrás.
+          </p>
+        )}
+
+        {cierre.alerta_borradores && (
+          /* El ámbar del enunciado. No bloquea el cierre ni acusa a nadie: dice
+             que este turno hay que mirarlo, y lo dice también en el papel para
+             que no dependa de que alguien estuviera frente a la pantalla. */
+          <p className="mt-2 px-2 py-1.5 rounded-lg bg-amber-50 text-[11.5px] font-semibold text-amber-800">
+            Se anularon {cierre.borradores_anulados} líneas en borrador
+            {cierre.borradores_monto > 0 && ` por ${pesos(cierre.borradores_monto)}`}.
+            Está por encima de lo habitual: vale la pena revisarlo.
           </p>
         )}
       </div>
@@ -355,9 +411,37 @@ export function ResumenCierre({ cierre, onListo }: { cierre: CierreTurno; onList
         desde el panel, con la hora exacta.
       </p>
 
-      <button onClick={onListo} className="w-full max-w-sm h-14 rounded-2xl bg-marca text-sobre-marca font-black">
-        Listo
-      </button>
+      {falloPapel && (
+        <p className="text-[12px] font-semibold text-red-600 max-w-sm text-center">{falloPapel}</p>
+      )}
+
+      <div className="w-full max-w-sm flex gap-2">
+        {/* Imprimir va aparte de cerrar, y el turno ya quedó cerrado antes de
+            llegar a esta pantalla: si el cierre dependiera del papel, un rollo
+            acabado a las once de la noche dejaría al cajero sin poder irse. */}
+        <button
+          onClick={async () => {
+            setImprimiendo(true);
+            setFalloPapel('');
+            try {
+              await imprimirArqueo(cierre);
+            } catch (e) {
+              setFalloPapel(String(e).replace(/^Error:\s*/, ''));
+            } finally {
+              setImprimiendo(false);
+            }
+          }}
+          disabled={imprimiendo}
+          className="flex items-center justify-center gap-2 h-14 px-5 rounded-2xl border-2 border-slate-200 bg-white text-[13px] font-bold text-slate-600 disabled:opacity-40"
+        >
+          <Printer size={18} strokeWidth={2.25} />
+          {imprimiendo ? 'Imprimiendo…' : 'Imprimir acta'}
+        </button>
+
+        <button onClick={onListo} className="flex-1 h-14 rounded-2xl bg-marca text-sobre-marca font-black">
+          Listo
+        </button>
+      </div>
     </div>
   );
 }

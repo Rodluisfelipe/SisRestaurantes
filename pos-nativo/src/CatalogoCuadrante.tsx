@@ -56,13 +56,16 @@ export default function CatalogoCuadrante({
   /* Cuántas filas caben. Se mide una vez y en cada cambio de tamaño de ventana,
      no en cada render: la rejilla tiene que ser estable mientras se atiende.
 
-     El 210 es el alto de una celda más su separación; el 96 lo que ocupan la
-     barra de páginas y los márgenes. Si no cabe ni una fila se fuerza a dos,
-     porque una rejilla de una fila no es una rejilla. */
+     El 190 es el alto de una celda más su separación. El 368 es todo lo que
+     hay por encima y por debajo: cabecera (64), barra de cantidad (48),
+     buscador (48), pestañas de categoría (48), paginación (48) y los márgenes.
+
+     Si no cabe ni una fila se fuerza a dos, porque una rejilla de una fila no
+     es una rejilla: sería una lista con botones de paginar. */
   useEffect(() => {
     const medir = () => {
       const alto = window.innerHeight;
-      setFilas(Math.min(4, Math.max(2, Math.floor((alto - 320) / 190))));
+      setFilas(Math.min(4, Math.max(2, Math.floor((alto - 368) / 190))));
     };
     medir();
     window.addEventListener('resize', medir);
