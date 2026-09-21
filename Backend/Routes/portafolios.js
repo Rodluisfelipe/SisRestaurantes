@@ -43,8 +43,48 @@ function tarjeta(b) {
   };
 }
 
+/**
+ * De quién es el portafolio que se está tocando.
+ *
+ * Casi siempre es quien hizo la petición. La excepción es el superadmin: su
+ * token trae **su** id, que no es el de ningún `Admin`, y buscar negocios con
+ * él no devuelve ninguno.
+ *
+ * Eso importa porque configurarle la página a un cliente desde soporte es
+ * justo lo que alguien va a querer hacer el primer día. `tenantAuth` ya le
+ * resuelve al superadmin el negocio que está mirando, así que el dueño es el
+ * administrador de ese negocio.
+ *
+ * Devuelve `null` cuando no se puede saber —un superadmin que no entró a
+ * ningún negocio— para que quien llama lo diga con palabras en vez de
+ * devolver una lista vacía que parece "no tienes negocios".
+ */
+async function duenoDe(req) {
+  if (!req.user?.isSuperAdmin) return req.user?.id || null;
+
+  const negocio = req.resolvedBusinessId || req.user?.businessId;
+  if (!negocio) return null;
+
+  /* El dueño, no un empleado: `staff` no configura la página del negocio.
+     Se prefiere `brand_admin` porque si ya tiene varios negocios asociados,
+     es el que va a armar la vitrina. */
+  const dueno = await Admin.findOne(
+    {
+      role: { $in: ['brand_admin', 'admin'] },
+      $or: [{ businessId: negocio }, { accessibleBusinessIds: negocio }],
+    },
+    '_id role',
+  )
+    .sort({ role: 1 })
+    .lean();
+
+  return dueno ? String(dueno._id) : null;
+}
+
 /** Los negocios a los que este admin tiene entrada. */
 async function negociosDe(adminId) {
+  if (!adminId) return [];
+
   const admin = await Admin.findById(adminId, 'businessId accessibleBusinessIds').lean();
   if (!admin) return [];
 
@@ -67,7 +107,8 @@ async function negociosDe(adminId) {
 /** GET /api/portafolios — el portafolio de quien pregunta, si tiene. */
 router.get('/', tenantAuth, async (req, res) => {
   try {
-    const mio = await Portafolio.findOne({ adminId: req.user.id }).lean();
+    const dueno = await duenoDe(req);
+    const mio = dueno ? await Portafolio.findOne({ adminId: dueno }).lean() : null;
     res.json({ portafolio: mio || null });
   } catch (error) {
     logger.error('Error leyendo el portafolio propio', error, req);
@@ -78,7 +119,17 @@ router.get('/', tenantAuth, async (req, res) => {
 /** GET /api/portafolios/mios/negocios — los que puede poner en la vitrina. */
 router.get('/mios/negocios', tenantAuth, async (req, res) => {
   try {
-    const ids = await negociosDe(req.user.id);
+    const dueno = await duenoDe(req);
+    if (!dueno) {
+      /* Un superadmin que no entró a ningún negocio. Decirlo es mejor que
+         devolver una lista vacía que se lee como "no tienes negocios". */
+      return res.status(400).json({
+        message: 'Entra primero al panel de un negocio para configurar su página',
+        motivo: 'sin_negocio',
+      });
+    }
+
+    const ids = await negociosDe(dueno);
     const negocios = await BusinessConfig.find({ _id: { $in: ids } })
       .select('businessName slug logo city isActive')
       .lean();
@@ -109,7 +160,15 @@ router.put('/', tenantAuth, async (req, res) => {
     /* Los negocios que manda tienen que ser **suyos**. Sin esta comprobación,
        cualquiera podría armar una vitrina con los negocios de otro y hacerla
        pasar por propia. */
-    const suyos = new Set(await negociosDe(req.user.id));
+    const dueno = await duenoDe(req);
+    if (!dueno) {
+      return res.status(400).json({
+        message: 'Entra primero al panel de un negocio para configurar su página',
+        motivo: 'sin_negocio',
+      });
+    }
+
+    const suyos = new Set(await negociosDe(dueno));
     const pedidos = (Array.isArray(req.body.negocios) ? req.body.negocios : []).map(String);
     const ajenos = pedidos.filter((id) => !suyos.has(id));
 
@@ -130,11 +189,11 @@ router.put('/', tenantAuth, async (req, res) => {
       colorTexto: String(req.body.colorTexto || '#ffffff'),
       negocios: pedidos,
       activo: req.body.activo !== false,
-      adminId: req.user.id,
+      adminId: dueno,
     };
 
     const guardado = await Portafolio.findOneAndUpdate(
-      { adminId: req.user.id },
+      { adminId: dueno },
       { $set: datos },
       { new: true, upsert: true, runValidators: true },
     ).lean();
