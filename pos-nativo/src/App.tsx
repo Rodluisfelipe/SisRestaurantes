@@ -37,7 +37,6 @@ import ModalCliente from './ModalCliente';
 import ModalRecompensas from './ModalRecompensas';
 import CatalogoCuadrante, { COLUMNAS_POR_MODO } from './CatalogoCuadrante';
 import RejillaInGridExtras from './RejillaInGridExtras';
-import PestanasCategoria from './PestanasCategoria';
 import SelectorVariante, { enVariante, variantesDe } from './SelectorVariante';
 import {
   derivar, predeterminadas, preseleccionarTamano, reconstruirElegidas, type Elegidas,
@@ -1794,12 +1793,37 @@ function Caja({
             onElegir={setVariante}
           />
 
-          {/* El espacio que sobra queda vacío y es deliberado: las categorías
-              se fueron arriba de la rejilla, y esta columna vale más con aire
-              que con algo metido para llenarla. Lo que viva aquí tiene que ser
-              lo que el cajero mira antes de marcar —quién es el cliente y cómo
-              se atiende—, no una lista para explorar. */}
-          <div className="flex-1 min-h-0" />
+          {rubros.length > 1 && (
+            <span className="flex-shrink-0 text-[10.5px] font-black text-slate-400 uppercase tracking-wide px-1">
+              Categorías
+            </span>
+          )}
+
+          {/* Las categorías, apiladas en la columna.
+
+              Estuvieron un rato como pestañas sobre la rejilla y en el
+              mostrador resultó peor: arriba compiten por el ancho con la
+              rejilla, así que se recortan o se paginan, y el dedo tiene que
+              subir hasta el borde de la pantalla. Aquí cada una es una barra
+              ancha de 44 px al alcance del pulgar, con el nombre entero.
+
+              Es lo único de esta columna que se desplaza, y solo si el negocio
+              tiene más categorías de las que caben. */}
+          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-1.5">
+            {rubros.length > 1 && ['', ...rubros].map((r) => (
+              <button
+                key={r || 'todos'}
+                onClick={() => setRubro(r)}
+                className={`flex-shrink-0 px-3 h-11 rounded-xl text-left text-[12.5px] font-bold border-2 transition-colors truncate ${
+                  rubro === r
+                    ? 'border-marca bg-marca text-sobre-marca'
+                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                }`}
+              >
+                {r || 'Todos'}
+              </button>
+            ))}
+          </div>
 
           <button
             onClick={() => {
@@ -1875,9 +1899,6 @@ function Caja({
                 />
               </div>
 
-              {/* Las categorías, donde el dedo ya está: sobre la rejilla y
-                  no en una lista lateral que hay que arrastrar. */}
-              <PestanasCategoria rubros={rubros} rubro={rubro} onElegir={setRubro} />
 
               {enGrid ? (
                 <RejillaInGridExtras

@@ -46,13 +46,14 @@ export const COLUMNAS_POR_MODO: Record<ModoVista, number> = {
 
 /* Alto de una casilla más su separación.
 
-   Los 52 px del compacto no son una cifra estética: es el mínimo que un pulgar
-   acierta en un monitor resistivo descalibrado, que es el que hay en un
-   mostrador. Por debajo de eso la densidad deja de ser una ventaja porque cada
-   toque fallido cuesta más de lo que ahorró ver la carta entera. */
+   Los 64 px del compacto son lo que piden dos renglones de nombre más el
+   precio debajo. Es además cómodo por encima del mínimo que un pulgar acierta
+   en un monitor resistivo descalibrado, que es el que hay en un mostrador: por
+   debajo de eso la densidad deja de ser ventaja porque cada toque fallido
+   cuesta más de lo que ahorró ver la carta entera. */
 const ALTO_CASILLA: Record<ModoVista, number> = {
   visual: 190,
-  compacto: 52,
+  compacto: 64,
 };
 
 /* Cuántas filas como mucho.
@@ -91,16 +92,17 @@ export default function CatalogoCuadrante({
   /* Cuántas filas caben. Se mide una vez y en cada cambio de tamaño de ventana,
      no en cada render: la rejilla tiene que ser estable mientras se atiende.
 
-     El 190 es el alto de una celda más su separación. El 368 es todo lo que
-     hay por encima y por debajo: cabecera (64), barra de cantidad (48),
-     buscador (48), pestañas de categoría (48), paginación (48) y los márgenes.
+     El 320 es todo lo que hay por encima y por debajo de la rejilla: cabecera
+     (64), barra de cantidad (48), buscador (48), paginación (48) y los
+     márgenes. Las categorías ya no cuentan: se fueron a la columna izquierda,
+     donde el dedo las alcanza sin subir al borde de la pantalla.
 
      Si no cabe ni una fila se fuerza a dos, porque una rejilla de una fila no
      es una rejilla: sería una lista con botones de paginar. */
   useEffect(() => {
     const medir = () => {
       const alto = window.innerHeight;
-      const cuantas = Math.floor((alto - 368) / ALTO_CASILLA[modo]);
+      const cuantas = Math.floor((alto - 320) / ALTO_CASILLA[modo]);
       setFilas(Math.min(FILAS_MAXIMAS[modo], Math.max(2, cuantas)));
     };
     medir();
@@ -197,29 +199,30 @@ export default function CatalogoCuadrante({
             onClick={() => onTocar(p)}
             className={`relative min-h-0 text-left active:scale-95 transition-transform duration-75 overflow-hidden ${
               modo === 'compacto'
-                ? `${colorDeCategoria(p.categoria)} rounded-lg flex items-center gap-1.5 px-2`
+                ? `${colorDeCategoria(p.categoria)} rounded-lg flex flex-col justify-center gap-0.5 px-2`
                 : 'rounded-xl bg-white border border-slate-200 hover:border-marca active:border-marca flex flex-col'
             }`}
           >
             {modo === 'compacto' ? (
-              /* Una sola línea: número, nombre y precio.
+              /* Nombre arriba y precio debajo.
 
-                 En 52 px no caben dos renglones legibles, así que se reparte a
-                 lo ancho. El nombre se recorta con `truncate` y no con
-                 `line-clamp-2`: media palabra cortada al final se entiende, dos
-                 líneas apretadas no se leen. */
+                 Estuvo un rato en una sola línea —número, nombre y precio
+                 repartidos a lo ancho— y el nombre era lo que se comía: en
+                 una columna de 120 px compartida con un precio, "Hamburguesa
+                 Clásica" quedaba en "Hamburg…". Apilados, el nombre se lleva
+                 el ancho completo y entra en dos renglones.
+
+                 Sin número de casilla: con treinta y seis casillas los atajos
+                 solo cubren las diez primeras, así que la insignia gastaba
+                 espacio del nombre para señalar algo que casi nunca aplica. */
               <>
-                <span className="flex-shrink-0 w-[18px] text-[10px] font-black tabular-nums opacity-60">
-                  {i + 1}
-                </span>
-                <span className="flex-1 min-w-0 text-[12px] font-bold leading-tight truncate">
+                <span className="text-[12px] font-bold leading-[1.15] line-clamp-2">
                   {p.nombre}{p.variante ? ` · ${p.variante}` : ''}
                 </span>
-                <span className="flex-shrink-0 text-[12px] font-black tabular-nums font-mono">
+                <span className="text-[12px] font-black tabular-nums font-mono leading-none">
                   {pesos(p.precio)}
                 </span>
-              </>
-            ) : (
+              </>            ) : (
               <>
                 {/* El número de la casilla. Arriba a la izquierda y siempre en
                     el mismo sitio: es una referencia, no algo que se lee. */}
