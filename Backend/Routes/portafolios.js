@@ -6,6 +6,7 @@ const BusinessConfig = require('../Models/BusinessConfig');
 const Admin = require('../Models/Admin');
 const { CAMPOS_VITRINA, filtroVisible } = require('../utils/marketplace');
 const { tenantAuth } = require('../middleware/tenantAuth');
+const { getSubscriptionForBusiness, isFeatureEnabledForPlan } = require('../utils/subscriptionHelper');
 const logger = require('../utils/logger');
 
 /**
@@ -40,6 +41,31 @@ function tarjeta(b) {
     city: b.city,
     tipoTienda: b.tipoTienda || 'restaurante',
     isOpen: b.isOpen,
+    /* La calificación la dibuja la misma tarjeta del marketplace. Ya venía
+       seleccionada y solo faltaba pasarla. */
+    reviewStats: b.reviewStats,
+  };
+}
+
+/** Cuántos productos entran en la fila de cada negocio. */
+const TOPS_POR_NEGOCIO = 8;
+
+/** La ventana que mira la fila: la semana. */
+const DIAS_DE_LA_SEMANA = 7;
+
+/** Lo que la fila necesita de un producto, y nada más.
+ *
+ *  El ranking devuelve el producto completo, con sus grupos de toppings. Son
+ *  varios negocios en una sola respuesta: mandarlo entero multiplica el peso
+ *  de la página por algo que no se dibuja. */
+function resumenDeProducto(p) {
+  return {
+    _id: p._id,
+    name: p.name,
+    price: p.price,
+    image: p.image || (p.images || [])[0] || '',
+    rank: p.popular?.rank || null,
+    esTop: !!p.popular?.isTopSeller,
   };
 }
 
@@ -264,6 +290,84 @@ router.get('/:slug', limitePublico, async (req, res) => {
   } catch (error) {
     logger.error('Error cargando el portafolio', error, req);
     res.status(500).json({ message: 'No se pudo cargar la página' });
+  }
+});
+
+/* GET /api/portafolios/:slug/tops — lo más pedido de la semana, por negocio.
+ *
+ * Va aparte de la página y no dentro, a propósito: es una agregación de ventas
+ * por cada negocio, y meterla en la carga principal retrasaría lo único que la
+ * gente vino a ver, que son las tarjetas. La página pinta primero y las filas
+ * aparecen después.
+ *
+ * Respeta las mismas reglas que la sección del menú —el negocio puede apagarla
+ * y el plan puede no incluirla— porque es la misma función que la calcula. Un
+ * negocio que no la muestra en su carta tampoco la muestra acá.
+ */
+router.get('/:slug/tops', limitePublico, async (req, res) => {
+  try {
+    const portafolio = await Portafolio.findOne({
+      slug: String(req.params.slug || '').toLowerCase().trim(),
+      activo: true,
+    })
+      .select('negocios')
+      .lean();
+
+    if (!portafolio) {
+      return res.status(404).json({ message: 'Esa página no existe' });
+    }
+
+    const ids = portafolio.negocios || [];
+    const visibles = ids.length
+      ? await BusinessConfig.find(filtroVisible({ _id: { $in: ids } }))
+          .select('_id popularSection currency')
+          .lean()
+      : [];
+
+    /* Se pide acá adentro y no arriba para no depender de en qué orden
+       `server.js` cargue las rutas. */
+    const { buildPopularPayload } = require('./products');
+
+    const tops = {};
+    await Promise.all(
+      visibles.map(async (negocio) => {
+        try {
+          const cfg = negocio.popularSection || {};
+          if (cfg.enabled === false) return;
+
+          const { planConfig } = await getSubscriptionForBusiness(negocio._id);
+          if (!isFeatureEnabledForPlan(planConfig, 'popularSection')) return;
+
+          const payload = await buildPopularPayload(negocio._id, {
+            ...cfg,
+            windowDays: DIAS_DE_LA_SEMANA,
+            limit: TOPS_POR_NEGOCIO,
+          });
+
+          if (payload.products?.length) {
+            /* La moneda viaja con la fila: en un portafolio los negocios
+               podrían no compartirla, y un precio con el símbolo equivocado es
+               peor que no mostrarlo. */
+            tops[String(negocio._id)] = {
+              moneda: negocio.currency || 'COP',
+              productos: payload.products.map(resumenDeProducto),
+            };
+          }
+        } catch (error) {
+          /* Que un negocio falle no puede dejar sin fila a los demás: la
+             página ya está pintada y esto es un añadido. */
+          logger.warn('No se pudieron calcular los tops de un negocio', {
+            negocio: String(negocio._id),
+            error: error.message,
+          });
+        }
+      }),
+    );
+
+    res.json({ tops });
+  } catch (error) {
+    logger.error('Error cargando los tops del portafolio', error, req);
+    res.status(500).json({ message: 'No se pudieron cargar' });
   }
 });
 
