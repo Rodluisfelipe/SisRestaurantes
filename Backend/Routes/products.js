@@ -1195,11 +1195,4 @@ router.patch("/:id/toggle", tenantAuth, validateToggleProduct, async (req, res) 
   }
 });
 
-/* El ranking de "los más pedidos", para que la página del portafolio muestre
-   la fila de tops de cada negocio sin volver a escribir cómo se calcula.
-   Se cuelga del router como `invalidatePopularCache` —es el patrón que ya
-   había acá— en vez de mover la función a un util, que tocaría el camino
-   caliente del menú por una comodidad de otra ruta. */
-router.buildPopularPayload = buildPopularPayload;
-
 module.exports = router;

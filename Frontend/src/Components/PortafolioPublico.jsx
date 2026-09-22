@@ -1,9 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
-import { enlaceWhatsApp } from '../utils/whatsapp';
-import { formatCurrency } from '../utils/currency';
 
 /**
  * La vitrina de un dueño con varios negocios.
@@ -12,39 +10,30 @@ import { formatCurrency } from '../utils/currency';
  * llevando a su menú. No es un marketplace —no hay negocios de terceros— ni un
  * selector de sucursales: son negocios distintos, con cartas distintas.
  *
- * Antes esto abría con una portada de pantalla completa. Se ve bien en una
- * captura y estorba en un teléfono: el cliente llega por un enlace de WhatsApp
- * a ver dónde pedir, y lo primero que encontraba era un título gigante y una
- * curva decorativa. Ahora abre como abre una app de domicilios —barra
- * compacta, banners, y los negocios de una— porque eso es lo que es.
+ * La página está construida alrededor de cómo llega la gente: por un enlace de
+ * WhatsApp, en el celular, con hambre y con prisa. De ahí salen las tres
+ * decisiones que la ordenan:
  *
- * Las decisiones que la ordenan:
- *
- * - **Lo primero que se ve es dónde pedir.** La barra mide 56px y debajo
- *   empieza el contenido.
- * - **Compartir está siempre a mano.** Esta página viaja de teléfono en
- *   teléfono; el botón vive en la barra.
- * - **Cada negocio trae su fila de lo más pedido.** Es lo que convierte una
- *   lista de logos en algo que da hambre.
+ * - **Compartir es lo primero, no una opción escondida.** Esta página se
+ *   difunde de teléfono en teléfono; el botón está en la barra, siempre.
  * - **Lo abierto manda.** Con media carta cerrada a las once de la noche, el
- *   filtro ahorra recorrer tarjetas que no sirven.
+ *   filtro de abiertos ahorra recorrer tarjetas que no sirven.
+ * - **Nada de scroll sin referencia.** La barra superior conserva el nombre y
+ *   el camino de vuelta.
  */
+
+/** Cuánto hay que bajar para que la barra se vuelva sólida. */
+const UMBRAL_STICKY = 90;
 
 /** A partir de cuántos negocios vale la pena filtrar. */
 const MINIMO_PARA_FILTRAR = 3;
 
-/** Cuánto dura cada banner antes de pasar al siguiente. */
-const MS_POR_BANNER = 5000;
-
-/** Cuánto hay que arrastrar para que cuente como pasar de banner. */
-const ARRASTRE_MINIMO = 45;
-
 export default function PortafolioPublico() {
   const { slug } = useParams();
   const [datos, setDatos] = useState(null);
-  const [tops, setTops] = useState({});
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
+  const [solida, setSolida] = useState(false);
   const [soloAbiertos, setSoloAbiertos] = useState(false);
   const [compartiendo, setCompartiendo] = useState(false);
   const [copiado, setCopiado] = useState(false);
@@ -66,22 +55,16 @@ export default function PortafolioPublico() {
     return () => { vigente = false; };
   }, [slug]);
 
-  /* Las filas de lo más pedido llegan aparte y después. Son una agregación de
-     ventas por cada negocio: esperarlas retrasaría lo único que la gente vino
-     a ver. Si no llegan, la página funciona igual. */
-  useEffect(() => {
-    let vigente = true;
-
-    api.get(`/portafolios/${slug}/tops`)
-      .then((r) => { if (vigente) setTops(r.data?.tops || {}); })
-      .catch(() => { /* un añadido, no una parte */ });
-
-    return () => { vigente = false; };
-  }, [slug]);
-
   useEffect(() => {
     if (datos?.portafolio?.nombre) document.title = datos.portafolio.nombre;
   }, [datos]);
+
+  useEffect(() => {
+    const alBajar = () => setSolida(window.scrollY > UMBRAL_STICKY);
+    alBajar();
+    window.addEventListener('scroll', alBajar, { passive: true });
+    return () => window.removeEventListener('scroll', alBajar);
+  }, []);
 
   const p = datos?.portafolio;
   const todos = datos?.negocios || [];
@@ -148,19 +131,141 @@ export default function PortafolioPublico() {
     );
   }
 
-  const banners = p.banners || [];
-
   return (
     <div className="min-h-screen bg-gray-50">
-      <Barra portafolio={p} abiertos={abiertos} total={todos.length} alCompartir={compartir} />
+      {/* ── La barra ──────────────────────────────────────────────────────
+          Siempre presente. Arriba del todo es transparente sobre la portada;
+          al bajar se vuelve sólida y saca el nombre, para que nunca se pierda
+          de vista dónde está uno. */}
+      <nav
+        className={`fixed top-0 inset-x-0 z-40 transition-all duration-300 ${
+          solida ? 'shadow-lg shadow-black/5' : ''
+        }`}
+        style={{ backgroundColor: solida ? p.colorPrincipal : 'transparent' }}
+      >
+        <div className="max-w-3xl mx-auto px-3 h-14 flex items-center gap-2" style={{ color: p.colorTexto }}>
+          <Link
+            to="/restaurantes"
+            aria-label="Ver todos los restaurantes"
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-black/20 backdrop-blur-sm hover:bg-black/30 transition-colors flex-shrink-0"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </Link>
 
-      <main className="max-w-3xl mx-auto px-4 pb-24">
-        {banners.length > 0 && <Carrusel banners={banners} acento={p.colorPrincipal} />}
+          <div
+            className={`flex-1 min-w-0 flex items-center gap-2 transition-all duration-300 ${
+              solida ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1 pointer-events-none'
+            }`}
+          >
+            {p.logo && <img src={p.logo} alt="" className="w-8 h-8 rounded-lg object-cover ring-1 ring-white/20" />}
+            <span className="font-bold truncate">{p.nombre}</span>
+          </div>
 
+          <button
+            onClick={compartir}
+            aria-label="Compartir"
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-black/20 backdrop-blur-sm hover:bg-black/30 transition-colors flex-shrink-0"
+          >
+            <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342a3 3 0 100-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684zm0-12.632a3 3 0 105.368-2.684 3 3 0 00-5.368 2.684z" />
+            </svg>
+          </button>
+        </div>
+      </nav>
+
+      {/* ── Portada ──────────────────────────────────────────────────────
+          Termina en una curva sobre el fondo. Un borde recto parte la pantalla
+          en dos bloques que no se hablan; la curva los cose. */}
+      <header className="relative overflow-hidden" style={{ backgroundColor: p.colorPrincipal }}>
+        {p.portada ? (
+          <>
+            <img src={p.portada} alt="" className="absolute inset-0 w-full h-full object-cover" />
+            {/* Sin el degradado, un texto claro sobre una foto clara no se lee
+                —y la foto la sube el dueño—. */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/55 to-black/75" />
+          </>
+        ) : (
+          /* Sin portada, dos manchas de luz para que el color plano no se vea
+             como un error de carga. */
+          <>
+            <div className="absolute -top-20 -right-16 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
+            <div className="absolute -bottom-24 -left-10 w-72 h-72 rounded-full bg-white/[0.07] blur-3xl" />
+          </>
+        )}
+
+        <div
+          className="relative max-w-3xl mx-auto px-6 pt-24 pb-24 text-center"
+          style={{ color: p.colorTexto }}
+        >
+          {p.logo && (
+            <motion.img
+              initial={{ scale: 0.85, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+              src={p.logo}
+              alt=""
+              className="w-24 h-24 rounded-[24px] object-cover mx-auto mb-5 shadow-2xl shadow-black/40 ring-4 ring-white/20"
+            />
+          )}
+
+          <motion.h1
+            initial={{ y: 12, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.06 }}
+            className="text-[32px] sm:text-[40px] font-black tracking-tight leading-none"
+          >
+            {p.nombre}
+          </motion.h1>
+
+          {p.descripcion && (
+            <motion.p
+              initial={{ y: 12, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.4, delay: 0.12 }}
+              className="mt-3 text-[15px] opacity-90 max-w-sm mx-auto leading-relaxed"
+            >
+              {p.descripcion}
+            </motion.p>
+          )}
+
+          {todos.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/15 backdrop-blur-md text-[13px] font-semibold ring-1 ring-white/10"
+            >
+              <span className="relative flex w-2 h-2">
+                {abiertos > 0 && (
+                  <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-60" />
+                )}
+                <span className={`relative w-2 h-2 rounded-full ${abiertos ? 'bg-emerald-400' : 'bg-white/50'}`} />
+              </span>
+              {abiertos > 0
+                ? `${abiertos} de ${todos.length} abierto${abiertos === 1 ? '' : 's'} ahora`
+                : 'Todos cerrados por ahora'}
+            </motion.div>
+          )}
+        </div>
+
+        <svg
+          className="absolute -bottom-px inset-x-0 w-full h-[42px] text-gray-50"
+          viewBox="0 0 1440 42"
+          preserveAspectRatio="none"
+          aria-hidden
+        >
+          <path fill="currentColor" d="M0 42h1440V0c-240 28-480 42-720 42S240 28 0 0v42z" />
+        </svg>
+      </header>
+
+      {/* ── Los negocios ─────────────────────────────────────────────── */}
+      <main className="max-w-3xl mx-auto px-4 pb-16">
         {todos.length >= MINIMO_PARA_FILTRAR && (
           /* Solo con tres o más. Con dos, el filtro esconde la mitad de la
              página para ahorrar un vistazo que no cuesta nada. */
-          <div className="flex gap-2 pt-4">
+          <div className="flex gap-2 mb-4">
             {[
               { id: false, texto: `Todos (${todos.length})` },
               { id: true, texto: `Abiertos (${abiertos})` },
@@ -182,7 +287,7 @@ export default function PortafolioPublico() {
         )}
 
         {visibles.length === 0 ? (
-          <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100 mt-4">
+          <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100">
             <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center text-2xl mx-auto mb-3">
               {soloAbiertos ? '🌙' : '🍽️'}
             </div>
@@ -202,27 +307,24 @@ export default function PortafolioPublico() {
             )}
           </div>
         ) : (
-          /* Uno debajo de otro y no en rejilla: cada negocio trae su fila de
-             lo más pedido, y en dos columnas esa fila no cabe sin quedar
-             apretada hasta volverse ilegible. */
-          <div className="pt-4 space-y-7">
+          <div className="grid gap-4 sm:grid-cols-2">
             {visibles.map((n, i) => (
-              <section key={n._id}>
-                <Tarjeta negocio={n} orden={i} />
-                <FilaDeTops negocio={n} tops={tops[String(n._id)]} />
-              </section>
+              <Tarjeta key={n._id} negocio={n} orden={i} />
             ))}
           </div>
         )}
       </main>
 
+      {/* ── Pie ──────────────────────────────────────────────────────── */}
       <footer className="border-t border-gray-100 bg-white">
         <div className="max-w-3xl mx-auto px-6 py-8 text-center">
           <button
             onClick={compartir}
             className="inline-flex items-center gap-2 h-11 px-5 rounded-xl border-2 border-gray-200 text-[13.5px] font-bold text-gray-600 hover:border-gray-300 transition-colors"
           >
-            <IconoCompartir className="w-4 h-4" />
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342a3 3 0 100-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684zm0-12.632a3 3 0 105.368-2.684 3 3 0 00-5.368 2.684z" />
+            </svg>
             Compartir esta página
           </button>
 
@@ -232,8 +334,6 @@ export default function PortafolioPublico() {
           </p>
         </div>
       </footer>
-
-      {p.ayuda && <BurbujaAyuda ayuda={p.ayuda} />}
 
       {/* El aviso de "copiado". Abajo y flotante: confirma sin tapar nada ni
           pedir que lo cierren. */}
@@ -277,322 +377,6 @@ export default function PortafolioPublico() {
         </div>
       )}
     </div>
-  );
-}
-
-/**
- * La barra de arriba.
- *
- * Compacta y sólida desde el primer píxel, como la de cualquier app de
- * domicilios. No se esconde al bajar: es el único sitio donde vive el botón de
- * compartir, que es la acción que hace crecer esta página.
- *
- * La portada, si el dueño subió una, va detrás en una franja baja. Ocupando
- * toda la pantalla era bonita y empujaba los negocios fuera de la vista.
- */
-function Barra({ portafolio: p, abiertos, total, alCompartir }) {
-  return (
-    <header
-      className="sticky top-0 z-40 shadow-sm"
-      style={{ backgroundColor: p.colorPrincipal, color: p.colorTexto }}
-    >
-      <div className="relative overflow-hidden">
-        {p.portada && (
-          <>
-            <img src={p.portada} alt="" className="absolute inset-0 w-full h-full object-cover" />
-            {/* Sin el degradado, un texto claro sobre una foto clara no se lee
-                —y la foto la sube el dueño—. */}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/45 to-black/60" />
-          </>
-        )}
-
-        <div className="relative max-w-3xl mx-auto px-3 h-14 flex items-center gap-2.5">
-          <Link
-            to="/restaurantes"
-            aria-label="Ver todos los restaurantes"
-            className="w-9 h-9 rounded-full flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors flex-shrink-0"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </Link>
-
-          {p.logo && (
-            <img
-              src={p.logo}
-              alt=""
-              className="w-9 h-9 rounded-xl object-cover flex-shrink-0 ring-1 ring-white/25"
-            />
-          )}
-
-          <div className="flex-1 min-w-0">
-            <p className="font-black text-[16px] leading-tight truncate">{p.nombre}</p>
-            {total > 0 && (
-              <p className="flex items-center gap-1.5 text-[11.5px] leading-tight opacity-90">
-                <span className="relative flex w-1.5 h-1.5">
-                  {abiertos > 0 && (
-                    <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-70" />
-                  )}
-                  <span className={`relative w-1.5 h-1.5 rounded-full ${abiertos ? 'bg-emerald-400' : 'bg-white/50'}`} />
-                </span>
-                {abiertos > 0
-                  ? `${abiertos} de ${total} abierto${abiertos === 1 ? '' : 's'} ahora`
-                  : 'Todos cerrados por ahora'}
-              </p>
-            )}
-          </div>
-
-          <button
-            onClick={alCompartir}
-            aria-label="Compartir"
-            className="w-9 h-9 rounded-full flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors flex-shrink-0"
-          >
-            <IconoCompartir className="w-[17px] h-[17px]" />
-          </button>
-        </div>
-
-        {p.descripcion && (
-          <div className="relative max-w-3xl mx-auto px-3 pb-2.5 -mt-0.5">
-            <p className="text-[12.5px] opacity-85 leading-snug line-clamp-2">{p.descripcion}</p>
-          </div>
-        )}
-      </div>
-    </header>
-  );
-}
-
-/**
- * Los banners.
- *
- * Pasan solos cada cinco segundos y se pueden arrastrar con el dedo. El
- * autoplay se apaga en cuanto alguien toca: si el cliente está leyendo uno,
- * moverlo debajo del dedo es quitárselo.
- *
- * Un banner sin enlace se dibuja igual pero no es clicable —hay quien los usa
- * para anunciar un horario, no para llevar a ningún lado— y así no se come un
- * toque que no lleva a nada.
- */
-function Carrusel({ banners, acento }) {
-  const [actual, setActual] = useState(0);
-  const [detenido, setDetenido] = useState(false);
-  const inicioX = useRef(0);
-  const arrastre = useRef(0);
-
-  useEffect(() => {
-    if (detenido || banners.length <= 1) return;
-    const t = window.setInterval(
-      () => setActual((i) => (i + 1) % banners.length),
-      MS_POR_BANNER,
-    );
-    return () => window.clearInterval(t);
-  }, [detenido, banners.length]);
-
-  /* Si el dueño quita banners mientras alguien mira la página, el índice puede
-     quedar apuntando a uno que ya no está. */
-  const indice = Math.min(actual, banners.length - 1);
-  const b = banners[indice];
-
-  const alSoltar = () => {
-    if (Math.abs(arrastre.current) > ARRASTRE_MINIMO) {
-      const paso = arrastre.current < 0 ? 1 : -1;
-      setActual((i) => (i + paso + banners.length) % banners.length);
-    }
-    arrastre.current = 0;
-  };
-
-  const Contenedor = b.enlace ? 'a' : 'div';
-  const props = b.enlace
-    ? { href: b.enlace, ...(/^https?:\/\//i.test(b.enlace) ? { target: '_blank', rel: 'noopener noreferrer' } : {}) }
-    : {};
-
-  return (
-    <div className="pt-4">
-      <div
-        className="relative rounded-2xl overflow-hidden bg-gray-200 shadow-sm"
-        onTouchStart={(e) => { setDetenido(true); inicioX.current = e.touches[0].clientX; }}
-        onTouchMove={(e) => { arrastre.current = e.touches[0].clientX - inicioX.current; }}
-        onTouchEnd={alSoltar}
-        onMouseEnter={() => setDetenido(true)}
-        onMouseLeave={() => setDetenido(false)}
-      >
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={indice}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-          >
-            <Contenedor {...props} className="block">
-              {/* 16:7, que es la proporción de banner que la gente ya conoce
-                  de las apps de domicilios. Alto fijo para que el carrusel no
-                  dé saltos al cambiar de imagen. */}
-              <div className="aspect-[16/7]">
-                <img
-                  src={b.imagen}
-                  alt={b.titulo || ''}
-                  className="w-full h-full object-cover"
-                  loading="eager"
-                />
-              </div>
-              {b.titulo && (
-                <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/75 to-transparent">
-                  <p className="text-white font-black text-[15px] leading-tight drop-shadow">{b.titulo}</p>
-                </div>
-              )}
-            </Contenedor>
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      {banners.length > 1 && (
-        <div className="flex justify-center gap-1.5 mt-2.5">
-          {banners.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => { setActual(i); setDetenido(true); }}
-              aria-label={`Ver banner ${i + 1}`}
-              className="h-1.5 rounded-full transition-all"
-              style={{
-                width: i === indice ? 18 : 6,
-                backgroundColor: i === indice ? acento : '#d1d5db',
-              }}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/**
- * Lo más pedido de un negocio, en una fila que se desliza.
- *
- * Es lo que diferencia esta página de una lista de logos: el cliente ve comida
- * antes de decidir a cuál entrar.
- *
- * No aparece nada si el negocio no tiene ventas de la semana, si apagó la
- * sección en su panel o si su plan no la incluye —las mismas reglas que en su
- * propia carta, porque es el mismo cálculo—. Una fila vacía con un título
- * encima se lee como que algo se rompió.
- */
-function FilaDeTops({ negocio, tops }) {
-  if (!tops?.productos?.length) return null;
-
-  return (
-    <div className="mt-3">
-      <p className="text-[12px] font-black text-gray-400 uppercase tracking-wide px-1 mb-2">
-        {tops.titulo} en {negocio.businessName}
-      </p>
-
-      {/* Desliza en horizontal y corta contra el borde: que se vea medio
-          producto asomando es lo que le dice al dedo que hay más. */}
-      <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide snap-x">
-        {tops.productos.map((pr) => (
-          <a
-            key={pr._id}
-            href={`/${negocio.slug}`}
-            className="flex-shrink-0 w-[116px] snap-start group"
-          >
-            <div className="relative w-[116px] h-[116px] rounded-xl overflow-hidden bg-gray-100">
-              {pr.image ? (
-                <img
-                  src={pr.image}
-                  alt={pr.name}
-                  loading="lazy"
-                  className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-2xl text-gray-300">🍽️</div>
-              )}
-
-              {pr.esTop && (
-                <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-amber-400 text-[10px] font-black text-amber-950 shadow">
-                  TOP {pr.rank}
-                </span>
-              )}
-            </div>
-
-            <p className="text-[12.5px] font-bold text-gray-800 leading-tight mt-1.5 line-clamp-2">
-              {pr.name}
-            </p>
-            <p className="text-[12.5px] font-black text-gray-900">
-              {formatCurrency(pr.price, tops.moneda)}
-            </p>
-          </a>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/**
- * La burbuja de ayuda.
- *
- * Un WhatsApp flotante con el número del dueño de la vitrina, no el de
- * ninguno de sus negocios: quien escribe desde aquí todavía no eligió a cuál
- * ir, y mandarlo al chat de uno de ellos es contestarle algo que no preguntó.
- *
- * Abre cerrada y se expande al tocarla. Una burbuja con texto siempre visible
- * tapa media pantalla en un teléfono.
- */
-function BurbujaAyuda({ ayuda }) {
-  const [abierta, setAbierta] = useState(false);
-  const enlace = enlaceWhatsApp(ayuda.telefono, ayuda.mensaje || undefined);
-
-  /* Sin un número utilizable no se dibuja nada: un botón de ayuda que lleva a
-     un error de WhatsApp es peor que no ofrecer ayuda. */
-  if (!enlace) return null;
-
-  return (
-    <div className="fixed bottom-5 right-4 z-40 flex items-center gap-2">
-      <AnimatePresence>
-        {abierta && (
-          <motion.div
-            initial={{ opacity: 0, x: 10, scale: 0.95 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 10, scale: 0.95 }}
-            className="bg-white rounded-2xl shadow-xl shadow-black/10 border border-gray-100 p-3 max-w-[210px]"
-          >
-            <p className="text-[13px] font-bold text-gray-800 leading-snug">
-              {ayuda.etiqueta || '¿Necesitas ayuda?'}
-            </p>
-            <a
-              href={enlace}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 flex items-center justify-center gap-1.5 h-9 rounded-xl bg-[#25D366] text-white text-[12.5px] font-black"
-            >
-              Escríbenos
-            </a>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <button
-        onClick={() => setAbierta((v) => !v)}
-        aria-label={abierta ? 'Cerrar ayuda' : 'Abrir ayuda'}
-        className="w-[52px] h-[52px] rounded-full bg-[#25D366] text-white shadow-lg shadow-emerald-600/30 flex items-center justify-center active:scale-95 transition-transform"
-      >
-        {abierta ? (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        ) : (
-          <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884" />
-          </svg>
-        )}
-      </button>
-    </div>
-  );
-}
-
-function IconoCompartir({ className }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342a3 3 0 100-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684zm0-12.632a3 3 0 105.368-2.684 3 3 0 00-5.368 2.684z" />
-    </svg>
   );
 }
 
@@ -715,31 +499,24 @@ function Tarjeta({ negocio: n, orden }) {
 function Esqueleto() {
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="h-[72px] bg-gray-300 animate-pulse" />
+      <div className="bg-gray-200 animate-pulse">
+        <div className="max-w-3xl mx-auto px-6 pt-14 pb-16 flex flex-col items-center gap-4">
+          <div className="w-24 h-24 rounded-[22px] bg-gray-300" />
+          <div className="h-8 w-52 rounded-lg bg-gray-300" />
+          <div className="h-4 w-72 rounded bg-gray-300/70" />
+        </div>
+      </div>
 
-      <div className="max-w-3xl mx-auto px-4 pt-4 space-y-7">
-        <div className="aspect-[16/7] rounded-2xl bg-gray-200 animate-pulse" />
-
+      <div className="max-w-3xl mx-auto px-4 -mt-8 grid gap-4 sm:grid-cols-2">
         {[0, 1].map((i) => (
-          <div key={i}>
-            <div className="bg-white rounded-2xl overflow-hidden border border-gray-100">
-              <div className="aspect-[16/9] bg-gray-200 animate-pulse" />
-              <div className="p-4 flex gap-3">
-                <div className="w-14 h-14 rounded-xl bg-gray-200 animate-pulse -mt-7 ring-4 ring-white" />
-                <div className="flex-1 pt-3 space-y-2">
-                  <div className="h-4 w-28 rounded bg-gray-200 animate-pulse" />
-                  <div className="h-3 w-40 rounded bg-gray-100 animate-pulse" />
-                </div>
+          <div key={i} className="bg-white rounded-2xl overflow-hidden border border-gray-100">
+            <div className="aspect-[16/9] bg-gray-200 animate-pulse" />
+            <div className="p-4 flex gap-3">
+              <div className="w-14 h-14 rounded-xl bg-gray-200 animate-pulse -mt-7 ring-4 ring-white" />
+              <div className="flex-1 pt-3 space-y-2">
+                <div className="h-4 w-28 rounded bg-gray-200 animate-pulse" />
+                <div className="h-3 w-40 rounded bg-gray-100 animate-pulse" />
               </div>
-            </div>
-
-            <div className="flex gap-2.5 mt-3">
-              {[0, 1, 2].map((j) => (
-                <div key={j} className="w-[116px] space-y-1.5">
-                  <div className="w-[116px] h-[116px] rounded-xl bg-gray-200 animate-pulse" />
-                  <div className="h-3 w-20 rounded bg-gray-100 animate-pulse" />
-                </div>
-              ))}
             </div>
           </div>
         ))}

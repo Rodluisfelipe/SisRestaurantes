@@ -6,7 +6,6 @@ const BusinessConfig = require('../Models/BusinessConfig');
 const Admin = require('../Models/Admin');
 const { CAMPOS_VITRINA, filtroVisible } = require('../utils/marketplace');
 const { tenantAuth } = require('../middleware/tenantAuth');
-const { getSubscriptionForBusiness, isFeatureEnabledForPlan } = require('../utils/subscriptionHelper');
 const logger = require('../utils/logger');
 
 /**
@@ -41,53 +40,6 @@ function tarjeta(b) {
     city: b.city,
     tipoTienda: b.tipoTienda || 'restaurante',
     isOpen: b.isOpen,
-  };
-}
-
-/** Cuántos banners se admiten. Más que esto no lo ve nadie: es un carrusel. */
-const MAX_BANNERS = 8;
-
-/** Cuántos productos entran en la fila de tops de cada negocio. */
-const TOPS_POR_NEGOCIO = 8;
-
-/** La ventana de "lo más pedido" que pide esta página: la semana. */
-const DIAS_DE_LA_SEMANA = 7;
-
-/**
- * Los banners, en la forma en que se guardan.
- *
- * Lo que llega es de un formulario, así que se recorta y se descarta lo que
- * no tiene imagen: un banner sin imagen es un hueco en el carrusel.
- */
-function limpiarBanners(recibidos) {
-  if (!Array.isArray(recibidos)) return [];
-
-  return recibidos
-    .filter((b) => b && String(b.imagen || '').trim())
-    .slice(0, MAX_BANNERS)
-    .map((b) => ({
-      imagen: String(b.imagen).trim(),
-      titulo: String(b.titulo || '').trim().slice(0, 80),
-      enlace: String(b.enlace || '').trim().slice(0, 300),
-      activo: b.activo !== false,
-    }));
-}
-
-/**
- * La burbuja de ayuda.
- *
- * Sin teléfono no se enciende, aunque venga marcada como activa: una burbuja
- * que no lleva a ningún lado es peor que no tenerla.
- */
-function limpiarAyuda(recibida) {
-  const a = recibida || {};
-  const telefono = String(a.telefono || '').trim().slice(0, 25);
-
-  return {
-    activa: a.activa === true && !!telefono,
-    telefono,
-    mensaje: String(a.mensaje || '').trim().slice(0, 200),
-    etiqueta: String(a.etiqueta || '').trim().slice(0, 40),
   };
 }
 
@@ -236,9 +188,6 @@ router.put('/', tenantAuth, async (req, res) => {
       colorPrincipal: String(req.body.colorPrincipal || '#111827'),
       colorTexto: String(req.body.colorTexto || '#ffffff'),
       negocios: pedidos,
-      banners: limpiarBanners(req.body.banners),
-      ayuda: limpiarAyuda(req.body.ayuda),
-      mostrarTops: req.body.mostrarTops !== false,
       activo: req.body.activo !== false,
       adminId: dueno,
     };
@@ -309,12 +258,6 @@ router.get('/:slug', limitePublico, async (req, res) => {
         portada: portafolio.portada,
         colorPrincipal: portafolio.colorPrincipal,
         colorTexto: portafolio.colorTexto,
-        /* Solo los encendidos. Apagar un banner es la forma de guardarlo para
-           la próxima promoción sin tener que volver a subir la imagen, así
-           que el apagado no puede salir a la calle. */
-        banners: (portafolio.banners || []).filter((b) => b.activo !== false),
-        ayuda: portafolio.ayuda?.activa ? portafolio.ayuda : null,
-        mostrarTops: portafolio.mostrarTops !== false,
       },
       negocios: ordenados,
     });
@@ -323,103 +266,5 @@ router.get('/:slug', limitePublico, async (req, res) => {
     res.status(500).json({ message: 'No se pudo cargar la página' });
   }
 });
-
-/* GET /api/portafolios/:slug/tops — lo más pedido de la semana, por negocio.
- *
- * Va aparte de la página y no dentro, a propósito: son una agregación de
- * ventas por cada negocio y meterlas en la carga principal retrasaría lo
- * único que la gente vino a ver, que son las tarjetas. La página pinta
- * primero y las filas aparecen después.
- *
- * Respeta las mismas reglas que la sección del menú —el negocio puede
- * apagarla y el plan puede no incluirla— porque es la misma función que la
- * calcula. Un negocio que no la muestra en su carta tampoco la muestra acá.
- */
-router.get('/:slug/tops', limitePublico, async (req, res) => {
-  try {
-    const portafolio = await Portafolio.findOne({
-      slug: String(req.params.slug || '').toLowerCase().trim(),
-      activo: true,
-    })
-      .select('negocios mostrarTops')
-      .lean();
-
-    if (!portafolio) {
-      return res.status(404).json({ message: 'Esa página no existe' });
-    }
-    if (portafolio.mostrarTops === false) {
-      return res.json({ tops: {} });
-    }
-
-    const ids = portafolio.negocios || [];
-    const visibles = ids.length
-      ? await BusinessConfig.find(filtroVisible({ _id: { $in: ids } }))
-          .select('_id popularSection currency')
-          .lean()
-      : [];
-
-    /* Se pide acá adentro y no arriba para no depender de en qué orden
-       `server.js` cargue las rutas. */
-    const { buildPopularPayload } = require('./products');
-
-    const tops = {};
-    await Promise.all(
-      visibles.map(async (negocio) => {
-        try {
-          const cfg = negocio.popularSection || {};
-          if (cfg.enabled === false) return;
-
-          const { planConfig } = await getSubscriptionForBusiness(negocio._id);
-          if (!isFeatureEnabledForPlan(planConfig, 'popularSection')) return;
-
-          const payload = await buildPopularPayload(negocio._id, {
-            ...cfg,
-            windowDays: DIAS_DE_LA_SEMANA,
-            limit: TOPS_POR_NEGOCIO,
-          });
-
-          if (payload.products?.length) {
-            /* La moneda viaja con la fila y no con la tarjeta: en un
-               portafolio los negocios podrían no compartirla, y un precio con
-               el símbolo equivocado es peor que no mostrarlo. */
-            tops[String(negocio._id)] = {
-              titulo: payload.title || 'Lo más pedido',
-              moneda: negocio.currency || 'COP',
-              productos: payload.products.map(resumen),
-            };
-          }
-        } catch (error) {
-          /* Que un negocio falle no puede dejar sin fila a los demás: la
-             página ya está pintada y esto es un añadido. */
-          logger.warn('No se pudieron calcular los tops de un negocio', {
-            negocio: String(negocio._id),
-            error: error.message,
-          });
-        }
-      }),
-    );
-
-    res.json({ tops });
-  } catch (error) {
-    logger.error('Error cargando los tops del portafolio', error, req);
-    res.status(500).json({ message: 'No se pudieron cargar' });
-  }
-});
-
-/** Lo que la fila de tops necesita de un producto, y nada más.
- *
- *  El ranking devuelve el producto completo, con sus grupos de toppings: son
- *  varios negocios en una sola respuesta, así que mandarlo entero multiplica
- *  el peso de la página por algo que no se dibuja. */
-function resumen(p) {
-  return {
-    _id: p._id,
-    name: p.name,
-    price: p.price,
-    image: p.image || (p.images || [])[0] || '',
-    rank: p.popular?.rank || null,
-    esTop: !!p.popular?.isTopSeller,
-  };
-}
 
 module.exports = router;
