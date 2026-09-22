@@ -58,6 +58,13 @@ router.get("/geocode", geocodeLimiter, async (req, res) => {
       count: results.length
     });
   } catch (error) {
+    if (error.codigo === "direccion_no_encontrada") {
+      /* No es una falla nuestra: la dirección no existe o está mal escrita.
+         Con 500 el frontend no puede distinguirlo de un servidor caído y
+         termina diciéndole "intenta más tarde" a quien solo tiene que
+         corregir la calle. */
+      return res.status(404).json(formatHttpError(req, error.message, 404));
+    }
     logger.error("Error en geocodificación", error, req);
     res.status(500).json(formatHttpError(req, error.message || "Error en geocodificación", 500));
   }
@@ -85,6 +92,13 @@ router.post("/geocode", geocodeLimiter, async (req, res) => {
       count: results.length
     });
   } catch (error) {
+    if (error.codigo === "direccion_no_encontrada") {
+      /* No es una falla nuestra: la dirección no existe o está mal escrita.
+         Con 500 el frontend no puede distinguirlo de un servidor caído y
+         termina diciéndole "intenta más tarde" a quien solo tiene que
+         corregir la calle. */
+      return res.status(404).json(formatHttpError(req, error.message, 404));
+    }
     logger.error("Error en geocodificación", error, req);
     res.status(500).json(formatHttpError(req, error.message || "Error en geocodificación", 500));
   }
@@ -111,6 +125,9 @@ router.get("/reverse-geocode", geocodeLimiter, async (req, res) => {
       result
     });
   } catch (error) {
+    if (error.codigo === "direccion_no_encontrada") {
+      return res.status(404).json(formatHttpError(req, error.message, 404));
+    }
     logger.error("Error en geocodificación inversa", error, req);
     res.status(500).json(formatHttpError(req, error.message || "Error en geocodificación inversa", 500));
   }
@@ -137,6 +154,9 @@ router.post("/reverse-geocode", geocodeLimiter, async (req, res) => {
       result
     });
   } catch (error) {
+    if (error.codigo === "direccion_no_encontrada") {
+      return res.status(404).json(formatHttpError(req, error.message, 404));
+    }
     logger.error("Error en geocodificación inversa", error, req);
     res.status(500).json(formatHttpError(req, error.message || "Error en geocodificación inversa", 500));
   }

@@ -21,6 +21,21 @@ function cleanCache() {
  * @param {string} country - Código de país (opcional, por defecto 'CO' para Colombia)
  * @returns {Promise<Object>} Resultado con coordenadas y detalles
  */
+/**
+ * Un fallo que es de la dirección que escribió el cliente, no del servicio.
+ *
+ * La diferencia importa porque es la que separa un 404 de un 500: que alguien
+ * escriba mal su dirección es lo más normal del mundo y tiene arreglo de su
+ * lado, mientras que un 500 dice "el servidor se cayó" y no deja al frontend
+ * pedirle que la corrija. El 22/09/2026 los únicos cuatro errores 5xx del día
+ * fueron exactamente esto.
+ */
+function sinResultados(mensaje) {
+  const error = new Error(mensaje);
+  error.codigo = 'direccion_no_encontrada';
+  return error;
+}
+
 async function geocodeAddress(address, country = 'CO') {
   if (!address || address.trim().length === 0) {
     throw new Error('La dirección no puede estar vacía');
@@ -52,7 +67,7 @@ async function geocodeAddress(address, country = 'CO') {
     });
 
     if (!response.data || response.data.length === 0) {
-      throw new Error('No se encontraron resultados para esta dirección');
+      throw sinResultados('No encontramos esa dirección. Revísala o marca el punto en el mapa.');
     }
 
     // Formatear resultados
@@ -75,6 +90,11 @@ async function geocodeAddress(address, country = 'CO') {
 
     return results;
   } catch (error) {
+    /* Ya viene clasificado: no volver a envolverlo. Envolverlo era el bug —
+       "no encontramos la dirección" salía de acá como un error genérico y la
+       ruta lo devolvía como 500. */
+    if (error.codigo) throw error;
+
     if (error.code === 'ECONNABORTED') {
       throw new Error('Timeout al intentar geocodificar la dirección');
     }
@@ -119,7 +139,7 @@ async function reverseGeocode(lat, lon) {
     });
 
     if (!response.data) {
-      throw new Error('No se encontró información para estas coordenadas');
+      throw sinResultados('No encontramos una dirección en ese punto del mapa.');
     }
 
     const result = {
@@ -139,6 +159,8 @@ async function reverseGeocode(lat, lon) {
 
     return result;
   } catch (error) {
+    if (error.codigo) throw error;
+
     if (error.code === 'ECONNABORTED') {
       throw new Error('Timeout al intentar geocodificar las coordenadas');
     }

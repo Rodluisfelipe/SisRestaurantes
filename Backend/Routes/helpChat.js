@@ -85,7 +85,7 @@ setInterval(() => {
   for (const [key, conv] of conversations) {
     if (now - conv.lastActive > CONV_TTL) conversations.delete(key);
   }
-}, 15 * 60 * 1000);
+}, 15 * 60 * 1000).unref();
 
 // Groq API (free, no credit card, OpenAI-compatible)
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';

@@ -504,7 +504,11 @@ function TarjetaNegocio({ negocio: n, tops, orden }) {
           </span>
         </div>
 
-        <div className="px-3 sm:px-4 pb-3.5">
+        {/* `relative z-10` no es decoración: la franja de arriba está
+            posicionada y, sin esto, se pinta encima del logo aunque venga
+            antes en el HTML —un elemento posicionado gana a uno que no lo
+            está—. Se veía media foto de perfil tapada por el color. */}
+        <div className="px-3 sm:px-4 pb-3.5 relative z-10">
           <div className="-mt-8 flex items-end gap-2.5">
             {/* La foto de perfil de cada negocio, sobre su propio color. El
                 anillo va del color de la tarjeta para separarla de la franja:

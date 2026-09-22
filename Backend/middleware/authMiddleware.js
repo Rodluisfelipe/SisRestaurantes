@@ -13,8 +13,9 @@ function cleanCache() {
     }
   }
 }
-// Clean cache every 10 minutes
-setInterval(cleanCache, 10 * 60 * 1000);
+/* Limpiar una caché no es razón para que el proceso siga vivo: sin `unref`,
+   un `require` de este archivo deja a Node esperando diez minutos. */
+setInterval(cleanCache, 10 * 60 * 1000).unref();
 
 module.exports = async function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
