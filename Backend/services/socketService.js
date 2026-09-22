@@ -10,6 +10,26 @@ const viewerTracker = require('./viewerTracker');
 const printEmitter = new EventEmitter();
 printEmitter.setMaxListeners(50); // Allow up to 50 concurrent print agents
 
+/* Lo único que un cliente sin cuenta puede oír.
+ *
+ * La sala del negocio lleva pedidos con nombres, teléfonos y direcciones, así
+ * que ahí no entra nadie sin token. Pero el menú abierto en el celular de un
+ * cliente sí necesita enterarse de que cambió un precio: si no, arma el carrito
+ * con la carta vieja y al confirmar el pedido el servidor se lo rechaza por no
+ * cuadrar el total —pasó el 22/09/2026 en cocina-vital, trece minutos después
+ * de que el dueño editara el precio de un producto.
+ *
+ * Por eso existe una segunda sala, `publico:<negocio>`, a la que se entra sin
+ * autenticar y por la que solo viaja el catálogo. Esta lista es la frontera:
+ * agregar un evento aquí es dárselo a cualquiera que abra el menú. */
+const EVENTOS_PUBLICOS = new Set([
+  'products_update',
+  'categories_update',
+  'topping_groups_update',
+]);
+
+const salaPublica = (negocioId) => `publico:${negocioId}`;
+
 // Slug cache to avoid DB lookups on every emit
 const slugCache = new Map(); // businessId -> { slug, cachedAt }
 const SLUG_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -32,7 +52,10 @@ setInterval(() => {
   }
   // Purge stale viewers (no heartbeat in 90s)
   viewerTracker.cleanupStale();
-}, 30 * 60 * 1000);
+}, 30 * 60 * 1000)
+  /* Limpiar cachés no es razón para que el proceso siga vivo: sin esto, un
+     `require` de este archivo deja a Node esperando media hora. */
+  .unref();
 
 function initSocket(io) {
   ioInstance = io;
@@ -155,6 +178,52 @@ function initSocket(io) {
           logger.error('Error joining business room', error);
           socket.emit('businessJoined', { businessId, success: false, error: error.message });
         }
+      }
+    });
+
+    /* El menú público. No pide token: quien lo abre es un cliente cualquiera.
+     *
+     * Solo recibe los eventos de `EVENTOS_PUBLICOS` —catálogo— porque entra a
+     * `publico:<negocio>` y no a la sala del negocio. */
+    socket.on('joinPublicBusiness', async (identificador) => {
+      if (!identificador) return;
+
+      /* Mismo freno que `viewer:join`: una pestaña que se reconecta sola no
+         puede volverse una fuente de consultas al resolver el slug. */
+      const ahora = Date.now();
+      if (socket._ultimoJoinPublico && ahora - socket._ultimoJoinPublico < 2000) return;
+      socket._ultimoJoinPublico = ahora;
+
+      try {
+        let negocioId = identificador.toString();
+
+        /* El menú se abre por slug (`menuby.tech/cocina-vital`) pero los
+           eventos salen con el ObjectId. Sin resolverlo, la sala a la que
+           entra el cliente no es la sala a la que se emite. */
+        if (!/^[0-9a-fA-F]{24}$/.test(negocioId)) {
+          const { resolveBusinessId } = require('../utils/businessResolver');
+          negocioId = (await resolveBusinessId(negocioId)).toString();
+        }
+
+        if (socket._negocioPublico && socket._negocioPublico !== negocioId) {
+          socket.leave(salaPublica(socket._negocioPublico));
+        }
+
+        socket.join(salaPublica(negocioId));
+        socket._negocioPublico = negocioId;
+        logger.debug('Menú público escuchando cambios de catálogo', { socketId: socket.id, negocioId });
+      } catch (error) {
+        /* Un slug que no existe es un enlace viejo, no una falla: se responde
+           y ya. No se sube a warn para no llenar el log con los QR de
+           negocios que se fueron. */
+        logger.debug('joinPublicBusiness - no se pudo resolver el negocio', { socketId: socket.id, identificador, error: error.message });
+      }
+    });
+
+    socket.on('leavePublicBusiness', () => {
+      if (socket._negocioPublico) {
+        socket.leave(salaPublica(socket._negocioPublico));
+        socket._negocioPublico = null;
       }
     });
 
@@ -512,7 +581,14 @@ async function emitToBusiness(businessId, event, data) {
     
     // Emit to the main room
     ioInstance.to(roomId).emit(event, data);
-    
+
+    /* Los cambios de catálogo van también a los menús abiertos. Se hace acá y
+       no en cada ruta para que la frontera de qué oye un cliente sin cuenta
+       esté escrita en un solo lugar: `EVENTOS_PUBLICOS`. */
+    if (EVENTOS_PUBLICOS.has(event)) {
+      ioInstance.to(salaPublica(roomId)).emit(event, data);
+    }
+
     // If businessId looks like an ObjectId, also try to emit to slug (cached)
     if (roomId.match(/^[0-9a-fA-F]{24}$/)) {
       try {

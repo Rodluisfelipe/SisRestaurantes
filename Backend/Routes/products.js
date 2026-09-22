@@ -1093,10 +1093,14 @@ router.put("/:id", tenantAuth, validateUpdateProductParam, validateProductInput,
 
     logger.info('Producto actualizado', { productId: updatedProduct._id.toString() }, req);
 
-    /* Esta ruta no avisa por socket, pero sí cambia el nombre, el precio y la
-       foto: sin vaciar la caché, "Los más pedidos" seguía mostrando los datos
-       viejos unos minutos. */
-    invalidatePopularCache(finalBusinessId);
+    /* Esta es la ruta que cambia el precio, y era la única del archivo que no
+       avisaba por socket: crear, borrar, reordenar y activar sí lo hacían.
+       Por eso un menú abierto se quedaba con el precio viejo hasta que el
+       cliente recargara, armaba el carrito con él, y al confirmar el pedido
+       el servidor lo rechazaba por no cuadrar el total.
+       Va con el producto ya poblado para que quien lo reciba pueda recalcular
+       sin volver a pedirlo. */
+    avisarCambioDeProductos(finalBusinessId, { type: 'updated', product: updatedProduct });
 
     // Audit log
     if (beforeUpdate) {

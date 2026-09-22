@@ -37,6 +37,9 @@ import OrderTracker from "../Components/OrderTracker";
 import PaymentUpload from "../Components/PaymentUpload";
 import MyOrders from "../Components/MyOrders";
 import api from "../services/api";
+import { toast } from "sonner";
+import { resincronizarCarrito } from "../utils/preciosCarrito";
+import { formatCurrency } from "../utils/currency";
 import { useBusinessConfig } from "../Context/BusinessContext";
 import '../../styles/scrollbar.css';
 import { socket } from '../services/socket';
@@ -837,6 +840,29 @@ export default function Menu() {
     */
   }, [businessId]);
 
+  /* Ponerle al carrito los precios de ahora y decírselo al cliente.
+   *
+   * Callarlo sería peor que el error que esto reemplaza: vería cambiar el
+   * total sin explicación justo antes de pagar. Decirlo cuando todavía puede
+   * quitar algo es lo que hace que no se sienta un engaño. */
+  const reprecificarCarrito = useCallback((productosFrescos) => {
+    const { carrito, cambios } = resincronizarCarrito(cartRef.current, productosFrescos);
+    if (cambios.length === 0) return;
+
+    setCart(carrito);
+
+    const moneda = businessConfig?.currency || 'COP';
+    const primero = cambios[0];
+    const detalle = `${primero.nombre}: ${formatCurrency(primero.antes, moneda)} → ${formatCurrency(primero.despues, moneda)}`;
+
+    toast.info(
+      cambios.length === 1
+        ? 'El restaurante actualizó un precio de tu pedido'
+        : `El restaurante actualizó ${cambios.length} precios de tu pedido`,
+      { description: cambios.length === 1 ? detalle : `${detalle} y ${cambios.length - 1} más`, duration: 8000 }
+    );
+  }, [businessConfig?.currency]);
+
   useEffect(() => {
     // Usar isValidBusinessIdentifier en lugar de isValidObjectId
     const isValid = isValidBusinessIdentifier(businessId);
@@ -844,22 +870,41 @@ export default function Menu() {
       logger.info('Menu - businessId no es válido para socket:', businessId);
       return;
     }
-    
+
     if (socket && !socket.connected) {
       socket.connect();
     }
     if (socket) {
-      socket.emit('joinBusiness', businessId);
+      /* `joinBusiness` exige token y a un cliente lo rechaza: la sala del
+         negocio lleva los pedidos, con teléfonos y direcciones. Esta otra
+         sala no pide cuenta y solo trae el catálogo, que es lo que el menú
+         necesita para no quedarse con precios viejos. */
+      socket.emit('joinPublicBusiness', businessId);
     }
-    logger.info('Socket joinBusiness:', businessId);
+    logger.info('Socket joinPublicBusiness:', businessId);
     if (socket) {
       socket.on('products_update', (data) => {
         if (data.type === 'created') {
           setProducts((prev) => [...prev, data.product]);
         } else if (data.type === 'deleted') {
           setProducts((prev) => prev.filter(p => p._id !== data.productId));
+        } else if (data.type === 'updated' && data.product) {
+          /* El caso que importa: cambió un precio mientras alguien tenía el
+             menú abierto. Sin esto, el carrito conserva el precio viejo y el
+             servidor le rechaza el pedido al confirmarlo. */
+          setProducts((prev) => prev.map(p => (
+            p._id === data.product._id ? data.product : p
+          )));
+          /* Basta con el producto que cambió: las líneas del carrito que no
+             estén en la lista se dejan como están. Va fuera del actualizador
+             de estado para que React no lo corra dos veces y el cliente vea
+             el aviso duplicado. */
+          reprecificarCarrito([data.product]);
+        } else if (data.type === 'toggled') {
+          setProducts((prev) => prev.map(p => (
+            p._id === data.productId ? { ...p, active: data.active } : p
+          )));
         }
-        // Puedes agregar lógica para 'updated' si lo implementas en backend
       });
       socket.on('categories_update', (data) => {
         if (data.type === 'created') {
@@ -870,14 +915,28 @@ export default function Menu() {
           setCategories((prev) => prev.filter(cat => cat._id !== data.categoryId));
         }
       });
+      /* Un grupo de toppings cambia el precio de todos los productos que lo
+         usan, y el evento no dice cuáles: toca volver a pedir el catálogo.
+         Es lo que pasó el 22/09: se editó el grupo "BEBIDA", no el Bowl. */
+      socket.on('topping_groups_update', () => {
+        api.get(`/products?businessId=${businessId}`)
+          .then(({ data }) => {
+            setProducts(data);
+            reprecificarCarrito(data);
+          })
+          .catch(() => { /* si falla, el menú sigue con lo que tenía */ });
+      });
     }
-    
+
     return () => {
       if (socket) {
+        socket.emit('leavePublicBusiness');
         socket.off('products_update');
         socket.off('categories_update');
+        socket.off('topping_groups_update');
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessId]);
 
   const addToCart = (product) => {
