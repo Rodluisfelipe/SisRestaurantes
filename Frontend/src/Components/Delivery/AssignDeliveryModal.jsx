@@ -4,6 +4,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import api from '../../services/api';
 import { useBusinessConfig } from '../../Context/BusinessContext';
 import { FaQrcode, FaUserAlt, FaMotorcycle, FaWhatsapp, FaCopy, FaTimes, FaCheck, FaMapMarkerAlt } from 'react-icons/fa';
+import { enlaceWhatsApp } from '../../utils/whatsapp';
 
 const AssignDeliveryModal = ({ isOpen, order, onClose, onAssigned }) => {
   const { businessId, businessConfig } = useBusinessConfig();
@@ -87,11 +88,9 @@ const AssignDeliveryModal = ({ isOpen, order, onClose, onAssigned }) => {
 
   const buildWhatsAppUrl = () => {
     if (!result) return '#';
-    const phone = (result.phone || '').replace(/\D/g, '');
-    const phoneFormatted = phone.startsWith('57') ? phone : `57${phone}`;
     const trackUrl = result.trackUrl || `https://menuby.tech/${businessConfig.slug}/track/${order._id}`;
     const msg = `Tu código de entrega Menuby es: *${result.confirmationCode}*\n\nSigue tu pedido aquí: ${trackUrl}`;
-    return `https://wa.me/${phoneFormatted}?text=${encodeURIComponent(msg)}`;
+    return enlaceWhatsApp(result.phone, msg, businessConfig?.phoneCountryCode) || '#';
   };
 
   const copyCode = () => {

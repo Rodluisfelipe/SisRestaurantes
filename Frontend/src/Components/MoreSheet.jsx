@@ -12,6 +12,7 @@ const BRAND = {
 };
 import MenuScreen from './MenuScreen';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import { enlaceWhatsApp } from '../utils/whatsapp';
 
 /**
  * MoreSheet — hub "Mantente al día" del menú V2.
@@ -74,10 +75,11 @@ export default function MoreSheet({ open, onClose, onRate, onShowLoyalty, loyalt
   const wifi = businessConfig?.wifi;
   const hasWifi = !!(wifi?.enabled && wifi?.ssid);
 
-  const wa = (businessConfig?.whatsappNumber || '').replace(/\D/g, '');
-  const waHref = wa
-    ? `https://wa.me/${wa.length <= 10 ? (businessConfig?.phoneCountryCode || '+57').replace(/\D/g, '') + wa : wa}`
-    : null;
+  const waHref = enlaceWhatsApp(
+    businessConfig?.whatsappNumber,
+    undefined,
+    businessConfig?.phoneCountryCode
+  ) || null;
 
   const mapsUrl = businessConfig?.googleMapsUrl
     || (businessConfig?.location?.coordinates?.lat

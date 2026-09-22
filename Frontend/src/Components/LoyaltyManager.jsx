@@ -12,6 +12,7 @@ import {
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import AI from './Admin/AdminIcons';
+import { enlaceWhatsApp } from '../utils/whatsapp';
 
 /* ═══════════════════════════════════════════ */
 /*              CONSTANTS                      */
@@ -540,12 +541,11 @@ const LoyaltyManager = () => {
   ];
 
   const buildRewardWhatsApp = (customer, reward) => {
-    const phone = (customer.phone || customer.customerId?.phone || '').replace(/\D/g, '');
-    const countryPhone = phone.startsWith('57') ? phone : `57${phone}`;
+    const telefono = customer.phone || customer.customerId?.phone || '';
     const name = customer.customerId?.name || 'Cliente';
     const biz = businessConfig?.businessName || 'Nuestro negocio';
     const msg = `¡Hola ${name}! 🎉 Tienes ${customer.points} puntos en ${biz} y puedes reclamar: *${reward.name}* (${reward.pointsCost} pts). ¿Quieres canjearlo?`;
-    return `https://wa.me/${countryPhone}?text=${encodeURIComponent(msg)}`;
+    return enlaceWhatsApp(telefono, msg, businessConfig?.phoneCountryCode);
   };
 
   /* ═══ RENDER ═══ */
@@ -1071,7 +1071,7 @@ const LoyaltyManager = () => {
                               {claimable.map(reward => (
                                 <a
                                   key={reward._id || reward.name}
-                                  href={buildRewardWhatsApp(c, reward)}
+                                  href={buildRewardWhatsApp(c, reward) || undefined}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 transition-colors text-[11px] font-medium"

@@ -6,6 +6,7 @@ import { io } from 'socket.io-client';
 import { FaPhone, FaMotorcycle, FaCheck, FaMapMarkerAlt, FaWhatsapp, FaLocationArrow, FaBoxOpen } from 'react-icons/fa';
 import 'leaflet/dist/leaflet.css';
 import { MAP_TILE_URL, MAP_ATTRIBUTION } from '../../utils/mapTiles';
+import { enlaceWhatsApp } from '../../utils/whatsapp';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || API_URL.replace('/api', '');
 const API_BASE = API_URL;
@@ -382,7 +383,7 @@ const DeliveryTracker = () => {
               <FaPhone className="text-xs" style={{ color: brandColor }} />
               Llamar
             </a>
-            <a href={`https://wa.me/${order.business.phone.replace(/\D/g, '')}`}
+            <a href={enlaceWhatsApp(order.business.phone) || undefined}
               className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 text-white font-medium py-3 rounded-xl text-sm shadow-sm">
               <FaWhatsapp /> WhatsApp
             </a>

@@ -29,6 +29,7 @@ import OrderCard from './OrderCard';
 import DeliveryLocationMap from './DeliveryLocationMap';
 import useOrdersDashboard from '../hooks/useOrdersDashboard';
 import api from '../services/api';
+import { enlaceWhatsApp } from '../utils/whatsapp';
 
 // Inline admin chat for order details
 const AdminOrderChat = ({ orderId, messages: initialMessages, isOpen, onClose }) => {
@@ -146,10 +147,10 @@ const GiftPanel = ({ order, businessName }) => {
   const recipientMsg = `¡Hola ${g.recipientName || ''}! 🎁 Tienes un regalo en camino de parte de ${order.customerName || 'alguien especial'}.`
     + (g.message ? `\n\n💌 "${g.message}"` : '')
     + `\n\n— ${businessName || ''}`;
-  const phoneDigits = (g.recipientPhone || '').replace(/\D/g, '');
-  const waUrl = phoneDigits
-    ? `https://wa.me/${phoneDigits}?text=${encodeURIComponent(recipientMsg)}`
-    : `https://wa.me/?text=${encodeURIComponent(recipientMsg)}`;
+  /* Sin numero del destinatario, WhatsApp abre con el mensaje listo para que
+     quien atiende elija a quien mandarselo. */
+  const waUrl = enlaceWhatsApp(g.recipientPhone, recipientMsg)
+    || `https://wa.me/?text=${encodeURIComponent(recipientMsg)}`;
   const copyMsg = async () => {
     try { await navigator.clipboard.writeText(recipientMsg); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* noop */ }
   };

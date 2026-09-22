@@ -8,6 +8,7 @@ import { getBusinessSlug } from '../utils/getBusinessId';
 import { logSystem } from '../utils/systemLogger';
 import { formatCurrency as fmtCurrency } from '../utils/currency';
 import { toast } from 'sonner';
+import { enlaceWhatsApp } from '../utils/whatsapp';
 
 /**
  * `busquedaInicial` llega desde los chats de WhatsApp: al abrir la ficha de
@@ -322,13 +323,15 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
       custom: `Hola ${customerName}! Te escribo desde ${restaurantName}. `
     };
 
-    return encodeURIComponent(messages[type] || messages.greeting);
+    /* Sin codificar: de eso se encarga `enlaceWhatsApp`. Codificarlo aqui
+       lo dejaria codificado dos veces y al cliente le llegaria %20 en vez de
+       espacios. */
+    return messages[type] || messages.greeting;
   };
 
   const openWhatsAppWithMessage = (customer, messageType) => {
-    const phone = customer.phone.replace(/\D/g, '');
-    const message = generateWhatsAppMessage(customer, messageType);
-    window.open(`https://wa.me/${phone}?text=${message}`, '_blank', 'noopener,noreferrer');
+    const enlace = enlaceWhatsApp(customer.phone, generateWhatsAppMessage(customer, messageType));
+    if (enlace) window.open(enlace, '_blank', 'noopener,noreferrer');
     setShowWhatsAppMenu(false);
     setWhatsappMenuCustomer(null);
   };

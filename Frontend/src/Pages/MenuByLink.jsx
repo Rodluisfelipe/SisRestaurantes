@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { BACKEND_URL } from '../config';
+import { enlaceWhatsApp } from '../utils/whatsapp';
 
 const api = axios.create({ baseURL: `${BACKEND_URL}/api` });
 
@@ -36,9 +37,9 @@ function StarRating({ rating }) {
 }
 
 function BranchCard({ branch, primaryColor, navigate }) {
-  const waLink = branch.whatsappNumber
-    ? `https://wa.me/${branch.whatsappNumber.replace(/\D/g,'').replace(/^3/, '573')}`
-    : null;
+  /* `.replace(/^3/, '573')` solo acertaba con celulares: a un fijo nuevo,
+     que empieza por 6, lo dejaba sin indicativo. */
+  const waLink = enlaceWhatsApp(branch.whatsappNumber) || null;
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow">
@@ -241,7 +242,7 @@ export default function MenuByLink() {
             </button>
             {mainBiz?.whatsappNumber && (
               <a
-                href={`https://wa.me/${mainBiz.whatsappNumber.replace(/\D/g,'').replace(/^3/, '573')}`}
+                href={enlaceWhatsApp(mainBiz.whatsappNumber) || undefined}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full py-3 rounded-2xl font-semibold text-emerald-700 text-sm bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 active:scale-95 transition-all flex items-center justify-center gap-2"

@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import { enlaceWhatsApp } from '../utils/whatsapp';
 
 const BusinessClosedModal = ({ isOpen, onClose, businessStatus }) => {
   const { businessConfig } = useBusinessConfig();
@@ -149,7 +150,7 @@ const BusinessClosedModal = ({ isOpen, onClose, businessStatus }) => {
                   <motion.a
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
-                    href={`https://wa.me/${businessConfig.whatsappNumber.replace(/\D/g, '')}`}
+                    href={enlaceWhatsApp(businessConfig.whatsappNumber, undefined, businessConfig.phoneCountryCode) || undefined}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white shadow-md"

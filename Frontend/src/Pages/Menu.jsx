@@ -52,6 +52,7 @@ import useSEO from '../hooks/useSEO';
 import useCart from '../hooks/useCart';
 import useMenuData from '../hooks/useMenuData';
 import { esTienda } from '../utils/tienda';
+import { numeroWhatsApp } from '../utils/whatsapp';
 // useOrderTracking hook removed — logic is inline
 
 /**
@@ -1274,15 +1275,21 @@ export default function Menu() {
         // Función para detectar si es móvil
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         
+        /* El numero del negocio, con indicativo. Sin el, WhatsApp Web le
+           adivina el pais al pedido y responde que el numero no existe: el
+           celular acierta porque asume el pais del telefono, el computador no
+           tiene de donde. */
+        const numeroNegocio = numeroWhatsApp(businessConfig?.whatsappNumber, businessConfig?.phoneCountryCode);
+
         // Construir URL de WhatsApp según el dispositivo
         let whatsappUrl;
-        if (businessConfig?.whatsappNumber) {
+        if (numeroNegocio) {
           if (isMobile) {
             // Para móviles, usar el protocolo whatsapp://
-            whatsappUrl = `whatsapp://send?phone=${businessConfig.whatsappNumber}&text=${whatsappMessage}`;
+            whatsappUrl = `whatsapp://send?phone=${numeroNegocio}&text=${whatsappMessage}`;
           } else {
             // Para desktop, usar wa.me
-            whatsappUrl = `https://wa.me/${businessConfig.whatsappNumber}?text=${whatsappMessage}`;
+            whatsappUrl = `https://wa.me/${numeroNegocio}?text=${whatsappMessage}`;
           }
         } else {
           if (isMobile) {
@@ -1300,8 +1307,8 @@ export default function Menu() {
         } catch (error) {
           // Fallback si el protocolo whatsapp:// no funciona
           // Error silencioso
-          const fallbackUrl = businessConfig?.whatsappNumber 
-            ? `https://wa.me/${businessConfig.whatsappNumber}?text=${whatsappMessage}` 
+          const fallbackUrl = numeroNegocio
+            ? `https://wa.me/${numeroNegocio}?text=${whatsappMessage}`
             : `https://wa.me/?text=${whatsappMessage}`;
           window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
         }

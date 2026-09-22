@@ -4,6 +4,7 @@ import { API_URL } from "../../config";
 import { socket } from "../../services/socket";
 import { formatCurrency } from "../../utils/currency";
 import MenuHealthScore from "./MenuHealthScore";
+import { enlaceWhatsApp } from '../../utils/whatsapp';
 
 const EMPTY_ARRAY = [];
 
@@ -338,15 +339,13 @@ function AbandonedCarts({ carts = EMPTY_ARRAY, totalLost = 0, currency = 'COP' }
   if (carts.length === 0) return null;
 
   const buildWhatsAppUrl = (cart) => {
-    const phone = (cart.phone || '').replace(/\D/g, '');
-    const fullPhone = phone.startsWith('57') ? phone : `57${phone}`;
     const name = cart.customerName || 'cliente';
     const products = (cart.cartProducts || []).map(p => 
       `${p.qty > 1 ? p.qty + 'x ' : ''}${p.name}`
     ).join(', ');
     const total = COP(cart.cartTotal || 0, currency);
     const msg = `Hola ${name}, vimos que estabas interesado en ${products || 'nuestros productos'} (${total}). ¿Te ayudamos a completar tu pedido? 😊`;
-    return `https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`;
+    return enlaceWhatsApp(cart.phone, msg);
   };
 
   return (
@@ -405,7 +404,7 @@ function AbandonedCarts({ carts = EMPTY_ARRAY, totalLost = 0, currency = 'COP' }
               </div>
               {c.phone && (
                 <a
-                  href={buildWhatsAppUrl(c)}
+                  href={buildWhatsAppUrl(c) || undefined}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-7 h-7 rounded-lg bg-green-500 hover:bg-green-600 flex items-center justify-center transition-colors shadow-sm"

@@ -9,6 +9,7 @@ import {
   FaChevronDown, FaChevronUp, FaMoneyBillWave, FaStickyNote,
   FaExclamationTriangle, FaWifi, FaSpinner
 } from 'react-icons/fa';
+import { enlaceWhatsApp } from '../../utils/whatsapp';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || API_URL;
 const API_BASE = API_URL;
@@ -213,8 +214,6 @@ const DomiPage = () => {
   // Open WhatsApp with a pre-filled message to the customer
   const openWhatsApp = (order, messageType = 'onTheWay') => {
     if (!order.phone) return;
-    const phone = order.phone.replace(/\D/g, '');
-    const fullPhone = phone.startsWith('57') ? phone : `57${phone}`;
 
     const messages = {
       onTheWay: `Hola ${order.customerName || ''}, soy tu domiciliario de ${domiInfo?.businessName || 'tu restaurante'}. Ya voy en camino con tu pedido #${order.orderNumber}. 🛵`,
@@ -223,8 +222,8 @@ const DomiPage = () => {
       cantFind: `Hola ${order.customerName || ''}, soy tu domiciliario y no encuentro la dirección para tu pedido #${order.orderNumber}. ¿Podrías darme más indicaciones? 📍`
     };
 
-    const text = encodeURIComponent(messages[messageType]);
-    window.open(`https://wa.me/${fullPhone}?text=${text}`, '_blank');
+    const enlace = enlaceWhatsApp(order.phone, messages[messageType]);
+    if (enlace) window.open(enlace, '_blank');
   };
 
   // Copy address to clipboard

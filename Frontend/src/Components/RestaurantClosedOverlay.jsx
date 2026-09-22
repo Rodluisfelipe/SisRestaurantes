@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RestaurantClosedIllustration } from './EmptyStates';
+import { enlaceWhatsApp } from '../utils/whatsapp';
 
 /**
  * RestaurantClosedOverlay
@@ -58,11 +59,12 @@ const RestaurantClosedOverlay = ({
     setNotifyRequested(true);
     // If WhatsApp number available, open a pre-filled message
     if (businessConfig?.whatsappNumber) {
-      const msg = encodeURIComponent(
-        `¡Hola! Me gustaría recibir una notificación cuando abran. 🔔`
+      const enlace = enlaceWhatsApp(
+        businessConfig.whatsappNumber,
+        `¡Hola! Me gustaría recibir una notificación cuando abran. 🔔`,
+        businessConfig.phoneCountryCode
       );
-      const num = businessConfig.whatsappNumber.replace(/\D/g, '');
-      window.open(`https://wa.me/${num}?text=${msg}`, '_blank', 'noopener,noreferrer');
+      if (enlace) window.open(enlace, '_blank', 'noopener,noreferrer');
     }
   };
 

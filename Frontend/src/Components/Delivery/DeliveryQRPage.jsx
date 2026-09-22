@@ -6,6 +6,7 @@ import { io } from 'socket.io-client';
 import { FaMapMarkerAlt, FaPhone, FaCheck, FaBoxOpen, FaLocationArrow, FaMotorcycle, FaWhatsapp } from 'react-icons/fa';
 import 'leaflet/dist/leaflet.css';
 import { MAP_TILE_URL, MAP_ATTRIBUTION } from '../../utils/mapTiles';
+import { enlaceWhatsApp } from '../../utils/whatsapp';
 
 const API_BASE = API_URL;
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || API_URL.replace('/api', '');
@@ -343,7 +344,7 @@ const DeliveryQRPage = () => {
                   style={{ color: brandColor }}>
                   <FaPhone />
                 </a>
-                <a href={`https://wa.me/${order.customer.phone.replace(/\D/g, '')}`}
+                <a href={enlaceWhatsApp(order.customer.phone) || undefined}
                   className="w-9 h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center text-sm shadow-sm">
                   <FaWhatsapp />
                 </a>

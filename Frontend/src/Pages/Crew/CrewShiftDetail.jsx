@@ -14,6 +14,7 @@ import crewApi from '../../services/crewApi';
 import { cannon } from './components/confettiBurst';
 import { crewToast } from './components/crewToast';
 import MagneticButton from './components/MagneticButton';
+import { enlaceWhatsApp } from '../../utils/whatsapp';
 
 function formatCOP(n) {
   return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0);
@@ -280,7 +281,7 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
               )}
               {biz.whatsappNumber && (
                 <a
-                  href={`https://wa.me/${biz.whatsappNumber.replace(/\D/g, '')}`}
+                  href={enlaceWhatsApp(biz.whatsappNumber) || undefined}
                   target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2.5 text-[12px] text-red-400 hover:text-red-300 transition"
                 >

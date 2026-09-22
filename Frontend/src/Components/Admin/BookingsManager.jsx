@@ -11,6 +11,7 @@ import {
   FaUserSlash, FaCalendarCheck, FaCalendarTimes,
   FaUserMd, FaRedo, FaStickyNote
 } from 'react-icons/fa';
+import { enlaceWhatsApp } from '../../utils/whatsapp';
 
 const STATUS_LABELS = {
   pending: { label: 'Pendiente', color: 'bg-amber-100 text-amber-700', dot: 'bg-amber-500' },
@@ -159,13 +160,13 @@ export default function BookingsManager({ businessId, businessConfig }) {
     }
 
     if (!booking.phone) return;
-    const phone = booking.phone.replace(/\D/g, '');
     const bName = businessConfig?.businessName || 'nuestro negocio';
     const dateStr = new Date(booking.bookingDate).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
     const timeStr = formatTime(booking.bookingDate);
     const services = booking.items?.map(i => i.name).join(', ') || '';
     const msg = `Hola ${booking.customerName} 👋\n\n✅ Tu cita en *${bName}* ha sido *confirmada*.\n\n📅 ${dateStr}\n🕐 ${timeStr}${services ? `\n💇 ${services}` : ''}${booking.staffName ? `\n👤 ${booking.staffName}` : ''}\n\n¡Te esperamos!`;
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    const enlace = enlaceWhatsApp(booking.phone, msg, businessConfig?.phoneCountryCode);
+    if (enlace) window.open(enlace, '_blank');
   };
 
   const assignStaff = async (bookingId, staffId, staffName) => {
@@ -700,7 +701,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
                     </div>
                     {/* Quick actions */}
                     <div className="flex gap-2">
-                      <a href={`https://wa.me/${customerData.customer.phone.replace(/\D/g, '')}`}
+                      <a href={enlaceWhatsApp(customerData.customer.phone) || undefined}
                         target="_blank" rel="noopener noreferrer"
                         className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-green-500 text-white text-xs font-medium hover:bg-green-600 transition-colors">
                         <FaWhatsapp /> WhatsApp

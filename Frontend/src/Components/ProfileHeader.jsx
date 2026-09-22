@@ -5,6 +5,7 @@ import { useBusinessConfig } from '../Context/BusinessContext';
 import AccountManagementModal from './AccountManagementModal';
 import { useCustomerData } from '../hooks/useCustomerData';
 import SonandoAhora from './SonandoAhora';
+import { enlaceWhatsApp } from '../utils/whatsapp';
 
 /* ── Iconos SVG (mismo patrón que el resto del menú) ── */
 const PH = {
@@ -133,10 +134,11 @@ export default function ProfileHeader({
       ? `https://maps.google.com/?q=${businessConfig.location.coordinates.lat},${businessConfig.location.coordinates.lng}`
       : businessConfig?.address ? `https://maps.google.com/?q=${encodeURIComponent(businessConfig.address)}` : null);
 
-  const waNumber = (businessConfig?.whatsappNumber || '').replace(/\D/g, '');
-  const waHref = waNumber
-    ? `https://wa.me/${waNumber.length <= 10 ? (businessConfig?.phoneCountryCode || '+57').replace(/\D/g, '') + waNumber : waNumber}`
-    : null;
+  const waHref = enlaceWhatsApp(
+    businessConfig?.whatsappNumber,
+    undefined,
+    businessConfig?.phoneCountryCode
+  ) || null;
 
   const plan = (subscriptionCommercialPlan || '').toLowerCase();
   const isVerified = ['starter', 'pro', 'pro_max'].includes(plan);
