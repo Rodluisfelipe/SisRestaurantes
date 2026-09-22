@@ -1,14 +1,21 @@
 import { useEffect, useState } from 'react';
 import api from '../../services/api';
+import ImageUploader from './ImageUploader';
+import { numeroWhatsApp } from '../../utils/whatsapp';
 
 /**
  * Armar la vitrina: "MenuBy Tura".
  *
  * Una página con los negocios de un mismo dueño. Aquí elige cuáles salen, en
- * qué orden, y cómo se ve.
+ * qué orden, y cómo se ve: identidad, banners, burbuja de ayuda y si cada
+ * negocio muestra su fila de lo más pedido.
  *
  * **No toca la configuración de ningún negocio.** Cada uno conserva su panel,
  * su carta, sus precios y sus impresoras. Esto solo los agrupa para mostrarlos.
+ *
+ * La pantalla va por secciones plegables y no por pestañas: es una página
+ * sola, se configura de una sentada, y con pestañas hay que acordarse de
+ * entrar a cada una antes de guardar.
  */
 export default function PortafolioManager({ businessId }) {
   /* El negocio va como parámetro **para el superadmin**.
@@ -20,14 +27,19 @@ export default function PortafolioManager({ businessId }) {
 
      Se manda siempre para no tener dos caminos: al dueño no le estorba. */
   const conNegocio = (ruta) => (businessId ? `${ruta}?businessId=${businessId}` : ruta);
+
   const [form, setForm] = useState({
     nombre: '',
     slug: '',
     descripcion: '',
     logo: '',
+    portada: '',
     colorPrincipal: '#111827',
     colorTexto: '#ffffff',
     negocios: [],
+    banners: [],
+    ayuda: { activa: false, telefono: '', mensaje: '', etiqueta: '' },
+    mostrarTops: true,
     activo: true,
   });
   const [disponibles, setDisponibles] = useState([]);
@@ -35,6 +47,7 @@ export default function PortafolioManager({ businessId }) {
   const [guardando, setGuardando] = useState(false);
   const [aviso, setAviso] = useState('');
   const [error, setError] = useState('');
+  const [abierta, setAbierta] = useState('negocios');
 
   useEffect(() => {
     Promise.all([
@@ -50,9 +63,18 @@ export default function PortafolioManager({ businessId }) {
             slug: p.slug || '',
             descripcion: p.descripcion || '',
             logo: p.logo || '',
+            portada: p.portada || '',
             colorPrincipal: p.colorPrincipal || '#111827',
             colorTexto: p.colorTexto || '#ffffff',
             negocios: (p.negocios || []).map(String),
+            banners: p.banners || [],
+            ayuda: {
+              activa: !!p.ayuda?.activa,
+              telefono: p.ayuda?.telefono || '',
+              mensaje: p.ayuda?.mensaje || '',
+              etiqueta: p.ayuda?.etiqueta || '',
+            },
+            mostrarTops: p.mostrarTops !== false,
             activo: p.activo !== false,
           });
         }
@@ -60,6 +82,10 @@ export default function PortafolioManager({ businessId }) {
       .finally(() => setCargando(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessId]);
+
+  const cambiar = (campo, valor) => setForm((f) => ({ ...f, [campo]: valor }));
+  const cambiarAyuda = (campo, valor) =>
+    setForm((f) => ({ ...f, ayuda: { ...f.ayuda, [campo]: valor } }));
 
   /* Entrar y salir de la vitrina. Al entrar se va **al final**: el orden lo
      decide el dueño moviéndolos, no el azar de en qué orden los tocó. */
@@ -83,12 +109,43 @@ export default function PortafolioManager({ businessId }) {
     });
   };
 
+  /* ── Banners ─────────────────────────────────────────────────────── */
+
+  const agregarBanner = () =>
+    setForm((f) => ({
+      ...f,
+      banners: [...f.banners, { imagen: '', titulo: '', enlace: '', activo: true }],
+    }));
+
+  const cambiarBanner = (i, campo, valor) =>
+    setForm((f) => ({
+      ...f,
+      banners: f.banners.map((b, j) => (j === i ? { ...b, [campo]: valor } : b)),
+    }));
+
+  const quitarBanner = (i) =>
+    setForm((f) => ({ ...f, banners: f.banners.filter((_, j) => j !== i) }));
+
+  const moverBanner = (i, delta) => {
+    setForm((f) => {
+      const j = i + delta;
+      if (j < 0 || j >= f.banners.length) return f;
+      const copia = [...f.banners];
+      [copia[i], copia[j]] = [copia[j], copia[i]];
+      return { ...f, banners: copia };
+    });
+  };
+
   const guardar = async () => {
     setGuardando(true);
     setError('');
     setAviso('');
     try {
-      await api.put(conNegocio('/portafolios'), form);
+      /* Los banners sin imagen se caen acá y no en el servidor, para que el
+         dueño entienda por qué desapareció la fila que acababa de agregar. */
+      const limpio = { ...form, banners: form.banners.filter((b) => b.imagen.trim()) };
+      await api.put(conNegocio('/portafolios'), limpio);
+      setForm(limpio);
       setAviso('Guardado');
       window.setTimeout(() => setAviso(''), 4000);
     } catch (e) {
@@ -111,8 +168,14 @@ export default function PortafolioManager({ businessId }) {
     .filter(Boolean);
   const fuera = disponibles.filter((n) => !form.negocios.includes(String(n._id)));
 
+  /* El número tal como lo va a usar WhatsApp. Se muestra debajo del campo
+     porque el error que esto previene —un número sin indicativo que funciona
+     en el celular de quien lo probó y en ningún computador— es invisible
+     hasta que un cliente se queja. */
+  const numeroDeAyuda = numeroWhatsApp(form.ayuda.telefono);
+
   return (
-    <div className="max-w-3xl mx-auto p-4 space-y-5">
+    <div className="max-w-3xl mx-auto p-4 space-y-4">
       <div>
         <h2 className="text-xl font-black text-slate-800">Tu página de negocios</h2>
         <p className="text-sm text-slate-500">
@@ -129,20 +192,25 @@ export default function PortafolioManager({ businessId }) {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-4">
-        <label className="block">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Nombre</span>
+      {/* ── Identidad ─────────────────────────────────────────────────── */}
+      <Seccion
+        titulo="Identidad"
+        resumen={form.nombre ? `${form.nombre} · menuby.tech/p/${form.slug || '…'}` : 'Sin nombre'}
+        id="identidad"
+        abierta={abierta}
+        alAbrir={setAbierta}
+      >
+        <Campo etiqueta="Nombre">
           <input
             value={form.nombre}
-            onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+            onChange={(e) => cambiar('nombre', e.target.value)}
             placeholder="MenuBy Tura"
-            className="mt-1 w-full h-11 px-3 rounded-xl border-2 border-slate-200 outline-none focus:border-slate-400"
+            className="w-full h-11 px-3 rounded-xl border-2 border-slate-200 outline-none focus:border-slate-400"
           />
-        </label>
+        </Campo>
 
-        <label className="block">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Dirección</span>
-          <div className="mt-1 flex items-center gap-2">
+        <Campo etiqueta="Dirección">
+          <div className="flex items-center gap-2">
             <span className="text-sm text-slate-400 flex-shrink-0">menuby.tech/p/</span>
             <input
               value={form.slug}
@@ -150,24 +218,45 @@ export default function PortafolioManager({ businessId }) {
                 /* Se limpia mientras escribe y no al guardar: así ve de una qué
                    dirección va a quedar, en vez de que el servidor se la
                    cambie por detrás. */
-                setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })
+                cambiar('slug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))
               }
               placeholder="tura"
               className="flex-1 h-11 px-3 rounded-xl border-2 border-slate-200 outline-none focus:border-slate-400"
             />
           </div>
-        </label>
+        </Campo>
 
-        <label className="block">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Descripción</span>
+        <Campo etiqueta="Descripción">
           <input
             value={form.descripcion}
-            onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+            onChange={(e) => cambiar('descripcion', e.target.value)}
             placeholder="Los sabores de Buenaventura"
             maxLength={300}
-            className="mt-1 w-full h-11 px-3 rounded-xl border-2 border-slate-200 outline-none focus:border-slate-400"
+            className="w-full h-11 px-3 rounded-xl border-2 border-slate-200 outline-none focus:border-slate-400"
           />
-        </label>
+        </Campo>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <Campo etiqueta="Logo">
+            <ImageUploader
+              value={form.logo}
+              onChange={(url) => cambiar('logo', url)}
+              folder="banners"
+              maxWidth={400}
+              previewClassName="w-full h-28"
+              previewFit="contain"
+            />
+          </Campo>
+          <Campo etiqueta="Portada de la barra">
+            <ImageUploader
+              value={form.portada}
+              onChange={(url) => cambiar('portada', url)}
+              folder="banners"
+              maxWidth={1400}
+              previewClassName="w-full h-28"
+            />
+          </Campo>
+        </div>
 
         <div className="flex gap-4">
           <label className="flex items-center gap-2">
@@ -175,7 +264,7 @@ export default function PortafolioManager({ businessId }) {
             <input
               type="color"
               value={form.colorPrincipal}
-              onChange={(e) => setForm({ ...form, colorPrincipal: e.target.value })}
+              onChange={(e) => cambiar('colorPrincipal', e.target.value)}
               className="w-10 h-10 rounded-lg border border-slate-200"
             />
           </label>
@@ -184,18 +273,21 @@ export default function PortafolioManager({ businessId }) {
             <input
               type="color"
               value={form.colorTexto}
-              onChange={(e) => setForm({ ...form, colorTexto: e.target.value })}
+              onChange={(e) => cambiar('colorTexto', e.target.value)}
               className="w-10 h-10 rounded-lg border border-slate-200"
             />
           </label>
         </div>
-      </div>
+      </Seccion>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">
-          En la página ({enVitrina.length})
-        </p>
-
+      {/* ── Negocios ──────────────────────────────────────────────────── */}
+      <Seccion
+        titulo="Negocios en la página"
+        resumen={`${enVitrina.length} de ${disponibles.length}`}
+        id="negocios"
+        abierta={abierta}
+        alAbrir={setAbierta}
+      >
         {enVitrina.length === 0 && (
           <p className="text-[13px] text-slate-400 py-2">
             Todavía no has agregado ninguno. Elígelos abajo.
@@ -210,22 +302,16 @@ export default function PortafolioManager({ businessId }) {
             {n.logo && <img src={n.logo} alt="" className="w-9 h-9 rounded-lg object-cover" />}
             <span className="flex-1 min-w-0 text-[14px] font-bold truncate">{n.businessName}</span>
 
-            <button
-              onClick={() => mover(String(n._id), -1)}
-              disabled={i === 0}
-              aria-label="Subir"
-              className="w-9 h-9 rounded-lg border border-slate-200 text-slate-500 disabled:opacity-30"
-            >
+            <BotonIcono etiqueta="Subir" onClick={() => mover(String(n._id), -1)} desactivado={i === 0}>
               ↑
-            </button>
-            <button
+            </BotonIcono>
+            <BotonIcono
+              etiqueta="Bajar"
               onClick={() => mover(String(n._id), 1)}
-              disabled={i === enVitrina.length - 1}
-              aria-label="Bajar"
-              className="w-9 h-9 rounded-lg border border-slate-200 text-slate-500 disabled:opacity-30"
+              desactivado={i === enVitrina.length - 1}
             >
               ↓
-            </button>
+            </BotonIcono>
             <button
               onClick={() => alternar(String(n._id))}
               className="w-9 h-9 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50"
@@ -256,12 +342,163 @@ export default function PortafolioManager({ businessId }) {
             ))}
           </>
         )}
-      </div>
+
+        <Interruptor
+          activo={form.mostrarTops}
+          alCambiar={(v) => cambiar('mostrarTops', v)}
+          titulo="Mostrar lo más pedido de la semana"
+          detalle="Debajo de cada negocio aparece una fila con sus productos más vendidos. Cada negocio puede apagarla desde su propio panel."
+        />
+      </Seccion>
+
+      {/* ── Banners ───────────────────────────────────────────────────── */}
+      <Seccion
+        titulo="Banners"
+        resumen={form.banners.length ? `${form.banners.length} · pasan solos` : 'Ninguno'}
+        id="banners"
+        abierta={abierta}
+        alAbrir={setAbierta}
+      >
+        <p className="text-[12.5px] text-slate-500">
+          Van arriba de todo y pasan solos cada 5 segundos. Úsalos para promociones,
+          horarios especiales o para llevar a uno de tus negocios.
+        </p>
+
+        {form.banners.map((b, i) => (
+          <div key={i} className="rounded-xl border border-slate-200 p-3 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black text-slate-400 tabular-nums">#{i + 1}</span>
+              <span className="flex-1" />
+              <BotonIcono etiqueta="Subir" onClick={() => moverBanner(i, -1)} desactivado={i === 0}>
+                ↑
+              </BotonIcono>
+              <BotonIcono
+                etiqueta="Bajar"
+                onClick={() => moverBanner(i, 1)}
+                desactivado={i === form.banners.length - 1}
+              >
+                ↓
+              </BotonIcono>
+              <button
+                onClick={() => quitarBanner(i)}
+                className="w-9 h-9 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50"
+                aria-label="Quitar banner"
+              >
+                ×
+              </button>
+            </div>
+
+            <ImageUploader
+              value={b.imagen}
+              onChange={(url) => cambiarBanner(i, 'imagen', url)}
+              folder="banners"
+              maxWidth={1600}
+              previewClassName="w-full h-32"
+            />
+
+            <input
+              value={b.titulo}
+              onChange={(e) => cambiarBanner(i, 'titulo', e.target.value)}
+              placeholder="Texto sobre la imagen (opcional)"
+              maxLength={80}
+              className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 text-[13.5px] outline-none focus:border-slate-400"
+            />
+
+            <input
+              value={b.enlace}
+              onChange={(e) => cambiarBanner(i, 'enlace', e.target.value)}
+              placeholder="A dónde lleva: /doggitos o https://… (opcional)"
+              maxLength={300}
+              className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 text-[13.5px] outline-none focus:border-slate-400"
+            />
+
+            <Interruptor
+              activo={b.activo !== false}
+              alCambiar={(v) => cambiarBanner(i, 'activo', v)}
+              titulo="Visible"
+              detalle="Apagado se guarda pero no sale en la página. Sirve para dejar listo el de la próxima promoción."
+            />
+          </div>
+        ))}
+
+        {form.banners.length < 8 ? (
+          <button
+            onClick={agregarBanner}
+            className="w-full h-11 rounded-xl border-2 border-dashed border-slate-200 text-[13.5px] font-bold text-slate-500 hover:border-slate-300"
+          >
+            + Agregar banner
+          </button>
+        ) : (
+          <p className="text-[12.5px] text-slate-400">
+            Ocho es el tope. Nadie desliza más que eso.
+          </p>
+        )}
+      </Seccion>
+
+      {/* ── Burbuja de ayuda ──────────────────────────────────────────── */}
+      <Seccion
+        titulo="Burbuja de ayuda"
+        resumen={form.ayuda.activa && numeroDeAyuda ? `WhatsApp +${numeroDeAyuda}` : 'Apagada'}
+        id="ayuda"
+        abierta={abierta}
+        alAbrir={setAbierta}
+      >
+        <Interruptor
+          activo={form.ayuda.activa}
+          alCambiar={(v) => cambiarAyuda('activa', v)}
+          titulo="Mostrar burbuja de WhatsApp"
+          detalle="Un botón flotante en la esquina de la página."
+        />
+
+        {form.ayuda.activa && (
+          <>
+            <Campo etiqueta="Número de WhatsApp">
+              <input
+                value={form.ayuda.telefono}
+                onChange={(e) => cambiarAyuda('telefono', e.target.value)}
+                placeholder="315 408 7774"
+                inputMode="tel"
+                className="w-full h-11 px-3 rounded-xl border-2 border-slate-200 outline-none focus:border-slate-400"
+              />
+              {form.ayuda.telefono && (
+                <p className={`text-[12px] mt-1 ${numeroDeAyuda ? 'text-slate-500' : 'text-red-600 font-semibold'}`}>
+                  {numeroDeAyuda
+                    ? `Se abrirá como +${numeroDeAyuda}`
+                    : 'Ese número no sirve para WhatsApp. Revísalo.'}
+                </p>
+              )}
+            </Campo>
+
+            <Campo etiqueta="Mensaje con el que abre el chat">
+              <input
+                value={form.ayuda.mensaje}
+                onChange={(e) => cambiarAyuda('mensaje', e.target.value)}
+                placeholder="Hola, tengo una pregunta sobre sus negocios"
+                maxLength={200}
+                className="w-full h-11 px-3 rounded-xl border-2 border-slate-200 outline-none focus:border-slate-400"
+              />
+            </Campo>
+
+            <Campo etiqueta="Texto de la burbuja">
+              <input
+                value={form.ayuda.etiqueta}
+                onChange={(e) => cambiarAyuda('etiqueta', e.target.value)}
+                placeholder="¿Necesitas ayuda?"
+                maxLength={40}
+                className="w-full h-11 px-3 rounded-xl border-2 border-slate-200 outline-none focus:border-slate-400"
+              />
+            </Campo>
+          </>
+        )}
+      </Seccion>
 
       {error && <p className="text-[13px] font-semibold text-red-600">{error}</p>}
       {aviso && <p className="text-[13px] font-semibold text-emerald-600">{aviso}</p>}
 
-      <div className="flex items-center gap-3">
+      {/* Guardar se queda pegado abajo: con las secciones desplegadas la
+          página es larga, y tener que subir hasta el final a guardar es la
+          forma más fácil de perder lo que se acaba de configurar. */}
+      <div className="sticky bottom-0 -mx-4 px-4 py-3 bg-gradient-to-t from-white via-white to-white/0 flex items-center gap-3">
         <button
           onClick={guardar}
           disabled={guardando || !form.nombre.trim() || !form.slug.trim()}
@@ -282,5 +519,74 @@ export default function PortafolioManager({ businessId }) {
         )}
       </div>
     </div>
+  );
+}
+
+/** Una sección plegable. Solo una abierta a la vez. */
+function Seccion({ titulo, resumen, id, abierta, alAbrir, children }) {
+  const esta = abierta === id;
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+      <button
+        onClick={() => alAbrir(esta ? '' : id)}
+        className="w-full px-4 py-3.5 flex items-center gap-3 text-left"
+      >
+        <div className="flex-1 min-w-0">
+          <p className="font-black text-[15px] text-slate-800">{titulo}</p>
+          <p className="text-[12.5px] text-slate-400 truncate">{resumen}</p>
+        </div>
+        <span className={`text-slate-300 transition-transform ${esta ? 'rotate-180' : ''}`}>▾</span>
+      </button>
+
+      {esta && <div className="px-4 pb-4 space-y-4 border-t border-slate-100 pt-4">{children}</div>}
+    </div>
+  );
+}
+
+function Campo({ etiqueta, children }) {
+  return (
+    <label className="block">
+      <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">{etiqueta}</span>
+      <div className="mt-1">{children}</div>
+    </label>
+  );
+}
+
+function BotonIcono({ etiqueta, onClick, desactivado, children }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={desactivado}
+      aria-label={etiqueta}
+      className="w-9 h-9 rounded-lg border border-slate-200 text-slate-500 disabled:opacity-30"
+    >
+      {children}
+    </button>
+  );
+}
+
+function Interruptor({ activo, alCambiar, titulo, detalle }) {
+  return (
+    <button
+      onClick={() => alCambiar(!activo)}
+      className="w-full flex items-start gap-3 text-left p-3 rounded-xl hover:bg-slate-50"
+    >
+      <span
+        className={`mt-0.5 w-10 h-6 rounded-full flex-shrink-0 transition-colors relative ${
+          activo ? 'bg-emerald-500' : 'bg-slate-200'
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${
+            activo ? 'left-[18px]' : 'left-0.5'
+          }`}
+        />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[13.5px] font-bold text-slate-700">{titulo}</span>
+        {detalle && <span className="block text-[12px] text-slate-400 leading-snug">{detalle}</span>}
+      </span>
+    </button>
   );
 }

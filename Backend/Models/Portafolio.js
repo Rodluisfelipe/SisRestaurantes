@@ -73,6 +73,44 @@ const portafolioSchema = new mongoose.Schema({
     ref: 'BusinessConfig'
   }],
 
+  /* Los banners de la página.
+   *
+   * Van **aquí dentro** y no en el modelo `Banner`, que es otra cosa: ese
+   * pasa por aprobación del superadmin porque se muestra en el catálogo
+   * general de MenuBy, donde compiten negocios distintos. Esta es la página
+   * del dueño: hacerlo esperar una aprobación para poner una promoción en su
+   * propia vitrina sería absurdo.
+   *
+   * Un arreglo embebido y no una colección aparte por lo mismo que los
+   * negocios: no hay nada que guardar de cada banner más allá de lo que se
+   * dibuja. El día que haya que contar clics por banner, esto se parte. */
+  banners: [{
+    imagen: { type: String, required: true },
+    titulo: { type: String, default: '', trim: true, maxlength: 80 },
+    /* A dónde lleva. Puede ser uno de sus negocios (`/doggitos`), una
+       categoría, o algo de afuera. Vacío = el banner no es clicable. */
+    enlace: { type: String, default: '', trim: true, maxlength: 300 },
+    activo: { type: Boolean, default: true },
+  }],
+
+  /* La burbuja de ayuda: un WhatsApp flotante.
+   *
+   * Es de la vitrina, con su propio número, y no el de ninguno de los
+   * negocios: quien escribe desde aquí todavía no eligió a cuál quiere ir, y
+   * mandarlo al WhatsApp de uno de ellos es contestarle una pregunta que no
+   * hizo. */
+  ayuda: {
+    activa: { type: Boolean, default: false },
+    telefono: { type: String, default: '', trim: true, maxlength: 25 },
+    mensaje: { type: String, default: '', trim: true, maxlength: 200 },
+    etiqueta: { type: String, default: '', trim: true, maxlength: 40 },
+  },
+
+  /* Mostrar debajo de cada negocio una fila con lo más pedido de la semana.
+     Se puede apagar: un negocio recién abierto, sin ventas, muestra una fila
+     pobre que resta más de lo que suma. */
+  mostrarTops: { type: Boolean, default: true },
+
   /* Apagado = la página responde 404. Sirve para montarlo con calma antes de
      darle la dirección a nadie. */
   activo: { type: Boolean, default: true }
