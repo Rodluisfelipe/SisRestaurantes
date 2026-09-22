@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
-import RestaurantCard from './Catalog/RestaurantCard';
+import { menuCssVars } from '../utils/menuTokens';
 import { formatCurrency } from '../utils/currency';
 
 /**
@@ -12,22 +12,59 @@ import { formatCurrency } from '../utils/currency';
  * llevando a su menú. No es un marketplace —no hay negocios de terceros— ni un
  * selector de sucursales: son negocios distintos, con cartas distintas.
  *
- * Se ve como el marketplace de MenuBy **a propósito**: misma barra, misma
- * tarjeta, mismas filas. El cliente llega por WhatsApp esperando una app de
- * domicilios, y esa es la que ya conoce. La tarjeta es literalmente la misma
- * pieza (`RestaurantCard`), no una copia: lo que se mejore allá se mejora acá.
+ * Usa el mismo sistema visual del menú (`menuCssVars`) y su patrón de perfil:
+ * banner delgado, avatar con anillo, fila de stats tocables. No es un parecido
+ * hecho a mano —son los mismos tokens—, así que el día que el menú cambie de
+ * superficies o de radios, esta página cambia con él.
  *
- * Lo único que cambia es a quién sirve. Un marketplace ordena por cercanía y
- * popularidad porque compiten negocios de terceros; aquí el orden lo puso el
- * dueño y se respeta, y **no hay salida hacia el catálogo general**: esta
- * página es la de él, no una puerta a la competencia.
+ * Lo que la ordena:
+ *
+ * - **Abierto primero, siempre.** El orden que puso el dueño se respeta, pero
+ *   dentro de cada grupo: a las once de la noche, lo que sirve es lo que está
+ *   abierto, no lo que él puso de primero.
+ * - **Las reseñas se ven antes de entrar.** Calificación y número de reseñas
+ *   en la tarjeta, como en el perfil del menú: es lo que decide a cuál entrar.
+ * - **Lo más pedido de cada uno, con foto.** Un logo no da hambre.
+ * - **No hay salida al catálogo general.** Esta página es del dueño, no una
+ *   puerta a la competencia.
  */
 
-/** Cuánto hay que bajar para que la barra se compacte. */
-const UMBRAL_COMPACTA = 40;
+/* ── Iconos (mismo patrón que el resto del menú: SVG inline, sin librería) ── */
+const IC = {
+  star: (cls = 'w-4 h-4') => (
+    <svg className={cls} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+    </svg>
+  ),
+  share: (cls = 'w-4 h-4') => (
+    <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+      <path d="M8.59 13.51l6.83 3.98M15.41 6.51L8.59 10.49" />
+    </svg>
+  ),
+  mapPin: (cls = 'w-3 h-3') => (
+    <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" />
+    </svg>
+  ),
+  arrow: (cls = 'w-4 h-4') => (
+    <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 5l7 7-7 7M21 12H3" />
+    </svg>
+  ),
+};
 
 /** A partir de cuántos negocios vale la pena filtrar. */
 const MINIMO_PARA_FILTRAR = 3;
+
+/** El ancho del menú. La identidad se pierde si la página se estira sin tope. */
+const ANCHO = 'max-w-[880px] mx-auto w-full';
+
+const vidrio = {
+  background: 'rgba(0,0,0,0.34)',
+  backdropFilter: 'blur(8px)',
+  WebkitBackdropFilter: 'blur(8px)',
+};
 
 export default function PortafolioPublico() {
   const { slug } = useParams();
@@ -35,7 +72,6 @@ export default function PortafolioPublico() {
   const [tops, setTops] = useState({});
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
-  const [compacta, setCompacta] = useState(false);
   const [soloAbiertos, setSoloAbiertos] = useState(false);
   const [compartiendo, setCompartiendo] = useState(false);
   const [copiado, setCopiado] = useState(false);
@@ -74,17 +110,34 @@ export default function PortafolioPublico() {
     if (datos?.portafolio?.nombre) document.title = datos.portafolio.nombre;
   }, [datos]);
 
-  useEffect(() => {
-    const alBajar = () => setCompacta(window.scrollY > UMBRAL_COMPACTA);
-    alBajar();
-    window.addEventListener('scroll', alBajar, { passive: true });
-    return () => window.removeEventListener('scroll', alBajar);
-  }, []);
-
   const p = datos?.portafolio;
   const todos = datos?.negocios || [];
+
+  /* Abierto primero. El `sort` de JavaScript es estable, así que dentro de
+     cada grupo se conserva el orden que el dueño configuró: no se pierde su
+     curaduría, solo se hunde lo que ahora mismo no sirve. */
+  const ordenados = useMemo(
+    () => [...todos].sort((a, b) => (b.isOpen ? 1 : 0) - (a.isOpen ? 1 : 0)),
+    [todos],
+  );
+
   const abiertos = useMemo(() => todos.filter((n) => n.isOpen).length, [todos]);
-  const visibles = soloAbiertos ? todos.filter((n) => n.isOpen) : todos;
+
+  /* La calificación de la vitrina: el promedio de los negocios que tienen
+     reseñas, pesado por cuántas tiene cada uno. Un negocio con 200 reseñas no
+     puede contar lo mismo que uno con 2. */
+  const calificacion = useMemo(() => {
+    let suma = 0;
+    let cuenta = 0;
+    for (const n of todos) {
+      const nota = n.reviewStats?.averageRating || 0;
+      const cuantas = n.reviewStats?.totalReviews || 0;
+      if (nota > 0 && cuantas > 0) { suma += nota * cuantas; cuenta += cuantas; }
+    }
+    return cuenta ? { nota: suma / cuenta, total: cuenta } : null;
+  }, [todos]);
+
+  const visibles = soloAbiertos ? ordenados.filter((n) => n.isOpen) : ordenados;
 
   /* Compartir usa la hoja del sistema cuando existe —en un celular es la que
      lleva directo a WhatsApp, que es por donde esto viaja— y cae a copiar el
@@ -142,79 +195,110 @@ export default function PortafolioPublico() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* ═══ BARRA ═══
-          Como la del marketplace: de color arriba del todo, y al bajar se
-          vuelve blanca y se encoge. El color es el del portafolio y no el rojo
-          de MenuBy, porque la página es del dueño. */}
-      <header className="sticky top-0 z-40">
+    <main
+      className="min-h-screen pb-10"
+      style={{ ...menuCssVars(p.colorPrincipal), background: 'var(--mb-surface)' }}
+    >
+      {/* ── Banner ─────────────────────────────────────────────────────
+          Delgado, como el del menú. En escritorio crece: a lo ancho, 128px se
+          ve como una franja suelta arriba de la página. */}
+      <div className="relative h-32 md:h-56 overflow-hidden">
+        {p.portada ? (
+          <>
+            <img src={p.portada} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
+            <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.35)' }} />
+          </>
+        ) : (
+          <div
+            className="absolute inset-0"
+            style={{ background: 'linear-gradient(135deg, var(--mb-accent-soft), var(--mb-accent-softer))' }}
+          />
+        )}
+        {/* Funde hacia el fondo: un borde recto parte la pantalla en dos. */}
         <div
-          className={`transition-all duration-300 ${compacta ? 'bg-white border-b border-gray-100' : ''}`}
-          style={compacta ? undefined : { backgroundColor: p.colorPrincipal }}
-        >
-          <div className="max-w-3xl mx-auto px-4">
-            <div className={`flex items-center gap-3 transition-all ${compacta ? 'py-2' : 'pt-3.5 pb-3'}`}>
-              {p.logo && (
-                <img
-                  src={p.logo}
-                  alt=""
-                  className={`rounded-xl object-cover flex-shrink-0 transition-all ${
-                    compacta ? 'w-8 h-8' : 'w-11 h-11 ring-2 ring-white/25'
-                  }`}
-                />
+          className="absolute inset-x-0 bottom-0 h-14"
+          style={{ background: 'linear-gradient(to bottom, transparent, var(--mb-surface))' }}
+        />
+
+        <div className="absolute top-3 left-3 md:left-[max(0.75rem,calc(50%-440px))]">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold text-white" style={vidrio}>
+            <span className={`w-1.5 h-1.5 rounded-full ${abiertos ? 'bg-emerald-400' : 'bg-red-400'}`} />
+            {todos.length === 0
+              ? 'Sin negocios todavía'
+              : abiertos > 0
+                ? `${abiertos} de ${todos.length} abierto${abiertos === 1 ? '' : 's'}`
+                : 'Todos cerrados ahora'}
+          </span>
+        </div>
+
+        <div className="absolute top-3 right-3 md:right-[max(0.75rem,calc(50%-440px))]">
+          <button
+            onClick={compartir}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-white transition-colors"
+            style={vidrio}
+            aria-label="Compartir"
+            title="Compartir"
+          >
+            {IC.share()}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Perfil de la vitrina ───────────────────────────────────── */}
+      <section className={`px-4 ${ANCHO}`}>
+        <div className="-mt-[42px] relative z-10 flex items-end justify-between">
+          <div
+            className="w-[92px] h-[92px] rounded-full p-[3px] flex-shrink-0"
+            style={{ background: 'conic-gradient(from 180deg, var(--mb-accent), var(--mb-ring-partner), var(--mb-accent))' }}
+          >
+            <div
+              className="w-full h-full rounded-full overflow-hidden flex items-center justify-center"
+              style={{ border: '3.5px solid var(--mb-surface)', background: 'var(--mb-card)' }}
+            >
+              {p.logo ? (
+                <img src={p.logo} alt={`Logo de ${p.nombre}`} className="w-full h-full object-cover" loading="eager" />
+              ) : (
+                <span className="text-[30px] font-black" style={{ color: 'var(--mb-accent)' }}>
+                  {(p.nombre || '?').charAt(0)}
+                </span>
               )}
-
-              <div className="flex-1 min-w-0" style={compacta ? undefined : { color: p.colorTexto }}>
-                <p
-                  className={`font-extrabold truncate leading-tight transition-all ${
-                    compacta ? 'text-[15px] text-gray-900' : 'text-[19px]'
-                  }`}
-                >
-                  {p.nombre}
-                </p>
-
-                {/* Compacta, el subtítulo estorba más de lo que informa. */}
-                {!compacta && todos.length > 0 && (
-                  <p className="flex items-center gap-1.5 text-[12px] leading-tight opacity-90 mt-0.5">
-                    <span className="relative flex w-1.5 h-1.5">
-                      {abiertos > 0 && (
-                        <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-70" />
-                      )}
-                      <span className={`relative w-1.5 h-1.5 rounded-full ${abiertos ? 'bg-emerald-400' : 'bg-white/50'}`} />
-                    </span>
-                    {abiertos > 0
-                      ? `${abiertos} de ${todos.length} abierto${abiertos === 1 ? '' : 's'} ahora`
-                      : 'Todos cerrados por ahora'}
-                  </p>
-                )}
-              </div>
-
-              <button
-                onClick={compartir}
-                aria-label="Compartir"
-                className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
-                  compacta ? 'bg-gray-100 text-gray-600' : 'bg-white/15'
-                }`}
-                style={compacta ? undefined : { color: p.colorTexto }}
-              >
-                <svg className="w-[17px] h-[17px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342a3 3 0 100-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684zm0-12.632a3 3 0 105.368-2.684 3 3 0 00-5.368 2.684z" />
-                </svg>
-              </button>
             </div>
           </div>
-        </div>
-      </header>
 
-      <main className="max-w-3xl mx-auto px-4 pt-4 pb-12">
+          {/* Stats. Se reparten el espacio para que la fila no quede cargada a
+              la derecha cuando hay menos de tres. */}
+          <div className="flex-1 flex items-center justify-around pb-1.5 pl-3">
+            <Dato valor={todos.length} etiqueta={todos.length === 1 ? 'negocio' : 'negocios'} />
+            <Dato valor={abiertos} etiqueta="abiertos" resaltado={abiertos > 0} />
+            {calificacion && (
+              <Dato
+                valor={
+                  <span className="flex items-center justify-center gap-1">
+                    <span className="text-amber-400">{IC.star('w-4 h-4')}</span>
+                    {calificacion.nota.toFixed(1)}
+                  </span>
+                }
+                etiqueta={`${calificacion.total} reseñas`}
+              />
+            )}
+          </div>
+        </div>
+
+        <h1 className="mt-2.5 text-[21px] md:text-[25px] font-extrabold tracking-tight leading-tight" style={{ color: 'var(--mb-ink)' }}>
+          {p.nombre}
+        </h1>
+
         {p.descripcion && (
-          <p className="text-[13.5px] text-gray-500 leading-snug mb-4">{p.descripcion}</p>
+          /* Sin recorte: es lo que el dueño quiere contar de su vitrina. */
+          <p className="text-[13.5px] leading-snug mt-0.5" style={{ color: 'var(--mb-ink-2)' }}>
+            {p.descripcion}
+          </p>
         )}
 
         {todos.length >= MINIMO_PARA_FILTRAR && (
           /* Solo con tres o más. Con dos, el filtro esconde la mitad de la
              página para ahorrar un vistazo que no cuesta nada. */
-          <div className="flex gap-2 mb-4">
+          <div className="flex gap-2 mt-3.5">
             {[
               { id: false, texto: `Todos (${todos.length})` },
               { id: true, texto: `Abiertos (${abiertos})` },
@@ -222,58 +306,76 @@ export default function PortafolioPublico() {
               <button
                 key={String(f.id)}
                 onClick={() => setSoloAbiertos(f.id)}
-                className={`h-9 px-4 rounded-full text-[13px] font-bold transition-all ${
+                className="h-9 px-4 rounded-full text-[13px] font-bold active:scale-[0.98] transition-transform"
+                style={
                   soloAbiertos === f.id
-                    ? 'text-white shadow-md scale-[1.02]'
-                    : 'bg-white text-gray-600 shadow-sm hover:shadow-md hover:text-gray-900'
-                }`}
-                style={soloAbiertos === f.id ? { backgroundColor: p.colorPrincipal } : undefined}
+                    ? { background: 'var(--mb-accent)', color: 'var(--mb-on-accent)' }
+                    : { background: 'var(--mb-surface-2)', color: 'var(--mb-ink-2)', border: '1px solid var(--mb-line)' }
+                }
               >
                 {f.texto}
               </button>
             ))}
           </div>
         )}
+      </section>
 
+      {/* ── Los negocios ───────────────────────────────────────────── */}
+      <section className={`px-4 mt-5 ${ANCHO} space-y-5`}>
         {visibles.length === 0 ? (
-          <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100">
-            <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center text-2xl mx-auto mb-3">
-              {soloAbiertos ? '🌙' : '🍽️'}
-            </div>
-            <p className="font-bold text-gray-900">
+          <div
+            className="rounded-[var(--mb-radius-card)] p-10 text-center"
+            style={{ background: 'var(--mb-card)', border: '1px solid var(--mb-line)' }}
+          >
+            <div className="text-3xl mb-2">{soloAbiertos ? '🌙' : '🍽️'}</div>
+            <p className="font-bold" style={{ color: 'var(--mb-ink)' }}>
               {soloAbiertos ? 'Ninguno está abierto ahora' : 'Todavía no hay negocios aquí'}
             </p>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm mt-1" style={{ color: 'var(--mb-ink-2)' }}>
               {soloAbiertos ? 'Puedes ver las cartas de todos modos' : 'Vuelve pronto'}
             </p>
             {soloAbiertos && (
               <button
                 onClick={() => setSoloAbiertos(false)}
-                className="mt-4 h-10 px-5 rounded-xl bg-gray-900 text-white text-[13px] font-bold"
+                className="mt-4 h-10 px-5 rounded-[var(--mb-radius-btn)] text-[13px] font-extrabold"
+                style={{ background: 'var(--mb-accent)', color: 'var(--mb-on-accent)' }}
               >
                 Ver todos
               </button>
             )}
           </div>
         ) : (
-          /* Uno debajo de otro y no en rejilla: cada negocio trae su fila de
-             lo más pedido, y en dos columnas esa fila no cabe sin quedar
-             apretada hasta volverse ilegible. */
-          <div className="space-y-6">
-            {visibles.map((n, i) => (
-              <motion.section
-                key={n._id}
-                initial={{ y: 14, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.3, delay: Math.min(i * 0.06, 0.3) }}
-              >
-                <RestaurantCard restaurant={n} />
-                <FilaDeTops negocio={n} tops={tops[String(n._id)]} />
-              </motion.section>
-            ))}
-          </div>
+          visibles.map((n, i) => (
+            <TarjetaNegocio key={n._id} negocio={n} tops={tops[String(n._id)]} orden={i} />
+          ))
         )}
-      </main>
+      </section>
+
+      {/* ── Pie ────────────────────────────────────────────────────── */}
+      <footer className={`px-4 mt-10 ${ANCHO}`}>
+        <div className="pt-6 text-center" style={{ borderTop: '1px solid var(--mb-line)' }}>
+          <button
+            onClick={compartir}
+            className="inline-flex items-center gap-2 h-11 px-5 rounded-[var(--mb-radius-btn)] text-[13.5px] font-bold active:scale-[0.98] transition-transform"
+            style={{ background: 'var(--mb-surface-2)', color: 'var(--mb-ink)', border: '1px solid var(--mb-line)' }}
+          >
+            {IC.share()}
+            Compartir esta página
+          </button>
+
+          <a
+            href="https://www.menuby.tech"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-6 inline-flex items-center gap-1.5 text-[12.5px] font-medium group"
+            style={{ color: 'var(--mb-ink-3)' }}
+          >
+            <span>Hecho con</span>
+            <span className="font-extrabold" style={{ color: 'var(--mb-accent)' }}>MenuBy</span>
+            <span className="transition-transform group-hover:translate-x-0.5">{IC.arrow('w-3.5 h-3.5')}</span>
+          </a>
+        </div>
+      </footer>
 
       {/* El aviso de "copiado". Abajo y flotante: confirma sin tapar nada ni
           pedir que lo cierren. */}
@@ -299,24 +401,187 @@ export default function PortafolioPublico() {
           className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-4"
           onClick={() => setCompartiendo(false)}
         >
-          <div className="bg-white rounded-2xl p-5 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <p className="font-bold text-gray-900 mb-2">Copia el enlace</p>
+          <div
+            className="rounded-[var(--mb-radius-sheet)] p-5 w-full max-w-sm"
+            style={{ background: 'var(--mb-card)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="font-bold mb-2" style={{ color: 'var(--mb-ink)' }}>Copia el enlace</p>
             <input
               readOnly
               value={window.location.href}
               onFocus={(e) => e.target.select()}
-              className="w-full h-11 px-3 rounded-xl border-2 border-gray-200 text-[13px] text-gray-600"
+              className="w-full h-11 px-3 rounded-xl text-[13px]"
+              style={{ background: 'var(--mb-surface-2)', color: 'var(--mb-ink-2)', border: '1px solid var(--mb-line)' }}
             />
             <button
               onClick={() => setCompartiendo(false)}
-              className="mt-3 w-full h-11 rounded-xl bg-gray-900 text-white text-sm font-bold"
+              className="mt-3 w-full h-11 rounded-[var(--mb-radius-btn)] text-sm font-extrabold"
+              style={{ background: 'var(--mb-accent)', color: 'var(--mb-on-accent)' }}
             >
               Listo
             </button>
           </div>
         </div>
       )}
+    </main>
+  );
+}
+
+/** Un número de la fila de stats. */
+function Dato({ valor, etiqueta, resaltado }) {
+  return (
+    <div className="text-center px-1 min-w-0">
+      <span
+        className="block text-[17px] font-extrabold tabular-nums leading-tight"
+        style={{ color: resaltado ? 'var(--mb-accent)' : 'var(--mb-ink)' }}
+      >
+        {valor}
+      </span>
+      <span className="block text-[11px] font-medium truncate" style={{ color: 'var(--mb-ink-2)' }}>
+        {etiqueta}
+      </span>
     </div>
+  );
+}
+
+/**
+ * Un negocio, con la misma forma de perfil que usa el menú.
+ *
+ * Portada delgada, avatar con anillo montado encima, calificación y reseñas al
+ * lado del nombre, y debajo su fila de lo más pedido. La idea es que el
+ * cliente pueda decidir a cuál entrar sin entrar a ninguno.
+ *
+ * Un negocio cerrado se atenúa pero **se deja entrar**: quiere ver la carta
+ * aunque no pueda pedir todavía, y bloquearlo lo manda a buscar el menú por
+ * otro lado.
+ */
+function TarjetaNegocio({ negocio: n, tops, orden }) {
+  const [falloPortada, setFalloPortada] = useState(false);
+  const nota = n.reviewStats?.averageRating || 0;
+  const reseñas = n.reviewStats?.totalReviews || 0;
+  const hayPortada = n.coverImage && !falloPortada;
+  const direccion = [n.address, n.city].filter(Boolean).join(', ');
+
+  return (
+    <motion.article
+      initial={{ y: 14, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.3, delay: Math.min(orden * 0.06, 0.24) }}
+      className="rounded-[var(--mb-radius-card)] overflow-hidden"
+      style={{ background: 'var(--mb-card)', border: '1px solid var(--mb-line)', boxShadow: 'var(--mb-shadow-card)' }}
+    >
+      <a href={`/${n.slug}`} className={`block group ${n.isOpen ? '' : 'opacity-80'}`}>
+        {/* Portada delgada: aquí es una tarjeta dentro de una lista, no la
+            cabecera de la página. Alta se come la pantalla y solo caben dos. */}
+        <div className="relative h-24 md:h-32 overflow-hidden" style={{ background: 'var(--mb-surface-2)' }}>
+          {hayPortada ? (
+            <img
+              src={n.coverImage}
+              alt=""
+              aria-hidden="true"
+              loading="lazy"
+              onError={() => setFalloPortada(true)}
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            />
+          ) : (
+            <div
+              className="absolute inset-0"
+              style={{ background: 'linear-gradient(135deg, var(--mb-accent-soft), var(--mb-accent-softer))' }}
+            />
+          )}
+          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.18)' }} />
+
+          <span
+            className="absolute top-2.5 right-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold text-white"
+            style={vidrio}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${n.isOpen ? 'bg-emerald-400' : 'bg-red-400'}`} />
+            {n.isOpen ? 'Abierto' : 'Cerrado'}
+          </span>
+        </div>
+
+        <div className="px-3.5 pb-3.5">
+          <div className="-mt-7 flex items-end gap-3">
+            <div
+              className="w-[64px] h-[64px] rounded-full p-[2.5px] flex-shrink-0"
+              style={{ background: 'conic-gradient(from 180deg, var(--mb-accent), var(--mb-ring-partner), var(--mb-accent))' }}
+            >
+              <div
+                className="w-full h-full rounded-full overflow-hidden flex items-center justify-center"
+                style={{ border: '3px solid var(--mb-card)', background: 'var(--mb-surface-2)' }}
+              >
+                {n.logo ? (
+                  <img src={n.logo} alt={`Logo de ${n.businessName}`} className="w-full h-full object-cover" loading="lazy" />
+                ) : (
+                  <span className="text-xl font-black" style={{ color: 'var(--mb-accent)' }}>
+                    {(n.businessName || '?').charAt(0)}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* La calificación va acá, a la altura del avatar: es lo que el
+                cliente mira antes de decidir, igual que en el perfil del
+                menú. Sin reseñas no se dibuja nada —ni "sin calificación",
+                que se lee como una mala. */}
+            {nota > 0 && (
+              <div className="flex items-baseline gap-1.5 pb-1">
+                <span className="flex items-center gap-1 text-[15px] font-extrabold tabular-nums" style={{ color: 'var(--mb-ink)' }}>
+                  <span className="text-amber-400">{IC.star('w-3.5 h-3.5')}</span>
+                  {nota.toFixed(1)}
+                </span>
+                {reseñas > 0 && (
+                  <span className="text-[11.5px] font-medium" style={{ color: 'var(--mb-ink-2)' }}>
+                    ({reseñas})
+                  </span>
+                )}
+              </div>
+            )}
+
+            <span className="flex-1" />
+
+            <span
+              className="hidden sm:inline-flex items-center gap-1.5 h-9 px-4 rounded-[var(--mb-radius-btn)] text-[13px] font-extrabold flex-shrink-0 mb-0.5 active:scale-[0.98] transition-transform"
+              style={{ background: 'var(--mb-accent)', color: 'var(--mb-on-accent)' }}
+            >
+              Ver carta {IC.arrow('w-3.5 h-3.5')}
+            </span>
+          </div>
+
+          <h2 className="mt-2 text-[17px] font-extrabold tracking-tight leading-tight" style={{ color: 'var(--mb-ink)' }}>
+            {n.businessName}
+          </h2>
+
+          {n.description && (
+            /* Dos líneas y corta. La descripción la escribe el dueño y hay
+               quien pone un párrafo entero; sin tope, una tarjeta mide el
+               triple que la de al lado. */
+            <p className="text-[13px] leading-snug line-clamp-2 mt-0.5" style={{ color: 'var(--mb-ink-2)' }}>
+              {n.description}
+            </p>
+          )}
+
+          {direccion && (
+            <p className="inline-flex items-center gap-1 mt-1 text-[12px] font-semibold" style={{ color: 'var(--mb-ink-3)' }}>
+              {IC.mapPin()}
+              <span className="truncate max-w-[260px]">{direccion}</span>
+            </p>
+          )}
+
+          {/* En pantalla angosta el botón va abajo y a todo el ancho: al lado
+              del nombre se lleva el espacio que necesita el nombre. */}
+          <span
+            className="sm:hidden mt-3 flex items-center justify-center gap-1.5 h-11 rounded-[var(--mb-radius-btn)] text-[14px] font-extrabold"
+            style={{ background: 'var(--mb-accent)', color: 'var(--mb-on-accent)' }}
+          >
+            Ver carta {IC.arrow('w-4 h-4')}
+          </span>
+        </div>
+      </a>
+
+      <FilaDeTops negocio={n} tops={tops} />
+    </motion.article>
   );
 }
 
@@ -335,21 +600,20 @@ function FilaDeTops({ negocio, tops }) {
   if (!tops?.productos?.length) return null;
 
   return (
-    <div className="mt-3">
-      <p className="text-[13px] font-extrabold text-gray-800 px-0.5 mb-2">
+    <div className="pb-3.5" style={{ borderTop: '1px solid var(--mb-line)' }}>
+      <p className="text-[12.5px] font-extrabold px-3.5 pt-3 pb-2" style={{ color: 'var(--mb-ink)' }}>
         Lo más pedido esta semana
       </p>
 
       {/* Desliza en horizontal y corta contra el borde: que se vea medio
           producto asomando es lo que le dice al dedo que hay más. */}
-      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 snap-x">
+      <div className="flex gap-3 overflow-x-auto scrollbar-hide px-3.5 snap-x">
         {tops.productos.map((pr) => (
-          <a
-            key={pr._id}
-            href={`/${negocio.slug}`}
-            className="flex-shrink-0 w-[118px] snap-start group"
-          >
-            <div className="relative w-[118px] h-[118px] rounded-2xl overflow-hidden bg-gray-100 shadow-sm border border-gray-100/80">
+          <a key={pr._id} href={`/${negocio.slug}`} className="flex-shrink-0 w-[112px] snap-start group">
+            <div
+              className="relative w-[112px] h-[112px] rounded-[var(--mb-radius-btn)] overflow-hidden"
+              style={{ background: 'var(--mb-surface-2)' }}
+            >
               {pr.image ? (
                 <img
                   src={pr.image}
@@ -358,20 +622,25 @@ function FilaDeTops({ negocio, tops }) {
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-2xl text-gray-300">🍽️</div>
+                <div className="w-full h-full flex items-center justify-center text-2xl" style={{ color: 'var(--mb-ink-3)' }}>
+                  🍽️
+                </div>
               )}
 
               {pr.esTop && (
-                <span className="absolute top-2 left-2 bg-red-500 rounded-lg px-1.5 py-0.5 shadow-lg shadow-red-500/30">
-                  <span className="text-[9px] font-bold text-white tracking-wide">TOP {pr.rank}</span>
+                <span
+                  className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md text-[9.5px] font-black tracking-wide"
+                  style={{ background: 'var(--mb-accent)', color: 'var(--mb-on-accent)' }}
+                >
+                  TOP {pr.rank}
                 </span>
               )}
             </div>
 
-            <p className="text-[13px] font-bold text-gray-900 leading-tight mt-1.5 line-clamp-2">
+            <p className="text-[12.5px] font-bold leading-tight mt-1.5 line-clamp-2" style={{ color: 'var(--mb-ink)' }}>
               {pr.name}
             </p>
-            <p className="text-[12.5px] font-semibold text-gray-500">
+            <p className="text-[12.5px] font-semibold" style={{ color: 'var(--mb-ink-2)' }}>
               {formatCurrency(pr.price, tops.moneda)}
             </p>
           </a>
@@ -391,26 +660,37 @@ function FilaDeTops({ negocio, tops }) {
 function Esqueleto() {
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="h-[68px] bg-gray-300 animate-pulse" />
+      <div className="h-32 md:h-56 bg-gray-200 animate-pulse" />
 
-      <div className="max-w-3xl mx-auto px-4 pt-4 space-y-6">
-        {[0, 1].map((i) => (
-          <div key={i}>
-            <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
-              <div className="aspect-[16/9] bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite] bg-gradient-to-r from-gray-100 via-white to-gray-100" />
-              <div className="p-3.5 flex gap-3 items-start">
-                <div className="w-11 h-11 rounded-xl bg-gray-100 flex-shrink-0 -mt-8 shadow-sm" />
-                <div className="flex-1 space-y-2 pt-0.5">
-                  <div className="h-4 bg-gray-100 rounded-lg w-3/4 animate-pulse" />
-                  <div className="h-3 bg-gray-100 rounded-lg w-1/2 animate-pulse" />
-                </div>
+      <div className={`px-4 ${ANCHO}`}>
+        <div className="-mt-[42px] relative z-10 flex items-end justify-between">
+          <div className="w-[92px] h-[92px] rounded-full bg-gray-300 border-[3.5px] border-gray-50 animate-pulse" />
+          <div className="flex-1 flex justify-around pb-2 pl-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="space-y-1.5">
+                <div className="h-4 w-10 rounded bg-gray-200 animate-pulse mx-auto" />
+                <div className="h-2.5 w-12 rounded bg-gray-100 animate-pulse" />
               </div>
-            </div>
+            ))}
+          </div>
+        </div>
+        <div className="h-6 w-44 rounded-lg bg-gray-200 animate-pulse mt-3" />
+        <div className="h-3 w-64 rounded bg-gray-100 animate-pulse mt-2" />
+      </div>
 
-            <div className="flex gap-3 mt-3">
+      <div className={`px-4 mt-5 space-y-5 ${ANCHO}`}>
+        {[0, 1].map((i) => (
+          <div key={i} className="rounded-2xl overflow-hidden border border-gray-100 bg-white">
+            <div className="h-24 md:h-32 bg-gray-200 animate-pulse" />
+            <div className="px-3.5 pb-3.5">
+              <div className="-mt-7 w-[64px] h-[64px] rounded-full bg-gray-300 border-[3px] border-white animate-pulse" />
+              <div className="h-4 w-36 rounded bg-gray-200 animate-pulse mt-2" />
+              <div className="h-3 w-52 rounded bg-gray-100 animate-pulse mt-2" />
+            </div>
+            <div className="flex gap-3 px-3.5 pb-3.5 border-t border-gray-100 pt-3">
               {[0, 1, 2].map((j) => (
-                <div key={j} className="w-[118px] space-y-1.5">
-                  <div className="w-[118px] h-[118px] rounded-2xl bg-gray-100 animate-pulse" />
+                <div key={j} className="space-y-1.5">
+                  <div className="w-[112px] h-[112px] rounded-xl bg-gray-200 animate-pulse" />
                   <div className="h-3 w-20 rounded bg-gray-100 animate-pulse" />
                 </div>
               ))}
