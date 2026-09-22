@@ -11,7 +11,6 @@ import BusinessHeader from "../Components/BusinessHeader";
 import ProfileHeader from "../Components/ProfileHeader";
 import useTipoDeEnlace from '../hooks/useTipoDeEnlace';
 import MenuStructuredData from "../Components/MenuStructuredData";
-import DiscoverMore from "../Components/DiscoverMore";
 import MenuPopup from "../Components/MenuPopup";
 import { menuCssVars } from "../utils/menuTokens";
 import CartSummary from "../Components/CartSummary";
@@ -1820,9 +1819,6 @@ export default function Menu() {
         }}
       />
       </div>
-
-      {/* Red de descubrimiento MenuBy */}
-      <DiscoverMore />
 
       {/* En V2 el carrito vive en el BottomNav, así que la CartBar no se monta */}
       {!isViewOnly && !menuV2 && (
