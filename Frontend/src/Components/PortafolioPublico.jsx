@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
@@ -56,6 +56,12 @@ const IC = {
 
 /** A partir de cuántos negocios vale la pena filtrar. */
 const MINIMO_PARA_FILTRAR = 3;
+
+/** Cuánto dura cada banner antes de pasar al siguiente. */
+const MS_POR_BANNER = 5000;
+
+/** Cuánto hay que arrastrar para que cuente como pasar de banner. */
+const ARRASTRE_MINIMO = 45;
 
 /** El ancho del menú. La identidad se pierde si la página se estira sin tope. */
 const ANCHO = 'max-w-[880px] mx-auto w-full';
@@ -322,6 +328,15 @@ export default function PortafolioPublico() {
         )}
       </section>
 
+      {/* ── Banners ────────────────────────────────────────────────
+          Debajo de la identidad y encima de los negocios: quien llega quiere
+          saber primero de quién es la página, y después qué hay de nuevo. */}
+      {(p.banners || []).length > 0 && (
+        <section className={`px-4 mt-4 ${ANCHO}`}>
+          <Carrusel banners={p.banners} />
+        </section>
+      )}
+
       {/* ── Los negocios ───────────────────────────────────────────── */}
       <section className={`px-4 mt-5 ${ANCHO} space-y-5`}>
         {visibles.length === 0 ? (
@@ -427,6 +442,107 @@ export default function PortafolioPublico() {
         </div>
       )}
     </main>
+  );
+}
+
+/**
+ * Los banners.
+ *
+ * Pasan solos cada cinco segundos y se arrastran con el dedo. El automático
+ * se apaga en cuanto alguien toca: si está leyendo uno, moverlo debajo del
+ * dedo es quitárselo.
+ *
+ * Un banner sin enlace se dibuja igual pero no es clicable —hay quien los usa
+ * para anunciar un horario, no para llevar a ningún lado— y así no se come un
+ * toque que no lleva a nada.
+ */
+function Carrusel({ banners }) {
+  const [actual, setActual] = useState(0);
+  const [detenido, setDetenido] = useState(false);
+  const inicioX = useRef(0);
+  const arrastre = useRef(0);
+
+  useEffect(() => {
+    if (detenido || banners.length <= 1) return;
+    const t = window.setInterval(() => setActual((i) => (i + 1) % banners.length), MS_POR_BANNER);
+    return () => window.clearInterval(t);
+  }, [detenido, banners.length]);
+
+  /* Si el dueño quita banners mientras alguien tiene la página abierta, el
+     índice puede quedar apuntando a uno que ya no está. */
+  const indice = Math.min(actual, banners.length - 1);
+  const b = banners[indice];
+
+  const alSoltar = () => {
+    if (Math.abs(arrastre.current) > ARRASTRE_MINIMO) {
+      const paso = arrastre.current < 0 ? 1 : -1;
+      setActual((i) => (i + paso + banners.length) % banners.length);
+    }
+    arrastre.current = 0;
+  };
+
+  const Contenedor = b.enlace ? 'a' : 'div';
+  const props = b.enlace
+    ? {
+        href: b.enlace,
+        /* Un enlace de afuera abre aparte; uno a un negocio propio, en la
+           misma pestaña, para no dejarle al cliente un reguero de ventanas. */
+        ...(/^https?:\/\//i.test(b.enlace) ? { target: '_blank', rel: 'noopener noreferrer' } : {}),
+      }
+    : {};
+
+  return (
+    <div>
+      <div
+        className="relative rounded-[var(--mb-radius-card)] overflow-hidden"
+        style={{ background: 'var(--mb-surface-2)' }}
+        onTouchStart={(e) => { setDetenido(true); inicioX.current = e.touches[0].clientX; }}
+        onTouchMove={(e) => { arrastre.current = e.touches[0].clientX - inicioX.current; }}
+        onTouchEnd={alSoltar}
+        onMouseEnter={() => setDetenido(true)}
+        onMouseLeave={() => setDetenido(false)}
+      >
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={indice}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+          >
+            <Contenedor {...props} className="block">
+              {/* Alto fijo por proporción: sin él, el carrusel pega un salto
+                  cada vez que cambia a una imagen de otro tamaño. */}
+              <div className="aspect-[16/7]">
+                <img src={b.imagen} alt={b.titulo || ''} className="w-full h-full object-cover" />
+              </div>
+              {b.titulo && (
+                <div className="absolute inset-x-0 bottom-0 p-3.5 bg-gradient-to-t from-black/75 to-transparent">
+                  <p className="text-white font-extrabold text-[15px] leading-tight drop-shadow">{b.titulo}</p>
+                </div>
+              )}
+            </Contenedor>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {banners.length > 1 && (
+        <div className="flex justify-center gap-1.5 mt-2.5">
+          {banners.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => { setActual(i); setDetenido(true); }}
+              aria-label={`Ver banner ${i + 1}`}
+              className="h-1.5 rounded-full transition-all"
+              style={{
+                width: i === indice ? 18 : 6,
+                background: i === indice ? 'var(--mb-accent)' : 'var(--mb-line)',
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

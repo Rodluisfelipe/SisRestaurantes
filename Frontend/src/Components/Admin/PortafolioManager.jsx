@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../services/api';
+import ImageUploader from './ImageUploader';
 
 /**
  * Armar la vitrina: "MenuBy Tura".
@@ -25,9 +26,11 @@ export default function PortafolioManager({ businessId }) {
     slug: '',
     descripcion: '',
     logo: '',
+    portada: '',
     colorPrincipal: '#111827',
     colorTexto: '#ffffff',
     negocios: [],
+    banners: [],
     activo: true,
   });
   const [disponibles, setDisponibles] = useState([]);
@@ -50,9 +53,11 @@ export default function PortafolioManager({ businessId }) {
             slug: p.slug || '',
             descripcion: p.descripcion || '',
             logo: p.logo || '',
+            portada: p.portada || '',
             colorPrincipal: p.colorPrincipal || '#111827',
             colorTexto: p.colorTexto || '#ffffff',
             negocios: (p.negocios || []).map(String),
+            banners: p.banners || [],
             activo: p.activo !== false,
           });
         }
@@ -83,12 +88,44 @@ export default function PortafolioManager({ businessId }) {
     });
   };
 
+  /* ── Banners ────────────────────────────────────────────────────── */
+
+  const agregarBanner = () =>
+    setForm((f) => ({
+      ...f,
+      banners: [...f.banners, { imagen: '', titulo: '', enlace: '', activo: true }],
+    }));
+
+  const cambiarBanner = (i, campo, valor) =>
+    setForm((f) => ({
+      ...f,
+      banners: f.banners.map((b, j) => (j === i ? { ...b, [campo]: valor } : b)),
+    }));
+
+  const quitarBanner = (i) =>
+    setForm((f) => ({ ...f, banners: f.banners.filter((_, j) => j !== i) }));
+
+  const moverBanner = (i, delta) => {
+    setForm((f) => {
+      const j = i + delta;
+      if (j < 0 || j >= f.banners.length) return f;
+      const copia = [...f.banners];
+      [copia[i], copia[j]] = [copia[j], copia[i]];
+      return { ...f, banners: copia };
+    });
+  };
+
   const guardar = async () => {
     setGuardando(true);
     setError('');
     setAviso('');
     try {
-      await api.put(conNegocio('/portafolios'), form);
+      /* Los banners sin imagen se caen acá y no solo en el servidor, para que
+         el dueño vea desaparecer el que dejó a medias en vez de descubrir
+         después que no se guardó. */
+      const limpio = { ...form, banners: form.banners.filter((b) => b.imagen.trim()) };
+      await api.put(conNegocio('/portafolios'), limpio);
+      setForm(limpio);
       setAviso('Guardado');
       window.setTimeout(() => setAviso(''), 4000);
     } catch (e) {
@@ -168,6 +205,41 @@ export default function PortafolioManager({ businessId }) {
             className="mt-1 w-full h-11 px-3 rounded-xl border-2 border-slate-200 outline-none focus:border-slate-400"
           />
         </label>
+
+        {/* Logo y portada ya los dibujaba la página pública, pero esta
+            pantalla nunca los pidió: el logo se quedaba vacío para siempre y
+            la portada era peor —al no venir en el formulario, cada "Guardar"
+            la sobrescribía con vacío—. */}
+        <div className="grid sm:grid-cols-2 gap-4">
+          <label className="block">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Logo</span>
+            <p className="text-[11.5px] text-slate-400 leading-snug mb-1">
+              Redondo, arriba del todo. Cuadrado se ve mejor.
+            </p>
+            <ImageUploader
+              value={form.logo}
+              onChange={(url) => setForm({ ...form, logo: url })}
+              folder="logos"
+              maxWidth={400}
+              previewClassName="w-full h-28"
+              previewFit="contain"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Portada</span>
+            <p className="text-[11.5px] text-slate-400 leading-snug mb-1">
+              La franja de arriba. Sin ella se usa tu color de fondo.
+            </p>
+            <ImageUploader
+              value={form.portada}
+              onChange={(url) => setForm({ ...form, portada: url })}
+              folder="covers"
+              maxWidth={1400}
+              previewClassName="w-full h-28"
+            />
+          </label>
+        </div>
 
         <div className="flex gap-4">
           <label className="flex items-center gap-2">
@@ -255,6 +327,111 @@ export default function PortafolioManager({ businessId }) {
               </button>
             ))}
           </>
+        )}
+      </div>
+
+      {/* ── Banners ──────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+        <div>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+            Banners ({form.banners.length})
+          </p>
+          <p className="text-[12.5px] text-slate-500 mt-0.5">
+            Van entre tu nombre y los negocios, y pasan solos cada 5 segundos.
+            Para promociones, horarios especiales o para llevar a uno de tus negocios.
+          </p>
+        </div>
+
+        {form.banners.map((b, i) => (
+          <div key={i} className="rounded-xl border border-slate-200 p-3 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black text-slate-400 tabular-nums">#{i + 1}</span>
+              <span className="flex-1" />
+              <button
+                onClick={() => moverBanner(i, -1)}
+                disabled={i === 0}
+                aria-label="Subir"
+                className="w-9 h-9 rounded-lg border border-slate-200 text-slate-500 disabled:opacity-30"
+              >
+                ↑
+              </button>
+              <button
+                onClick={() => moverBanner(i, 1)}
+                disabled={i === form.banners.length - 1}
+                aria-label="Bajar"
+                className="w-9 h-9 rounded-lg border border-slate-200 text-slate-500 disabled:opacity-30"
+              >
+                ↓
+              </button>
+              <button
+                onClick={() => quitarBanner(i)}
+                aria-label="Quitar banner"
+                className="w-9 h-9 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50"
+              >
+                ×
+              </button>
+            </div>
+
+            <ImageUploader
+              value={b.imagen}
+              onChange={(url) => cambiarBanner(i, 'imagen', url)}
+              folder="banners"
+              maxWidth={1600}
+              previewClassName="w-full h-32"
+            />
+
+            <input
+              value={b.titulo}
+              onChange={(e) => cambiarBanner(i, 'titulo', e.target.value)}
+              placeholder="Texto sobre la imagen (opcional)"
+              maxLength={80}
+              className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 text-[13.5px] outline-none focus:border-slate-400"
+            />
+
+            <input
+              value={b.enlace}
+              onChange={(e) => cambiarBanner(i, 'enlace', e.target.value)}
+              placeholder="A dónde lleva: /doggitos o https://… (opcional)"
+              maxLength={300}
+              className="w-full h-10 px-3 rounded-xl border-2 border-slate-200 text-[13.5px] outline-none focus:border-slate-400"
+            />
+
+            <button
+              onClick={() => cambiarBanner(i, 'activo', b.activo === false)}
+              className="flex items-center gap-2.5 text-left w-full"
+            >
+              <span
+                className={`w-10 h-6 rounded-full flex-shrink-0 relative transition-colors ${
+                  b.activo !== false ? 'bg-emerald-500' : 'bg-slate-200'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${
+                    b.activo !== false ? 'left-[18px]' : 'left-0.5'
+                  }`}
+                />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[13px] font-bold text-slate-700">
+                  {b.activo !== false ? 'Visible' : 'Oculto'}
+                </span>
+                <span className="block text-[11.5px] text-slate-400 leading-snug">
+                  Oculto se guarda pero no sale en la página. Sirve para dejar listo el de la próxima promoción.
+                </span>
+              </span>
+            </button>
+          </div>
+        ))}
+
+        {form.banners.length < 8 ? (
+          <button
+            onClick={agregarBanner}
+            className="w-full h-11 rounded-xl border-2 border-dashed border-slate-200 text-[13.5px] font-bold text-slate-500 hover:border-slate-300"
+          >
+            + Agregar banner
+          </button>
+        ) : (
+          <p className="text-[12.5px] text-slate-400">Ocho es el tope. Nadie desliza más que eso.</p>
         )}
       </div>
 

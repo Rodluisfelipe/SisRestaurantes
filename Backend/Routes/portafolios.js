@@ -47,6 +47,30 @@ function tarjeta(b) {
   };
 }
 
+/** Cuántos banners se admiten. Más que eso no los desliza nadie. */
+const MAX_BANNERS = 8;
+
+/**
+ * Los banners, en la forma en que se guardan.
+ *
+ * Lo que llega es de un formulario, así que se recorta y se descarta lo que
+ * no tiene imagen: un banner sin imagen es un rectángulo gris en mitad del
+ * carrusel, y se crea con solo darle a "agregar" y guardar sin subir nada.
+ */
+function limpiarBanners(recibidos) {
+  if (!Array.isArray(recibidos)) return [];
+
+  return recibidos
+    .filter((b) => b && String(b.imagen || '').trim())
+    .slice(0, MAX_BANNERS)
+    .map((b) => ({
+      imagen: String(b.imagen).trim(),
+      titulo: String(b.titulo || '').trim().slice(0, 80),
+      enlace: String(b.enlace || '').trim().slice(0, 300),
+      activo: b.activo !== false,
+    }));
+}
+
 /** Cuántos productos entran en la fila de cada negocio. */
 const TOPS_POR_NEGOCIO = 8;
 
@@ -214,6 +238,7 @@ router.put('/', tenantAuth, async (req, res) => {
       colorPrincipal: String(req.body.colorPrincipal || '#111827'),
       colorTexto: String(req.body.colorTexto || '#ffffff'),
       negocios: pedidos,
+      banners: limpiarBanners(req.body.banners),
       activo: req.body.activo !== false,
       adminId: dueno,
     };
@@ -284,6 +309,10 @@ router.get('/:slug', limitePublico, async (req, res) => {
         portada: portafolio.portada,
         colorPrincipal: portafolio.colorPrincipal,
         colorTexto: portafolio.colorTexto,
+        /* Solo los encendidos. Apagar un banner es cómo se guarda el de la
+           próxima promoción sin volver a subir la imagen; si saliera igual,
+           apagarlo no serviría de nada. */
+        banners: (portafolio.banners || []).filter((b) => b.activo !== false),
       },
       negocios: ordenados,
     });
