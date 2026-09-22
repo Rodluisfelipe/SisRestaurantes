@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
-import { menuCssVars } from '../utils/menuTokens';
+import { menuCssVars, derivePalette, shade } from '../utils/menuTokens';
 import { formatCurrency } from '../utils/currency';
 
 /**
@@ -246,9 +246,11 @@ export default function PortafolioPublico() {
 
       {/* ── Perfil de la vitrina ───────────────────────────────────── */}
       <section className={`px-4 ${ANCHO}`}>
-        <div className="-mt-[42px] relative z-10 flex items-end justify-between">
+        <div className="-mt-[38px] sm:-mt-[42px] relative z-10 flex items-end justify-between">
+          {/* Más pequeño en el celular: a 360px, 92px de avatar más tres datos
+              al lado dejaban las etiquetas cortadas. */}
           <div
-            className="w-[92px] h-[92px] rounded-full p-[3px] flex-shrink-0"
+            className="w-[76px] h-[76px] sm:w-[92px] sm:h-[92px] rounded-full p-[3px] flex-shrink-0"
             style={{ background: 'conic-gradient(from 180deg, var(--mb-accent), var(--mb-ring-partner), var(--mb-accent))' }}
           >
             <div
@@ -258,7 +260,7 @@ export default function PortafolioPublico() {
               {p.logo ? (
                 <img src={p.logo} alt={`Logo de ${p.nombre}`} className="w-full h-full object-cover" loading="eager" />
               ) : (
-                <span className="text-[30px] font-black" style={{ color: 'var(--mb-accent)' }}>
+                <span className="text-[26px] sm:text-[30px] font-black" style={{ color: 'var(--mb-accent)' }}>
                   {(p.nombre || '?').charAt(0)}
                 </span>
               )}
@@ -267,14 +269,14 @@ export default function PortafolioPublico() {
 
           {/* Stats. Se reparten el espacio para que la fila no quede cargada a
               la derecha cuando hay menos de tres. */}
-          <div className="flex-1 flex items-center justify-around pb-1.5 pl-3">
+          <div className="flex-1 flex items-center justify-around pb-1.5 pl-2 sm:pl-3 min-w-0">
             <Dato valor={todos.length} etiqueta={todos.length === 1 ? 'negocio' : 'negocios'} />
             <Dato valor={abiertos} etiqueta="abiertos" resaltado={abiertos > 0} />
             {calificacion && (
               <Dato
                 valor={
                   <span className="flex items-center justify-center gap-1">
-                    <span className="text-amber-400">{IC.star('w-4 h-4')}</span>
+                    <span className="text-amber-400">{IC.star('w-3.5 h-3.5')}</span>
                     {calificacion.nota.toFixed(1)}
                   </span>
                 }
@@ -431,14 +433,14 @@ export default function PortafolioPublico() {
 /** Un número de la fila de stats. */
 function Dato({ valor, etiqueta, resaltado }) {
   return (
-    <div className="text-center px-1 min-w-0">
+    <div className="text-center px-0.5 sm:px-1 min-w-0">
       <span
-        className="block text-[17px] font-extrabold tabular-nums leading-tight"
+        className="block text-[15.5px] sm:text-[17px] font-extrabold tabular-nums leading-tight"
         style={{ color: resaltado ? 'var(--mb-accent)' : 'var(--mb-ink)' }}
       >
         {valor}
       </span>
-      <span className="block text-[11px] font-medium truncate" style={{ color: 'var(--mb-ink-2)' }}>
+      <span className="block text-[10.5px] sm:text-[11px] font-medium truncate" style={{ color: 'var(--mb-ink-2)' }}>
         {etiqueta}
       </span>
     </div>
@@ -457,11 +459,23 @@ function Dato({ valor, etiqueta, resaltado }) {
  * otro lado.
  */
 function TarjetaNegocio({ negocio: n, tops, orden }) {
-  const [falloPortada, setFalloPortada] = useState(false);
   const nota = n.reviewStats?.averageRating || 0;
   const reseñas = n.reviewStats?.totalReviews || 0;
-  const hayPortada = n.coverImage && !falloPortada;
   const direccion = [n.address, n.city].filter(Boolean).join(', ');
+
+  /* El color del negocio, no el del portafolio.
+   *
+   * Antes la tarjeta usaba el acento de la vitrina para todo, así que
+   * DOGGITOS —que es amarillo— salía con un botón rojo enorme que no es suyo.
+   *
+   * `derivePalette` además oscurece el color hasta que su propio texto se lea
+   * con contraste AA, que es justo lo que hace falta con un amarillo: el
+   * botón queda legible sin que nadie tenga que acordarse de elegir el color
+   * de la letra. */
+  const paleta = useMemo(
+    () => derivePalette(n.theme?.buttonColor || '#111827'),
+    [n.theme?.buttonColor],
+  );
 
   return (
     <motion.article
@@ -472,26 +486,15 @@ function TarjetaNegocio({ negocio: n, tops, orden }) {
       style={{ background: 'var(--mb-card)', border: '1px solid var(--mb-line)', boxShadow: 'var(--mb-shadow-card)' }}
     >
       <a href={`/${n.slug}`} className={`block group ${n.isOpen ? '' : 'opacity-80'}`}>
-        {/* Portada delgada: aquí es una tarjeta dentro de una lista, no la
-            cabecera de la página. Alta se come la pantalla y solo caben dos. */}
-        <div className="relative h-24 md:h-32 overflow-hidden" style={{ background: 'var(--mb-surface-2)' }}>
-          {hayPortada ? (
-            <img
-              src={n.coverImage}
-              alt=""
-              aria-hidden="true"
-              loading="lazy"
-              onError={() => setFalloPortada(true)}
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-            />
-          ) : (
-            <div
-              className="absolute inset-0"
-              style={{ background: 'linear-gradient(135deg, var(--mb-accent-soft), var(--mb-accent-softer))' }}
-            />
-          )}
-          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.18)' }} />
-
+        {/* La portada es el color del negocio, no su foto.
+            La foto de portada viene apaisada y aquí la franja mide 64px: el
+            recorte le cortaba la cabeza al muñeco de DOGGITOS. El color se
+            recorta bien a cualquier tamaño y de paso cada tarjeta se lee como
+            de quién es. */}
+        <div
+          className="relative h-[68px] sm:h-[84px]"
+          style={{ background: `linear-gradient(135deg, ${paleta.accent}, ${shade(paleta.accent, -0.3)})` }}
+        >
           <span
             className="absolute top-2.5 right-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold text-white"
             style={vidrio}
@@ -501,55 +504,44 @@ function TarjetaNegocio({ negocio: n, tops, orden }) {
           </span>
         </div>
 
-        <div className="px-3.5 pb-3.5">
-          <div className="-mt-7 flex items-end gap-3">
+        <div className="px-3 sm:px-4 pb-3.5">
+          <div className="-mt-8 flex items-end gap-2.5">
+            {/* La foto de perfil de cada negocio, sobre su propio color. El
+                anillo va del color de la tarjeta para separarla de la franja:
+                un logo con fondo claro sobre amarillo se perdía. */}
             <div
-              className="w-[64px] h-[64px] rounded-full p-[2.5px] flex-shrink-0"
-              style={{ background: 'conic-gradient(from 180deg, var(--mb-accent), var(--mb-ring-partner), var(--mb-accent))' }}
+              className="w-[62px] h-[62px] sm:w-[68px] sm:h-[68px] rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center"
+              style={{ border: '3px solid var(--mb-card)', background: 'var(--mb-card)', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}
             >
-              <div
-                className="w-full h-full rounded-full overflow-hidden flex items-center justify-center"
-                style={{ border: '3px solid var(--mb-card)', background: 'var(--mb-surface-2)' }}
-              >
-                {n.logo ? (
-                  <img src={n.logo} alt={`Logo de ${n.businessName}`} className="w-full h-full object-cover" loading="lazy" />
-                ) : (
-                  <span className="text-xl font-black" style={{ color: 'var(--mb-accent)' }}>
-                    {(n.businessName || '?').charAt(0)}
-                  </span>
-                )}
-              </div>
+              {n.logo ? (
+                <img src={n.logo} alt={`Logo de ${n.businessName}`} className="w-full h-full object-cover" loading="lazy" />
+              ) : (
+                <span className="text-xl font-black" style={{ color: paleta.accent }}>
+                  {(n.businessName || '?').charAt(0)}
+                </span>
+              )}
             </div>
 
-            {/* La calificación va acá, a la altura del avatar: es lo que el
-                cliente mira antes de decidir, igual que en el perfil del
-                menú. Sin reseñas no se dibuja nada —ni "sin calificación",
-                que se lee como una mala. */}
+            {/* La calificación, a la altura del avatar: es lo que el cliente
+                mira antes de decidir, igual que en el perfil del menú. Sin
+                reseñas no se dibuja nada —ni "sin calificación", que se lee
+                como una mala. */}
             {nota > 0 && (
-              <div className="flex items-baseline gap-1.5 pb-1">
-                <span className="flex items-center gap-1 text-[15px] font-extrabold tabular-nums" style={{ color: 'var(--mb-ink)' }}>
+              <div className="flex items-baseline gap-1 pb-1 min-w-0">
+                <span className="flex items-center gap-1 text-[14.5px] font-extrabold tabular-nums" style={{ color: 'var(--mb-ink)' }}>
                   <span className="text-amber-400">{IC.star('w-3.5 h-3.5')}</span>
                   {nota.toFixed(1)}
                 </span>
                 {reseñas > 0 && (
-                  <span className="text-[11.5px] font-medium" style={{ color: 'var(--mb-ink-2)' }}>
+                  <span className="text-[11.5px] font-medium truncate" style={{ color: 'var(--mb-ink-2)' }}>
                     ({reseñas})
                   </span>
                 )}
               </div>
             )}
-
-            <span className="flex-1" />
-
-            <span
-              className="hidden sm:inline-flex items-center gap-1.5 h-9 px-4 rounded-[var(--mb-radius-btn)] text-[13px] font-extrabold flex-shrink-0 mb-0.5 active:scale-[0.98] transition-transform"
-              style={{ background: 'var(--mb-accent)', color: 'var(--mb-on-accent)' }}
-            >
-              Ver carta {IC.arrow('w-3.5 h-3.5')}
-            </span>
           </div>
 
-          <h2 className="mt-2 text-[17px] font-extrabold tracking-tight leading-tight" style={{ color: 'var(--mb-ink)' }}>
+          <h2 className="mt-2 text-[16.5px] sm:text-[18px] font-extrabold tracking-tight leading-tight" style={{ color: 'var(--mb-ink)' }}>
             {n.businessName}
           </h2>
 
@@ -557,25 +549,27 @@ function TarjetaNegocio({ negocio: n, tops, orden }) {
             /* Dos líneas y corta. La descripción la escribe el dueño y hay
                quien pone un párrafo entero; sin tope, una tarjeta mide el
                triple que la de al lado. */
-            <p className="text-[13px] leading-snug line-clamp-2 mt-0.5" style={{ color: 'var(--mb-ink-2)' }}>
+            <p className="text-[12.5px] sm:text-[13px] leading-snug line-clamp-2 mt-0.5" style={{ color: 'var(--mb-ink-2)' }}>
               {n.description}
             </p>
           )}
 
           {direccion && (
-            <p className="inline-flex items-center gap-1 mt-1 text-[12px] font-semibold" style={{ color: 'var(--mb-ink-3)' }}>
+            <p className="flex items-center gap-1 mt-1 text-[12px] font-semibold min-w-0" style={{ color: 'var(--mb-ink-3)' }}>
               {IC.mapPin()}
-              <span className="truncate max-w-[260px]">{direccion}</span>
+              <span className="truncate">{direccion}</span>
             </p>
           )}
 
-          {/* En pantalla angosta el botón va abajo y a todo el ancho: al lado
-              del nombre se lleva el espacio que necesita el nombre. */}
+          {/* Con el color del negocio y no con el de la vitrina. `accent` ya
+              viene con contraste garantizado contra `onAccent`, así que el
+              amarillo de DOGGITOS sale con letra oscura y el rojo de FRAISE
+              con letra blanca sin decidir nada acá. */}
           <span
-            className="sm:hidden mt-3 flex items-center justify-center gap-1.5 h-11 rounded-[var(--mb-radius-btn)] text-[14px] font-extrabold"
-            style={{ background: 'var(--mb-accent)', color: 'var(--mb-on-accent)' }}
+            className="mt-3 flex items-center justify-center gap-1.5 h-10 rounded-[var(--mb-radius-btn)] text-[13.5px] font-extrabold active:scale-[0.98] transition-transform"
+            style={{ background: paleta.accent, color: paleta.onAccent }}
           >
-            Ver carta {IC.arrow('w-4 h-4')}
+            Ver carta {IC.arrow('w-3.5 h-3.5')}
           </span>
         </div>
       </a>
