@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CreditCard, Printer } from 'lucide-react';
 import {
-  configurarImpresora, impresoras, probarImpresora,
+  configurarImpresora, devolverHardwareAlPanel, hardwareDelPanel, impresoras, probarImpresora,
   type ConfigImpresora, type Impresora, type Impresoras as Config,
 } from './nativo';
 import Datafono from './Datafono';
@@ -25,7 +25,24 @@ export default function Impresoras({ onCerrar }: { onCerrar: () => void }) {
      configuran el mismo día —el de la instalación— y no se vuelven a tocar. */
   const [pestana, setPestana] = useState<'impresoras' | 'datafono'>('impresoras');
 
+  /* Si el panel manda sobre estas impresoras. Tocar algo aquí se lo quita —a
+     propósito: el ajuste del técnico en el local no puede pisarse con la
+     próxima sincronización—, y antes eso pasaba sin que nadie se enterara:
+     el dueño cambiaba la impresora en el panel y la caja no le hacía caso. */
+  const [delPanel, setDelPanel] = useState(true);
+
   useEffect(() => { impresoras().then(setConfig).catch(() => {}); }, []);
+  useEffect(() => { hardwareDelPanel().then(setDelPanel).catch(() => {}); }, []);
+
+  const devolver = async () => {
+    try {
+      await devolverHardwareAlPanel();
+      setDelPanel(true);
+      setAviso('Listo: en la próxima sincronización mandan los ajustes del panel');
+    } catch (e) {
+      setError(String(e).replace(/^Error:\s*/, ''));
+    }
+  };
 
   if (!config) return null;
 
@@ -33,6 +50,7 @@ export default function Impresoras({ onCerrar }: { onCerrar: () => void }) {
     setConfig({ ...config, [rol]: nueva });
     try {
       await configurarImpresora(rol, nueva);
+      setDelPanel(false);
       setError('');
     } catch (e) {
       setError(String(e));
@@ -82,6 +100,25 @@ export default function Impresoras({ onCerrar }: { onCerrar: () => void }) {
           <Datafono />
         ) : (
           <>
+            {delPanel ? (
+              <p className="text-[12px] text-slate-500 leading-snug">
+                Estas impresoras las maneja el panel de MenuBy. Si cambias algo aquí,
+                esta caja deja de seguir al panel.
+              </p>
+            ) : (
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-amber-50 border border-amber-200">
+                <p className="flex-1 text-[12px] font-semibold text-amber-800 leading-snug">
+                  Configuradas en esta caja: lo que cambies en el panel no llega aquí.
+                </p>
+                <button
+                  onClick={devolver}
+                  className="flex-shrink-0 px-3 h-10 rounded-lg bg-amber-600 text-white text-[12px] font-bold"
+                >
+                  Que las maneje el panel
+                </button>
+              </div>
+            )}
+
             {(['caja', 'cocina'] as const).map((rol) => (
               <Ficha
                 key={rol}

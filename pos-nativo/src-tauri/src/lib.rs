@@ -10,6 +10,7 @@
 //! que no existe.
 
 use pos_core::pagos::{self, Terminal};
+use pos_core::busqueda;
 use pos_core::negocio;
 use pos_core::{
     auditoria, cuentas, db, devoluciones, dinero::Pesos, escpos, pausadas, sync, turnos, usuarios,
@@ -24,6 +25,7 @@ mod datafono_red;
 mod configuracion;
 mod fotos;
 mod nube;
+mod pedidos_web;
 mod reloj;
 mod perifericos;
 use nube::Nube;
@@ -145,6 +147,11 @@ pub struct Producto {
 
 /// El catálogo sale de SQLite, nunca de la red: es lo que permite abrir la caja
 /// a las 7 de la mañana sin internet.
+///
+/// Quién coincide y en qué orden lo decide `pos_core::busqueda`: sin tildes,
+/// por palabras, lo que empieza por lo escrito primero, y sin buscar, lo más
+/// vendido arriba. Se filtra en Rust y no con `LIKE` porque SQLite no sabe
+/// que "clasica" y "Clásica" son lo mismo.
 #[tauri::command]
 fn catalogo(
     estado: State<Estado>,
@@ -152,40 +159,106 @@ fn catalogo(
     categoria: Option<String>,
 ) -> Result<Vec<Producto>, String> {
     let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
-    let patron = format!("%{}%", busqueda.trim());
-    // Vacío = todas. Se filtra en SQL y no en la interfaz porque el límite de
-    // 200 filas se aplica antes: filtrar después dejaría categorías sin nada.
+    // Vacío = todas. Se filtra antes del límite: filtrar después dejaría
+    // categorías sin nada.
     let cual = categoria.unwrap_or_default();
+    let vendidas = populares_de_hoy(&base);
+
+    struct Fila {
+        id: String,
+        nombre: String,
+        precio: i64,
+        categoria: String,
+        variante: String,
+        foto: String,
+        extras: String,
+        tipo_impuesto: String,
+        sku: String,
+        categoria_orden: i64,
+    }
 
     let mut consulta = base
         .prepare(
-            "SELECT id, nombre, precio, categoria, variante, foto_local, extras, tipo_impuesto FROM productos
-             WHERE activo = 1
-               AND (?1 = '%%' OR nombre LIKE ?1 OR sku LIKE ?1)
-               AND (?2 = '' OR categoria = ?2)
-             ORDER BY nombre LIMIT 200",
+            "SELECT id, nombre, precio, categoria, variante, foto_local, extras, tipo_impuesto,
+                    sku, categoria_orden
+               FROM productos
+              WHERE activo = 1 AND (?1 = '' OR categoria = ?1)",
         )
         .map_err(|e| e.to_string())?;
 
     let filas = consulta
-        .query_map(rusqlite::params![&patron, &cual], |f| {
-            Ok(Producto {
+        .query_map(rusqlite::params![&cual], |f| {
+            Ok(Fila {
                 id: f.get(0)?,
                 nombre: f.get(1)?,
                 precio: f.get(2)?,
                 categoria: f.get(3)?,
                 variante: f.get(4)?,
                 foto: f.get(5)?,
-                /* Un JSON corrupto no puede dejar el catálogo sin cargar: ese
-                   producto se queda sin extras y los demás siguen vendiéndose. */
-                extras: serde_json::from_str(&f.get::<_, String>(6)?)
-                    .unwrap_or_else(|_| serde_json::json!([])),
+                extras: f.get(6)?,
                 tipo_impuesto: f.get(7)?,
+                sku: f.get(8)?,
+                categoria_orden: f.get(9)?,
             })
         })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())?;
 
-    filas.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+    let candidatas: Vec<_> = filas
+        .iter()
+        .map(|f| busqueda::Candidata {
+            nombre: &f.nombre,
+            variante: &f.variante,
+            sku: &f.sku,
+            categoria_orden: f.categoria_orden,
+            vendidas: vendidas
+                .get(&busqueda::clave(&f.id, &f.variante))
+                .copied()
+                .unwrap_or(0),
+        })
+        .collect();
+
+    Ok(busqueda::ordenar(&busqueda, &candidatas, 200)
+        .into_iter()
+        .map(|i| {
+            let f = &filas[i];
+            Producto {
+                id: f.id.clone(),
+                nombre: f.nombre.clone(),
+                precio: f.precio,
+                categoria: f.categoria.clone(),
+                variante: f.variante.clone(),
+                foto: f.foto.clone(),
+                /* Un JSON corrupto no puede dejar el catálogo sin cargar: ese
+                   producto se queda sin extras y los demás siguen vendiéndose. */
+                extras: serde_json::from_str(&f.extras).unwrap_or_else(|_| serde_json::json!([])),
+                tipo_impuesto: f.tipo_impuesto.clone(),
+            }
+        })
+        .collect())
+}
+
+/// Lo más vendido, contado una vez por día.
+///
+/// El catálogo se pide en cada tecla —el lector de códigos escribe trece por
+/// código—, y sumar treinta días de ventas en cada una sería trabajo repetido
+/// para una respuesta que no cambia hasta mañana. Se recalcula cuando cambia
+/// la fecha.
+fn populares_de_hoy(base: &rusqlite::Connection) -> std::collections::HashMap<String, i64> {
+    use std::sync::{Mutex, OnceLock};
+    static CACHE: OnceLock<Mutex<(String, std::collections::HashMap<String, i64>)>> = OnceLock::new();
+
+    let hoy: String = ahora_local().chars().take(10).collect();
+    let cache = CACHE.get_or_init(|| Mutex::new((String::new(), Default::default())));
+    let Ok(mut c) = cache.lock() else { return Default::default() };
+    if c.0 != hoy {
+        /* Si falla, se ordena por la carta y se reintenta mañana: el orden es
+           una ayuda, no algo por lo que valga la pena no mostrar productos. */
+        c.1 = busqueda::populares(base, &hoy).unwrap_or_default();
+        c.0 = hoy;
+    }
+    c.1.clone()
 }
 
 /// Un producto por su id, para las recompensas.
@@ -390,7 +463,7 @@ async fn cobrar(
             venta::detalle(&base, &registrada.id).ok().flatten(),
             perifericos::leer_config(&base, "caja"),
             perifericos::leer_config(&base, "cocina"),
-            estado.negocio.lock().unwrap().clone(),
+            membrete(&base, &estado.negocio.lock().unwrap()),
         )
     };
 
@@ -1410,7 +1483,7 @@ async fn reimprimir(estado: State<'_, Estado>, venta_id: Option<String>) -> Resu
         (
             completa,
             perifericos::leer_config(&base, "caja"),
-            estado.negocio.lock().unwrap().clone(),
+            membrete(&base, &estado.negocio.lock().unwrap()),
         )
     };
 
@@ -1434,6 +1507,163 @@ fn info_terminal(estado: State<Estado>) -> Result<InfoTerminal, String> {
     Ok(InfoTerminal {
         nombre: aparato.nombre().to_string(),
         requiere_digitacion: aparato.requiere_digitacion(),
+    })
+}
+
+/* ── Pedidos web ─────────────────────────────────────────────────────────
+ *
+ * Los de la nube: se listan, se mueven y se imprimen. Ver `pedidos_web`. */
+
+/// El destino en la nube, o por qué no hay.
+fn destino_nube(estado: &Estado) -> Result<nube::Nube, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    leer_nube(&base).ok_or_else(|| "Esta caja todavía no está conectada a MenuBy".to_string())
+}
+
+#[tauri::command]
+async fn pedidos_web(app: tauri::AppHandle) -> Result<Vec<pedidos_web::PedidoWeb>, String> {
+    // La red no se espera con la base tomada: el destino se lee y se suelta.
+    tauri::async_runtime::spawn_blocking(move || {
+        let destino = destino_nube(&app.state::<Estado>())?;
+        pedidos_web::listar(&destino)
+    })
+    .await
+    .unwrap_or_else(|e| Err(format!("la consulta se interrumpió: {e}")))
+}
+
+#[tauri::command]
+async fn mover_pedido_web(app: tauri::AppHandle, id: String, estado: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let destino = destino_nube(&app.state::<Estado>())?;
+        pedidos_web::mover(&destino, &id, &estado)
+    })
+    .await
+    .unwrap_or_else(|e| Err(format!("el cambio se interrumpió: {e}")))
+}
+
+/// Imprime un pedido web: la tirilla con precios en la caja y, si hay
+/// impresora de cocina, la comanda sin precios allá.
+#[tauri::command]
+async fn imprimir_pedido_web(
+    estado: State<'_, Estado>,
+    pedido: pedidos_web::PedidoWeb,
+) -> Result<(), String> {
+    let (caja, cocina, negocio) = {
+        let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+        (
+            perifericos::leer_config(&base, "caja"),
+            perifericos::leer_config(&base, "cocina"),
+            estado.negocio.lock().map(|n| n.clone()).unwrap_or_default(),
+        )
+    };
+    let ahora = ahora_local();
+    if !matches!(cocina.impresora, Impresora::Ninguna) {
+        perifericos::enviar_suelto(cocina.impresora, pedidos_web::comanda(cocina.ancho, &pedido, &ahora));
+    }
+    imprimir(caja.impresora, pedidos_web::tirilla(&negocio, caja.ancho, &pedido, &ahora)).await
+}
+
+/// Cómo va el turno abierto: ventas, lo más vendido y la lista para
+/// reimprimir. Sin totales por medio: el arqueo es ciego.
+#[tauri::command]
+fn resumen_turno(estado: State<Estado>) -> Result<turnos::Resumen, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    let turno = turnos::activo(&base)
+        .map_err(|e| e.to_string())?
+        .ok_or("No hay turno abierto")?;
+    turnos::resumen(&base, &turno.id).map_err(|e| e.to_string())
+}
+
+/* ── Agotados ──────────────────────────────────────────────────────────── */
+
+/// Marca un producto agotado (o de vuelta a la venta) en la nube y aquí.
+///
+/// El reflejo local es inmediato: el cajero que tocó "agotado" no puede
+/// seguir viéndolo en la carta hasta la próxima sincronización. Van todas sus
+/// filas, tallas incluidas.
+#[tauri::command]
+async fn marcar_agotado(app: tauri::AppHandle, producto_id: String, agotado: bool) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let estado = app.state::<Estado>();
+        let destino = destino_nube(&estado)?;
+        nube::marcar_disponible(&destino, &producto_id, !agotado)?;
+
+        let base_id = producto_id.split(':').next().unwrap_or_default().to_string();
+        if let Ok(base) = estado.base.lock() {
+            let _ = base.execute(
+                "UPDATE productos SET activo = ?2 WHERE id = ?1 OR id LIKE ?1 || ':%'",
+                rusqlite::params![base_id, if agotado { 0 } else { 1 }],
+            );
+        }
+        Ok(())
+    })
+    .await
+    .unwrap_or_else(|e| Err(format!("el cambio se interrumpió: {e}")))
+}
+
+/// Un producto que no se está vendiendo.
+#[derive(serde::Serialize)]
+struct Apagado {
+    id: String,
+    nombre: String,
+    categoria: String,
+}
+
+/// Lo que está apagado: agotado desde aquí o desde el panel. Una fila por
+/// producto aunque tenga tallas, porque se enciende entero.
+#[tauri::command]
+fn apagados(estado: State<Estado>) -> Result<Vec<Apagado>, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    let mut consulta = base
+        .prepare(
+            "SELECT CASE WHEN instr(id, ':') > 0 THEN substr(id, 1, instr(id, ':') - 1) ELSE id END AS base_id,
+                    MIN(nombre), MIN(categoria)
+               FROM productos
+              WHERE activo = 0
+              GROUP BY base_id
+              ORDER BY MIN(nombre)
+              LIMIT 200",
+        )
+        .map_err(|e| e.to_string())?;
+    let filas = consulta
+        .query_map([], |f| Ok(Apagado { id: f.get(0)?, nombre: f.get(1)?, categoria: f.get(2)? }))
+        .map_err(|e| e.to_string())?;
+    filas.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+/// Lo que el panel decide sobre el trato de esta caja con el cajero.
+///
+/// Estos valores bajaban con la configuración y se guardaban, pero la
+/// pantalla no tenía cómo leerlos: el auto-bloqueo quedaba en 90 segundos y la
+/// propina en cero, dijera lo que dijera el panel.
+#[derive(serde::Serialize)]
+struct AjustesCaja {
+    auto_bloqueo_segundos: u64,
+    /// `None` si el panel nunca lo dijo: manda lo que el cajero tenga puesto.
+    sonido_activo: Option<bool>,
+    propina_en_mesas: bool,
+    propina_sugerida: u8,
+    nombre_caja: String,
+}
+
+#[tauri::command]
+fn ajustes_caja(estado: State<Estado>) -> Result<AjustesCaja, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    let leer = |clave: &str| -> Option<String> {
+        base.query_row("SELECT valor FROM ajustes WHERE clave = ?1", [clave], |f| f.get(0)).ok()
+    };
+    Ok(AjustesCaja {
+        auto_bloqueo_segundos: leer("auto_bloqueo_segundos")
+            .and_then(|v| v.parse().ok())
+            .map(|n: u64| n.clamp(30, 300))
+            .unwrap_or(90),
+        sonido_activo: leer("sonido_activo").map(|v| v != "0"),
+        propina_en_mesas: leer("propina_en_mesas").is_none_or(|v| v != "0"),
+        propina_sugerida: leer("propina_sugerida")
+            .and_then(|v| v.parse().ok())
+            .map(|n: u8| n.min(50))
+            .unwrap_or(10),
+        nombre_caja: leer("caja_nombre").unwrap_or_default(),
     })
 }
 
@@ -1903,14 +2133,86 @@ async fn sincronizar(app: tauri::AppHandle) -> ResumenSync {
 ///
 /// Una reimpresión va marcada: un segundo papel idéntico al original es un
 /// comprobante duplicado, y con eso se devuelve mercancía dos veces.
-fn tirilla_de(negocio: &str, ancho: usize, v: &venta::VentaCompleta, copia: bool) -> Vec<u8> {
+/// La cabecera de la tirilla: quién vende.
+///
+/// La misma que imprime el PrintAgent en los pedidos del menú —nombre,
+/// dirección, teléfono y NIT—. Un cliente que pide factura, o que vuelve a
+/// reclamar, necesita saber a qué negocio le compró; y un papel de la caja que
+/// dice menos que el del domicilio parece de otro local.
+#[derive(Clone)]
+struct Membrete {
+    nombre: String,
+    nit: String,
+    direccion: String,
+    telefono: String,
+    /// El texto del pie que el dueño escribió en el panel. Vacío = el de
+    /// siempre.
+    pie: String,
+    /// Si la tirilla de una venta en efectivo abre la gaveta. Viene del
+    /// panel; sin configuración, abre.
+    cajon_al_cobrar: bool,
+}
+
+impl Default for Membrete {
+    fn default() -> Self {
+        Membrete {
+            nombre: String::new(),
+            nit: String::new(),
+            direccion: String::new(),
+            telefono: String::new(),
+            pie: String::new(),
+            cajon_al_cobrar: true,
+        }
+    }
+}
+
+impl Membrete {
+    #[cfg(test)]
+    fn solo(nombre: &str) -> Self {
+        Membrete { nombre: nombre.into(), ..Default::default() }
+    }
+
+    fn pie(&self) -> &str {
+        if self.pie.trim().is_empty() { "¡Gracias por tu compra!" } else { self.pie.trim() }
+    }
+
+    fn escribir(&self, t: &mut escpos::Tirilla) {
+        t.negrita(true).linea(&self.nombre).negrita(false);
+        /* Cada línea solo si hay algo: un "NIT:" pelado es peor que nada. */
+        if !self.direccion.is_empty() {
+            t.linea(&self.direccion);
+        }
+        if !self.telefono.is_empty() {
+            t.linea(&format!("Tel: {}", self.telefono));
+        }
+        if !self.nit.is_empty() {
+            t.linea(&format!("NIT: {}", self.nit));
+        }
+    }
+}
+
+/// Lee el membrete de lo que dejó la última bajada de catálogo.
+fn membrete(base: &rusqlite::Connection, nombre: &str) -> Membrete {
+    let leer = |clave: &str| -> String {
+        base.query_row("SELECT valor FROM ajustes WHERE clave = ?1", [clave], |f| f.get(0))
+            .unwrap_or_default()
+    };
+    Membrete {
+        nombre: nombre.to_string(),
+        nit: leer("negocio_nit"),
+        direccion: leer("negocio_direccion"),
+        telefono: leer("negocio_telefono"),
+        pie: leer("texto_pie_factura"),
+        cajon_al_cobrar: leer("cajon_al_cobrar") != "0",
+    }
+}
+
+fn tirilla_de(negocio: &Membrete, ancho: usize, v: &venta::VentaCompleta, copia: bool) -> Vec<u8> {
     let mut t = escpos::Tirilla::nueva(ancho);
 
-    t.alinear(escpos::Alineacion::Centro)
-        .negrita(true)
-        .linea(negocio)
-        .negrita(false)
-        .linea(&format!("Venta #{}", v.consecutivo))
+    t.alinear(escpos::Alineacion::Centro);
+    negocio.escribir(&mut t);
+    t.linea(&format!("Venta #{}", v.consecutivo))
         .linea(&v.creada_en);
 
     if copia {
@@ -2023,9 +2325,19 @@ fn tirilla_de(negocio: &str, ancho: usize, v: &venta::VentaCompleta, copia: bool
     t.salto()
         .alinear(escpos::Alineacion::Centro)
         .linea(&format!("Le atendió {}", v.cajero))
-        .linea("¡Gracias por tu compra!")
-        // Una copia no abre el cajón: la gaveta ya se abrió cuando se cobró.
-        .cortar();
+        .linea(negocio.pie());
+
+    /* La gaveta abre con la tirilla, en el mismo envío: si va aparte, abre
+       antes de que termine de salir el papel. Solo si entró efectivo y el
+       panel no lo apagó. Una copia nunca abre: la gaveta ya se abrió cuando
+       se cobró, y una reimpresión que abre el cajón es plata a la vista sin
+       venta de por medio. */
+    let hubo_efectivo = v.pagos.iter().any(|p| p.metodo == "efectivo")
+        || (v.pagos.is_empty() && v.medio_pago == "efectivo");
+    if !copia && hubo_efectivo && negocio.cajon_al_cobrar {
+        t.abrir_cajon();
+    }
+    t.cortar();
 
     t.terminar()
 }
@@ -2322,18 +2634,16 @@ fn comanda(ancho: usize, nueva: &venta::NuevaVenta, registrada: &venta::VentaReg
 /// Arma la tirilla. Vive aquí y no en el núcleo porque es presentación: qué se
 /// imprime y en qué orden es una decisión del negocio, no del dominio.
 fn tirilla(
-    negocio: &str,
+    negocio: &Membrete,
     ancho: usize,
     nueva: &venta::NuevaVenta,
     registrada: &venta::VentaRegistrada,
 ) -> Vec<u8> {
     let mut t = escpos::Tirilla::nueva(ancho);
 
-    t.alinear(escpos::Alineacion::Centro)
-        .negrita(true)
-        .linea(negocio)
-        .negrita(false)
-        .linea(&format!("Venta #{}", registrada.consecutivo))
+    t.alinear(escpos::Alineacion::Centro);
+    negocio.escribir(&mut t);
+    t.linea(&format!("Venta #{}", registrada.consecutivo))
         .linea(&registrada.creada_en)
         .alinear(escpos::Alineacion::Izquierda)
         .separador();
@@ -2367,11 +2677,15 @@ fn tirilla(
 
     t.salto()
         .alinear(escpos::Alineacion::Centro)
-        .linea("¡Gracias por tu compra!")
-        // El cajón abre con la tirilla, en el mismo flujo: si va aparte, abre
-        // antes de que termine de salir el papel.
-        .abrir_cajon()
-        .cortar();
+        .linea(negocio.pie());
+    // Misma regla que la tirilla completa: solo con efectivo y si el panel no
+    // lo apagó.
+    let hubo_efectivo = nueva.pagos.iter().any(|p| p.metodo == "efectivo")
+        || (nueva.pagos.is_empty() && nueva.medio_pago == "efectivo");
+    if hubo_efectivo && negocio.cajon_al_cobrar {
+        t.abrir_cajon();
+    }
+    t.cortar();
 
     t.terminar()
 }
@@ -2447,7 +2761,7 @@ pub fn run() {
 
                    Las dos cosas son `PASSIVE` o no bloqueantes: si hay alguien
                    cobrando, no hacen nada y se reintentan en la próxima vuelta. */
-                if vueltas % 60 == 0 {
+                if vueltas.is_multiple_of(60) {
                     if let Ok(base) = estado.base.lock() {
                         db::mantener(&base);
                     }
@@ -2489,6 +2803,13 @@ pub fn run() {
             configurar_datafono,
             config_datafono,
             hardware_del_panel,
+            ajustes_caja,
+            resumen_turno,
+            marcar_agotado,
+            apagados,
+            pedidos_web,
+            mover_pedido_web,
+            imprimir_pedido_web,
             devolver_hardware_al_panel,
             cobro_qr,
             probar_datafono,
@@ -2536,7 +2857,7 @@ mod pruebas_tirilla {
 
     /// Lo que sale impreso, como texto, para poder buscar dentro.
     fn impreso(v: &VentaCompleta) -> String {
-        String::from_utf8_lossy(&tirilla_de("Go Burger", 42, v, false)).to_string()
+        String::from_utf8_lossy(&tirilla_de(&Membrete::solo("Go Burger"), 42, v, false)).to_string()
     }
 
     /// Una venta con todo lo que la tirilla corta se comía.
@@ -2592,6 +2913,82 @@ mod pruebas_tirilla {
      * desglose de impuestos. Quien pedía una reimpresión recibía un papel
      * mejor que el del momento de pagar, que es justo al revés. */
 
+    /// Si los bytes llevan el pulso que abre la gaveta (ESC p).
+    fn abre_cajon(bytes: &[u8]) -> bool {
+        bytes.windows(2).any(|w| w == [0x1B, b'p'])
+    }
+
+    #[test]
+    fn cobrar_en_efectivo_abre_la_gaveta() {
+        // El error que esto cierra: la tirilla completa no abría el cajón.
+        let bytes = tirilla_de(&Membrete::solo("Go Burger"), 42, &venta_completa(), false);
+        assert!(abre_cajon(&bytes));
+    }
+
+    #[test]
+    fn una_reimpresion_no_abre_la_gaveta() {
+        let bytes = tirilla_de(&Membrete::solo("Go Burger"), 42, &venta_completa(), true);
+        assert!(!abre_cajon(&bytes));
+    }
+
+    #[test]
+    fn con_tarjeta_no_abre_la_gaveta() {
+        let mut v = venta_completa();
+        v.medio_pago = "tarjeta".into();
+        v.pagos = vec![PagoDetalle { metodo: "tarjeta".into(), monto: Pesos(29_000), referencia: String::new() }];
+        assert!(!abre_cajon(&tirilla_de(&Membrete::solo("Go Burger"), 42, &v, false)));
+    }
+
+    #[test]
+    fn si_el_panel_apaga_el_cajon_no_abre() {
+        let m = Membrete { cajon_al_cobrar: false, ..Membrete::solo("Go Burger") };
+        assert!(!abre_cajon(&tirilla_de(&m, 42, &venta_completa(), false)));
+    }
+
+    #[test]
+    fn el_pie_es_el_que_escribio_el_dueno() {
+        let m = Membrete { pie: "Síguenos en Instagram".into(), ..Membrete::solo("Go Burger") };
+        let texto = String::from_utf8_lossy(&tirilla_de(&m, 42, &venta_completa(), false)).to_string();
+        assert!(texto.contains("Instagram"), "falta el pie:\n{texto}");
+        assert!(!texto.contains("Gracias por tu compra"));
+    }
+
+    #[test]
+    fn el_membrete_lleva_direccion_telefono_y_nit() {
+        // Lo mismo que imprime el PrintAgent en los pedidos del menú.
+        let m = Membrete {
+            nombre: "Go Burger".into(),
+            nit: "900123456-7".into(),
+            direccion: "Cra 10 # 20-30".into(),
+            telefono: "3001234567".into(),
+            ..Membrete::default()
+        };
+        let texto = String::from_utf8_lossy(&tirilla_de(&m, 42, &venta_completa(), false)).to_string();
+        for esperado in ["Go Burger", "Cra 10 # 20-30", "Tel: 3001234567", "NIT: 900123456-7"] {
+            assert!(texto.contains(esperado), "falta {esperado}:
+{texto}");
+        }
+    }
+
+    #[test]
+    fn sin_nit_no_imprime_la_etiqueta_sola() {
+        let texto = impreso(&venta_completa());
+        assert!(!texto.contains("NIT:"), "NIT vacío impreso:
+{texto}");
+        assert!(!texto.contains("Tel:"), "Tel vacío impreso:
+{texto}");
+    }
+
+    #[test]
+    fn la_venta_y_la_reimpresion_leen_el_membrete_de_la_base() {
+        /* Sin esto, el membrete existe pero nadie lo usa: la tirilla seguiría
+           saliendo solo con el nombre. Aguja partida para no encontrarse a sí
+           misma en este archivo. */
+        let fuente = include_str!("lib.rs");
+        let aguja = format!("{}{}", "membrete(&base, ", "&estado.negocio.lock().unwrap())");
+        assert_eq!(fuente.matches(&aguja).count(), 2, "venta y reimpresión deben leerlo");
+    }
+
     #[test]
     fn imprime_los_extras_con_su_precio() {
         // El cliente paga $4.000 de tocineta: tiene derecho a verlo.
@@ -2625,8 +3022,8 @@ mod pruebas_tirilla {
         /* `copia: true` es para las reimpresiones. Marcar la primera como
            copia haría dudar a cualquiera de que es válida. */
         let v = venta_completa();
-        let original = String::from_utf8_lossy(&tirilla_de("Go Burger", 42, &v, false)).to_string();
-        let reimpresa = String::from_utf8_lossy(&tirilla_de("Go Burger", 42, &v, true)).to_string();
+        let original = String::from_utf8_lossy(&tirilla_de(&Membrete::solo("Go Burger"), 42, &v, false)).to_string();
+        let reimpresa = String::from_utf8_lossy(&tirilla_de(&Membrete::solo("Go Burger"), 42, &v, true)).to_string();
         assert_ne!(original, reimpresa, "la copia tiene que distinguirse");
     }
 

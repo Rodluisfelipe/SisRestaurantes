@@ -1126,7 +1126,14 @@ router.get("/:id", authMiddleware, async (req, res) => {
 });
 
 // Update order status (admin only)
-router.patch("/:id/status", tenantAuth, validateUpdateOrderStatus, async (req, res) => {
+/* Cambiar el estado de un pedido.
+
+   Es una función con nombre, y no un handler anónimo, porque la caja
+   (Routes/pos.js) la usa también: los pedidos web se despachan desde el POS
+   con exactamente las mismas reglas —transiciones, archivo, caja,
+   fidelización, avisos al cliente— que desde el panel. Dos copias de esto
+   serían dos maneras de completar un pedido que con el tiempo cobran distinto. */
+async function actualizarEstadoPedido(req, res) {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -1471,7 +1478,9 @@ router.patch("/:id/status", tenantAuth, validateUpdateOrderStatus, async (req, r
     logger.error('Error updating order status', { error: error.message, orderId: req.params.id });
     res.status(500).json({ message: 'Error interno del servidor' });
   }
-});
+}
+
+router.patch("/:id/status", tenantAuth, validateUpdateOrderStatus, actualizarEstadoPedido);
 
 // Add items to an existing active order (admin only)
 router.patch("/:id/add-items", tenantAuth, async (req, res) => {
@@ -2430,5 +2439,6 @@ router.get('/customer/:phone', tenantAuth, async (req, res) => {
   }
 });
 
+router.actualizarEstadoPedido = actualizarEstadoPedido;
 module.exports = router;
 module.exports.generateOrderNumber = generateOrderNumber;

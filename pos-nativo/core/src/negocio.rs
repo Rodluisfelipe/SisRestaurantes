@@ -34,6 +34,9 @@ const AJUSTES_DEL_NEGOCIO: &[&str] = &[
     "negocio_nombre",
     "marca_color",
     "marca_color_texto",
+    "negocio_nit",
+    "negocio_direccion",
+    "negocio_telefono",
     "config_version",
 ];
 

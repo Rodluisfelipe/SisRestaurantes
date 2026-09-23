@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  agregarAlCarrito, brutoDe, esRecompensa, fijarCantidad, lineaDeRecompensa,
+  agregarAlCarrito, agregarLineaAparte, brutoDe, faltantes, esRecompensa, fijarCantidad, lineaDeRecompensa,
   quitarLineasDeRecompensa, rebajaPorRecompensa,
 } from './carrito';
-import type { LineaVenta, Producto, Recompensa } from './nativo';
+import type { GrupoExtra, LineaVenta, Producto, Recompensa } from './nativo';
 
 /**
  * Lo que decide cuánto paga el cliente.
@@ -260,5 +260,39 @@ describe('cuánto rebaja una recompensa', () => {
 
   it('sobre un carrito vacío la rebaja es cero', () => {
     expect(rebajaPorRecompensa(recompensa('discount_percent', 10), 0)).toBe(0);
+  });
+});
+
+describe('los productos con opciones entran aparte', () => {
+  const bebida: GrupoExtra = {
+    id: 'g1', nombre: 'Bebida', multiple: false, obligatorio: true, precio_base: 0,
+    opciones: [{ nombre: 'Coca-Cola', precio: 0 }, { nombre: 'Malteada', precio: 3000 }],
+    subgrupos: [],
+  };
+
+  it('dos combos iguales son dos líneas, para poder cambiarle la bebida a uno solo', () => {
+    let c = agregarLineaAparte([], producto('combo', 20000), [], 0);
+    c = agregarLineaAparte(c, producto('combo', 20000), [], 0);
+    expect(c).toHaveLength(2);
+  });
+
+  it('el precio de la línea ya trae lo que suman las opciones', () => {
+    const c = agregarLineaAparte([], producto('combo', 20000), [], 3000, 2);
+    expect(c[0].precio).toBe(23000);
+    expect(c[0].cantidad).toBe(2);
+  });
+
+  it('dice qué obligatorio le falta a cada línea', () => {
+    const c: LineaVenta[] = [
+      ...agregarLineaAparte([], producto('combo', 20000), [], 0),
+      ...agregarLineaAparte([], producto('combo', 20000), [{ grupo: 'Bebida', nombre: 'Coca-Cola', precio: 0, cantidad: 1 }], 0),
+    ];
+    expect(faltantes(c, { combo: [bebida] })).toEqual([['Bebida'], []]);
+  });
+
+  it('una línea de la que no se conocen los grupos no se juzga', () => {
+    // Vino de una mesa guardada: ya pasó la revisión cuando se marcó.
+    const c = agregarLineaAparte([], producto('combo', 20000), [], 0);
+    expect(faltantes(c, {})).toEqual([[]]);
   });
 });

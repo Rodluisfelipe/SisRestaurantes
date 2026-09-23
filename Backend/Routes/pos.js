@@ -24,6 +24,7 @@ const rateLimit = require('express-rate-limit');
 const PosExcepcion = require('../Models/PosExcepcion');
 const {
   validarVenta, validarCierre, validarExcepcion, aplanarCatalogo, validarDevolucion,
+  pedidoParaCaja, ESTADOS_ACTIVOS,
 } = require('../utils/pos');
 const { moverStock } = require('../services/inventario');
 const socketService = require('../services/socketService');
@@ -665,7 +666,7 @@ router.get('/catalog', tenantAuth, cajaVigente, async (req, res) => {
          porque el emparejamiento pasa una vez en la vida de la caja: si el
          dueño cambia su color en el panel, la caja tendría el viejo para
          siempre. Esta bajada corre cada pocos minutos. */
-      BusinessConfig.findById(businessId).select('businessName theme.buttonColor theme.buttonTextColor').lean(),
+      BusinessConfig.findById(businessId).select('businessName theme.buttonColor theme.buttonTextColor nit address phone whatsappNumber').lean(),
     ]);
 
     const porId = Object.fromEntries(
@@ -708,6 +709,12 @@ router.get('/catalog', tenantAuth, cajaVigente, async (req, res) => {
         nombre: negocio?.businessName || '',
         color: negocio?.theme?.buttonColor || '',
         color_texto: negocio?.theme?.buttonTextColor || '',
+        /* El membrete de la tirilla, el mismo que imprime el PrintAgent. Van
+           siempre, aunque estén vacíos: si el dueño borra el NIT en el panel,
+           la caja tiene que dejar de imprimirlo. */
+        nit: (negocio?.nit || '').trim(),
+        direccion: (negocio?.address || '').trim(),
+        telefono: (negocio?.phone || negocio?.whatsappNumber || '').trim(),
       },
       configuracion,
     });
@@ -962,5 +969,101 @@ router.post('/redeem-reward', tenantAuth, cajaVigente, async (req, res) => {
     res.status(500).json({ message: 'No se pudo canjear la recompensa' });
   }
 });
+
+/* ── Pedidos web ───────────────────────────────────────────────────────────
+ *
+ * Los pedidos que entran por el menú, el WhatsApp o el panel, para
+ * despacharlos desde la caja. El POS web los mostraba y la caja nativa no:
+ * quien atendía el mostrador tenía que tener el panel abierto en otra
+ * pantalla para enterarse de que había un domicilio esperando.
+ *
+ * La caja pregunta cada pocos segundos. Son pocos pedidos activos por negocio
+ * y la consulta va por índice; un socket sería más inmediato, pero una caja
+ * que se queda sin internet a ratos se recupera sola preguntando, y un socket
+ * caído sin que nadie lo note es un pedido que nadie ve.
+ */
+const Order = require('../Models/Order');
+const ordersRouter = require('./orders');
+const { validateUpdateOrderStatus } = require('../middleware/validators/orderValidators');
+
+router.get('/pedidos', tenantAuth, cajaVigente, async (req, res) => {
+  try {
+    const businessId = req.user.businessId;
+    const pedidos = await Order.find({
+      businessId,
+      status: { $in: ESTADOS_ACTIVOS },
+      /* Lo que la propia caja vende no es un pedido que atender: ya se
+         despachó en el mostrador. Las cuentas abiertas de mesa del POS web
+         tampoco. */
+      orderChannel: { $ne: 'pos' },
+      posOpenTab: { $ne: true },
+    })
+      .sort({ createdAt: 1 })
+      .limit(100)
+      .lean();
+    res.set('Cache-Control', 'no-store');
+    res.json({ pedidos: pedidos.map(pedidoParaCaja) });
+  } catch (error) {
+    logger.error('Error entregando los pedidos web al POS', error, req);
+    res.status(500).json({ message: 'No se pudieron cargar los pedidos' });
+  }
+});
+
+/* Mover un pedido: aceptarlo, marcarlo listo, entregarlo, cancelarlo.
+   Pasa por el mismo camino que el panel —ver `actualizarEstadoPedido` en
+   Routes/orders.js— con el negocio que dice el token de la caja. */
+router.patch('/pedidos/:id/estado', tenantAuth, cajaVigente, (req, res, next) => {
+  req.body = { status: req.body?.estado };
+  next();
+}, validateUpdateOrderStatus, ordersRouter.actualizarEstadoPedido);
+
+
+/* ── Agotados ──────────────────────────────────────────────────────────────
+ *
+ * Marcar desde la caja que algo se acabó. Es el mismo `active` que el dueño
+ * apaga en el panel —el que lo quita del menú—, así que un agotado marcado en
+ * el mostrador deja de venderse también por el menú web en el acto, en vez de
+ * seguir entrando pedidos de algo que ya no hay.
+ *
+ * Recibe el valor y no un "cambiar": si la caja reintenta por una red floja,
+ * un toggle lo volvería a encender.
+ */
+const productsRouter = require('./products');
+const { audit } = require('../utils/auditLog');
+
+router.patch('/productos/:id/disponible', tenantAuth, cajaVigente, async (req, res) => {
+  try {
+    // El catálogo de la caja usa "id:talla" para las variantes; se apaga el producto.
+    const id = String(req.params.id || '').split(':')[0];
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Producto no válido' });
+    if (typeof req.body?.disponible !== 'boolean') {
+      return res.status(400).json({ message: 'Falta decir si está disponible' });
+    }
+
+    const businessId = req.user.businessId;
+    const producto = await Product.findOne({ _id: id, businessId });
+    if (!producto) return res.status(404).json({ message: 'Ese producto no es de este negocio' });
+
+    if (producto.active !== req.body.disponible) {
+      const antes = producto.toObject();
+      producto.active = req.body.disponible;
+      // Mueve updatedAt: es lo que hace que las demás cajas lo bajen.
+      await producto.save();
+      audit({
+        action: 'toggle', resource: 'product', resourceId: producto._id, resourceName: producto.name,
+        businessId, before: antes, after: producto.toObject(), req,
+      });
+      productsRouter.avisarCambioDeProductos(businessId, {
+        type: 'toggled', productId: producto._id, active: producto.active,
+      });
+    }
+
+    res.json({ ok: true, disponible: producto.active });
+  } catch (error) {
+    logger.error('Error marcando un agotado desde el POS', error, req);
+    res.status(500).json({ message: 'No se pudo cambiar el producto' });
+  }
+});
+
 
 module.exports = router;

@@ -1201,5 +1201,7 @@ router.patch("/:id/toggle", tenantAuth, validateToggleProduct, async (req, res) 
    de mover la función a un util, que tocaría el camino caliente del menú por
    una comodidad de otra ruta. */
 router.buildPopularPayload = buildPopularPayload;
+// La caja marca agotados y tiene que avisar igual que el panel.
+router.avisarCambioDeProductos = avisarCambioDeProductos;
 
 module.exports = router;

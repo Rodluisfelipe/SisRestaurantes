@@ -12,6 +12,19 @@
  */
 
 const CLAVE = 'menuby.pos.sonido';
+/* Lo que dice el panel. Aparte de la elección del cajero: el panel pone el
+   valor de partida y quien está en la caja lo puede cambiar con el botón. */
+const CLAVE_PANEL = 'menuby.pos.sonido.panel';
+
+/** Lo que dice el panel, para cuando el cajero no ha elegido. */
+export function sonidoDelPanel(si: boolean | null): void {
+  try {
+    if (si === null) localStorage.removeItem(CLAVE_PANEL);
+    else localStorage.setItem(CLAVE_PANEL, si ? 'si' : 'no');
+  } catch {
+    // Sin almacenamiento se queda sonando, que es lo de fábrica.
+  }
+}
 
 /* El contexto se crea una sola vez y tarde: los navegadores no dejan sonar
    nada hasta que el usuario toca algo, así que crearlo al cargar la página
@@ -38,7 +51,9 @@ function abrir(): AudioContext | null {
 /** ¿Está activado? Se recuerda por terminal, no por usuario. */
 export function sonidoActivo(): boolean {
   try {
-    return localStorage.getItem(CLAVE) !== 'no';
+    const delCajero = localStorage.getItem(CLAVE);
+    if (delCajero) return delCajero !== 'no';
+    return localStorage.getItem(CLAVE_PANEL) !== 'no';
   } catch {
     // Sin almacenamiento, suena: es lo que espera quien no configuró nada.
     return true;

@@ -603,7 +603,65 @@ function validarDevolucion(cuerpo) {
   };
 }
 
+/* ── Pedidos web en la caja ─────────────────────────────────────────────── */
+
+/* Los estados en que un pedido todavía le toca a alguien. Los finales
+   (completado, entregado, cancelado) ya no se muestran en la caja. */
+const ESTADOS_ACTIVOS = [
+  'pending', 'pending_payment', 'payment_uploaded', 'payment_confirmed',
+  'confirmed', 'preparing', 'inProgress', 'ready',
+];
+
+/**
+ * Un pedido, en la forma que la caja dibuja.
+ *
+ * Se aplana acá y no en la caja porque la caja no tiene por qué conocer el
+ * modelo de Mongo: los extras llegan como texto listo para leer y las notas
+ * del pedido con su nombre en castellano. Si mañana cambia el esquema, cambia
+ * esta función y la caja ni se entera.
+ */
+function pedidoParaCaja(o) {
+  const texto = (v, max = 300) => String(v ?? '').trim().slice(0, max);
+  const items = (o.items || []).map((it) => {
+    const extras = [];
+    for (const t of it.selectedToppings || []) {
+      if (t.optionName) extras.push(texto(t.optionName, 80));
+      for (const sg of t.subGroups || []) {
+        if (sg.optionName) extras.push(texto(sg.optionName, 80));
+      }
+    }
+    return {
+      nombre: texto(it.name, 120),
+      variante: (it.variante?.valores || []).map((v) => texto(v, 40)).join(' / '),
+      cantidad: Number(it.quantity) || 1,
+      precio: Math.round(Number(it.price) || 0),
+      extras,
+      regalo: !!it.isLoyaltyReward,
+    };
+  });
+  return {
+    id: String(o._id),
+    numero: texto(o.orderNumber, 30) || String(o._id).slice(-6),
+    estado: o.status,
+    canal: o.orderChannel || 'whatsapp',
+    tipo: o.orderType || 'takeaway',
+    cliente: texto(o.customerName, 80),
+    telefono: texto(o.phone, 30),
+    direccion: texto(o.address, 200),
+    mesa: texto(o.tableNumber, 20),
+    notas: texto(o.customerNotes, 500),
+    metodo_pago: o.paymentMethod || '',
+    comprobante: !!o.paymentProof,
+    total: Math.round(Number(o.finalAmount ?? o.totalAmount) || 0),
+    envio: Math.round(Number(o.deliveryFee) || 0),
+    creado: o.createdAt ? new Date(o.createdAt).toISOString() : '',
+    items,
+  };
+}
+
 module.exports = {
+  pedidoParaCaja,
+  ESTADOS_ACTIVOS,
   validarVenta,
   validarCierre,
   validarExcepcion,

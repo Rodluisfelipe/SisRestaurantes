@@ -8,6 +8,12 @@ const BILLETES = [100_000, 50_000, 20_000, 10_000, 5_000, 2_000];
 /** Los porcentajes de propina que se usan de verdad en un restaurante. */
 const PROPINAS = [0, 5, 10];
 
+/** Las opciones de propina, con la sugerida del panel si no está ya. */
+export function opcionesPropina(sugerida: number): number[] {
+  const todas = sugerida > 0 && !PROPINAS.includes(sugerida) ? [...PROPINAS, sugerida] : PROPINAS;
+  return [...todas].sort((a, b) => a - b);
+}
+
 const ICONO: Record<Medio, typeof Banknote> = {
   efectivo: Banknote,
   tarjeta: CreditCard,
@@ -38,6 +44,8 @@ const NOMBRE: Record<Medio, string> = {
 export default function CobroMixto({
   total,
   conPropina,
+  propinaSugerida = 0,
+  opcionSugerida = 10,
   pidiendoVoucher,
   onCambio,
   onMedio,
@@ -47,6 +55,10 @@ export default function CobroMixto({
   total: number;
   /** Si el negocio pide propina. Un mostrador de barrio no la pide. */
   conPropina: boolean;
+  /** El porcentaje que entra marcado. 0 = ninguno. */
+  propinaSugerida?: number;
+  /** El porcentaje del panel, para ofrecerlo aunque no entre marcado. */
+  opcionSugerida?: number;
   /** Si el datáfono no está integrado, la tarjeta exige voucher a mano. */
   pidiendoVoucher: boolean;
   /** Avisa lo que lleva cobrado, para la pantalla del cliente. */
@@ -63,7 +75,7 @@ export default function CobroMixto({
   const [referencia, setReferencia] = useState('');
   /* La propina se elige **antes** de cobrar, no después: una vez cobrado no se
      le puede pedir más plata a alguien que ya guardó la billetera. */
-  const [propinaPct, setPropinaPct] = useState(0);
+  const [propinaPct, setPropinaPct] = useState(conPropina ? propinaSugerida : 0);
   const [propinaOtra, setPropinaOtra] = useState('');
   const campo = useRef<HTMLInputElement>(null);
 
@@ -168,7 +180,7 @@ export default function CobroMixto({
               Propina
             </label>
             <div className="flex gap-1.5">
-              {PROPINAS.map((p) => {
+              {opcionesPropina(opcionSugerida).map((p) => {
                 const elegido = !propinaOtra && propinaPct === p;
                 return (
                   <button

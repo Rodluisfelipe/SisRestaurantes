@@ -1,4 +1,5 @@
-import type { ExtraElegido, LineaVenta, Producto, Recompensa } from './nativo';
+import type { ExtraElegido, GrupoExtra, LineaVenta, Producto, Recompensa } from './nativo';
+import { derivar, reconstruirElegidas } from './reglasExtras';
 
 /**
  * Las reglas del carrito, sin pantalla de por medio.
@@ -83,6 +84,50 @@ export function agregarAlCarrito(
     nota: '',
     extras,
   }];
+}
+
+/**
+ * Agrega una línea **siempre aparte**, sin juntarla con otra igual.
+ *
+ * Es la de los productos con opciones. Entran con lo estándar y el cajero los
+ * cambia sobre la marcha en el ticket: si el segundo combo se juntara con el
+ * primero por llegar igual, cambiarle la bebida al segundo se la cambiaría a
+ * los dos.
+ */
+export function agregarLineaAparte(
+  carrito: LineaVenta[],
+  producto: Producto,
+  extras: ExtraElegido[],
+  sobreprecio: number,
+  unidades = 1,
+): LineaVenta[] {
+  return [...carrito, {
+    producto_id: producto.id,
+    nombre: producto.nombre,
+    variante: producto.variante,
+    precio: producto.precio + sobreprecio,
+    cantidad: Math.min(99, Math.max(1, Math.floor(unidades) || 1)),
+    nota: '',
+    extras,
+  }];
+}
+
+/**
+ * Qué le falta elegir a cada línea: los grupos obligatorios sin respuesta.
+ *
+ * Lo que no bloquea al marcar bloquea al cobrar y al mandar a cocina. Una
+ * línea de la que no se conocen los grupos —vino de una mesa guardada— no se
+ * puede juzgar, y se deja pasar: ya pasó por esta revisión cuando se marcó.
+ */
+export function faltantes(
+  carrito: LineaVenta[],
+  gruposDe: Record<string, GrupoExtra[]>,
+): string[][] {
+  return carrito.map((l) => {
+    const grupos = gruposDe[l.producto_id];
+    if (!grupos) return [];
+    return derivar(grupos, reconstruirElegidas(grupos, l.extras ?? [])).faltan;
+  });
 }
 
 /**

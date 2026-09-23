@@ -379,6 +379,11 @@ pub fn registrar(
         Vec::with_capacity(venta.items.len());
     let mut repartido = Pesos::CERO;
 
+    /* El impuesto de cada línea lo decide la caja con su catálogo y las reglas
+       del panel, no lo que mande la pantalla. La pantalla nunca lo mandaba, y
+       por eso todo salía como INC 8%. */
+    let reglas = crate::impuestos::Reglas::leer(conexion);
+
     for (i, item) in venta.items.iter().enumerate() {
         let bruto_linea = item.total().ok_or(ErrorVenta::Desbordado)?;
 
@@ -396,7 +401,7 @@ pub fn registrar(
         };
 
         let neto = bruto_linea.menos(rebaja).unwrap_or(Pesos::CERO);
-        let tipo = crate::impuestos::TipoImpuesto::desde_texto(&item.tipo_impuesto);
+        let tipo = tipo_de_linea(conexion, &reglas, item);
         let desglose = crate::impuestos::desglosar(neto, tipo);
 
         tributos.sumar(tipo, desglose);
@@ -734,6 +739,33 @@ pub fn anotar_fallo(conexion: &Connection, outbox_id: i64, error: &str) -> Resul
     Ok(())
 }
 
+/// El impuesto de una línea.
+///
+/// Si el producto está en el catálogo local, sale de su categoría y de las
+/// reglas del panel. Si no está —se descatalogó con la venta a medias— se usa
+/// lo que traiga la línea, y si no trae nada, el régimen principal. En los
+/// tres casos un negocio sin impuestos o no responsable sale exento.
+fn tipo_de_linea(
+    conexion: &Connection,
+    reglas: &crate::impuestos::Reglas,
+    item: &LineaVenta,
+) -> crate::impuestos::TipoImpuesto {
+    use crate::impuestos::TipoImpuesto;
+    let categoria: Option<String> = conexion
+        .query_row(
+            "SELECT categoria FROM productos WHERE id = ?1 LIMIT 1",
+            [&item.producto_id],
+            |f| f.get(0),
+        )
+        .ok();
+    match categoria {
+        Some(c) => reglas.tipo_de(&c),
+        None if !reglas.activos || reglas.principal == "NO_RESPONSABLE" => TipoImpuesto::Exento,
+        None if !item.tipo_impuesto.is_empty() => TipoImpuesto::desde_texto(&item.tipo_impuesto),
+        None => TipoImpuesto::desde_texto(&reglas.principal),
+    }
+}
+
 #[cfg(test)]
 mod pruebas {
     use super::*;
@@ -931,6 +963,43 @@ mod pruebas {
 
         assert_eq!(suma, 9_000, "10.000 menos 1.000, sin perder un peso");
         assert_eq!(r.total, Pesos(9_000));
+    }
+
+    fn tipo_guardado(c: &Connection, venta: &str) -> String {
+        c.query_row("SELECT tipo_impuesto FROM venta_items WHERE venta_id = ?1", [venta], |f| f.get(0))
+            .unwrap()
+    }
+
+    fn en_catalogo(c: &Connection, id: &str, categoria: &str) {
+        c.execute(
+            "INSERT INTO productos (id, nombre, precio, categoria) VALUES (?1, ?1, 10000, ?2)",
+            params![id, categoria],
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn el_impuesto_lo_decide_la_caja_y_no_la_pantalla() {
+        /* El error que esto cierra: la pantalla nunca mandaba el tipo, y todo
+           salía INC 8%, la cerveza incluida. */
+        let (mut c, t) = caja();
+        en_catalogo(&c, "p-Cerveza", "Cervezas");
+        let r = registrar(&mut c, &venta_de(vec![item("Cerveza", 10_000, 1)], &t), AHORA).unwrap();
+        assert_eq!(tipo_guardado(&c, &r.id), "IVA_19");
+    }
+
+    #[test]
+    fn un_negocio_no_responsable_vende_sin_impuesto() {
+        let (mut c, t) = caja();
+        en_catalogo(&c, "p-Burger", "Hamburguesas");
+        c.execute(
+            "INSERT INTO ajustes (clave, valor) VALUES ('regimen_principal', 'NO_RESPONSABLE')
+             ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor",
+            [],
+        )
+        .unwrap();
+        let r = registrar(&mut c, &venta_de(vec![item("Burger", 10_000, 1)], &t), AHORA).unwrap();
+        assert_eq!(tipo_guardado(&c, &r.id), "EXENTO");
     }
 
     #[test]

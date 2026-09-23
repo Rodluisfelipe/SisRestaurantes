@@ -30,7 +30,7 @@ pub struct Nube {
 impl Nube {
     /// Traduce un fallo de red o un código HTTP a la decisión que le importa a
     /// la cola: ¿esto se reintenta o no?
-    fn clasificar(error: ureq::Error) -> sync::FalloEnvio {
+    pub(crate) fn clasificar(error: ureq::Error) -> sync::FalloEnvio {
         match error {
             // 4xx: el servidor entendió y dijo que no. Insistir no cambia nada.
             ureq::Error::Status(codigo, respuesta) if (400..500).contains(&codigo) => {
@@ -291,6 +291,15 @@ pub struct Identidad {
     pub color: String,
     #[serde(default)]
     pub color_texto: String,
+    /* El membrete de la tirilla. `None` cuando el servidor es de antes y no
+       los manda: ahí se deja lo que haya. `Some("")` es que el dueño los
+       borró, y se borran. */
+    #[serde(default)]
+    pub nit: Option<String>,
+    #[serde(default)]
+    pub direccion: Option<String>,
+    #[serde(default)]
+    pub telefono: Option<String>,
 }
 
 /// Baja el catálogo desde la marca de agua y lo aplica.
@@ -511,6 +520,28 @@ pub fn canjear(
     respuesta.into_json().map_err(|e| format!("Respuesta ilegible: {e}"))
 }
 
+/// Marca un producto como disponible o agotado en la nube.
+///
+/// Necesita internet, como el canje: es un cambio del catálogo del negocio, y
+/// la nube es la dueña del catálogo. Si se hiciera solo en esta caja, el menú
+/// web seguiría vendiendo lo que se acabó.
+pub fn marcar_disponible(nube: &Nube, producto_id: &str, disponible: bool) -> Result<(), String> {
+    let base = producto_id.split(':').next().unwrap_or_default();
+    if base.is_empty() || !base.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err("Ese producto no es del catálogo de MenuBy".into());
+    }
+    ureq::patch(&format!("{}/pos/productos/{base}/disponible", nube.base))
+        .timeout(ESPERA)
+        .set("Authorization", &format!("Bearer {}", nube.token))
+        .send_json(serde_json::json!({ "disponible": disponible }))
+        .map_err(|e| match Nube::clasificar(e) {
+            sync::FalloEnvio::Red(_) => "Sin conexión: marcar agotado necesita internet".to_string(),
+            sync::FalloEnvio::Servidor(c, _) => format!("El servidor falló ({c})"),
+            sync::FalloEnvio::Rechazado(_, m) => m,
+        })?;
+    Ok(())
+}
+
 /// Deja el nombre y el color del negocio en los ajustes locales.
 ///
 /// Un color mal escrito en el panel no puede tumbar una sincronización, así
@@ -535,6 +566,24 @@ fn guardar_identidad(conexion: &rusqlite::Connection, quien: &Identidad) {
     }
     if es_hexadecimal(&quien.color_texto) {
         poner("marca_color_texto", quien.color_texto.trim());
+    }
+
+    /* Estos sí se escriben vacíos: un NIT que el dueño quitó del panel no
+       puede seguir saliendo en el papel. Se recortan porque terminan en una
+       línea de tirilla de 32 a 48 columnas. */
+    for (clave, valor) in [
+        ("negocio_nit", &quien.nit),
+        ("negocio_direccion", &quien.direccion),
+        ("negocio_telefono", &quien.telefono),
+    ] {
+        if let Some(v) = valor {
+            let v: String = v.trim().chars().take(120).collect();
+            let _ = conexion.execute(
+                "INSERT INTO ajustes (clave, valor) VALUES (?1, ?2)
+                 ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor",
+                rusqlite::params![clave, v],
+            );
+        }
     }
 }
 
@@ -565,5 +614,53 @@ mod pruebas_identidad {
         assert!(!es_hexadecimal("2563eb"));
         assert!(!es_hexadecimal(""));
         assert!(!es_hexadecimal("#12345"));
+    }
+
+    fn base() -> rusqlite::Connection {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        c.execute("CREATE TABLE ajustes (clave TEXT PRIMARY KEY, valor TEXT)", []).unwrap();
+        c
+    }
+
+    fn leer(c: &rusqlite::Connection, clave: &str) -> Option<String> {
+        c.query_row("SELECT valor FROM ajustes WHERE clave = ?1", [clave], |f| f.get(0)).ok()
+    }
+
+    fn con(nit: Option<&str>) -> super::Identidad {
+        super::Identidad {
+            nombre: "Go Burger".into(),
+            nit: nit.map(Into::into),
+            direccion: nit.map(|_| "Cra 10 # 20-30".into()),
+            telefono: nit.map(|_| "3001234567".into()),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn guarda_el_membrete_de_la_tirilla() {
+        let c = base();
+        super::guardar_identidad(&c, &con(Some(" 900123456-7 ")));
+        assert_eq!(leer(&c, "negocio_nit").as_deref(), Some("900123456-7"));
+        assert_eq!(leer(&c, "negocio_direccion").as_deref(), Some("Cra 10 # 20-30"));
+        assert_eq!(leer(&c, "negocio_telefono").as_deref(), Some("3001234567"));
+    }
+
+    #[test]
+    fn un_nit_borrado_en_el_panel_se_borra_en_la_caja() {
+        // Si no, el papel sigue diciendo un NIT que el dueño ya quitó.
+        let c = base();
+        super::guardar_identidad(&c, &con(Some("900123456-7")));
+        super::guardar_identidad(&c, &con(Some("")));
+        assert_eq!(leer(&c, "negocio_nit").as_deref(), Some(""));
+    }
+
+    #[test]
+    fn un_servidor_viejo_que_no_los_manda_no_los_borra() {
+        let c = base();
+        super::guardar_identidad(&c, &con(Some("900123456-7")));
+        let viejo: super::Identidad =
+            serde_json::from_str(r#"{"nombre":"Go Burger","color":"","color_texto":""}"#).unwrap();
+        super::guardar_identidad(&c, &viejo);
+        assert_eq!(leer(&c, "negocio_nit").as_deref(), Some("900123456-7"));
     }
 }

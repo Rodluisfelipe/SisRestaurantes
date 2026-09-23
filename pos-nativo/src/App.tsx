@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CircleUser, CloudCheck, CloudOff, Gift, Inbox, Minus, Monitor,
-  LayoutGrid, MessageSquarePlus, PauseCircle, Percent, Plus, Presentation, Printer, RefreshCw, ScanLine,
+  Ban, Globe, LayoutGrid, MessageSquarePlus, PauseCircle, Percent, Plus, Presentation, Printer, RefreshCw, ScanLine,
   LayoutList, Pencil, Star, Timer, Trash2, Undo2, UserPlus, UtensilsCrossed, Volume2, VolumeX,
   Wallet, X, XCircle,
 } from 'lucide-react';
-import { type EstadoCliente } from './nativo';
+import { type EstadoCliente,
+  ajustesCaja, AJUSTES_DE_FABRICA, type AjustesCaja,
+  pedidosWeb, moverPedidoWeb, imprimirPedidoWeb, type PedidoWeb,
+} from './nativo';
 import {
   abrirCajon, abrirPantallaCliente, anularBorrador, anularItem, aplicarMarca, catalogo, cerrarPantallaCliente,
   abrirCuenta, armarQr, carpetaFotos, categorias, cerrarCuenta, cobrar, cobroQr, descartarPausada,
@@ -27,7 +30,7 @@ import Descuento from './Descuento';
 import Cuentas from './Cuentas';
 import VistaCliente from './VistaCliente';
 import Devolucion from './Devolucion';
-import { activarSonido, bip, error as bipError, sonidoActivo } from './sonido';
+import { activarSonido, bip, error as bipError, sonidoActivo, sonidoDelPanel } from './sonido';
 import PantallaPin from './PantallaPin';
 import Impresoras from './Impresoras';
 import Nube from './Nube';
@@ -35,17 +38,22 @@ import Autorizar from './Autorizar';
 import { AbrirTurno, PanelTurno, ResumenCierre } from './Turno';
 import ModalCliente from './ModalCliente';
 import ModalRecompensas from './ModalRecompensas';
-import CatalogoCuadrante, { COLUMNAS_POR_MODO } from './CatalogoCuadrante';
-import RejillaInGridExtras from './RejillaInGridExtras';
-import { predeterminadas, reconstruirElegidas, type Elegidas } from './reglasExtras';
+import CatalogoCuadrante from './CatalogoCuadrante';
+import OpcionesLinea from './OpcionesLinea';
+import PedidosWeb from './PedidosWeb';
+import VentasTurno from './VentasTurno';
+import ProductoLibre from './ProductoLibre';
+import Agotados from './Agotados';
+import { columnaDe, recienLlegados } from './reglasPedidosWeb';
+import { billetesProbables } from './cobroRapido';
+import { leerCantidad, leerPrecioLibre, lineaARepetir } from './atajosBusqueda';
+import { derivar, marcar, predeterminadas, reconstruirElegidas, type Elegidas } from './reglasExtras';
 import { useSpeedOfService } from './hooks/useSpeedOfService';
 import {
-  agregarAlCarrito, brutoDe, fijarCantidad, lineaDeRecompensa, quitarLineasDeRecompensa,
+  agregarAlCarrito, agregarLineaAparte, brutoDe, faltantes, fijarCantidad, lineaDeRecompensa, quitarLineasDeRecompensa,
   rebajaPorRecompensa,
 } from './carrito';
 
-/** A los 90 segundos sin tocar nada, la caja se bloquea sola. */
-const INACTIVIDAD_MS = 90_000;
 
 /**
  * Un botón de la barra de arriba.
@@ -129,12 +137,25 @@ export default function App() {
   /* Auto-bloqueo. En un mostrador compartido, un cajero que se va a almorzar
      sin bloquear deja su usuario disponible para que otro cobre a su nombre, y
      el arqueo termina señalando a quien no fue. */
+  /* Cuánto espera lo decide el panel (30 a 300 segundos). Antes eran 90
+     fijos, dijera lo que dijera el dueño. */
+  const [bloqueoMs, setBloqueoMs] = useState(90_000);
+  useEffect(() => {
+    if (!usuario) return;
+    ajustesCaja()
+      .then((a) => {
+        setBloqueoMs(a.auto_bloqueo_segundos * 1000);
+        sonidoDelPanel(a.sonido_activo);
+      })
+      .catch(() => {});
+  }, [usuario]);
+
   useEffect(() => {
     if (!usuario) return;
     let reloj: number;
     const reiniciar = () => {
       window.clearTimeout(reloj);
-      reloj = window.setTimeout(() => { salir(); setUsuario(null); setVerTurno(false); }, INACTIVIDAD_MS);
+      reloj = window.setTimeout(() => { salir(); setUsuario(null); setVerTurno(false); }, bloqueoMs);
     };
     const eventos = ['keydown', 'pointerdown', 'wheel'];
     eventos.forEach((e) => window.addEventListener(e, reiniciar));
@@ -143,7 +164,7 @@ export default function App() {
       window.clearTimeout(reloj);
       eventos.forEach((e) => window.removeEventListener(e, reiniciar));
     };
-  }, [usuario]);
+  }, [usuario, bloqueoMs]);
 
   if (cierre) {
     return <ResumenCierre cierre={cierre} onListo={() => { setCierre(null); setTurno(null); setUsuario(null); }} />;
@@ -186,6 +207,56 @@ function Caja({
   onBloquear: () => void;
 }) {
   const [productos, setProductos] = useState<Producto[]>([]);
+  /* Lo que el panel decidió para esta caja. Se pide al entrar: cambia desde
+     el panel, no mientras se atiende. */
+  const [ajustes, setAjustes] = useState<AjustesCaja>(AJUSTES_DE_FABRICA);
+  useEffect(() => { ajustesCaja().then(setAjustes).catch(() => {}); }, []);
+
+  const refrescarPedidos = () =>
+    pedidosWeb()
+      .then((lista) => {
+        const vistos = pedidosVistos.current;
+        /* La primera vuelta no avisa: lo que ya estaba al abrir la caja no es
+           "nuevo", y tres pitidos al entrar solo enseñan a ignorarlos. */
+        if (vistos) {
+          const nuevos = recienLlegados(vistos, lista);
+          if (nuevos.length) {
+            bip();
+            window.setTimeout(bip, 220);
+            window.setTimeout(bip, 440);
+          }
+        }
+        pedidosVistos.current = new Set([...(vistos ?? []), ...lista.map((p) => p.id)]);
+        setPedidos(lista);
+        setErrorPedidos('');
+      })
+      .catch((e) => setErrorPedidos(String(e).replace(/^Error:\s*/, '')));
+
+  useEffect(() => {
+    refrescarPedidos();
+    const id = window.setInterval(refrescarPedidos, 10_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+
+  const moverPedido = async (p: PedidoWeb, estado: string) => {
+    try {
+      await moverPedidoWeb(p.id, estado);
+      // Se quita o se mueve de una: no esperar la próxima vuelta del sondeo.
+      setPedidos((l) =>
+        ['completed', 'delivered', 'cancelled'].includes(estado)
+          ? l.filter((x) => x.id !== p.id)
+          : l.map((x) => (x.id === p.id ? { ...x, estado } : x)),
+      );
+      refrescarPedidos();
+    } catch (e) {
+      setError(String(e).replace(/^Error:\s*/, ''));
+      bipError();
+    }
+  };
+
+  const imprimirPedido = (p: PedidoWeb) =>
+    imprimirPedidoWeb(p).catch((e) => setFalloImpresion(String(e).replace(/^Error:\s*/, '')));
   const [busqueda, setBusqueda] = useState('');
   const [rubros, setRubros] = useState<string[]>([]);
   /** Vacío = todas. */
@@ -221,6 +292,9 @@ function Caja({
   const [girarPantalla, setGirarPantalla] = useState(false);
   const [verImpresoras, setVerImpresoras] = useState(false);
   const [verNube, setVerNube] = useState(false);
+  const [verVentas, setVerVentas] = useState(false);
+  const [verLibre, setVerLibre] = useState(false);
+  const [verAgotados, setVerAgotados] = useState(false);
   /* El aviso de que la tirilla no salió. Va como toast y no como bloqueo: la
      venta ya está cobrada y guardada, y el cajero tiene que poder seguir
      atendiendo mientras alguien le pone papel a la impresora. */
@@ -259,13 +333,15 @@ function Caja({
   /* Con fotos o denso. De la terminal, no del cajero: la pantalla grande del
      mostrador y la chica de la barra quieren densidades distintas. */
   const [modo, setModo] = useState<ModoVista>('visual');
-  /* Lo que está pidiendo la rejilla ahora mismo. Mientras esté puesto, el
-     centro muestra opciones en vez de la carta —y las dos columnas laterales
-     siguen a la vista, que es la razón de haber dejado los modales—. */
-  const [enGrid, setEnGrid] = useState<
-    { producto: Producto; cantidad: number; grupos: GrupoExtra[]; inicial: Elegidas; linea: number | null }
-    | null
+  /* La línea cuyas opciones se ven debajo del ticket. Una sola a la vez: la
+     que acaba de entrar, o la que el cajero tocó para cambiarle algo. Tocar
+     otro producto la cierra; no hay "confirmar". */
+  const [abierta, setAbierta] = useState<
+    { indice: number; producto: Producto; grupos: GrupoExtra[]; elegidas: Elegidas } | null
   >(null);
+  /* Los grupos de cada producto marcado en esta venta, para saber qué le
+     falta a cada línea sin volver a la base. */
+  const gruposDe = useRef<Record<string, GrupoExtra[]>>({});
   /* El último toque en una tarjeta. Un monitor táctil de mostrador rebota: un
      toque firme genera dos eventos separados por unas decenas de milisegundos,
      y el cliente termina pagando dos cafés. */
@@ -278,7 +354,14 @@ function Caja({
   const [descuento, setDescuento] = useState({ monto: 0, motivo: '' });
   /* El salón. `vista` alterna entre el catálogo de mostrador y el tablero de
      mesas; un negocio que no usa mesas nunca sale del catálogo. */
-  const [vista, setVista] = useState<'catalogo' | 'salon'>('catalogo');
+  const [vista, setVista] = useState<'catalogo' | 'salon' | 'pedidos'>('catalogo');
+  /* Los pedidos web activos. Se preguntan cada diez segundos esté donde esté
+     el cajero: un domicilio no puede esperar a que alguien abra la pestaña. */
+  const [pedidos, setPedidos] = useState<PedidoWeb[]>([]);
+  const [errorPedidos, setErrorPedidos] = useState('');
+  const pedidosVistos = useRef<Set<string> | null>(null);
+  // Los que esperan que alguien los acepte: lo que hace latir la pestaña.
+  const pedidosNuevos = pedidos.filter((p) => columnaDe(p.estado) === 'nuevos').length;
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
   /* La cuenta que se está atendiendo. Mientras esté puesta, lo que se marca no
      va a un cobro sino a esa mesa. */
@@ -360,6 +443,9 @@ function Caja({
      tiene forma de saber qué se imprimió antes de que la abrieran. */
   const mandarACuenta = async () => {
     if (!enCuenta || !carrito.length) return;
+    // La cocina no puede recibir un combo sin su bebida.
+    if (!revisarCompletas()) return;
+    setAbierta(null);
     try {
       const r = await guardarEnCuenta(enCuenta.identificador, carrito, total, carrito.length);
       setCarrito([]);
@@ -557,25 +643,41 @@ function Caja({
       return;
     }
 
-    /* Con extras, la rejilla se transforma y se eligen las N unidades ahí
-       mismo.
+    /* Con opciones, entra **ya** al ticket con lo estándar marcado, y sus
+       opciones aparecen debajo del ticket para cambiar lo que el cliente pida.
 
-       Durante un tiempo los obligatorios entraban resueltos con la opción
-       estándar y no se preguntaba nada. Ahorraba toques, pero deja al cajero
-       sin ver qué bebida lleva cada combo hasta después de marcarlo, y con
-       tres combos iguales en pantalla no hay forma de saber cuál es cuál.
+       Antes la carta se cambiaba por una pantalla de opciones con su botón de
+       confirmar: un cambio de pantalla y un toque de más por cada combo, que
+       es lo que más se vende. Ahora el combo normal es un toque, el distinto
+       es un toque más por cada cosa que cambia, y la carta no se va nunca. */
+    const visibles = gruposQuePreguntar(grupos);
+    const elegidas = predeterminadas(visibles);
+    const d = derivar(visibles, elegidas);
+    gruposDe.current[p.id] = visibles;
+    const indice = carrito.length;
+    setCarrito((c) => agregarLineaAparte(c, p, d.extras, d.sobreprecio, multiplicador));
+    /* Sin señalar la línea: el dígito que se teclee después es la cantidad
+       del siguiente producto, no una corrección de este. */
+    setAbierta({ indice, producto: p, grupos: visibles, elegidas });
+    setCantidadTecleada('');
+    setRecien((r) => ({ clave: `${p.id}${p.variante}`, vez: r.vez + 1 }));
+    sos.arrancar();
+    bip();
+    buscador.current?.focus();
+  };
 
-       Ahora se abre siempre, pero **ya marcado con lo estándar**: el combo
-       normal se confirma de un toque y el distinto se cambia tocando la
-       opción. Se ve lo que se está vendiendo sin pagar el precio de elegirlo
-       todo desde cero. */
-    setEnGrid({
-      producto: p,
-      cantidad: multiplicador,
-      grupos: gruposQuePreguntar(grupos),
-      inicial: predeterminadas(grupos),
-      linea: null,
-    });  };
+  /* Un producto que no está en la carta. Sin id —la nube lo registra sin
+     producto y no mueve inventario— y siempre en su propia línea: dos
+     "precio libre" del mismo valor pueden ser cosas distintas, y juntarlos
+     dejaría uno con el nombre del otro. */
+  const agregarLibre = (nombre: string, precio: number) => {
+    const libre: Producto = { id: '', nombre, precio, categoria: '', variante: '', foto: '', extras: [] };
+    setCarrito((c) => agregarLineaAparte(c, libre, [], 0, multiplicador));
+    setCantidadTecleada('');
+    sos.arrancar();
+    bip();
+    buscador.current?.focus();
+  };
 
   const agregar = (p: Producto, extras: ExtraElegido[] = [], sobreprecio = 0) => {
     /* Cómo se agrupa vive en `carrito.ts`, no acá: es aritmética que decide
@@ -674,32 +776,72 @@ function Caja({
      Una línea que la cocina ya tiene no se modifica: cambiarle los extras a un
      plato que se está preparando es una anulación disfrazada, y esa tiene su
      propia puerta con firma (F4). */
-  const modificarLinea = async (indice: number) => {
+  const modificarLinea = async (indice: number, avisar = true) => {
     const linea = carrito[indice];
     if (!linea) return;
 
     if (yaComandada(indice)) {
-      setError('Ese plato ya está en cocina: para cambiarlo, anúlalo con F4');
-      bipError();
+      if (avisar) {
+        setError('Ese plato ya está en cocina: para cambiarlo, anúlalo con F4');
+        bipError();
+      }
       return;
     }
 
+    /* El producto se relee: el precio base sale de él al recalcular, y la
+       línea solo guarda el precio ya sumado con sus opciones. */
     const producto = await productoPorId(linea.producto_id).catch(() => null);
-    const grupos = Array.isArray(producto?.extras) ? producto!.extras : [];
-    if (!producto || !grupos.length) {
-      setError('Ese producto no tiene nada que personalizar');
+    let grupos = gruposDe.current[linea.producto_id];
+    if (!grupos && producto) {
+      grupos = gruposQuePreguntar(Array.isArray(producto.extras) ? producto.extras : []);
+      gruposDe.current[linea.producto_id] = grupos;
+    }
+    if (!producto || !grupos?.length) {
+      if (avisar) setError('Ese producto no tiene nada que personalizar');
       return;
     }
 
     /* Todos los grupos, no solo los pendientes: el cajero viene a cambiar
        algo que **ya está elegido**, así que tiene que poder tocarlo. */
-    setEnGrid({
+    setAbierta({
+      indice,
       producto,
-      cantidad: 1,
       grupos,
-      inicial: reconstruirElegidas(grupos, linea.extras ?? []),
-      linea: indice,
+      elegidas: reconstruirElegidas(grupos, linea.extras ?? []),
     });
+  };
+
+  /* Tocar una opción cambia la línea al instante, precio incluido. */
+  const tocarOpcion = (g: GrupoExtra, opcion: string, sub: string) => {
+    if (!abierta) return;
+    const elegidas = marcar(abierta.elegidas, g.id, sub, opcion, g.multiple, null, false);
+    const d = derivar(abierta.grupos, elegidas);
+    const { indice, producto } = abierta;
+    setAbierta({ ...abierta, elegidas });
+    setCarrito((c) => c.map((l, i) => (
+      i === indice ? { ...l, precio: producto.precio + d.sobreprecio, extras: d.extras } : l
+    )));
+    buscador.current?.focus();
+  };
+
+  /* Si la línea abierta desapareció —se anuló, se cobró, se apartó la venta—
+     el panel se cierra solo. Se compara el producto además del índice porque
+     al quitar una línea de arriba, la de abajo hereda su posición. */
+  useEffect(() => {
+    if (abierta && carrito[abierta.indice]?.producto_id !== abierta.producto.id) setAbierta(null);
+  }, [carrito, abierta]);
+
+  /* Qué le falta a cada línea. No frena el marcado: frena cobrar y mandar a
+     cocina, y lleva al cajero a la línea incompleta. */
+  const faltan = useMemo(() => faltantes(carrito, gruposDe.current), [carrito]);
+  const revisarCompletas = (): boolean => {
+    const i = faltan.findIndex((f) => f.length > 0);
+    if (i < 0) return true;
+    setError(`Falta elegir ${faltan[i][0]} en ${carrito[i].nombre}`);
+    bipError();
+    setLineaActiva(i);
+    modificarLinea(i, false);
+    return false;
   };
 
   /* Qué grupos se le muestran al cajero.
@@ -741,6 +883,7 @@ function Caja({
 
     setCarrito((c) => c.filter((_, i) => i !== indice));
     setLineaActiva(null);
+    setAbierta(null);
 
     /* Se anota sin pedirle nada al cajero y sin esperar la escritura: la línea
        ya salió de la pantalla y la fila avanza. Lo que importa de este registro
@@ -774,6 +917,7 @@ function Caja({
          autorización para quitar algo que nunca salió. */
       if (yaComandada(indice)) setComandadas((n) => Math.max(0, n - 1));
       setLineaActiva(null);
+      setAbierta(null);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -907,8 +1051,28 @@ function Caja({
 
   /* Abre la pantalla de cobro. No cobra: decidir con qué se paga es un paso
      aparte desde que una venta puede repartirse entre varios medios. */
+  /* La propina se pregunta atendiendo mesas —o en un local que tiene mesas
+     abiertas— y solo si el panel no la apagó. */
+  const pidePropina = ajustes.propina_en_mesas && (enCuenta !== null || cuentas.length > 0);
+
+  /* Cobrar en efectivo sin abrir la pantalla de cobro: "Exacto" o el
+     billete que el cliente está pasando. Es un toque en vez de tres, y el
+     cambio sale en grande en el ticket como siempre.
+
+     Solo en mostrador y sin propina: la mesa pregunta propina, y el pago
+     mixto, el voucher y el QR necesitan la pantalla completa (F2). */
+  const cobroDirecto = !pidePropina && carrito.length > 0;
+  const cobrarRapido = (monto: number) => {
+    if (!carrito.length || cobrando) return;
+    if (!revisarCompletas()) return;
+    setAbierta(null);
+    cobrarCon([{ metodo: 'efectivo', monto, referencia: '' }], 0);
+  };
+
   const finalizar = () => {
     if (!carrito.length || cobrando) return;
+    if (!revisarCompletas()) return;
+    setAbierta(null);
     setVistaPago([]);
     setCobrandoAhora(true);
   };
@@ -1026,7 +1190,7 @@ function Caja({
     cobrandoAhora || anulando !== null || pidiendoDescuento ||
     porAutorizar !== null || anotando !== null || pidiendoGaveta || descartando !== null ||
     pidiendoDevolucion || devolucionPorAutorizar !== null || verImpresoras || verNube ||
-    verTurno || verEspera || verCliente || verRecompensas || enGrid !== null;
+    verTurno || verEspera || verCliente || verRecompensas || verVentas || verLibre || verAgotados;
 
   useEffect(() => {
     if (hayModal) buscador.current?.blur();
@@ -1067,6 +1231,9 @@ function Caja({
          industrial dice F8 y la caja venía usando F3 desde antes: quitar F3 le
          rompería la memoria muscular a quien ya la tiene. */
       if (e.key === 'F8') { e.preventDefault(); if (carrito.length) setPidiendoDescuento(true); }
+      /* Con opciones abiertas, Esc solo las cierra. Borrar la venta entera
+         por querer cerrar un panel sería el peor error posible en esa tecla. */
+      if (e.key === 'Escape' && abierta) { e.preventDefault(); setAbierta(null); return; }
       if (e.key === 'Escape' && !cobrandoAhora) {
         setCarrito([]);
         setDescuento({ monto: 0, motivo: '' });
@@ -1089,6 +1256,28 @@ function Caja({
   /* Enter en el buscador agrega el primer resultado: es lo que hace el escáner
      al terminar de leer un código. */
   const enterEnBusqueda = (e: React.KeyboardEvent) => {
+    /* `+` con el buscador vacío es "otra igual": suma una a la línea señalada
+       o a la última que entró. Con texto escrito, el + es parte de lo que se
+       busca. */
+    if (e.key === '+' && !busqueda) {
+      e.preventDefault();
+      const cual = lineaARepetir(carrito.length, lineaActiva);
+      if (cual !== null) {
+        cambiarCantidad(cual, 1);
+        setRecien((r) => ({ clave: `${carrito[cual].producto_id}${carrito[cual].variante}`, vez: r.vez + 1 }));
+        bip();
+      }
+      return;
+    }
+    if (e.key === 'Enter' && !busqueda && abierta) { e.preventDefault(); setAbierta(null); return; }
+    // "$5000" + Enter: precio libre, sin abrir nada.
+    const libre = e.key === 'Enter' ? leerPrecioLibre(busqueda) : null;
+    if (libre !== null) {
+      e.preventDefault();
+      agregarLibre('Varios', libre);
+      setBusqueda('');
+      return;
+    }
     if (e.key !== 'Enter' || !productos.length) return;
     tocar(productos[0]);
     setBusqueda('');
@@ -1248,11 +1437,19 @@ function Caja({
         </BotonBarra>
 
         <BotonBarra
-          icono={Printer}
-          onClick={() => reimprimir().catch((e) => setFalloImpresion(String(e)))}
-          title="Reimprimir la última venta del turno"
+          icono={Ban}
+          onClick={() => setVerAgotados(true)}
+          title="Marcar lo que se acabó: sale de la caja y del menú web"
         >
-          Reimprimir
+          Agotados
+        </BotonBarra>
+
+        <BotonBarra
+          icono={Printer}
+          onClick={() => setVerVentas(true)}
+          title="Ventas del turno: reimprimir cualquiera y ver lo más vendido"
+        >
+          Ventas
         </BotonBarra>
 
         <BotonBarra
@@ -1347,6 +1544,27 @@ function Caja({
           </span>
         ) : null}
       </div>
+
+      {verAgotados && (
+        <Agotados
+          onCerrar={() => { setVerAgotados(false); buscador.current?.focus(); }}
+          onCambio={() => { catalogo(busqueda, rubro).then(setProductos).catch(() => {}); }}
+        />
+      )}
+
+      {verLibre && (
+        <ProductoLibre
+          onListo={(nombre, precio) => { setVerLibre(false); agregarLibre(nombre, precio); }}
+          onCancelar={() => { setVerLibre(false); buscador.current?.focus(); }}
+        />
+      )}
+
+      {verVentas && (
+        <VentasTurno
+          onCerrar={() => { setVerVentas(false); buscador.current?.focus(); }}
+          onFallo={setFalloImpresion}
+        />
+      )}
 
       {falloImpresion && (
         <div className="absolute bottom-4 left-4 z-40 max-w-md rounded-2xl bg-slate-900 text-white shadow-xl px-4 py-3 flex items-center gap-3">
@@ -1558,7 +1776,11 @@ function Caja({
           /* La propina se pide cuando hay mesas abiertas: es lo que separa un
              restaurante de un mostrador, y en un mostrador preguntar por la
              propina en cada café es un toque de más trescientas veces al día. */
-          conPropina={cuentas.length > 0 || enCuenta !== null}
+          conPropina={pidePropina}
+          /* En una mesa la sugerida entra marcada, como en la cuenta de
+             cualquier restaurante; en mostrador no se sugiere nada. */
+          propinaSugerida={enCuenta ? ajustes.propina_sugerida : 0}
+          opcionSugerida={ajustes.propina_sugerida}
           pidiendoVoucher={digitaVoucher}
           onCambio={setVistaPago}
           onMedio={setMedioElegido}
@@ -1722,6 +1944,7 @@ function Caja({
             {([
               { id: 'catalogo' as const, nombre: 'Mostrador', icono: LayoutGrid },
               { id: 'salon' as const, nombre: 'Mesas', icono: UtensilsCrossed },
+              { id: 'pedidos' as const, nombre: 'Pedidos web', icono: Globe },
             ]).map(({ id, nombre, icono: Icono }) => (
               <button
                 key={id}
@@ -1734,6 +1957,17 @@ function Caja({
               >
                 <Icono size={16} strokeWidth={2.25} />
                 {nombre}
+                {id === 'pedidos' && pedidos.length > 0 && (
+                  /* En ámbar y latiendo si hay alguno sin aceptar: es lo que
+                     se ve de reojo mientras se atiende el mostrador. */
+                  <span className={`ml-auto px-1.5 rounded-md text-[11px] tabular-nums ${
+                    pedidosNuevos > 0
+                      ? 'bg-amber-500 text-white animate-pulse'
+                      : vista === id ? 'bg-black/20' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {pedidos.length}
+                  </span>
+                )}
                 {id === 'salon' && cuentas.length > 0 && (
                   <span className={`ml-auto px-1.5 rounded-md text-[11px] tabular-nums ${
                     vista === id ? 'bg-black/20' : 'bg-slate-100 text-slate-600'
@@ -1803,7 +2037,14 @@ function Caja({
             </span>
           )}
 
-          {vista === 'salon' ? (
+          {vista === 'pedidos' ? (
+            <PedidosWeb
+              pedidos={pedidos}
+              error={errorPedidos}
+              onMover={moverPedido}
+              onImprimir={imprimirPedido}
+            />
+          ) : vista === 'salon' ? (
             <Cuentas
               cuentas={cuentas}
               onAbrir={atender}
@@ -1844,67 +2085,43 @@ function Caja({
                   ref={buscador}
                   autoFocus
                   value={busqueda}
-                  onChange={(e) => setBusqueda(e.target.value)}
+                  onChange={(e) => {
+                    /* "3*" es la cantidad del siguiente producto: pasa al
+                       multiplicador y el buscador queda libre para el nombre
+                       o el escaneo. */
+                    const conCantidad = leerCantidad(e.target.value);
+                    if (conCantidad) {
+                      setLineaActiva(null);
+                      setCantidadTecleada(conCantidad.cantidad);
+                      setBusqueda(conCantidad.resto);
+                      return;
+                    }
+                    setBusqueda(e.target.value);
+                  }}
                   onKeyDown={enterEnBusqueda}
-                  placeholder="Busca o escanea un producto…"
-                  className="w-full h-12 pl-11 pr-4 rounded-xl border-2 border-slate-200 bg-white text-[15px] outline-none focus:border-marca"
+                  placeholder="Busca o escanea · 3* cantidad · + otra igual · $ precio libre"
+                  className="w-full h-12 pl-11 pr-28 rounded-xl border-2 border-slate-200 bg-white text-[15px] outline-none focus:border-marca"
                 />
+                {/* El precio libre a un toque, para quien no usa el teclado. */}
+                <button
+                  onClick={() => setVerLibre(true)}
+                  title="Agregar algo que no está en la carta"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 px-3 h-9 rounded-lg bg-slate-100 text-[12px] font-bold text-slate-600 hover:bg-slate-200"
+                >
+                  $ Precio libre
+                </button>
               </div>
 
 
-              {enGrid ? (
-                <RejillaInGridExtras
-                  producto={enGrid.producto}
-                  cantidad={enGrid.cantidad}
-                  grupos={enGrid.grupos}
-                  inicial={enGrid.inicial}
-                  /* Cuatro como mucho, aunque la carta compacta use seis.
-                     Las opciones llevan nombre y precio en la misma casilla
-                     y en seis columnas estrechas se recortarían los dos; y
-                     además son pocas, así que la densidad no compra nada. */
-                  columnas={Math.min(4, COLUMNAS_POR_MODO[modo])}
-                  onListo={(unidades) => {
-                    const { producto: cual, linea } = enGrid;
-                    setEnGrid(null);
-                    setCantidadTecleada('');
-
-                    if (linea !== null) {
-                      /* Modificar: reemplaza lo que la línea llevaba y conserva
-                         su cantidad. El cliente cambió de bebida, no de cuántas. */
-                      const u = unidades[0];
-                      setCarrito((c) =>
-                        c.map((l, i) =>
-                          i === linea ? { ...l, precio: cual.precio + u.sobreprecio, extras: u.extras } : l,
-                        ),
-                      );
-                      buscador.current?.focus();
-                      return;
-                    }
-
-                    setCarrito((c) =>
-                      unidades.reduce(
-                        (acc, u) => agregarAlCarrito(acc, cual, u.extras, u.sobreprecio),
-                        c,
-                      ),
-                    );
-                    setRecien((r) => ({ clave: `${cual.id}${cual.variante}`, vez: r.vez + 1 }));
-                    sos.arrancar();
-                    bip();
-                    buscador.current?.focus();
-                  }}
-                  onCancelar={() => { setEnGrid(null); buscador.current?.focus(); }}
-                />
-              ) : (
-                <CatalogoCuadrante
-                  productos={productos}
-                  carpeta={carpeta}
-                  onTocar={tocar}
-                  busqueda={busqueda}
-                  rubro={rubro}
-                  conAtajos={!hayModal}
-                  modo={modo}
-                />
-              )}
+              <CatalogoCuadrante
+                productos={productos}
+                carpeta={carpeta}
+                onTocar={tocar}
+                busqueda={busqueda}
+                rubro={rubro}
+                conAtajos={!hayModal}
+                modo={modo}
+              />
             </>
           )}
         </section>
@@ -1931,9 +2148,16 @@ function Caja({
               <div
                 key={i.producto_id + i.variante + indice}
                 data-linea={`${i.producto_id}${i.variante}`}
-                onClick={() => setLineaActiva(indice)}
+                onClick={() => {
+                  setLineaActiva(indice);
+                  /* Tocar la línea abre sus opciones, y tocarla otra vez las
+                     cierra. Cambiarle la bebida a un combo es un toque en la
+                     línea y otro en la bebida. */
+                  if (abierta?.indice === indice) setAbierta(null);
+                  else modificarLinea(indice, false);
+                }}
                 className={`flex items-center gap-1.5 p-2 rounded-lg border-2 transition-colors ${
-                  lineaActiva === indice
+                  lineaActiva === indice || abierta?.indice === indice
                     ? 'border-marca'
                     : 'border-transparent'
                 } ${i.precio === 0 ? 'bg-emerald-50' : 'bg-slate-50'} ${
@@ -1965,6 +2189,12 @@ function Caja({
                   {i.extras && i.extras.length > 0 && (
                     <p className="text-[11px] font-semibold text-slate-500 leading-tight">
                       {i.extras.map((e) => (e.cantidad > 1 ? `${e.nombre} x${e.cantidad}` : e.nombre)).join(', ')}
+                    </p>
+                  )}
+                  {faltan[indice]?.length > 0 && (
+                    /* Lo que no deja cobrar, a la vista en la misma línea. */
+                    <p className="text-[11px] font-black text-amber-600 leading-tight">
+                      Falta: {faltan[indice].join(', ')}
                     </p>
                   )}
                   {i.nota ? (
@@ -2029,6 +2259,17 @@ function Caja({
               </div>
             )}
           </div>
+
+          {abierta && carrito[abierta.indice] && (
+            <OpcionesLinea
+              titulo={carrito[abierta.indice].nombre}
+              cantidad={carrito[abierta.indice].cantidad}
+              grupos={abierta.grupos}
+              elegidas={abierta.elegidas}
+              onTocar={tocarOpcion}
+              onCerrar={() => { setAbierta(null); buscador.current?.focus(); }}
+            />
+          )}
 
           <div className="flex-shrink-0 p-3 border-t border-slate-200 space-y-2">
             {descuento.monto > 0 && (
@@ -2125,6 +2366,29 @@ function Caja({
                 title="Aparta este pedido y atiende al siguiente"
               />
             </div>
+
+            {cobroDirecto && (
+              <div className="flex gap-1.5">
+                {[aCobrar, ...billetesProbables(aCobrar)].map((monto, n) => (
+                  <button
+                    key={monto}
+                    onClick={() => cobrarRapido(monto)}
+                    disabled={cobrando}
+                    title={n === 0 ? 'Cobrar exacto en efectivo' : `Paga con ${pesos(monto)}`}
+                    className={`flex-1 flex flex-col items-center justify-center h-12 rounded-xl border-2 text-[12px] font-black tabular-nums disabled:opacity-30 active:scale-95 transition-transform duration-75 ${
+                      n === 0
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
+                        : 'border-slate-200 bg-white text-slate-700'
+                    }`}
+                  >
+                    {n === 0 ? 'Exacto' : pesos(monto)}
+                    <span className="text-[9.5px] font-semibold opacity-60">
+                      {n === 0 ? 'efectivo' : `cambio ${pesos(monto - aCobrar)}`}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div className="flex gap-2">
               {/* Atendiendo una mesa, lo que se hace nueve de cada diez veces

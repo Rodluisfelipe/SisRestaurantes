@@ -9,6 +9,7 @@
 //! ser Tauri, esto se queda igual.
 
 pub mod auditoria;
+pub mod busqueda;
 pub mod catalogo;
 pub mod clientes;
 pub mod cuentas;

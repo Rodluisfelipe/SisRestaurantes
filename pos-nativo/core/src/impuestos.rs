@@ -181,6 +181,85 @@ impl Totales {
     }
 }
 
+/// Lo que el dueño definió en el panel sobre impuestos.
+///
+/// Llega con la configuración de la caja y se guarda en `ajustes`. Durante un
+/// tiempo se guardaba y **nadie lo leía**: toda línea salía como INC 8%, con
+/// cerveza, con exentos y con negocios no responsables de IVA incluidos.
+#[derive(Debug, Clone)]
+pub struct Reglas {
+    /// Apagado = no se discrimina impuesto: todo sale exento.
+    pub activos: bool,
+    /// "INC_8", "IVA_19" o "NO_RESPONSABLE".
+    pub principal: String,
+    /// Categorías que el dueño marcó como IVA 19%, ya en minúscula.
+    pub iva: Vec<String>,
+    /// Categorías que el dueño marcó como exentas.
+    pub exentas: Vec<String>,
+}
+
+impl Default for Reglas {
+    fn default() -> Self {
+        Reglas { activos: true, principal: "INC_8".into(), iva: vec![], exentas: vec![] }
+    }
+}
+
+impl Reglas {
+    /// Las lee de `ajustes`. Lo que falte queda como de fábrica: una caja que
+    /// todavía no recibió configuración cobra como un restaurante común.
+    pub fn leer(conexion: &rusqlite::Connection) -> Reglas {
+        let leer = |clave: &str| -> Option<String> {
+            conexion
+                .query_row("SELECT valor FROM ajustes WHERE clave = ?1", [clave], |f| f.get(0))
+                .ok()
+        };
+        let lista = |clave: &str| -> Vec<String> {
+            leer(clave)
+                .and_then(|v| serde_json::from_str::<Vec<String>>(&v).ok())
+                .unwrap_or_default()
+                .into_iter()
+                .map(|c| normalizar(c.trim()))
+                .filter(|c| !c.is_empty())
+                .collect()
+        };
+        let de_fabrica = Reglas::default();
+        Reglas {
+            activos: leer("impuestos_activos").map_or(de_fabrica.activos, |v| v != "0"),
+            principal: leer("regimen_principal")
+                .filter(|v| !v.is_empty())
+                .unwrap_or(de_fabrica.principal),
+            iva: lista("categorias_iva"),
+            exentas: lista("categorias_exentas"),
+        }
+    }
+
+    /// Qué impuesto lleva un producto de esta categoría.
+    ///
+    /// En orden: un negocio sin impuestos o no responsable de IVA no cobra
+    /// ninguno; después manda lo que el dueño escribió en el panel —exentas
+    /// antes que IVA, por lo mismo que en [`inferir`]—; después lo que se
+    /// reconoce por el nombre ("Licores"); y el resto sigue el régimen
+    /// principal del negocio.
+    pub fn tipo_de(&self, categoria: &str) -> TipoImpuesto {
+        if !self.activos || self.principal == "NO_RESPONSABLE" {
+            return TipoImpuesto::Exento;
+        }
+        let limpia = normalizar(categoria);
+        if !limpia.is_empty() {
+            if self.exentas.iter().any(|c| limpia.contains(c.as_str())) {
+                return TipoImpuesto::Exento;
+            }
+            if self.iva.iter().any(|c| limpia.contains(c.as_str())) {
+                return TipoImpuesto::Iva19;
+            }
+        }
+        match inferir(categoria) {
+            TipoImpuesto::Inc8 => TipoImpuesto::desde_texto(&self.principal),
+            otro => otro,
+        }
+    }
+}
+
 #[cfg(test)]
 mod pruebas {
     use super::*;
@@ -307,5 +386,58 @@ mod pruebas {
            general del negocio, que es lo menos equivocado posible. */
         assert_eq!(TipoImpuesto::desde_texto("IVA_5"), TipoImpuesto::Inc8);
         assert_eq!(TipoImpuesto::desde_texto(""), TipoImpuesto::Inc8);
+    }
+
+    #[test]
+    fn un_negocio_no_responsable_no_cobra_impuesto() {
+        let r = Reglas { principal: "NO_RESPONSABLE".into(), ..Default::default() };
+        assert_eq!(r.tipo_de("Cervezas"), TipoImpuesto::Exento);
+        assert_eq!(r.tipo_de("Hamburguesas"), TipoImpuesto::Exento);
+    }
+
+    #[test]
+    fn con_impuestos_apagados_todo_sale_exento() {
+        let r = Reglas { activos: false, ..Default::default() };
+        assert_eq!(r.tipo_de("Hamburguesas"), TipoImpuesto::Exento);
+    }
+
+    #[test]
+    fn manda_lo_que_el_dueno_escribio_en_el_panel() {
+        let r = Reglas {
+            iva: vec!["gaseosas".into()],
+            exentas: vec!["agua".into()],
+            ..Default::default()
+        };
+        assert_eq!(r.tipo_de("Gaseosas"), TipoImpuesto::Iva19);
+        assert_eq!(r.tipo_de("Agua mineral"), TipoImpuesto::Exento);
+        assert_eq!(r.tipo_de("Hamburguesas"), TipoImpuesto::Inc8);
+    }
+
+    #[test]
+    fn lo_generico_sigue_el_regimen_principal() {
+        let r = Reglas { principal: "IVA_19".into(), ..Default::default() };
+        assert_eq!(r.tipo_de("Hamburguesas"), TipoImpuesto::Iva19);
+        // Lo reconocido por nombre se respeta.
+        assert_eq!(r.tipo_de("Exentos"), TipoImpuesto::Exento);
+    }
+
+    #[test]
+    fn lee_las_reglas_guardadas() {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        c.execute_batch(
+            "CREATE TABLE ajustes (clave TEXT PRIMARY KEY, valor TEXT);
+             INSERT INTO ajustes VALUES ('impuestos_activos', '1'),
+               ('regimen_principal', 'INC_8'), ('categorias_iva', '[\"cervezas\"]');",
+        )
+        .unwrap();
+        let r = Reglas::leer(&c);
+        assert_eq!(r.tipo_de("Cervezas nacionales"), TipoImpuesto::Iva19);
+    }
+
+    #[test]
+    fn sin_configuracion_cobra_como_restaurante() {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        c.execute_batch("CREATE TABLE ajustes (clave TEXT PRIMARY KEY, valor TEXT);").unwrap();
+        assert_eq!(Reglas::leer(&c).tipo_de("Almuerzos"), TipoImpuesto::Inc8);
     }
 }

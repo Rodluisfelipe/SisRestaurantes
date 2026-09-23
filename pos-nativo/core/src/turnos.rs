@@ -525,6 +525,84 @@ pub fn tirilla_arqueo(cierre: &CierreTurno, negocio: &str, ancho: usize) -> Vec<
     t.terminar()
 }
 
+/// Una venta del turno, para la lista de reimpresión.
+#[derive(Debug, Clone, Serialize)]
+pub struct VentaDelTurno {
+    pub id: String,
+    pub consecutivo: i64,
+    pub total: i64,
+    pub creada_en: String,
+    pub medio_pago: String,
+    /// Los productos en una línea: "2 Combo Go, 1 Gaseosa".
+    pub resumen: String,
+}
+
+/// Un producto y cuántas unidades salieron en el turno.
+#[derive(Debug, Clone, Serialize)]
+pub struct Vendido {
+    pub nombre: String,
+    pub cantidad: i64,
+}
+
+/// Cómo va el turno, sin decir cuánto efectivo debería haber.
+///
+/// **No trae totales por medio de pago, a propósito.** El arqueo es ciego —ver
+/// `esperado_de`—, y un resumen que dijera "efectivo: 480.000" en mitad del
+/// turno le daría al cajero la cifra que el conteo existe para no darle. Trae
+/// lo que sirve para atender: cuántas ventas van, qué se está vendiendo y la
+/// lista para reimprimir la tirilla que alguien vuelve a pedir.
+#[derive(Debug, Clone, Serialize)]
+pub struct Resumen {
+    pub ventas: i64,
+    pub mas_vendidos: Vec<Vendido>,
+    pub recientes: Vec<VentaDelTurno>,
+}
+
+pub fn resumen(conexion: &Connection, turno_id: &str) -> Result<Resumen> {
+    let ventas: i64 = conexion.query_row(
+        "SELECT COUNT(*) FROM ventas WHERE turno_id = ?1",
+        [turno_id],
+        |f| f.get(0),
+    )?;
+
+    let mut consulta = conexion.prepare(
+        "SELECT i.nombre || CASE WHEN i.variante != '' THEN ' · ' || i.variante ELSE '' END,
+                SUM(i.cantidad)
+           FROM venta_items i JOIN ventas v ON v.id = i.venta_id
+          WHERE v.turno_id = ?1
+          GROUP BY i.nombre, i.variante
+          ORDER BY SUM(i.cantidad) DESC, i.nombre
+          LIMIT 10",
+    )?;
+    let mas_vendidos = consulta
+        .query_map([turno_id], |f| Ok(Vendido { nombre: f.get(0)?, cantidad: f.get(1)? }))?
+        .collect::<Result<Vec<_>>>()?;
+
+    let mut consulta = conexion.prepare(
+        "SELECT v.id, v.consecutivo, v.total, v.creada_en, v.medio_pago,
+                COALESCE((SELECT GROUP_CONCAT(i.cantidad || ' ' || i.nombre, ', ')
+                            FROM venta_items i WHERE i.venta_id = v.id), '')
+           FROM ventas v
+          WHERE v.turno_id = ?1
+          ORDER BY v.consecutivo DESC
+          LIMIT 60",
+    )?;
+    let recientes = consulta
+        .query_map([turno_id], |f| {
+            Ok(VentaDelTurno {
+                id: f.get(0)?,
+                consecutivo: f.get(1)?,
+                total: f.get(2)?,
+                creada_en: f.get(3)?,
+                medio_pago: f.get(4)?,
+                resumen: f.get(5)?,
+            })
+        })?
+        .collect::<Result<Vec<_>>>()?;
+
+    Ok(Resumen { ventas, mas_vendidos, recientes })
+}
+
 #[cfg(test)]
 mod pruebas {
     use super::*;
@@ -1004,5 +1082,25 @@ mod pruebas {
         assert!(papel.contains("FALTAN"));
         assert!(papel.contains("12.000"));
         assert!(!papel.contains("-12.000"));
+    }
+
+    #[test]
+    fn el_resumen_cuenta_ventas_y_productos_sin_decir_el_efectivo() {
+        let (mut c, t) = caja_con_turno();
+        vender(&mut c, &t, 5_000, "efectivo");
+        vender(&mut c, &t, 5_000, "tarjeta");
+
+        let r = resumen(&c, &t.id).unwrap();
+        assert_eq!(r.ventas, 2);
+        assert_eq!(r.mas_vendidos[0].nombre, "Café");
+        assert_eq!(r.mas_vendidos[0].cantidad, 2);
+        // La más nueva primero: es la que el cliente vuelve a pedir.
+        assert!(r.recientes[0].consecutivo > r.recientes[1].consecutivo);
+        assert_eq!(r.recientes[0].resumen, "1 Café");
+
+        /* El arqueo es ciego: nada en el resumen tiene que permitir deducir el
+           efectivo esperado. */
+        let json = serde_json::to_string(&r).unwrap();
+        assert!(!json.contains("esperado") && !json.contains("por_medio"));
     }
 }

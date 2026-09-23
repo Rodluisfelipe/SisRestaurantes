@@ -1067,6 +1067,129 @@ export async function impresoras(): Promise<Impresoras> {
   return invoke<Impresoras>('impresoras');
 }
 
+/* ── Agotados ────────────────────────────────────────────────────────── */
+
+export interface Apagado {
+  id: string;
+  nombre: string;
+  categoria: string;
+}
+
+/** Marca agotado (o vuelve a vender). Necesita internet: cambia el menú web también. */
+export async function marcarAgotado(productoId: string, agotado: boolean): Promise<void> {
+  if (!enTauri) return;
+  await invoke('marcar_agotado', { productoId, agotado });
+}
+
+export async function apagados(): Promise<Apagado[]> {
+  if (!enTauri) return [];
+  return invoke<Apagado[]>('apagados');
+}
+
+/* ── Ventas del turno ─────────────────────────────────────────────────── */
+
+export interface VentaDelTurno {
+  id: string;
+  consecutivo: number;
+  total: number;
+  creada_en: string;
+  medio_pago: string;
+  resumen: string;
+}
+
+/** Sin totales por medio de pago: el arqueo es ciego. */
+export interface ResumenTurno {
+  ventas: number;
+  mas_vendidos: { nombre: string; cantidad: number }[];
+  recientes: VentaDelTurno[];
+}
+
+export async function resumenTurno(): Promise<ResumenTurno> {
+  if (!enTauri) return { ventas: 0, mas_vendidos: [], recientes: [] };
+  return invoke<ResumenTurno>('resumen_turno');
+}
+
+/* ── Pedidos web ─────────────────────────────────────────────────────── */
+
+export interface ItemPedidoWeb {
+  nombre: string;
+  variante: string;
+  cantidad: number;
+  precio: number;
+  extras: string[];
+  regalo: boolean;
+}
+
+/** Un pedido del menú web, el WhatsApp o el panel. Vive en la nube. */
+export interface PedidoWeb {
+  id: string;
+  numero: string;
+  estado: string;
+  canal: string;
+  tipo: string;
+  cliente: string;
+  telefono: string;
+  direccion: string;
+  mesa: string;
+  notas: string;
+  metodo_pago: string;
+  comprobante: boolean;
+  total: number;
+  envio: number;
+  creado: string;
+  items: ItemPedidoWeb[];
+}
+
+export async function pedidosWeb(): Promise<PedidoWeb[]> {
+  if (!enTauri) return [];
+  return invoke<PedidoWeb[]>('pedidos_web');
+}
+
+export async function moverPedidoWeb(id: string, estado: string): Promise<void> {
+  if (!enTauri) return;
+  await invoke('mover_pedido_web', { id, estado });
+}
+
+export async function imprimirPedidoWeb(pedido: PedidoWeb): Promise<void> {
+  if (!enTauri) return;
+  await invoke('imprimir_pedido_web', { pedido });
+}
+
+/** Lo que el panel decide sobre esta caja: bloqueo, sonido y propina. */
+export interface AjustesCaja {
+  auto_bloqueo_segundos: number;
+  /** null si el panel nunca lo dijo. */
+  sonido_activo: boolean | null;
+  propina_en_mesas: boolean;
+  propina_sugerida: number;
+  nombre_caja: string;
+}
+
+export const AJUSTES_DE_FABRICA: AjustesCaja = {
+  auto_bloqueo_segundos: 90,
+  sonido_activo: null,
+  propina_en_mesas: true,
+  propina_sugerida: 10,
+  nombre_caja: '',
+};
+
+export async function ajustesCaja(): Promise<AjustesCaja> {
+  if (!enTauri) return AJUSTES_DE_FABRICA;
+  return invoke<AjustesCaja>('ajustes_caja');
+}
+
+/** Si el panel manda sobre las impresoras de esta caja. */
+export async function hardwareDelPanel(): Promise<boolean> {
+  if (!enTauri) return true;
+  return invoke<boolean>('hardware_del_panel');
+}
+
+/** Vuelve a dejar las impresoras en manos del panel. */
+export async function devolverHardwareAlPanel(): Promise<void> {
+  if (!enTauri) return;
+  await invoke('devolver_hardware_al_panel');
+}
+
 export async function configurarImpresora(rol: 'caja' | 'cocina', config: ConfigImpresora): Promise<void> {
   if (!enTauri) return;
   await invoke('configurar_impresora', { rol, config });
