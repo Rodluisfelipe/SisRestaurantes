@@ -14,9 +14,12 @@
  * imprimen sus últimos cuatro caracteres, lo justo para saber cuál se está
  * usando cuando uno tiene la de pruebas y la de producción abiertas.
  *
- * Uso:
- *   BOLD_API_KEY=... node scripts/probar-bold.js            (solo consulta)
- *   BOLD_API_KEY=... node scripts/probar-bold.js --cobrar   (crea un cobro real)
+ * Uso, en PowerShell (que es lo que hay en las máquinas de MenuBy):
+ *   $env:BOLD_API_KEY="..."; node scripts/probar-bold.js            (solo consulta)
+ *   $env:BOLD_API_KEY="..."; node scripts/probar-bold.js --cobrar   (cobro real)
+ *
+ * En bash el prefijo `BOLD_API_KEY=... node ...` funciona; en PowerShell no,
+ * y el error que da no dice por qué.
  *
  * Con `--cobrar` el datáfono suena. Úsalo con la llave de PRUEBAS.
  */
@@ -31,7 +34,8 @@ const MONTO = 1000;
 
 if (!LLAVE) {
   console.error('Falta BOLD_API_KEY en el entorno.');
-  console.error('  BOLD_API_KEY=tu_llave_de_pruebas node scripts/probar-bold.js');
+  console.error('  PowerShell:  $env:BOLD_API_KEY="tu_llave"; node scripts/probar-bold.js');
+  console.error('  bash:        BOLD_API_KEY=tu_llave node scripts/probar-bold.js');
   process.exit(1);
 }
 

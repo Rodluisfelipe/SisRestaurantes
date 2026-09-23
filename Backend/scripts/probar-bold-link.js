@@ -14,8 +14,12 @@
  * a la página solo le llega el resultado, que es exactamente como tendría que
  * funcionar en producción: el backend firma, el navegador solo muestra.
  *
- * Uso:
- *   BOLD_IDENTITY=... BOLD_SECRET=... node scripts/probar-bold-link.js
+ * Uso, en PowerShell (que es lo que hay en las máquinas de MenuBy):
+ *   $env:BOLD_IDENTITY="..."; $env:BOLD_SECRET="..."; node scripts/probar-bold-link.js
+ *
+ * En bash sería `BOLD_IDENTITY=... node ...`, pero PowerShell no admite
+ * prefijar variables a un comando y responde con un "no se reconoce como
+ * nombre de un cmdlet" que no explica nada.
  *
  * Genera `bold-prueba.html`. Ábrelo en el navegador y dale al botón.
  */
@@ -33,7 +37,8 @@ const MONEDA = 'COP';
 
 if (!IDENTIDAD || !SECRETA) {
   console.error('Faltan llaves en el entorno.');
-  console.error('  BOLD_IDENTITY=... BOLD_SECRET=... node scripts/probar-bold-link.js');
+  console.error('  PowerShell:  $env:BOLD_IDENTITY="..."; $env:BOLD_SECRET="..."; node scripts/probar-bold-link.js');
+  console.error('  bash:        BOLD_IDENTITY=... BOLD_SECRET=... node scripts/probar-bold-link.js');
   process.exit(1);
 }
 
