@@ -78,7 +78,9 @@ const orderSchema = new mongoose.Schema({
 
   paymentMethod: {
     type: String,
-    enum: ['cash', 'efectivo', 'nequi', 'daviplata', 'transfer', 'transferencia', 'other'],
+    /* 'bold' = tarjeta por la pasarela. Lo pone el webhook de Bold cuando
+       el cobro pasa, nunca el navegador. */
+    enum: ['cash', 'efectivo', 'nequi', 'daviplata', 'transfer', 'transferencia', 'bold', 'other'],
     default: null
   },
   paymentProof: {
