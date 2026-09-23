@@ -55,6 +55,26 @@ function firmar({ referencia, monto, moneda, secreta }) {
     .digest('hex');
 }
 
+/**
+ * Quiénes pueden encenderlo. En beta.
+ *
+ * El cobro con tarjeta mueve dinero de verdad y todavía le falta la
+ * verificación de firma del webhook, así que no se abre a los 26 negocios a la
+ * vez: se prueba con uno y se amplía cuando haya pasado por caja unas semanas.
+ *
+ * Va en una variable de entorno y no en el código para que sumar un negocio
+ * sea cambiar una configuración, no desplegar. Vacía = nadie puede encenderlo.
+ *
+ *   BOLD_BETA_SLUGS=go-burger
+ */
+function enBeta(slug) {
+  const lista = String(process.env.BOLD_BETA_SLUGS || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return lista.includes(String(slug || '').toLowerCase());
+}
+
 /** La cuenta del negocio que hace la petición, o null. */
 async function cuentaDe(businessId) {
   if (!businessId) return null;
@@ -94,6 +114,17 @@ router.put('/cuenta', tenantAuth, async (req, res) => {
 
     if (entorno && !['pruebas', 'produccion'].includes(entorno)) {
       return res.status(400).json({ message: 'El entorno debe ser pruebas o produccion' });
+    }
+
+    /* La puerta de la beta. Se mira el slug y no el id porque la lista la
+       escribe una persona en una variable de entorno. */
+    const BusinessConfig = require('../Models/BusinessConfig');
+    const negocio = await BusinessConfig.findById(businessId).select('slug').lean();
+    if (!enBeta(negocio?.slug)) {
+      return res.status(403).json({
+        message: 'El cobro con tarjeta está en pruebas y todavía no está disponible para este negocio.',
+        motivo: 'fuera_de_beta',
+      });
     }
 
     const cuenta = (await cuentaDe(businessId)) || new BoldCuenta({ businessId });

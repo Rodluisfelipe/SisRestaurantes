@@ -38,6 +38,7 @@ import MyOrders from "../Components/MyOrders";
 import api from "../services/api";
 import { toast } from "sonner";
 import { resincronizarCarrito } from "../utils/preciosCarrito";
+import { cobrarConTarjeta } from "../utils/bold";
 import { formatCurrency } from "../utils/currency";
 import { useBusinessConfig } from "../Context/BusinessContext";
 import '../../styles/scrollbar.css';
@@ -1378,6 +1379,32 @@ export default function Menu() {
         ? await api.post('/bookings', bookingData)
         : await api.post('/orders', orderData);
       logger.info('Creado exitosamente:', response.data);
+
+      /* Con tarjeta, la pasarela se abre DESPUES de crear el pedido.
+         Tiene que ser en ese orden: la firma de integridad se calcula sobre el
+         id del pedido y su monto real, así que sin pedido no hay nada que
+         firmar. El pedido queda en `pending_payment` hasta que el webhook de
+         Bold confirme; si el cliente cierra la pasarela, se queda ahí y el
+         negocio lo ve como lo que es: un pedido sin pagar. */
+      if (orderDetails.paymentMethod === 'bold' && response.data?._id) {
+        try {
+          await cobrarConTarjeta({
+            orderId: response.data._id,
+            cliente: {
+              nombre: orderDetails.customerName,
+              telefono: orderDetails.phone,
+            },
+          });
+        } catch (e) {
+          /* El pedido ya existe: no se pierde. Lo que falló fue abrir la
+             pasarela, así que se le dice y se le deja la salida de siempre. */
+          logger.error('No se pudo abrir la pasarela de Bold:', e);
+          toast.error('No pudimos abrir el pago con tarjeta', {
+            description: 'Tu pedido quedó guardado. Escríbenos y lo resolvemos.',
+            duration: 8000,
+          });
+        }
+      }
 
       // Canjear puntos de fidelidad después de confirmar el pedido
       if (orderDetails.loyaltyRewardId && orderDetails.phone) {

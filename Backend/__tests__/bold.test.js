@@ -27,9 +27,11 @@ jest.mock('../middleware/tenantAuth', () => ({
 jest.mock('../services/socketService', () => ({ emitToBusiness: jest.fn() }));
 jest.mock('../Models/Order', () => ({ findById: jest.fn() }));
 jest.mock('../Models/BoldCuenta', () => ({ findOne: jest.fn() }));
+jest.mock('../Models/BusinessConfig', () => ({ findById: jest.fn() }));
 
 const Order = require('../Models/Order');
 const BoldCuenta = require('../Models/BoldCuenta');
+const BusinessConfig = require('../Models/BusinessConfig');
 const socketService = require('../services/socketService');
 
 const app = express();
@@ -68,9 +70,15 @@ const pedidoEsperando = (extra = {}) => ({
 /** Como lo devuelve mongoose cuando la ruta encadena select/lean. */
 const comoLean = (valor) => ({ select: () => ({ lean: () => ({ catch: async () => valor }) }) });
 
+/* En beta solo go-burger. La lista vive en el entorno para que sumar un
+   negocio sea configuracion y no despliegue. */
+process.env.BOLD_BETA_SLUGS = 'go-burger';
+const comoSlug = (slug) => ({ select: () => ({ lean: async () => ({ slug }) }) });
+
 beforeEach(() => {
   jest.clearAllMocks();
   BoldCuenta.findOne.mockResolvedValue(cuentaLista());
+  BusinessConfig.findById.mockReturnValue(comoSlug('go-burger'));
 });
 
 describe('la firma que se le da al menú', () => {
@@ -271,6 +279,29 @@ describe('guardar las llaves desde el panel', () => {
     expect(JSON.stringify(r.body)).not.toContain(SECRETA);
     expect(r.body.cuenta.secretaPuesta).toBe(true);
     expect(r.body.cuenta.secretaPista).toBe('uoQw');
+  });
+
+  it('un negocio fuera de la beta no puede encenderlo', async () => {
+    /* Mueve dinero real y todavia falta verificar la firma del webhook: se
+       prueba con uno antes de abrirlo a los 26. */
+    BusinessConfig.findById.mockReturnValue(comoSlug('fraise'));
+
+    const r = await request(app).put('/cuenta').send({ identidad: 'abc' });
+
+    expect(r.status).toBe(403);
+    expect(r.body.motivo).toBe('fuera_de_beta');
+  });
+
+  it('con la lista vacia no lo enciende nadie', async () => {
+    /* El valor por defecto tiene que ser el cerrado: si alguien despliega sin
+       la variable, que no quede abierto para todos. */
+    const antes = process.env.BOLD_BETA_SLUGS;
+    process.env.BOLD_BETA_SLUGS = '';
+
+    const r = await request(app).put('/cuenta').send({ identidad: 'abc' });
+
+    process.env.BOLD_BETA_SLUGS = antes;
+    expect(r.status).toBe(403);
   });
 
   it('rechaza un entorno inventado', async () => {

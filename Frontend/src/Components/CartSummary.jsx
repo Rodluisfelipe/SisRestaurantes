@@ -976,6 +976,11 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                   ...(isMethodOn('nequi', !!businessConfig?.paymentInfo?.nequi) ? [{ id: 'nequi', label: 'Nequi', logo: 'https://cdn.prod.website-files.com/6317a229ebf7723658463b4b/663a6b0d43303ddf38035997_logo-nequi.svg' }] : []),
                   ...(isMethodOn('daviplata', !!businessConfig?.paymentInfo?.daviplata) ? [{ id: 'daviplata', label: 'Daviplata', logo: 'https://play-lh.googleusercontent.com/bNPDiFqg28L6ckatfuP-WgrxDRDk0JEOkC6nUIQp7Q61RW78i1bw-ffMmEjyxl-qP6dv3ANDOQqmIbBtgJI3EA' }] : []),
                   ...(isMethodOn('transferencia', !!businessConfig?.paymentInfo?.bankAccountNumber) ? [{ id: 'transferencia', label: 'Transferencia', iconKey: 'bank' }] : []),
+                  /* Tarjeta por la pasarela de Bold. No sale de `paymentMethods`
+                     como los demás sino de `boldActivo`, porque no es algo que
+                     el negocio marque en una lista: depende de que tenga sus
+                     llaves puestas y la cuenta encendida. */
+                  ...(businessConfig?.boldActivo ? [{ id: 'bold', label: 'Tarjeta', iconKey: 'card', beta: true }] : []),
                 ];
                 if (methods.length === 0) return null;
                 return (
@@ -1004,7 +1009,17 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                             ) : (
                               <span style={{ color: isSelected ? themeColor : '#94a3b8' }}>{CI[m.iconKey]('w-7 h-7')}</span>
                             )}
-                            <span className="text-[12px] font-bold" style={{ color: isSelected ? themeColor : '#475569' }}>{m.label}</span>
+                            <span className="text-[12px] font-bold flex items-center gap-1" style={{ color: isSelected ? themeColor : '#475569' }}>
+                              {m.label}
+                              {/* El sello. Mientras esté en pruebas, que el
+                                  cliente lo sepa antes de elegirlo y no
+                                  después, con la tarjeta en la mano. */}
+                              {m.beta && (
+                                <span className="text-[9px] font-black px-1 py-0.5 rounded bg-amber-100 text-amber-700 leading-none">
+                                  BETA
+                                </span>
+                              )}
+                            </span>
                           </button>
                         );
                       })}
