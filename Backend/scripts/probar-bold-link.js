@@ -24,8 +24,15 @@
  * Genera `bold-prueba.html`. Ábrelo en el navegador y dale al botón.
  */
 const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
+const http = require('http');
+
+/* Se sirve por http y no se abre del disco.
+   Bold protege su checkout con `frame-ancestors *`, y ese `*` cubre solo
+   esquemas de red. Un archivo abierto con doble clic es `file://`, que el
+   navegador trata como origen unico: el iframe se bloquea y el boton no hace
+   nada. Un servidor de doce lineas en localhost lo resuelve, y ademas se
+   parece a como va a correr esto de verdad. */
+const PUERTO = 5199;
 
 const IDENTIDAD = process.env.BOLD_IDENTITY;
 const SECRETA = process.env.BOLD_SECRET;
@@ -103,7 +110,8 @@ const html = `<!doctype html>
       <dt>hash</dt><dd>${hash}</dd>
     </dl>
 
-    <button id="pagar">Pagar $${MONTO.toLocaleString('es-CO')}</button>
+    <button id="pagar">Pagar embebido</button>
+    <button id="pagar-redir" style="margin-top:8px;background:#475569">Pagar redirigido</button>
     <div id="estado"></div>
   </div>
 
@@ -117,34 +125,59 @@ const html = `<!doctype html>
       decir('No cargó el script de Bold. ¿Hay internet? ¿Algún bloqueador?', '#dc2626');
     }
 
-    document.getElementById('pagar').addEventListener('click', () => {
+    const intentar = (modo) => {
       if (typeof BoldCheckout === 'undefined') return;
       try {
-        const checkout = new BoldCheckout({
+        const cfg = {
           orderId: ${JSON.stringify(orderId)},
           currency: ${JSON.stringify(MONEDA)},
           amount: ${JSON.stringify(String(MONTO))},
           apiKey: ${JSON.stringify(IDENTIDAD)},
           integritySignature: ${JSON.stringify(hash)},
           description: 'Prueba de integración MenuBy',
-          renderMode: 'embedded',
-        });
+          redirectionUrl: location.origin + '/vuelta',
+        };
+        /* Embebido abre un iframe; redirigido se va a Bold y vuelve. Se
+           prueban los dos porque fallan por razones distintas, y cuál sirve
+           decide cómo se integra en el menú. */
+        if (modo === 'embebido') cfg.renderMode = 'embedded';
+        const checkout = new BoldCheckout(cfg);
         decir('Abriendo la pasarela…', '#0f172a');
         checkout.open();
       } catch (e) {
         decir('Error al abrir: ' + e.message, '#dc2626');
       }
-    });
+    };
+    document.getElementById('pagar').addEventListener('click', () => intentar('embebido'));
+    document.getElementById('pagar-redir').addEventListener('click', () => intentar('redirigido'));
   </script>
 </body>
 </html>`;
 
-const destino = path.join(process.cwd(), 'bold-prueba.html');
-fs.writeFileSync(destino, html, 'utf8');
-
-console.log(`\nGenerado: ${destino}`);
-console.log('Ábrelo en el navegador y dale a "Pagar".');
-console.log('\nQué mirar:');
-console.log('  · Si abre la pasarela → la firma sirve, y con eso se puede armar el endpoint real.');
-console.log('  · Si reclama la firma → hay que cambiar el orden en firmar(), nada más.');
-console.log('  · Si reclama la llave → es la de "Botón de pagos", no la de "API datáfono".');
+http.createServer((req, res) => {
+  /* Bold devuelve al cliente aca con el resultado en la URL. Imprimirlo es
+     media prueba: dice que campos manda de vuelta, que es lo que el backend
+     va a tener que leer. */
+  if (req.url.startsWith('/vuelta')) {
+    console.log('');
+    console.log('<- Bold devolvio: ' + req.url);
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    return res.end('<h2>Vuelta de Bold</h2><p>Mira la terminal: ahi quedaron los parametros.</p>');
+  }
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+  res.end(html);
+}).listen(PUERTO, () => {
+  console.log('');
+  console.log('Abre:  http://localhost:' + PUERTO);
+  console.log('');
+  console.log('Hay dos botones, y fallan por razones distintas:');
+  console.log('  - Embebido    -> iframe. Es como iria en el menu de MenuBy.');
+  console.log('  - Redirigido  -> se va a Bold y vuelve aca con el resultado.');
+  console.log('');
+  console.log('Que mirar:');
+  console.log('  - Si abre la pasarela -> la firma sirve y armo el endpoint real.');
+  console.log('  - Si reclama la firma -> cambio el orden en firmar(), nada mas.');
+  console.log('  - Si reclama la llave -> es la de Boton de pagos, no la de API datafono.');
+  console.log('');
+  console.log('Ctrl+C para parar el servidor.');
+});
