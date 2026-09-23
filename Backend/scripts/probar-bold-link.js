@@ -4,11 +4,16 @@
  * Es lo que le faltaría al menú online. Hoy un domicilio se paga en efectivo o
  * por transferencia, y quien quiere pagar con tarjeta no puede.
  *
- * **Ojo con el hash.** La documentación de Bold enlaza a otra página para
- * explicar cómo se calcula y esa página no la tengo, así que la fórmula de
- * abajo es una suposición. No la des por buena: la prueba de verdad es abrir
- * la página que esto genera y ver si Bold acepta o reclama. Si reclama, se
- * cambia `firmar()` y nada más — por eso está aislada.
+ * **El hash, ya resuelto.** La documentación enlaza a otra página para
+ * explicarlo y esa página no la teníamos, así que se probaron cinco fórmulas
+ * contra el servidor. Ganó esta:
+ *
+ *     sha256(orderId + amount + currency + llaveSecreta)
+ *
+ * Pasaron la A y la D, que son la misma con el hex en minúscula y en
+ * mayúscula: **Bold no distingue may/min al compararlo.** Fallaron HMAC, la
+ * secreta adelante, y la versión con separadores. Comprobado el 23/09/2026
+ * con las llaves de pruebas de Go Burger.
  *
  * **La llave secreta nunca sale de esta terminal.** El hash se calcula acá y
  * a la página solo le llega el resultado, que es exactamente como tendría que
@@ -90,18 +95,18 @@ if (!IDENTIDAD || !SECRETA) {
  * de estos cuatro valores, no el resto del archivo.
  */
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
-const hmac = (llave, s) => crypto.createHmac('sha256', llave).update(s).digest('hex');
 
 function formulas({ orderId, amount, currency, secret }) {
-  const d = `${orderId}${amount}${currency}`;
-  return [
-    { id: 'A', como: 'sha256(orden+monto+moneda+secreta)', firma: sha(`${d}${secret}`) },
-    { id: 'B', como: 'sha256(secreta+orden+monto+moneda)', firma: sha(`${secret}${d}`) },
-    { id: 'C', como: 'hmac-sha256(secreta, orden+monto+moneda)', firma: hmac(secret, d) },
-    { id: 'D', como: 'sha256(orden+monto+moneda+secreta) en MAYUSCULA', firma: sha(`${d}${secret}`).toUpperCase() },
-    { id: 'E', como: 'sha256 con separadores: orden|monto|moneda|secreta',
-      firma: sha(`${orderId}|${amount}|${currency}|${secret}`) },
-  ];
+  /* Las cuatro que se probaron y NO sirven quedan anotadas para que nadie
+     vuelva a gastar una tarde en ellas:
+       sha256(secreta + orden + monto + moneda)          -> BTN-001
+       hmac-sha256(secreta, orden + monto + moneda)      -> BTN-001
+       sha256(orden|monto|moneda|secreta) con barras     -> BTN-001 */
+  return [{
+    id: 'A',
+    como: 'sha256(orden+monto+moneda+secreta)',
+    firma: sha(`${orderId}${amount}${currency}${secret}`),
+  }];
 }
 
 /* Cada formula lleva su propia orden: Bold rechaza una orden repetida, y sin
