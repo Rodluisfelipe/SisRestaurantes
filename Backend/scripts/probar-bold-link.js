@@ -42,6 +42,35 @@ const SECRETA = process.env.BOLD_SECRET;
 const MONTO = 1000;
 const MONEDA = 'COP';
 
+/* Que entorno es.
+ *
+ * Bold entrega las llaves de pruebas y las de produccion en la misma pantalla
+ * del panel, una debajo de la otra, y por fuera se ven iguales: no hay prefijo
+ * ni largo que las distinga. Un cobro de prueba con las de produccion es un
+ * cobro de verdad contra la cuenta del cliente.
+ *
+ * Por eso hay que decirlo a mano. No se adivina. */
+const ENTORNO = process.env.BOLD_ENTORNO;
+const CONFIRMADO = process.argv.includes('--si-es-produccion');
+
+if (ENTORNO !== 'pruebas' && ENTORNO !== 'produccion') {
+  console.error('Falta decir que llaves son. No se puede adivinar:');
+  console.error('  $env:BOLD_ENTORNO="pruebas"     <- las del ambiente de pruebas');
+  console.error('  $env:BOLD_ENTORNO="produccion"  <- las reales, mueven dinero');
+  process.exit(1);
+}
+
+if (ENTORNO === 'produccion' && !CONFIRMADO) {
+  console.error('ALTO: son llaves de PRODUCCION.');
+  console.error('');
+  console.error('Esta pagina arma un cobro real contra la cuenta del comercio.');
+  console.error('Si de verdad es lo que quieres, agrega  --si-es-produccion');
+  console.error('');
+  console.error('Para probar sin mover dinero, saca las llaves de pruebas del');
+  console.error('panel: cada llave tiene su version de pruebas al lado.');
+  process.exit(1);
+}
+
 if (!IDENTIDAD || !SECRETA) {
   console.error('Faltan llaves en el entorno.');
   console.error('  PowerShell:  $env:BOLD_IDENTITY="..."; $env:BOLD_SECRET="..."; node scripts/probar-bold-link.js');
