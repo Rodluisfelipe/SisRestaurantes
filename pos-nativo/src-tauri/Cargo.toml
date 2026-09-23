@@ -28,6 +28,11 @@ time = { version = "0.3", features = ["formatting", "local-offset"] }
 # Habla con los puertos COM sin capas de por medio: es lo que hace que el corte
 # de papel y el pulso del cajón salgan en microsegundos.
 serialport = "4"
+
+# La cola de impresión de Windows, para las térmicas USB instaladas como
+# impresora del sistema. Solo las funciones de winspool: nada más.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Graphics_Printing"] }
 # Cliente HTTP de bloqueo, sin runtime async: la sincronización corre en su
 # propio hilo y no vale la pena arrastrar tokio para un POST cada 30 segundos.
 ureq = { version = "2", features = ["json"] }

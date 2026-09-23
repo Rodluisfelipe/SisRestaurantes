@@ -93,7 +93,7 @@ export default function MobileNavDrawer({ isOpen, onClose, activeTab, setActiveT
         ...(businessConfig?.enableBookings ? [{ id: 'bookings', label: 'Agenda de citas', icon: I.calendar, bg: 'bg-indigo-500' }] : []),
         ...(!isService && !isHotel ? [{ id: 'delivery', label: 'Domicilios', icon: I.delivery, bg: 'bg-cyan-500' }] : []),
         ...(tienda ? [{ id: 'devoluciones', label: 'Devoluciones', icon: I.orders, bg: 'bg-rose-500' }] : []),
-        { id: 'cajas', label: 'Cajas registradoras', icon: I.orders, bg: 'bg-slate-500' },
+        { id: 'cajas', label: 'Punto de venta', icon: I.orders, bg: 'bg-slate-500' },
       ],
     },
     {

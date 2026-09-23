@@ -123,6 +123,78 @@ impl Tirilla {
         self
     }
 
+    /// El QR de un enlace —el del menú del negocio— centrado en la tirilla.
+    ///
+    /// Dos formas, las mismas del agente de impresión:
+    ///
+    /// - **Imagen** (`nativo = false`): la caja dibuja los módulos y los manda
+    ///   como mapa de bits (GS v 0). Funciona en casi cualquier térmica, porque
+    ///   imprimir puntos es lo único que todas saben hacer.
+    /// - **Nativo**: se le manda el texto y la impresora dibuja el código
+    ///   (GS ( k). Sale más nítido, pero las térmicas baratas no lo entienden
+    ///   y lo imprimen como basura.
+    ///
+    /// Nivel de corrección M: una tirilla se arruga y se destiñe, y M sigue
+    /// leyéndose con un 15 % del código dañado.
+    pub fn qr(&mut self, texto: &str, nativo: bool) -> &mut Self {
+        if texto.is_empty() {
+            return self;
+        }
+        if nativo {
+            let datos = texto.as_bytes();
+            let largo = datos.len() + 3;
+            self.bytes.extend_from_slice(&[ESC, b'a', 1]);
+            self.bytes.extend_from_slice(&[GS, b'(', b'k', 4, 0, 49, 65, 50, 0]); // modelo 2
+            self.bytes.extend_from_slice(&[GS, b'(', b'k', 3, 0, 49, 67, 6]); // módulo de 6 puntos
+            self.bytes.extend_from_slice(&[GS, b'(', b'k', 3, 0, 49, 69, 49]); // corrección M
+            self.bytes.extend_from_slice(&[GS, b'(', b'k', (largo & 0xFF) as u8, (largo >> 8) as u8, 49, 80, 48]);
+            self.bytes.extend_from_slice(datos);
+            self.bytes.extend_from_slice(&[GS, b'(', b'k', 3, 0, 49, 81, 48]); // imprimir
+            self.bytes.push(LF);
+            return self;
+        }
+
+        let Ok(codigo) = qrcode::QrCode::with_error_correction_level(texto, qrcode::EcLevel::M) else {
+            return self;
+        };
+        let lado = codigo.width();
+        let colores = codigo.to_colors();
+        let oscuro = |x: usize, y: usize| colores[y * lado + x] == qrcode::Color::Dark;
+
+        /* Doce puntos por carácter es la relación de las térmicas: 48
+           caracteres son los 576 puntos del papel de 80 mm, 32 los 384 del de
+           58. Se apunta a la mitad del ancho, en un múltiplo entero del módulo
+           —escalar fraccionario deforma los módulos y los lectores fallan—, y
+           con dos módulos de margen blanco alrededor. */
+        let puntos = self.ancho * 12;
+        let margen = 2;
+        let total = lado + margen * 2;
+        let escala = ((puntos / 2) / total).clamp(3, 8).min((puntos / total).max(1));
+        let lado_puntos = total * escala;
+        let desplazamiento = (puntos.saturating_sub(lado_puntos)) / 2;
+        let fila_bytes = (desplazamiento + lado_puntos).div_ceil(8);
+
+        self.bytes.extend_from_slice(&[GS, b'v', b'0', 0]);
+        self.bytes.extend_from_slice(&[(fila_bytes & 0xFF) as u8, (fila_bytes >> 8) as u8]);
+        self.bytes.extend_from_slice(&[(lado_puntos & 0xFF) as u8, (lado_puntos >> 8) as u8]);
+        for y in 0..lado_puntos {
+            let mut fila = vec![0u8; fila_bytes];
+            let my = (y / escala) as isize - margen as isize;
+            for x in 0..lado_puntos {
+                let mx = (x / escala) as isize - margen as isize;
+                let negro = my >= 0 && mx >= 0 && (my as usize) < lado && (mx as usize) < lado
+                    && oscuro(mx as usize, my as usize);
+                if negro {
+                    let bit = desplazamiento + x;
+                    fila[bit / 8] |= 0x80 >> (bit % 8);
+                }
+            }
+            self.bytes.extend_from_slice(&fila);
+        }
+        self.bytes.push(LF);
+        self
+    }
+
     /// Avanza el papel y corta. El avance no es decorativo: sin él, el corte
     /// queda dentro del texto porque la cuchilla está unos milímetros arriba
     /// del cabezal.
@@ -249,5 +321,33 @@ mod pruebas {
         t.cortar();
         let bytes = t.terminar();
         assert_eq!(&bytes[5..], &[LF, LF, LF, LF, GS, b'V', 66, 0]);
+    }
+
+    #[test]
+    fn el_qr_como_imagen_es_un_mapa_de_bits_del_ancho_del_papel() {
+        let mut t = Tirilla::nueva(48);
+        t.qr("https://menuby.tech/go-burger", false);
+        let b = t.terminar();
+        let i = b.windows(4).position(|w| w == [GS, b'v', b'0', 0]).expect("falta GS v 0");
+        let ancho_bytes = b[i + 4] as usize | (b[i + 5] as usize) << 8;
+        let alto = b[i + 6] as usize | (b[i + 7] as usize) << 8;
+        assert!(ancho_bytes * 8 <= 576, "no cabe en 80 mm");
+        assert!(alto > 100, "demasiado chico para leerse: {alto}");
+    }
+
+    #[test]
+    fn el_qr_nativo_lleva_el_texto_para_la_impresora() {
+        let mut t = Tirilla::nueva(32);
+        t.qr("https://menuby.tech/go-burger", true);
+        let b = t.terminar();
+        assert!(b.windows(3).any(|w| w == [GS, b'(', b'k']));
+        assert!(String::from_utf8_lossy(&b).contains("menuby.tech/go-burger"));
+    }
+
+    #[test]
+    fn sin_enlace_no_hay_qr() {
+        let mut con = Tirilla::nueva(32);
+        con.qr("", false);
+        assert_eq!(con.terminar(), Tirilla::nueva(32).terminar());
     }
 }

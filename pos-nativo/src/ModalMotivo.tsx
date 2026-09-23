@@ -92,7 +92,7 @@ export default function ModalMotivo({
             onMouseDown={(e) => e.preventDefault()}
             onClick={aceptar}
             disabled={!valido}
-            className="flex-1 h-toque rounded-xl bg-marca text-sobre-marca text-[13.5px] font-bold disabled:opacity-30"
+            className="flex-1 h-toque rounded-xl bg-accion text-sobre-accion text-[13.5px] font-bold disabled:opacity-30"
           >
             {confirmar}
             <span className="block text-[10px] font-semibold opacity-60">Enter</span>

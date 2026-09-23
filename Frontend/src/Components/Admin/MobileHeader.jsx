@@ -15,7 +15,7 @@ const TAB_TITLES = {
   'coupons':          'Cupones',
   'tables':           'Mesas',
   'devoluciones':     'Devoluciones',
-  'cajas':            'Cajas',
+  'cajas':            'Punto de venta',
   'delivery-zones':   'Zonas',
   'delivery':         'Domicilios',
   'theme':            'Tema',

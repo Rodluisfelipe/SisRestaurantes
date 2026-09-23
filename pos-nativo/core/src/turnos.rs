@@ -37,6 +37,17 @@ pub struct Turno {
     pub estado: String,
 }
 
+/// Una entrada o salida de efectivo, tal como la registró el cajero.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MovimientoCaja {
+    /// "entrada" o "salida".
+    pub tipo: String,
+    pub monto: Pesos,
+    pub motivo: String,
+    pub usuario: String,
+    pub creado_en: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CierreTurno {
     pub turno_id: String,
@@ -53,6 +64,11 @@ pub struct CierreTurno {
     /// Negativo = falta plata en la gaveta.
     pub diferencia: Pesos,
     pub ventas: i64,
+    /// Cada entrada y salida con su motivo. Antes subían solo los totales, y
+    /// desde el panel un faltante de 50.000 y un pago de 50.000 al
+    /// domiciliario se veían exactamente igual.
+    #[serde(default)]
+    pub movimientos: Vec<MovimientoCaja>,
     /// Propina cobrada en efectivo durante el turno.
     ///
     /// **Está dentro del esperado**, porque ese billete está físicamente en la
@@ -343,6 +359,22 @@ fn esperado_de(conexion: &Connection, turno: &Turno) -> Result<CierreTurno> {
 
     let esperado = turno.fondo_inicial.0 + ventas_efectivo + entradas - salidas - devuelto.0;
 
+    let mut consulta = conexion.prepare(
+        "SELECT tipo, monto, motivo, usuario, creado_en FROM movimientos_caja
+          WHERE turno_id = ?1 ORDER BY creado_en",
+    )?;
+    let movimientos = consulta
+        .query_map([&turno.id], |f| {
+            Ok(MovimientoCaja {
+                tipo: f.get(0)?,
+                monto: Pesos(f.get(1)?),
+                motivo: f.get(2)?,
+                usuario: f.get(3)?,
+                creado_en: f.get(4)?,
+            })
+        })?
+        .collect::<Result<Vec<_>>>()?;
+
     Ok(CierreTurno {
         turno_id: turno.id.clone(),
         cajero: turno.cajero.clone(),
@@ -367,6 +399,7 @@ fn esperado_de(conexion: &Connection, turno: &Turno) -> Result<CierreTurno> {
         contado: Pesos::CERO,
         diferencia: Pesos::CERO,
         ventas: cuantas,
+        movimientos,
     })
 }
 
@@ -1102,5 +1135,20 @@ mod pruebas {
            efectivo esperado. */
         let json = serde_json::to_string(&r).unwrap();
         assert!(!json.contains("esperado") && !json.contains("por_medio"));
+    }
+
+    #[test]
+    fn el_cierre_lleva_cada_movimiento_con_su_motivo() {
+        let (mut c, t) = caja_con_turno();
+        mover_efectivo(&c, &t.id, false, Pesos(50_000), "Pago domiciliario", "Ana", AHORA).unwrap();
+        mover_efectivo(&c, &t.id, true, Pesos(20_000), "Base extra", "Ana", AHORA).unwrap();
+
+        let cierre = cerrar(&mut c, Pesos(70_000), AHORA).unwrap();
+        assert_eq!(cierre.movimientos.len(), 2);
+        assert!(cierre.movimientos.iter().any(|m| m.tipo == "salida" && m.motivo == "Pago domiciliario"));
+
+        // Y viaja en el arqueo que sube a la nube.
+        let json = serde_json::to_value(&cierre).unwrap();
+        assert_eq!(json["movimientos"][0]["monto"], serde_json::json!(50_000));
     }
 }

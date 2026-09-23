@@ -473,6 +473,7 @@ router.post('/shifts/close', tenantAuth, cajaVigente, async (req, res) => {
       posTurnoId: c.turnoId,
       origen: 'pos-nativo',
       cajeroNombre: c.cajero,
+      cajaNombre: req.caja?.nombre || '',
       openedBy: req.user?.id || undefined,
       openedAt: c.abiertoEn,
       closedAt: c.cerradoEn,
@@ -484,10 +485,20 @@ router.post('/shifts/close', tenantAuth, cajaVigente, async (req, res) => {
       /* Las entradas y salidas de la gaveta, tal como las registró el cajero.
          Sin ellas, un faltante de 50.000 y un pago al domiciliario de 50.000 se
          ven exactamente igual desde el panel. */
-      movements: [
-        ...(c.entradas > 0 ? [{ type: 'income', amount: c.entradas, description: 'Entradas de efectivo del turno' }] : []),
-        ...(c.salidas > 0 ? [{ type: 'expense', amount: c.salidas, description: 'Salidas de efectivo del turno' }] : []),
-      ],
+      /* Cada movimiento con su motivo cuando la caja los manda; las cajas
+         viejas solo mandan los totales y se guardan como antes. */
+      movements: c.movimientos.length
+        ? c.movimientos.map((m) => ({
+          type: m.tipo === 'entrada' ? 'income' : 'expense',
+          amount: m.monto,
+          description: m.motivo,
+          createdAt: m.creadoEn,
+        }))
+        : [
+          ...(c.entradas > 0 ? [{ type: 'income', amount: c.entradas, description: 'Entradas de efectivo del turno' }] : []),
+          ...(c.salidas > 0 ? [{ type: 'expense', amount: c.salidas, description: 'Salidas de efectivo del turno' }] : []),
+        ],
+      posDetalle: { ...c.detalle, ventasEfectivo: c.ventasEfectivo, ventasOtros: c.ventasOtros },
       salesSummary: {
         totalSales: c.ventasEfectivo + c.ventasOtros,
         totalOrders: c.ventas,
@@ -666,7 +677,7 @@ router.get('/catalog', tenantAuth, cajaVigente, async (req, res) => {
          porque el emparejamiento pasa una vez en la vida de la caja: si el
          dueño cambia su color en el panel, la caja tendría el viejo para
          siempre. Esta bajada corre cada pocos minutos. */
-      BusinessConfig.findById(businessId).select('businessName theme.buttonColor theme.buttonTextColor nit address phone whatsappNumber').lean(),
+      BusinessConfig.findById(businessId).select('businessName theme.buttonColor theme.buttonTextColor nit address phone whatsappNumber slug logo printerSettings').lean(),
     ]);
 
     const porId = Object.fromEntries(
@@ -715,6 +726,14 @@ router.get('/catalog', tenantAuth, cajaVigente, async (req, res) => {
         nit: (negocio?.nit || '').trim(),
         direccion: (negocio?.address || '').trim(),
         telefono: (negocio?.phone || negocio?.whatsappNumber || '').trim(),
+        /* El QR del menú en la tirilla: el mismo enlace y el mismo interruptor
+           que usa el agente de impresión (Routes/printAgent.js). */
+        menu_url: negocio?.slug
+          ? `${(process.env.FRONTEND_URL || 'https://menuby.tech').replace(/\/$/, '')}/${negocio.slug}`
+          : '',
+        qr_en_tirilla: negocio?.printerSettings?.showQR !== false,
+        // El logo, para la pantalla de entrada de la caja.
+        logo: typeof negocio?.logo === 'string' ? negocio.logo : '',
       },
       configuracion,
     });

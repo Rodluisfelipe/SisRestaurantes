@@ -26,6 +26,7 @@ mod configuracion;
 mod fotos;
 mod nube;
 mod pedidos_web;
+mod cola_windows;
 mod reloj;
 mod perifericos;
 use nube::Nube;
@@ -485,14 +486,14 @@ async fn cobrar(
     };
     /* La venta ya está guardada. Lo que sigue es papel, y el papel se
        reimprime: por eso su fallo se reporta como aviso y no revierte nada. */
-    let impresion = imprimir(caja.impresora, bytes).await.err();
+    let impresion = imprimir(caja.impresora, perifericos::papel(caja.corte, bytes)).await.err();
 
     /* La comanda va aparte y sin precios: en la cocina no se cobra, se prepara,
        y un papel con plata encima solo estorba. Que falle no se le reporta al
        cajero como un problema de la venta. */
     if !matches!(cocina.impresora, Impresora::Ninguna) {
         let comanda = comanda(cocina.ancho, &nueva, &registrada);
-        perifericos::enviar_suelto(cocina.impresora, comanda);
+        perifericos::enviar_suelto(cocina.impresora, perifericos::papel(cocina.corte, comanda));
     }
 
     Ok(Cobro { venta: registrada, impresion })
@@ -520,7 +521,7 @@ async fn abrir_cajon(estado: State<'_, Estado>, motivo: String) -> Result<(), St
     /* El cajero sí espera saber si abrió —si no, va a volver a tocar el botón
        y a dejar dos aperturas en la auditoría por una sola intención— pero se
        espera fuera del hilo que dibuja. */
-    imprimir(config.impresora, t.terminar()).await
+    imprimir(config.impresora, perifericos::papel(config.corte, t.terminar())).await
 }
 
 /// Deja constancia de una excepción con el cajero y el turno de verdad.
@@ -788,7 +789,7 @@ async fn guardar_en_cuenta(
                 Siguiente::Listo(RondaGuardada { cuenta, a_cocina: 0, impresion: None })
             } else {
                 let bytes = comanda_de(cocina.ancho, &cuenta.identificador, &pendientes, &ahora_local());
-                Siguiente::Imprimir(cuenta, cocina.impresora, bytes, pendientes.len())
+                Siguiente::Imprimir(cuenta, cocina.impresora, perifericos::papel(cocina.corte, bytes), pendientes.len())
             }
         }
     };
@@ -861,7 +862,7 @@ async fn imprimir_precuenta(estado: State<'_, Estado>, id: String) -> Result<(),
         let caja = perifericos::leer_config(&base, "caja");
         let negocio = estado.negocio.lock().map(|n| n.clone()).unwrap_or_default();
 
-        (caja.impresora, precuenta(&negocio, caja.ancho, &cuenta, &items, &ahora_local()))
+        (caja.impresora, perifericos::papel(caja.corte, precuenta(&negocio, caja.ancho, &cuenta, &items, &ahora_local())))
     };
 
     imprimir(impresora, bytes).await
@@ -983,7 +984,7 @@ fn anular_item(
                Y por eso mismo va en un hilo suelto: nadie está esperando este
                resultado, y esperarlo congelaría la caja tres segundos con la
                impresora de cocina apagada. */
-            perifericos::enviar_suelto(cocina.impresora, bytes);
+            perifericos::enviar_suelto(cocina.impresora, perifericos::papel(cocina.corte, bytes));
         }
     }
 
@@ -1118,7 +1119,7 @@ fn devolver(
         let negocio = estado.negocio.lock().map(|n| n.clone()).unwrap_or_default();
         let bytes = comprobante_devolucion(&negocio, caja.ancho, &registrada, &items);
         // La devolución ya está hecha: el papel no la condiciona.
-        perifericos::enviar_suelto(caja.impresora, bytes);
+        perifericos::enviar_suelto(caja.impresora, perifericos::papel(caja.corte, bytes));
     }
 
     Ok(registrada)
@@ -1174,7 +1175,7 @@ fn mover_efectivo(
     let config = perifericos::leer_config(&base, "caja");
     let mut t = escpos::Tirilla::nueva(config.ancho);
     t.abrir_cajon();
-    perifericos::enviar_suelto(config.impresora, t.terminar());
+    perifericos::enviar_suelto(config.impresora, perifericos::papel(config.corte, t.terminar()));
 
     Ok(())
 }
@@ -1215,7 +1216,7 @@ async fn imprimir_arqueo(app: tauri::AppHandle, cierre: turnos::CierreTurno) -> 
         (perifericos::leer_config(&base, "caja"), quien)
     };
 
-    imprimir(config.impresora, turnos::tirilla_arqueo(&cierre, &negocio, config.ancho)).await
+    imprimir(config.impresora, perifericos::papel(config.corte, turnos::tirilla_arqueo(&cierre, &negocio, config.ancho))).await
 }
 
 /// Cierra el turno con lo que el cajero contó.
@@ -1403,6 +1404,8 @@ fn impresoras(estado: State<Estado>) -> Result<serde_json::Value, String> {
         "caja": perifericos::leer_config(&base, "caja"),
         "cocina": perifericos::leer_config(&base, "cocina"),
         "puertos": perifericos::puertos_serie(),
+        // Las térmicas USB instaladas en Windows, para elegir por nombre.
+        "windows": cola_windows::listar(),
     }))
 }
 
@@ -1451,7 +1454,7 @@ async fn probar_impresora(estado: State<'_, Estado>, rol: String) -> Result<(), 
         .cortar();
 
     let bytes = t.terminar();
-    imprimir(config.impresora, bytes).await
+    imprimir(config.impresora, perifericos::papel(config.corte, bytes)).await
 }
 
 /// Reimprime una venta ya cobrada.
@@ -1488,7 +1491,7 @@ async fn reimprimir(estado: State<'_, Estado>, venta_id: Option<String>) -> Resu
     };
 
     let bytes = tirilla_de(&negocio, config.ancho, &completa, true);
-    imprimir(config.impresora, bytes).await
+    imprimir(config.impresora, perifericos::papel(config.corte, bytes)).await
 }
 
 /* ── El datáfono ───────────────────────────────────────────────────────── */
@@ -1558,9 +1561,9 @@ async fn imprimir_pedido_web(
     };
     let ahora = ahora_local();
     if !matches!(cocina.impresora, Impresora::Ninguna) {
-        perifericos::enviar_suelto(cocina.impresora, pedidos_web::comanda(cocina.ancho, &pedido, &ahora));
+        perifericos::enviar_suelto(cocina.impresora, perifericos::papel(cocina.corte, pedidos_web::comanda(cocina.ancho, &pedido, &ahora)));
     }
-    imprimir(caja.impresora, pedidos_web::tirilla(&negocio, caja.ancho, &pedido, &ahora)).await
+    imprimir(caja.impresora, perifericos::papel(caja.corte, pedidos_web::tirilla(&negocio, caja.ancho, &pedido, &ahora))).await
 }
 
 /// Cómo va el turno abierto: ventas, lo más vendido y la lista para
@@ -1933,6 +1936,8 @@ struct Identidad {
     nombre: String,
     color: String,
     color_texto: String,
+    /// El archivo del logo en la carpeta de fotos. Vacío = todavía no bajó.
+    logo: String,
 }
 
 #[tauri::command]
@@ -1946,6 +1951,7 @@ fn identidad(estado: State<Estado>) -> Identidad {
         nombre: leer("negocio_nombre"),
         color: leer("marca_color"),
         color_texto: leer("marca_color_texto"),
+        logo: leer("negocio_logo_local"),
     }
 }
 
@@ -2173,6 +2179,10 @@ struct Membrete {
     /// Si la tirilla de una venta en efectivo abre la gaveta. Viene del
     /// panel; sin configuración, abre.
     cajon_al_cobrar: bool,
+    /// El enlace del menú para el QR. Vacío = sin QR.
+    menu_url: String,
+    /// "imagen", "nativo" o "no", según la impresora de caja.
+    qr: String,
 }
 
 impl Default for Membrete {
@@ -2184,6 +2194,8 @@ impl Default for Membrete {
             telefono: String::new(),
             pie: String::new(),
             cajon_al_cobrar: true,
+            menu_url: String::new(),
+            qr: "no".into(),
         }
     }
 }
@@ -2226,6 +2238,10 @@ fn membrete(base: &rusqlite::Connection, nombre: &str) -> Membrete {
         telefono: leer("negocio_telefono"),
         pie: leer("texto_pie_factura"),
         cajon_al_cobrar: leer("cajon_al_cobrar") != "0",
+        /* Con el interruptor del panel apagado no hay enlace, y sin enlace no
+           hay QR, diga lo que diga la impresora. */
+        menu_url: if leer("qr_en_tirilla") == "0" { String::new() } else { leer("negocio_menu_url") },
+        qr: perifericos::leer_config(base, "caja").qr,
     }
 }
 
@@ -2348,6 +2364,12 @@ fn tirilla_de(negocio: &Membrete, ancho: usize, v: &venta::VentaCompleta, copia:
         .alinear(escpos::Alineacion::Centro)
         .linea(&format!("Le atendió {}", v.cajero))
         .linea(negocio.pie());
+
+    /* El QR del menú, como lo imprime el agente: para que el cliente pida la
+       próxima vez desde el celular. Una copia también lo lleva. */
+    if !negocio.menu_url.is_empty() && negocio.qr != "no" {
+        t.salto().linea("Pide de nuevo desde aquí:").qr(&negocio.menu_url, negocio.qr == "nativo");
+    }
 
     /* La gaveta abre con la tirilla, en el mismo envío: si va aparte, abre
        antes de que termine de salir el papel. Solo si entró efectivo y el
@@ -2773,6 +2795,7 @@ pub fn run() {
                    esperando. Si fallan, en la próxima vuelta se reintentan y
                    mientras tanto el producto se dibuja con sus iniciales. */
                 fotos::bajar_pendientes(&estado.base, &estado.datos);
+                fotos::bajar_logo(&estado.base, &estado.datos);
 
                 vueltas += 1;
 
@@ -2940,6 +2963,29 @@ mod pruebas_tirilla {
     /// Si los bytes llevan el pulso que abre la gaveta (ESC p).
     fn abre_cajon(bytes: &[u8]) -> bool {
         bytes.windows(2).any(|w| w == [0x1B, b'p'])
+    }
+
+    #[test]
+    fn la_tirilla_lleva_el_qr_del_menu_si_el_panel_lo_deja() {
+        let m = Membrete {
+            menu_url: "https://menuby.tech/go-burger".into(),
+            qr: "nativo".into(),
+            ..Membrete::solo("Go Burger")
+        };
+        let texto = String::from_utf8_lossy(&tirilla_de(&m, 42, &venta_completa(), false)).to_string();
+        assert!(texto.contains("menuby.tech/go-burger"), "falta el QR:\n{texto}");
+
+        let sin = Membrete { qr: "no".into(), ..m };
+        let texto = String::from_utf8_lossy(&tirilla_de(&sin, 42, &venta_completa(), false)).to_string();
+        assert!(!texto.contains("menuby.tech"));
+    }
+
+    #[test]
+    fn sin_cuchilla_no_se_manda_el_corte() {
+        let bytes = tirilla_de(&Membrete::solo("Go Burger"), 42, &venta_completa(), false);
+        let corta = |b: &[u8]| b.windows(3).any(|w| w == [0x1D, b'V', 66]);
+        assert!(corta(&bytes));
+        assert!(!corta(&perifericos::papel(false, bytes)));
     }
 
     #[test]

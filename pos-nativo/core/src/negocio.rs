@@ -37,6 +37,10 @@ const AJUSTES_DEL_NEGOCIO: &[&str] = &[
     "negocio_nit",
     "negocio_direccion",
     "negocio_telefono",
+    "negocio_menu_url",
+    "negocio_logo_url",
+    "negocio_logo_local",
+    "negocio_logo_bajado",
     "config_version",
 ];
 

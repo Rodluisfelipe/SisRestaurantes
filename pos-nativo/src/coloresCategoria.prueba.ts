@@ -56,4 +56,16 @@ describe('el color de una categoría', () => {
       expect(clase).toMatch(/text-/);
     }
   });
+
+  it('se lee en un turno de ocho horas: fondo claro, texto casi negro y una franja', () => {
+    /* Bloques saturados con texto blanco cansan la vista y el blanco sobre
+       amarillo no se leía. Pastel con texto -950 pasa AA de sobra. */
+    for (const c of ['Hamburguesas', 'Bebidas', 'Combos', 'Postres', 'Arroces', 'Xyz', '']) {
+      const clase = colorDeCategoria(c);
+      expect(clase).not.toContain('text-white');
+      expect(clase).toMatch(/bg-\w+-100/);
+      expect(clase).toMatch(/text-\w+-(950|900)/);
+      expect(clase).toContain('border-l-');
+    }
+  });
 });

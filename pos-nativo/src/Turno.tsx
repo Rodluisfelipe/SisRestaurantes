@@ -56,7 +56,7 @@ export function AbrirTurno({ usuario, onAbierto }: { usuario: Usuario; onAbierto
       <button
         onClick={abrir}
         disabled={ocupado}
-        className="w-72 h-14 rounded-2xl bg-marca text-sobre-marca text-lg font-black disabled:opacity-40"
+        className="w-72 h-14 rounded-2xl bg-accion text-sobre-accion text-lg font-black disabled:opacity-40"
       >
         {ocupado ? 'Abriendo…' : 'Abrir turno'}
       </button>
@@ -157,7 +157,7 @@ export function PanelTurno({
           </button>
           <button
             onClick={() => setVista('cierre')}
-            className="w-full h-12 rounded-xl bg-marca text-sobre-marca text-[13.5px] font-bold"
+            className="w-full h-12 rounded-xl bg-accion text-sobre-accion text-[13.5px] font-bold"
           >
             Cerrar turno y contar
           </button>
@@ -198,7 +198,7 @@ export function PanelTurno({
             <button
               onClick={guardarMovimiento}
               disabled={ocupado}
-              className="flex-1 h-12 rounded-xl bg-marca text-sobre-marca text-[13px] font-bold disabled:opacity-40"
+              className="flex-1 h-12 rounded-xl bg-accion text-sobre-accion text-[13px] font-bold disabled:opacity-40"
             >
               Registrar
             </button>
@@ -272,7 +272,7 @@ export function PanelTurno({
             <button
               onClick={cerrar}
               disabled={ocupado || (aMano && contado === '')}
-              className="flex-1 h-12 rounded-xl bg-marca text-sobre-marca text-[13px] font-bold disabled:opacity-40"
+              className="flex-1 h-12 rounded-xl bg-accion text-sobre-accion text-[13px] font-bold disabled:opacity-40"
             >
               {ocupado ? 'Cerrando…' : 'Cerrar turno'}
             </button>
@@ -438,7 +438,7 @@ export function ResumenCierre({ cierre, onListo }: { cierre: CierreTurno; onList
           {imprimiendo ? 'Imprimiendo…' : 'Imprimir acta'}
         </button>
 
-        <button onClick={onListo} className="flex-1 h-14 rounded-2xl bg-marca text-sobre-marca font-black">
+        <button onClick={onListo} className="flex-1 h-14 rounded-2xl bg-accion text-sobre-accion font-black">
           Listo
         </button>
       </div>

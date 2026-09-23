@@ -5,6 +5,7 @@ const BusinessConfig = require("../Models/BusinessConfig");
 const authMiddleware = require("../middleware/authMiddleware");
 const { tenantAuth } = require("../middleware/tenantAuth");
 const logger = require("../utils/logger");
+const { isValidObjectId } = require("mongoose");
 
 // Middleware: verify POS beta is enabled for the business
 const checkPosBeta = async (req, res, next) => {
@@ -185,14 +186,16 @@ router.get("/history", authMiddleware, checkPosBeta, async (req, res) => {
 
     const skip = (Number(page) - 1) * Number(limit);
     const [registers, total] = await Promise.all([
-      CashRegister.find({ businessId, status: 'closed' })
+      /* Solo los del POS web: los cierres de la caja nativa viven en la
+         sección Punto de venta, para no mezclar dos cajas distintas. */
+      CashRegister.find({ businessId, status: 'closed', origen: { $ne: 'pos-nativo' } })
         .sort({ closedAt: -1 })
         .skip(skip)
         .limit(Number(limit))
         .populate('openedBy', 'name username')
         .populate('closedBy', 'name username')
         .lean(),
-      CashRegister.countDocuments({ businessId, status: 'closed' })
+      CashRegister.countDocuments({ businessId, status: 'closed', origen: { $ne: 'pos-nativo' } })
     ]);
 
     res.json({ registers, total, page: Number(page), totalPages: Math.ceil(total / Number(limit)) });
@@ -205,7 +208,16 @@ router.get("/history", authMiddleware, checkPosBeta, async (req, res) => {
 // Detalle de caja específica
 router.get("/:id", authMiddleware, async (req, res) => {
   try {
-    const cashRegister = await CashRegister.findById(req.params.id)
+    /* Del negocio de quien pregunta. Antes se buscaba solo por id: cualquier
+       sesión válida podía leer el arqueo de otro negocio si tenía el id. */
+    if (!isValidObjectId(req.params.id)) return res.status(400).json({ message: "Id inválido" });
+    const filtro = { _id: req.params.id };
+    if (req.user?.role !== 'superadmin') {
+      // Sin negocio en el token no hay de quién leer: nunca "todos".
+      if (!req.user?.businessId) return res.status(403).json({ message: "Sin acceso a esta caja" });
+      filtro.businessId = req.user.businessId;
+    }
+    const cashRegister = await CashRegister.findOne(filtro)
       .populate('openedBy', 'name username')
       .populate('closedBy', 'name username');
     if (!cashRegister) return res.status(404).json({ message: "Caja no encontrada" });

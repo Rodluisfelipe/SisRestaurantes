@@ -78,7 +78,7 @@ export default function Cuentas({
             <button
               onClick={crear}
               disabled={!nombre.trim()}
-              className="flex-1 rounded-xl bg-marca text-sobre-marca text-[13px] font-bold disabled:opacity-30"
+              className="flex-1 rounded-xl bg-accion text-sobre-accion text-[13px] font-bold disabled:opacity-30"
             >
               Abrir cuenta
             </button>
@@ -140,7 +140,7 @@ export default function Cuentas({
                 <button
                   onClick={() => onCobrar(c)}
                   title="Cobrar y cerrar la cuenta"
-                  className="flex-1 h-toque flex items-center justify-center bg-marca text-sobre-marca hover:brightness-110"
+                  className="flex-1 h-toque flex items-center justify-center bg-accion text-sobre-accion hover:brightness-110"
                 >
                   <Receipt size={17} strokeWidth={2.25} />
                 </button>

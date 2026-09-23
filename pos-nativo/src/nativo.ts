@@ -488,6 +488,8 @@ export interface Identidad {
   nombre: string;
   color: string;
   color_texto: string;
+  /** El archivo del logo en la carpeta de fotos. Vacío = todavía no bajó. */
+  logo?: string;
 }
 
 /**
@@ -499,7 +501,7 @@ export interface Identidad {
  * cobrar invisible.
  */
 export async function identidad(): Promise<Identidad> {
-  if (!enTauri) return { nombre: '', color: '', color_texto: '' };
+  if (!enTauri) return { nombre: '', color: '', color_texto: '', logo: '' };
   return invoke<Identidad>('identidad');
 }
 
@@ -1060,12 +1062,18 @@ export type Impresora =
   | { tipo: 'red'; host: string; puerto: number }
   | { tipo: 'serie'; puerto: string; baudios: number }
   | { tipo: 'archivo'; ruta: string }
+  /** Una impresora instalada en Windows, por nombre: las térmicas USB. */
+  | { tipo: 'windows'; nombre: string }
   | { tipo: 'ninguna' };
 
 export interface ConfigImpresora {
   impresora: Impresora;
-  /** 48 = papel de 80 mm, 32 = 58 mm. Si se equivoca, la tirilla sale torcida. */
+  /** Caracteres por línea: 48 = 80 mm, 42 = 76 mm, 32 = 58 mm, 22 = 44 mm. */
   ancho: number;
+  /** Si la impresora tiene cuchilla. */
+  corte?: boolean;
+  /** Cómo sale el QR del menú: "imagen", "nativo" o "no". */
+  qr?: string;
 }
 
 export interface Impresoras {
@@ -1073,6 +1081,8 @@ export interface Impresoras {
   cocina: ConfigImpresora;
   /** Los puertos COM que ve el sistema, para elegir de una lista. */
   puertos: string[];
+  /** Las impresoras instaladas en Windows. */
+  windows?: string[];
 }
 
 export async function impresoras(): Promise<Impresoras> {

@@ -231,6 +231,7 @@ app.use("/api/devoluciones", require("./Routes/devoluciones")); // Devoluciones 
 app.use("/api/rastreo", require("./Routes/rastreo")); // Rastreo de guías por transportadora
 app.use("/api/pos", require("./Routes/pos")); // Caja nativa: subir ventas y bajar catálogo
 app.use("/api/cajas", require("./Routes/cajas")); // Terminales vinculadas: listar y revocar
+app.use("/api/pos-panel", require("./Routes/posPanel")); // Panel: todo lo de la caja nativa en una sección
 app.use("/api/favorites", require("./Routes/favorites")); // Productos favoritos del cliente
 app.use("/api/delivery-zones", require("./Routes/deliveryZones")); // Zonas de entrega
 app.use("/api/delivery-admin", require("./Routes/deliveryAdmin")); // Gestión de domiciliarios (admin)

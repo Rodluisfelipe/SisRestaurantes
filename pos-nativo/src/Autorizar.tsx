@@ -103,7 +103,7 @@ export default function Autorizar({
             <button
               onClick={confirmar}
               disabled={pin.length < 4 || ocupado}
-              className="h-12 rounded-xl bg-marca text-sobre-marca text-[12px] font-bold disabled:opacity-30"
+              className="h-12 rounded-xl bg-accion text-sobre-accion text-[12px] font-bold disabled:opacity-30"
             >
               {ocupado ? '…' : 'Autorizar'}
             </button>

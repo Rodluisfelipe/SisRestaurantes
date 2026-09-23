@@ -426,8 +426,14 @@ function validarCierre(cuerpo) {
     return { ok: false, error: 'Hay montos negativos donde no puede haberlos' };
   }
 
+  /* Lo devuelto en efectivo salió de la gaveta, y la caja lo resta del
+     esperado. Este chequeo no lo restaba: cualquier turno con una devolución
+     en efectivo "no cuadraba", se rechazaba, y el cierre quedaba apartado en
+     la caja sin llegar nunca al panel. Opcional para las cajas viejas que no
+     lo mandan: para ellas vale cero, como antes. */
+  const devolucionesEfectivo = Math.max(0, Number(cuerpo.devoluciones_efectivo) || 0);
   const esperadoCalculado =
-    campos.fondoInicial + campos.ventasEfectivo + campos.entradas - campos.salidas;
+    campos.fondoInicial + campos.ventasEfectivo + campos.entradas - campos.salidas - devolucionesEfectivo;
 
   if (Math.round(esperadoCalculado) !== Math.round(campos.esperado)) {
     return { ok: false, error: 'El esperado no cuadra con el fondo, las ventas y los movimientos' };
@@ -445,6 +451,31 @@ function validarCierre(cuerpo) {
       cerradoEn: cuerpo.cerrado_en ? new Date(cuerpo.cerrado_en) : new Date(),
       ventas: Math.max(0, parseInt(cuerpo.ventas, 10) || 0),
       ...campos,
+      /* Lo que la caja manda además de la plata. No cambia el cuadre; es lo
+         que el dueño mira para entender un turno: cuánto de la gaveta es
+         propina, cuántas veces se abrió sin vender, cuánto se borró. */
+      detalle: {
+        propinaEfectivo: Math.max(0, Number(cuerpo.propina_efectivo) || 0),
+        propinaOtros: Math.max(0, Number(cuerpo.propina_otros) || 0),
+        devolucionesEfectivo,
+        aperturasSinVenta: Math.max(0, parseInt(cuerpo.aperturas_sin_venta, 10) || 0),
+        borradoresAnulados: Math.max(0, parseInt(cuerpo.borradores_anulados, 10) || 0),
+        borradoresMonto: Math.max(0, Number(cuerpo.borradores_monto) || 0),
+        anulacionesComanda: Math.max(0, parseInt(cuerpo.anulaciones_comanda, 10) || 0),
+        anulacionesMonto: Math.max(0, Number(cuerpo.anulaciones_monto) || 0),
+        ventaBruta: Math.max(0, Number(cuerpo.venta_bruta) || 0),
+        alertaBorradores: cuerpo.alerta_borradores === true,
+      },
+      movimientos: (Array.isArray(cuerpo.movimientos) ? cuerpo.movimientos : [])
+        .filter((m) => m && (m.tipo === 'entrada' || m.tipo === 'salida') && Number(m.monto) > 0)
+        .slice(0, 500)
+        .map((m) => ({
+          tipo: m.tipo,
+          monto: Number(m.monto),
+          motivo: String(m.motivo || '').slice(0, 200),
+          usuario: String(m.usuario || '').slice(0, 80),
+          creadoEn: m.creado_en ? new Date(m.creado_en) : undefined,
+        })),
     },
   };
 }

@@ -92,7 +92,7 @@ export default function Apartadas({ onCerrar }: { onCerrar: () => void }) {
         <button
           onClick={reintentar}
           disabled={ocupado || lista.length === 0}
-          className="flex items-center justify-center gap-2 h-12 rounded-xl bg-marca text-sobre-marca text-[14px] font-black disabled:opacity-30"
+          className="flex items-center justify-center gap-2 h-12 rounded-xl bg-accion text-sobre-accion text-[14px] font-black disabled:opacity-30"
         >
           <RefreshCw size={16} strokeWidth={2.5} className={ocupado ? 'animate-spin' : ''} />
           Reintentar todas

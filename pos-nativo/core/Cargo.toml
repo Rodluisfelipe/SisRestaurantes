@@ -17,6 +17,9 @@ time = { version = "0.3", features = ["formatting", "macros"] }
 # El PIN nunca se guarda en claro. Argon2 es Rust puro: no arrastra OpenSSL ni
 # nada que compilar aparte en el equipo del negocio.
 argon2 = "0.5"
+# El QR del menú en la tirilla, dibujado como imagen para las impresoras que no
+# lo generan solas. Sin el soporte de imágenes: solo la matriz de módulos.
+qrcode = { version = "0.14", default-features = false }
 # La sal aleatoria del PIN. Va aparte porque password-hash no reexporta el
 # generador con las features por defecto.
 rand_core = { version = "0.6", features = ["getrandom"] }

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Delete, Lock } from 'lucide-react';
-import { crearUsuario, entrar, hayUsuarios, type Usuario } from './nativo';
+import { carpetaFotos, crearUsuario, entrar, hayUsuarios, identidad, type Usuario } from './nativo';
 import { error as bipError } from './sonido';
+import { rutaDeFoto } from './FotoProducto';
+import logoMenuBy from './assets/menuby.png';
 
 /**
  * La puerta de la caja.
@@ -30,6 +32,19 @@ export default function PantallaPin({
      quedaría cerrada con llave y sin llave. */
   const [primeraVez, setPrimeraVez] = useState<boolean | null>(null);
   const [nombre, setNombre] = useState('');
+
+  /* El logo del negocio, desde el disco de la caja: la pantalla de entrada
+     tiene que verse igual sin internet. Si todavía no bajó —caja recién
+     instalada— o no se puede leer, queda el candado. */
+  const [logo, setLogo] = useState('');
+  const [logoFallo, setLogoFallo] = useState(false);
+  useEffect(() => {
+    Promise.all([identidad(), carpetaFotos()])
+      .then(([quien, carpeta]) => {
+        if (quien.logo && carpeta) setLogo(rutaDeFoto(carpeta, quien.logo));
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     hayUsuarios().then((hay) => setPrimeraVez(!hay)).catch(() => setPrimeraVez(false));
@@ -74,15 +89,29 @@ export default function PantallaPin({
   });
 
   return (
-    <div className="h-screen flex flex-col items-center justify-center bg-slate-900 text-white gap-6">
+    <div className="relative h-screen flex flex-col items-center justify-center bg-slate-900 text-white gap-6">
       {/* Esta es la primera pantalla de la mañana. Lleva el nombre del negocio
           y no el del programa: el cajero trabaja para el negocio, y una caja
           que dice "MenuBy POS" a las seis de la mañana es una herramienta
           ajena. El candado hace de marca cuando todavía no hay ninguna. */}
       <div className="flex flex-col items-center gap-3">
-        <span className="flex items-center justify-center w-14 h-14 rounded-2xl bg-marca text-sobre-marca">
-          <Lock size={26} strokeWidth={2.25} />
-        </span>
+        {logo && !logoFallo ? (
+          /* Fondo blanco detrás: los logos vienen en cualquier color, y uno
+             oscuro sobre este fondo oscuro desaparecería. */
+          <span className="flex items-center justify-center w-24 h-24 rounded-3xl bg-white p-2 shadow-lg shadow-black/30">
+            <img
+              src={logo}
+              alt=""
+              draggable={false}
+              onError={() => setLogoFallo(true)}
+              className="max-w-full max-h-full object-contain rounded-2xl"
+            />
+          </span>
+        ) : (
+          <span className="flex items-center justify-center w-14 h-14 rounded-2xl bg-marca text-sobre-marca">
+            <Lock size={26} strokeWidth={2.25} />
+          </span>
+        )}
         <div className="text-center">
           <p className="text-2xl font-black tracking-tight">{negocio || 'MenuBy POS'}</p>
           <p className="text-sm text-slate-400 mt-1">
@@ -144,6 +173,15 @@ export default function PantallaPin({
       </div>
 
       <p className="h-6 text-[13px] font-semibold text-red-400">{error}</p>
+
+      {/* La firma, chica y abajo: la pantalla es del negocio, no nuestra. */}
+      <div className="absolute bottom-5 flex items-center gap-2 text-[12px] text-slate-500 select-none">
+        <img src={logoMenuBy} alt="" draggable={false} className="w-5 h-5 rounded-md" />
+        <span>
+          Hecho con <span className="text-red-400" aria-label="amor">♥</span> por{' '}
+          <span className="font-bold text-slate-300">MenuBy</span>
+        </span>
+      </div>
     </div>
   );
 }

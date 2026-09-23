@@ -117,6 +117,18 @@ pub struct ImpresoraRemota {
     pub baudios: u32,
     #[serde(default = "ochenta", rename = "anchoMm")]
     pub ancho_mm: u32,
+    /// Con tipo "WINDOWS": el nombre de la impresora instalada ("POS-58").
+    #[serde(default)]
+    pub nombre: String,
+    #[serde(default = "si")]
+    pub corte: bool,
+    /// "imagen", "nativo" o "no".
+    #[serde(default = "qr_imagen")]
+    pub qr: String,
+}
+
+fn qr_imagen() -> String {
+    "imagen".into()
 }
 
 impl Default for ImpresoraRemota {
@@ -128,6 +140,9 @@ impl Default for ImpresoraRemota {
             com: String::new(),
             baudios: 9600,
             ancho_mm: 80,
+            nombre: String::new(),
+            corte: true,
+            qr: qr_imagen(),
         }
     }
 }
@@ -236,6 +251,9 @@ fn como_impresora(r: &ImpresoraRemota) -> crate::perifericos::Impresora {
             host: r.host.trim().to_string(),
             puerto: r.puerto,
         },
+        "WINDOWS" if !r.nombre.trim().is_empty() => crate::perifericos::Impresora::Windows {
+            nombre: r.nombre.trim().to_string(),
+        },
         "SERIAL" if !r.com.trim().is_empty() => crate::perifericos::Impresora::Serie {
             puerto: r.com.trim().to_string(),
             baudios: r.baudios,
@@ -248,11 +266,15 @@ fn como_impresora(r: &ImpresoraRemota) -> crate::perifericos::Impresora {
 }
 
 /// El ancho en caracteres que corresponde a los milímetros del papel.
+///
+/// Los mismos perfiles del agente de impresión, para que una tirilla salga
+/// igual de ancha impresa por la caja o por el agente.
 fn ancho_en_caracteres(mm: u32) -> usize {
-    if mm == 58 {
-        32
-    } else {
-        48
+    match mm {
+        44 => 22,
+        58 => 32,
+        76 => 42,
+        _ => 48,
     }
 }
 
@@ -331,6 +353,12 @@ pub fn aplicar(
                 let local = crate::perifericos::Config {
                     impresora: como_impresora(remota),
                     ancho: ancho_en_caracteres(remota.ancho_mm),
+                    corte: remota.corte,
+                    qr: if ["imagen", "nativo", "no"].contains(&remota.qr.as_str()) {
+                        remota.qr.clone()
+                    } else {
+                        qr_imagen()
+                    },
                 };
                 let json = serde_json::to_string(&local).unwrap_or_default();
                 poner(&format!("impresora_{rol}"), json)?;

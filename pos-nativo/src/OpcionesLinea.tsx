@@ -126,7 +126,7 @@ export default function OpcionesLinea({
         <button
           onClick={onCerrar}
           title="Volver a la carta (Enter o Esc)"
-          className="px-6 h-11 rounded-xl bg-marca text-sobre-marca text-[15px] font-black active:scale-95 transition-transform duration-75"
+          className="px-6 h-11 rounded-xl bg-accion text-sobre-accion text-[15px] font-black active:scale-95 transition-transform duration-75"
         >
           Listo
         </button>

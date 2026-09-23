@@ -126,7 +126,7 @@ export default function PedidosWeb({
                           <button
                             onClick={() => mover(p, paso.estado)}
                             disabled={ocupado === p.id}
-                            className="flex-1 h-11 rounded-lg bg-marca text-sobre-marca text-[13px] font-black disabled:opacity-40 active:scale-95 transition-transform duration-75"
+                            className="flex-1 h-11 rounded-lg bg-accion text-sobre-accion text-[13px] font-black disabled:opacity-40 active:scale-95 transition-transform duration-75"
                           >
                             {ocupado === p.id ? '…' : paso.etiqueta}
                           </button>

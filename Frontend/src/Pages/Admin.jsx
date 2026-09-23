@@ -48,7 +48,8 @@ const DomiStats = lazy(() => import("../Components/Delivery/DomiStats"));
 const ProductManager = lazy(() => import("../Components/Admin/ProductManager"));
 const InventoryManager = lazy(() => import("../Components/Admin/InventoryManager"));
 const Devoluciones = lazy(() => import("../Components/Admin/Devoluciones"));
-const Cajas = lazy(() => import("../Components/Admin/Cajas"));
+/* "cajas" abre la sección Punto de venta: las cajas son una de sus pestañas. */
+const PuntoDeVenta = lazy(() => import("../Components/Admin/PuntoDeVenta"));
 const WhatsAppInbox = lazy(() => import("../Components/Admin/WhatsAppInbox"));
 const FeaturedProductsManager = lazy(() => import("../Components/Admin/FeaturedProductsManager"));
 const SubscriptionPayment = lazy(() => import("./SubscriptionPayment"));
@@ -528,8 +529,8 @@ function Admin() {
                 )}
                 {activeTab === 'cajas' && (
                   <AdminTabWrapper setActiveTab={setActiveTab}>
-                    <AdminSectionErrorBoundary sectionName="Cajas" onGoBack={() => setActiveTab('dashboard')}>
-                      <Cajas />
+                    <AdminSectionErrorBoundary sectionName="Punto de venta" onGoBack={() => setActiveTab('dashboard')}>
+                      <PuntoDeVenta />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}

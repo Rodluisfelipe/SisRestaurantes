@@ -47,6 +47,11 @@
 :root {
   /* El color del negocio. Lo pisa la caja al arrancar con el del panel; este
      es el de MenuBy, para que nunca haya un botón sin color. */
+  /* Verde esmeralda 700 con blanco: 5,5:1 de contraste, pasa AA aun en texto
+     chico, y se distingue del rojo de cancelar para quien no ve bien el rojo
+     y el verde porque siempre va con su texto ("Cobrar", "Listo"). */
+  --accion: #047857;
+  --sobre-accion: #ffffff;
   --marca: #0f172a;
   --marca-viva: #1e293b;
   /* Sobre qué color va el texto del botón principal. Se recalcula junto con

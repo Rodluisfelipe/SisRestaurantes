@@ -28,8 +28,8 @@ const POR_DEFECTO = {
     textoPieFactura: '',
   },
   hardware: {
-    impresoraCaja: { tipo: 'NINGUNA', host: '', puerto: 9100, com: '', baudios: 9600, anchoMm: 80 },
-    impresoraCocina: { tipo: 'NINGUNA', host: '', puerto: 9100, com: '', baudios: 9600, anchoMm: 80 },
+    impresoraCaja: { tipo: 'NINGUNA', host: '', puerto: 9100, com: '', baudios: 9600, anchoMm: 80, nombre: '', corte: true, qr: 'imagen' },
+    impresoraCocina: { tipo: 'NINGUNA', host: '', puerto: 9100, com: '', baudios: 9600, anchoMm: 80, nombre: '', corte: true, qr: 'imagen' },
     datafono: { tipo: 'MANUAL', host: '', puerto: 9100, esperaSegundos: 60 },
     cajon: { abrirAlCobrarEfectivo: true },
     pantallaCliente: { mostrarQr: false, plantillaQr: '' },
@@ -37,7 +37,12 @@ const POR_DEFECTO = {
 };
 
 const REGIMENES = ['INC_8', 'IVA_19', 'NO_RESPONSABLE'];
-const CONEXIONES = ['NINGUNA', 'RED', 'SERIAL'];
+/* WINDOWS: una impresora instalada en el sistema, por nombre. Es como quedan
+   casi todas las térmicas USB, y como las usa el agente de impresión. */
+const CONEXIONES = ['NINGUNA', 'WINDOWS', 'RED', 'SERIAL'];
+/* Los mismos cuatro anchos que el agente de impresión. */
+const ANCHOS = [44, 58, 76, 80];
+const MODOS_QR = ['imagen', 'nativo', 'no'];
 
 const entero = (valor, defecto, min, max) => {
   const n = Math.round(Number(valor));
@@ -69,8 +74,10 @@ function impresora(dada, defecto) {
     puerto: entero(d.puerto, defecto.puerto, 1, 65535),
     com: texto(d.com, defecto.com, 20),
     baudios: entero(d.baudios, defecto.baudios, 1200, 921600),
-    // 58 u 80 y nada más: son los dos anchos de papel que existen.
-    anchoMm: d.anchoMm === 58 ? 58 : 80,
+    anchoMm: ANCHOS.includes(Number(d.anchoMm)) ? Number(d.anchoMm) : 80,
+    nombre: texto(d.nombre, defecto.nombre || '', 120),
+    corte: booleano(d.corte, true),
+    qr: MODOS_QR.includes(d.qr) ? d.qr : 'imagen',
   };
 }
 

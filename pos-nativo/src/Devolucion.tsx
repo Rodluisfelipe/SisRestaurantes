@@ -214,7 +214,7 @@ export default function Devolucion({
           <button
             onClick={() => elegida && onListo(elegida, lineas, cantidades, medio)}
             disabled={!elegida || !algo}
-            className="flex-1 h-toque rounded-xl bg-marca text-sobre-marca text-[13.5px] font-bold disabled:opacity-30"
+            className="flex-1 h-toque rounded-xl bg-accion text-sobre-accion text-[13.5px] font-bold disabled:opacity-30"
           >
             Pedir autorización
           </button>

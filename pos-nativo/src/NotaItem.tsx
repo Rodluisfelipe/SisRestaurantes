@@ -129,7 +129,7 @@ export default function NotaItem({
           )}
           <button
             onClick={() => onListo(nota.trim())}
-            className="flex-1 h-toque rounded-xl bg-marca text-sobre-marca text-[13.5px] font-bold"
+            className="flex-1 h-toque rounded-xl bg-accion text-sobre-accion text-[13.5px] font-bold"
           >
             Guardar
             <span className="block text-[10px] font-semibold opacity-60">Enter</span>

@@ -156,7 +156,7 @@ export default function ModalCliente({
               <button
                 onClick={registrar}
                 disabled={!nombre.trim() || guardando}
-                className="flex-1 h-14 rounded-xl bg-marca text-sobre-marca text-[15px] font-black disabled:opacity-30"
+                className="flex-1 h-14 rounded-xl bg-accion text-sobre-accion text-[15px] font-black disabled:opacity-30"
               >
                 {guardando ? 'Guardando…' : 'Registrar y usar'}
               </button>
@@ -217,7 +217,7 @@ export default function ModalCliente({
                   {pareceTelefono && (
                     <button
                       onClick={() => setRegistrando(true)}
-                      className="flex items-center gap-2 h-toque px-4 rounded-xl bg-marca text-sobre-marca text-[13px] font-bold"
+                      className="flex items-center gap-2 h-toque px-4 rounded-xl bg-accion text-sobre-accion text-[13px] font-bold"
                     >
                       <UserPlus size={16} strokeWidth={2.5} />
                       Registrar {texto.trim()}

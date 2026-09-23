@@ -125,6 +125,7 @@ export default function Impresoras({ onCerrar }: { onCerrar: () => void }) {
                 rol={rol}
                 valor={config[rol]}
                 puertos={config.puertos}
+                instaladas={config.windows ?? []}
                 onCambiar={(nueva) => guardar(rol, nueva)}
                 onProbar={() => probar(rol)}
               />
@@ -135,7 +136,7 @@ export default function Impresoras({ onCerrar }: { onCerrar: () => void }) {
           </>
         )}
 
-        <button onClick={onCerrar} className="w-full h-toque rounded-xl bg-marca text-sobre-marca text-[13px] font-bold">
+        <button onClick={onCerrar} className="w-full h-toque rounded-xl bg-accion text-sobre-accion text-[13px] font-bold">
           Listo
         </button>
       </div>
@@ -147,12 +148,14 @@ function Ficha({
   rol,
   valor,
   puertos,
+  instaladas,
   onCambiar,
   onProbar,
 }: {
   rol: 'caja' | 'cocina';
   valor: ConfigImpresora;
   puertos: string[];
+  instaladas: string[];
   onCambiar: (c: ConfigImpresora) => void;
   onProbar: () => void;
 }) {
@@ -163,6 +166,7 @@ function Ficha({
       nuevo === 'red' ? { tipo: 'red', host: '192.168.1.100', puerto: 9100 }
       : nuevo === 'serie' ? { tipo: 'serie', puerto: puertos[0] || 'COM3', baudios: 9600 }
       : nuevo === 'archivo' ? { tipo: 'archivo', ruta: '/dev/usb/lp0' }
+      : nuevo === 'windows' ? { tipo: 'windows', nombre: instaladas[0] || '' }
       : { tipo: 'ninguna' };
     onCambiar({ ...valor, impresora });
   };
@@ -185,8 +189,11 @@ function Ficha({
       <div className="flex gap-1.5">
         {([
           ['ninguna', 'Ninguna'],
+          /* Primero la de Windows: es como queda casi toda térmica USB
+             instalada con el programa del fabricante. */
+          ['windows', 'Windows'],
           ['red', 'Red'],
-          ['serie', 'USB / COM'],
+          ['serie', 'COM'],
           ['archivo', 'Archivo'],
         ] as const).map(([id, etiqueta]) => (
           <button
@@ -239,6 +246,25 @@ function Ficha({
         </div>
       )}
 
+      {valor.impresora.tipo === 'windows' && (
+        instaladas.length ? (
+          <select
+            value={valor.impresora.nombre}
+            onChange={(e) => onCambiar({ ...valor, impresora: { tipo: 'windows', nombre: e.target.value } })}
+            className="w-full h-toque px-2 rounded-lg border-2 border-slate-200 text-[13px]"
+          >
+            {!instaladas.includes(valor.impresora.nombre) && valor.impresora.nombre && (
+              <option value={valor.impresora.nombre}>{valor.impresora.nombre} (no está instalada)</option>
+            )}
+            {instaladas.map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        ) : (
+          <p className="text-[12px] text-amber-700">
+            Windows no tiene impresoras instaladas. Instala la térmica con el programa del fabricante y vuelve a abrir esta ventana.
+          </p>
+        )
+      )}
+
       {valor.impresora.tipo === 'archivo' && (
         <input
           value={valor.impresora.ruta}
@@ -251,7 +277,8 @@ function Ficha({
       {tipo !== 'ninguna' && (
         <div className="flex gap-1.5 items-center">
           <span className="text-[11.5px] text-slate-400">Ancho del papel</span>
-          {[[48, '80 mm'], [32, '58 mm']].map(([ancho, etiqueta]) => (
+          {/* Los mismos cuatro perfiles del agente de impresión. */}
+          {[[48, '80'], [42, '76'], [32, '58'], [22, '44']].map(([ancho, etiqueta]) => (
             <button
               key={ancho}
               onClick={() => onCambiar({ ...valor, ancho: ancho as number })}
@@ -259,9 +286,41 @@ function Ficha({
                 valor.ancho === ancho ? 'border-marca bg-marca text-sobre-marca' : 'border-slate-200 text-slate-500'
               }`}
             >
-              {etiqueta}
+              {etiqueta} mm
             </button>
           ))}
+        </div>
+      )}
+
+      {tipo !== 'ninguna' && (
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 items-center">
+          <label className="flex items-center gap-2 text-[12px] text-slate-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={valor.corte !== false}
+              onChange={(e) => onCambiar({ ...valor, corte: e.target.checked })}
+              className="w-4 h-4"
+            />
+            Tiene cuchilla (cortar el papel)
+          </label>
+
+          {rol === 'caja' && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11.5px] text-slate-400">QR del menú</span>
+              {[['imagen', 'Imagen'], ['nativo', 'Nativo'], ['no', 'No']].map(([id, etiqueta]) => (
+                <button
+                  key={id}
+                  onClick={() => onCambiar({ ...valor, qr: id })}
+                  title={id === 'imagen' ? 'Funciona en casi todas' : id === 'nativo' ? 'Más nítido, pero no todas lo entienden' : 'Sin QR'}
+                  className={`h-9 px-2.5 rounded-lg text-[11.5px] font-bold border-2 ${
+                    (valor.qr ?? 'imagen') === id ? 'border-marca bg-marca text-sobre-marca' : 'border-slate-200 text-slate-500'
+                  }`}
+                >
+                  {etiqueta}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

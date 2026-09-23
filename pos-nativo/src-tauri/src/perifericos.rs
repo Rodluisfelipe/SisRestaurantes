@@ -29,6 +29,9 @@ pub enum Impresora {
     Red { host: String, puerto: u16 },
     Serie { puerto: String, baudios: u32 },
     Archivo { ruta: String },
+    /// Una impresora instalada en Windows, por su nombre ("POS-58"). Es como
+    /// quedan casi todas las térmicas USB. Ver `cola_windows`.
+    Windows { nombre: String },
     /// Sin impresora configurada: el POS vende igual y la tirilla se ve en
     /// pantalla. Un negocio sin térmica no puede quedarse sin poder cobrar.
     Ninguna,
@@ -88,6 +91,8 @@ pub fn enviar(destino: &Impresora, bytes: &[u8]) -> Result<(), String> {
             serie.flush().map_err(|e| format!("Se cortó el envío por {puerto}: {e}"))
         }
 
+        Impresora::Windows { nombre } => crate::cola_windows::imprimir(nombre, bytes),
+
         Impresora::Archivo { ruta } => {
             let mut archivo = std::fs::OpenOptions::new()
                 .write(true)
@@ -111,12 +116,55 @@ pub struct Config {
     /// 48 para papel de 80 mm, 32 para 58 mm. Si se equivoca, la tirilla sale
     /// descuadrada entera: por eso se configura y no se adivina.
     pub ancho: usize,
+    /// Si la impresora tiene cuchilla. Las que no la tienen reciben el
+    /// comando de corte como basura y a veces imprimen caracteres raros; el
+    /// agente de impresión ya dejaba apagarlo.
+    #[serde(default = "si")]
+    pub corte: bool,
+    /// Cómo sale el QR del menú en la tirilla: "imagen" (lo dibuja la caja,
+    /// funciona en casi todas), "nativo" (lo dibuja la impresora, más nítido
+    /// pero no todas lo entienden) o "no". Los mismos tres del agente.
+    #[serde(default = "qr_imagen")]
+    pub qr: String,
+}
+
+fn si() -> bool {
+    true
+}
+
+fn qr_imagen() -> String {
+    "imagen".into()
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Config { impresora: Impresora::Ninguna, ancho: crate::escpos_ancho_por_defecto() }
+        Config {
+            impresora: Impresora::Ninguna,
+            ancho: crate::escpos_ancho_por_defecto(),
+            corte: true,
+            qr: qr_imagen(),
+        }
     }
+}
+
+/// Lo que de verdad sale hacia la impresora: sin los cortes si no tiene
+/// cuchilla. Se quitan solo los comandos que pone `Tirilla::cortar` (GS V 66
+/// n), no cualquier byte parecido.
+pub fn papel(corte: bool, bytes: Vec<u8>) -> Vec<u8> {
+    if corte {
+        return bytes;
+    }
+    let mut salida = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if i + 3 < bytes.len() && bytes[i] == 0x1D && bytes[i + 1] == b'V' && bytes[i + 2] == 66 {
+            i += 4;
+            continue;
+        }
+        salida.push(bytes[i]);
+        i += 1;
+    }
+    salida
 }
 
 fn clave(rol: &str) -> String {

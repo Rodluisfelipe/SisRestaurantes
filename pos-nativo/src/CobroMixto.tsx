@@ -339,7 +339,7 @@ export default function CobroMixto({
           <button
             onClick={cobrarYa}
             disabled={!listo || faltaRef}
-            className="flex-1 h-16 rounded-xl bg-marca text-sobre-marca text-lg font-black disabled:opacity-30"
+            className="flex-1 h-16 rounded-xl bg-accion text-sobre-accion text-lg font-black disabled:opacity-30"
           >
             {faltaRef ? 'Falta la aprobación' : falta > 0 && valor === 0 ? `Faltan ${pesos(falta)}` : 'Cobrar'}
             {listo && !faltaRef && <span className="block text-[10px] font-semibold opacity-60">Enter</span>}

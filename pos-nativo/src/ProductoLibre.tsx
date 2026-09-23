@@ -63,7 +63,7 @@ export default function ProductoLibre({
           <button
             onClick={aceptar}
             disabled={!valido}
-            className="flex-[2] h-12 rounded-xl bg-marca text-sobre-marca text-[14px] font-black disabled:opacity-30"
+            className="flex-[2] h-12 rounded-xl bg-accion text-sobre-accion text-[14px] font-black disabled:opacity-30"
           >
             {valido ? `Agregar ${pesos(valor)}` : 'Agregar'}
           </button>

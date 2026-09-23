@@ -437,7 +437,7 @@ function FichaImpresora({ titulo, ayuda, valor, onCambiar }) {
       </div>
 
       <div className="flex gap-1.5">
-        {[['NINGUNA', 'Ninguna'], ['RED', 'Red'], ['SERIAL', 'Puerto COM']].map(([id, nombre]) => (
+        {[['NINGUNA', 'Ninguna'], ['WINDOWS', 'Windows (USB)'], ['RED', 'Red'], ['SERIAL', 'Puerto COM']].map(([id, nombre]) => (
           <button
             key={id}
             onClick={() => onCambiar('tipo', id)}
@@ -467,6 +467,18 @@ function FichaImpresora({ titulo, ayuda, valor, onCambiar }) {
         </div>
       )}
 
+      {valor.tipo === 'WINDOWS' && (
+        /* El nombre tal cual aparece en "Impresoras y escáneres" de Windows.
+           Si no se sabe, es más fácil elegirla desde la propia caja, que
+           muestra la lista de las instaladas. */
+        <input
+          value={valor.nombre || ''}
+          onChange={(e) => onCambiar('nombre', e.target.value)}
+          placeholder="Nombre en Windows, ej. POS-58"
+          className={entrada}
+        />
+      )}
+
       {valor.tipo === 'SERIAL' && (
         <div className="flex gap-2">
           <input
@@ -486,7 +498,7 @@ function FichaImpresora({ titulo, ayuda, valor, onCambiar }) {
 
       {valor.tipo !== 'NINGUNA' && (
         <div className="flex gap-1.5">
-          {[58, 80].map((mm) => (
+          {[44, 58, 76, 80].map((mm) => (
             <button
               key={mm}
               onClick={() => onCambiar('anchoMm', mm)}
@@ -497,6 +509,31 @@ function FichaImpresora({ titulo, ayuda, valor, onCambiar }) {
               {mm} mm
             </button>
           ))}
+        </div>
+      )}
+
+      {valor.tipo !== 'NINGUNA' && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <label className="flex items-center gap-2 text-[12.5px] text-slate-600">
+            <input
+              type="checkbox"
+              checked={valor.corte !== false}
+              onChange={(e) => onCambiar('corte', e.target.checked)}
+            />
+            Tiene cuchilla
+          </label>
+          <label className="flex items-center gap-2 text-[12.5px] text-slate-600">
+            QR del menú
+            <select
+              value={valor.qr || 'imagen'}
+              onChange={(e) => onCambiar('qr', e.target.value)}
+              className="h-9 px-2 rounded-lg border border-slate-200 bg-white"
+            >
+              <option value="imagen">Imagen (casi todas)</option>
+              <option value="nativo">Nativo (más nítido)</option>
+              <option value="no">No imprimir</option>
+            </select>
+          </label>
         </div>
       )}
     </div>

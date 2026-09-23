@@ -24,45 +24,51 @@ const FAMILIAS: { palabras: string[]; clase: string }[] = [
   {
     // Carmesí: lo que sale de la plancha.
     palabras: ['carne', 'carnes', 'hamburguesa', 'hamburguesas', 'burger', 'burgers', 'parrilla', 'asados'],
-    clase: 'bg-red-700 text-white',
+    clase: 'bg-red-100 text-red-950 border-l-[6px] border-red-500',
   },
   {
     // Cobalto: todo lo que se bebe frío.
     palabras: ['bebida', 'bebidas', 'gaseosa', 'gaseosas', 'jugos', 'jugo', 'refrescos', 'liquidos'],
-    clase: 'bg-blue-700 text-white',
+    clase: 'bg-blue-100 text-blue-950 border-l-[6px] border-blue-500',
   },
   {
     // Ámbar: lo que el negocio quiere que se venda.
     palabras: ['combo', 'combos', 'promo', 'promos', 'promocion', 'promociones', 'menu del dia'],
-    clase: 'bg-amber-500 text-amber-950',
+    clase: 'bg-amber-100 text-amber-950 border-l-[6px] border-amber-500',
   },
   {
     // Púrpura: el final de la comida.
     palabras: ['postre', 'postres', 'dulces', 'helados', 'cafe', 'cafes', 'reposteria'],
-    clase: 'bg-purple-700 text-white',
+    clase: 'bg-purple-100 text-purple-950 border-l-[6px] border-purple-500',
   },
   {
     palabras: ['pollo', 'pollos', 'alitas'],
-    clase: 'bg-orange-700 text-white',
+    clase: 'bg-orange-100 text-orange-950 border-l-[6px] border-orange-500',
   },
   {
     palabras: ['acompanamiento', 'acompanamientos', 'papas', 'entradas', 'picadas'],
-    clase: 'bg-yellow-600 text-yellow-950',
+    clase: 'bg-lime-100 text-lime-950 border-l-[6px] border-lime-600',
   },
 ];
 
-/* Los tonos de reserva. Son de la misma familia visual que los de arriba
-   —oscuros, saturados, con texto blanco legible encima— para que una carta que
-   no se reconoce no se vea como un error sino como otra carta. */
+/* Los tonos de reserva, de la misma familia que los de arriba.
+
+   Todos son **pastel con texto casi negro y una franja del tono fuerte** a la
+   izquierda, que es como pintan sus botones Toast y los POS de restaurante
+   grandes. Antes eran bloques saturados con texto blanco: se distinguían bien,
+   pero una pantalla entera de rojo o azul intenso cansa la vista en un turno
+   de ocho horas, y el texto blanco sobre amarillo no se leía. La franja
+   conserva lo que servía —reconocer la zona de reojo— y el fondo claro deja
+   leer el nombre y el precio con contraste de sobra. */
 const RESERVA = [
-  'bg-teal-700 text-white',
-  'bg-rose-700 text-white',
-  'bg-indigo-700 text-white',
-  'bg-emerald-700 text-white',
-  'bg-cyan-800 text-white',
-  'bg-fuchsia-800 text-white',
-  'bg-lime-800 text-white',
-  'bg-sky-800 text-white',
+  'bg-teal-100 text-teal-950 border-l-[6px] border-teal-500',
+  'bg-rose-100 text-rose-950 border-l-[6px] border-rose-500',
+  'bg-indigo-100 text-indigo-950 border-l-[6px] border-indigo-500',
+  'bg-emerald-100 text-emerald-950 border-l-[6px] border-emerald-500',
+  'bg-cyan-100 text-cyan-950 border-l-[6px] border-cyan-500',
+  'bg-fuchsia-100 text-fuchsia-950 border-l-[6px] border-fuchsia-500',
+  'bg-yellow-100 text-yellow-950 border-l-[6px] border-yellow-500',
+  'bg-sky-100 text-sky-950 border-l-[6px] border-sky-500',
 ];
 
 /**
@@ -73,7 +79,7 @@ const RESERVA = [
  */
 export function colorDeCategoria(categoria: string): string {
   const limpia = normalizar(categoria);
-  if (!limpia) return 'bg-slate-700 text-white';
+  if (!limpia) return 'bg-slate-100 text-slate-900 border-l-[6px] border-slate-400';
 
   for (const f of FAMILIAS) {
     /* `includes` sobre la categoría entera y no igualdad: un negocio escribe

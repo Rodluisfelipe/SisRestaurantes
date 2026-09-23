@@ -183,7 +183,7 @@ export default function Descuento({
           <button
             onClick={() => onListo(monto, detalle)}
             disabled={!valido}
-            className="flex-1 h-toque rounded-xl bg-marca text-sobre-marca text-[13.5px] font-bold disabled:opacity-30"
+            className="flex-1 h-toque rounded-xl bg-accion text-sobre-accion text-[13.5px] font-bold disabled:opacity-30"
           >
             Pedir autorización
           </button>

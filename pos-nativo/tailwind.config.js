@@ -17,6 +17,13 @@ export default {
         marca: 'var(--marca)',
         'marca-viva': 'var(--marca-viva)',
         'sobre-marca': 'var(--sobre-marca)',
+        /* Confirmar, cobrar, aceptar: verde, siempre, sea cual sea la marca.
+           El color del negocio se queda para lo seleccionado y la identidad.
+           Con la marca en el botón de cobrar, una hamburguesería de marca roja
+           cobraba con un botón rojo —el color que en cualquier POS significa
+           cancelar—. */
+        accion: 'var(--accion)',
+        'sobre-accion': 'var(--sobre-accion)',
       },
       height: {
         /* El mínimo táctil. Está nombrado para que nadie vuelva a poner h-8 en

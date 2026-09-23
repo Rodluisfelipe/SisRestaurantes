@@ -175,7 +175,7 @@ export default function Nube({ onCerrar }: { onCerrar: () => void }) {
           <button
             onClick={modoSoporte ? conectar : conectarConCodigo}
             disabled={ocupado || (modoSoporte ? token.length < 20 : codigo.replace(/-/g, '').length < 8)}
-            className="flex-1 h-12 rounded-xl bg-marca text-sobre-marca text-[13px] font-bold disabled:opacity-30"
+            className="flex-1 h-12 rounded-xl bg-accion text-sobre-accion text-[13px] font-bold disabled:opacity-30"
           >
             {ocupado ? 'Conectando…' : yaConectada ? 'Volver a conectar' : 'Conectar'}
           </button>

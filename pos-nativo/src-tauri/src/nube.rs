@@ -300,6 +300,12 @@ pub struct Identidad {
     pub direccion: Option<String>,
     #[serde(default)]
     pub telefono: Option<String>,
+    #[serde(default)]
+    pub menu_url: Option<String>,
+    #[serde(default)]
+    pub qr_en_tirilla: Option<bool>,
+    #[serde(default)]
+    pub logo: Option<String>,
 }
 
 /// Baja el catálogo desde la marca de agua y lo aplica.
@@ -571,13 +577,17 @@ fn guardar_identidad(conexion: &rusqlite::Connection, quien: &Identidad) {
     /* Estos sí se escriben vacíos: un NIT que el dueño quitó del panel no
        puede seguir saliendo en el papel. Se recortan porque terminan en una
        línea de tirilla de 32 a 48 columnas. */
+    let qr = quien.qr_en_tirilla.map(|si| if si { "1".to_string() } else { "0".to_string() });
     for (clave, valor) in [
         ("negocio_nit", &quien.nit),
         ("negocio_direccion", &quien.direccion),
         ("negocio_telefono", &quien.telefono),
+        ("negocio_menu_url", &quien.menu_url),
+        ("qr_en_tirilla", &qr),
+        ("negocio_logo_url", &quien.logo),
     ] {
         if let Some(v) = valor {
-            let v: String = v.trim().chars().take(120).collect();
+            let v: String = v.trim().chars().take(300).collect();
             let _ = conexion.execute(
                 "INSERT INTO ajustes (clave, valor) VALUES (?1, ?2)
                  ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor",

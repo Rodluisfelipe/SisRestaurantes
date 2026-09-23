@@ -63,6 +63,23 @@ cashRegisterSchema.add({
   // Quién contó la gaveta. Puede no ser un Admin: es el cajero del mostrador.
   cajeroNombre: { type: String, default: '', trim: true, maxlength: 80 },
   origen: { type: String, enum: ['web', 'pos-nativo'], default: 'web' },
+  /* El nombre de la terminal que cerró ("Caja 1", "Barra"). */
+  cajaNombre: { type: String, default: '', trim: true, maxlength: 80 },
+  /* Lo que la caja nativa informa además de la plata. Ver validarCierre. */
+  posDetalle: {
+    propinaEfectivo: Number,
+    propinaOtros: Number,
+    devolucionesEfectivo: Number,
+    aperturasSinVenta: Number,
+    borradoresAnulados: Number,
+    borradoresMonto: Number,
+    anulacionesComanda: Number,
+    anulacionesMonto: Number,
+    ventaBruta: Number,
+    alertaBorradores: Boolean,
+    ventasEfectivo: Number,
+    ventasOtros: Number,
+  },
 });
 
 cashRegisterSchema.index({ businessId: 1, status: 1 });

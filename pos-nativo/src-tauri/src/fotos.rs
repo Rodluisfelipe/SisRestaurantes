@@ -128,7 +128,14 @@ pub fn purgar_huerfanas(base: &std::sync::Mutex<rusqlite::Connection>, datos: &P
             return 0;
         };
         let Ok(filas) = consulta.query_map([], |f| f.get::<_, String>(0)) else { return 0 };
-        filas.flatten().collect()
+        let mut vivas: std::collections::HashSet<String> = filas.flatten().collect();
+        // El logo del negocio vive en la misma carpeta y no es de ningún producto.
+        if let Ok(logo) = conexion.query_row::<String, _, _>(
+            "SELECT valor FROM ajustes WHERE clave = 'negocio_logo_local'", [], |f| f.get(0),
+        ) {
+            vivas.insert(logo);
+        }
+        vivas
     };
 
     /* Si la consulta no devolvió nada, no se borra nada. Podría ser que el
@@ -155,6 +162,41 @@ pub fn purgar_huerfanas(base: &std::sync::Mutex<rusqlite::Connection>, datos: &P
     }
 
     borradas
+}
+
+/// Baja el logo del negocio si cambió. Va con las fotos: la pantalla de
+/// entrada lo muestra aunque no haya internet, así que tiene que estar en
+/// disco, no en la nube.
+pub fn bajar_logo(base: &std::sync::Mutex<rusqlite::Connection>, datos: &Path) {
+    let leer = |conexion: &rusqlite::Connection, clave: &str| -> String {
+        conexion
+            .query_row("SELECT valor FROM ajustes WHERE clave = ?1", [clave], |f| f.get(0))
+            .unwrap_or_default()
+    };
+    let (url, bajada) = {
+        let Ok(conexion) = base.lock() else { return };
+        (leer(&conexion, "negocio_logo_url"), leer(&conexion, "negocio_logo_bajado"))
+    };
+    if url.is_empty() || url == bajada {
+        return;
+    }
+    let Some(nombre) = nombre_de_archivo("logo-negocio", &url) else { return };
+    // Sin el candado mientras se descarga: la red puede tardar.
+    let Ok(bytes) = descargar(&url) else { return };
+    let carpeta_fotos = carpeta(datos);
+    let _ = std::fs::create_dir_all(&carpeta_fotos);
+    if std::fs::write(carpeta_fotos.join(&nombre), bytes).is_err() {
+        return;
+    }
+    if let Ok(conexion) = base.lock() {
+        for (clave, valor) in [("negocio_logo_local", nombre.as_str()), ("negocio_logo_bajado", url.as_str())] {
+            let _ = conexion.execute(
+                "INSERT INTO ajustes (clave, valor) VALUES (?1, ?2)
+                 ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor",
+                rusqlite::params![clave, valor],
+            );
+        }
+    }
 }
 
 /// Los productos con foto en la nube y sin foto en disco.

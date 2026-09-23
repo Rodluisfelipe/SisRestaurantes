@@ -1852,7 +1852,7 @@ function Caja({
                 >
                   <Trash2 size={18} strokeWidth={2.25} />
                 </button>
-                <button onClick={() => retomar(p.id)} className="h-toque px-5 rounded-xl bg-marca text-sobre-marca text-[13px] font-bold">
+                <button onClick={() => retomar(p.id)} className="h-toque px-5 rounded-xl bg-accion text-sobre-accion text-[13px] font-bold">
                   Retomar
                 </button>
               </div>
@@ -2431,7 +2431,7 @@ function Caja({
                 <button
                   onClick={mandarACuenta}
                   disabled={!carrito.length}
-                  className="flex-1 flex flex-col items-center justify-center h-16 rounded-xl bg-marca text-sobre-marca text-[14px] font-black disabled:opacity-30 active:scale-95 transition-transform duration-75"
+                  className="flex-1 flex flex-col items-center justify-center h-16 rounded-xl bg-accion text-sobre-accion text-[14px] font-black disabled:opacity-30 active:scale-95 transition-transform duration-75"
                 >
                   Mandar a {enCuenta.identificador}
                   <span className="text-[10px] font-semibold opacity-70">solo lo nuevo va a cocina</span>
@@ -2441,7 +2441,7 @@ function Caja({
                 onClick={() => finalizar()}
                 disabled={!carrito.length || cobrando}
                 className={`${enCuenta ? 'w-24' : 'flex-1'} flex items-center justify-center gap-2.5 h-16 rounded-xl ${
-                  enCuenta ? 'border-2 border-slate-200 text-slate-600' : 'bg-marca text-sobre-marca'
+                  enCuenta ? 'border-2 border-slate-200 text-slate-600' : 'bg-accion text-sobre-accion'
                 } text-lg font-black disabled:opacity-30 active:scale-95 transition-transform duration-75`}
               >
                 {cobrando
