@@ -380,16 +380,36 @@ async fn cobrar(
 
     /* Guardada. De aquí en adelante nada puede perder la venta: lo que sigue
        es papel, y el papel se reimprime. */
-    let (caja, cocina, negocio) = {
+    let (completa, caja, cocina, negocio) = {
         let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
         (
+            /* Se relee de la base en vez de armarla con lo que hay en memoria.
+               Así la tirilla dice exactamente lo que quedó guardado: si alguna
+               vez la venta se registra distinto de como se pidió, el papel lo
+               muestra en vez de taparlo. */
+            venta::detalle(&base, &registrada.id).ok().flatten(),
             perifericos::leer_config(&base, "caja"),
             perifericos::leer_config(&base, "cocina"),
             estado.negocio.lock().unwrap().clone(),
         )
     };
 
-    let bytes = tirilla(&negocio, caja.ancho, &nueva, &registrada);
+    /* La misma tirilla de una reimpresión.
+     *
+     * Antes había dos: esta venta imprimía una versión corta que se había
+     * quedado atrás, sin los extras, sin las notas, sin el descuento y sin el
+     * desglose de impuestos. El cliente pagaba $4.000 de tocineta y el papel
+     * decía solo "Hamburguesa x1". Y quien pedía una reimpresión recibía una
+     * tirilla mejor que la del momento de comprar, que es justo al revés de
+     * como tiene que ser.
+     *
+     * `copia: false` porque esta es la original. */
+    let bytes = match &completa {
+        Some(v) => tirilla_de(&negocio, caja.ancho, v, false),
+        /* Si releerla falla, el cobro ya está hecho y el cliente está
+           esperando su papel: se imprime la corta antes que nada. */
+        None => tirilla(&negocio, caja.ancho, &nueva, &registrada),
+    };
     /* La venta ya está guardada. Lo que sigue es papel, y el papel se
        reimprime: por eso su fallo se reporta como aviso y no revierte nada. */
     let impresion = imprimir(caja.impresora, bytes).await.err();
@@ -2507,4 +2527,122 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error arrancando el POS");
+}
+
+#[cfg(test)]
+mod pruebas_tirilla {
+    use super::*;
+    use pos_core::venta::{ExtraElegido, LineaVenta, PagoDetalle, VentaCompleta};
+
+    /// Lo que sale impreso, como texto, para poder buscar dentro.
+    fn impreso(v: &VentaCompleta) -> String {
+        String::from_utf8_lossy(&tirilla_de("Go Burger", 42, v, false)).to_string()
+    }
+
+    /// Una venta con todo lo que la tirilla corta se comía.
+    fn venta_completa() -> VentaCompleta {
+        VentaCompleta {
+            id: "v-1".into(),
+            consecutivo: 42,
+            total: Pesos(29_000),
+            iva: Pesos::CERO,
+            recibido: Pesos(30_000),
+            vuelto: Pesos(1_000),
+            medio_pago: "efectivo".into(),
+            cajero: "Ana".into(),
+            creada_en: "2026-09-23 12:00".into(),
+            items: vec![LineaVenta {
+                producto_id: "p1".into(),
+                nombre: "Hamburguesa".into(),
+                variante: String::new(),
+                precio: Pesos(26_000),
+                cantidad: 1,
+                extras: vec![ExtraElegido {
+                    grupo: "Adiciones".into(),
+                    nombre: "Tocineta".into(),
+                    precio: Pesos(4_000),
+                    cantidad: 1,
+                }],
+                tipo_impuesto: "INC_8".into(),
+                nota: "sin cebolla".into(),
+            }],
+            pago_autorizacion: String::new(),
+            pago_ultimos4: String::new(),
+            bruto: Pesos(31_000),
+            descuento: Pesos(2_000),
+            descuento_motivo: "Cliente frecuente".into(),
+            propina: Pesos::CERO,
+            total_base_inc: Pesos(26_852),
+            total_inc: Pesos(2_148),
+            total_base_iva: Pesos::CERO,
+            total_iva: Pesos::CERO,
+            total_exento: Pesos::CERO,
+            pagos: vec![PagoDetalle {
+                metodo: "efectivo".into(),
+                monto: Pesos(29_000),
+                referencia: String::new(),
+            }],
+        }
+    }
+
+    /* La tirilla de la venta y la de una reimpresión son la misma función.
+     *
+     * Antes eran dos, y la corta —la que recibía el cliente al comprar— se
+     * había quedado atrás: sin extras, sin notas, sin descuento y sin el
+     * desglose de impuestos. Quien pedía una reimpresión recibía un papel
+     * mejor que el del momento de pagar, que es justo al revés. */
+
+    #[test]
+    fn imprime_los_extras_con_su_precio() {
+        // El cliente paga $4.000 de tocineta: tiene derecho a verlo.
+        let texto = impreso(&venta_completa());
+        assert!(texto.contains("Tocineta"), "falta el extra:\n{texto}");
+    }
+
+    #[test]
+    fn imprime_la_nota_del_plato() {
+        // "sin cebolla" es lo que el cliente revisa antes de irse.
+        let texto = impreso(&venta_completa());
+        assert!(texto.contains("sin cebolla"), "falta la nota:\n{texto}");
+    }
+
+    #[test]
+    fn imprime_el_descuento_y_su_motivo() {
+        // Una tirilla que solo dice el total no sirve para reclamar nada.
+        let texto = impreso(&venta_completa());
+        assert!(texto.contains("Cliente frecuente"), "falta el motivo:\n{texto}");
+    }
+
+    #[test]
+    fn imprime_el_desglose_de_impuestos() {
+        // Es lo que la DIAN espera en el papel, y la corta no lo tenía.
+        let texto = impreso(&venta_completa());
+        assert!(texto.contains("INC"), "falta el impuesto:\n{texto}");
+    }
+
+    #[test]
+    fn la_original_no_se_marca_como_copia() {
+        /* `copia: true` es para las reimpresiones. Marcar la primera como
+           copia haría dudar a cualquiera de que es válida. */
+        let v = venta_completa();
+        let original = String::from_utf8_lossy(&tirilla_de("Go Burger", 42, &v, false)).to_string();
+        let reimpresa = String::from_utf8_lossy(&tirilla_de("Go Burger", 42, &v, true)).to_string();
+        assert_ne!(original, reimpresa, "la copia tiene que distinguirse");
+    }
+
+    #[test]
+    fn la_venta_imprime_la_completa() {
+        /* Guardia sobre el sitio de la venta: si alguien vuelve a poner ahí la
+           tirilla corta, el cliente deja de ver por qué pagó lo que pagó. */
+        let fuente = include_str!("lib.rs");
+        /* La aguja se arma en dos pedazos a propósito. `include_str!` de este
+           mismo archivo incluye esta línea, así que un literal entero se
+           encontraría a sí mismo y la prueba pasaría siempre — daba verde
+           incluso con la tirilla corta puesta de vuelta. */
+        let aguja = format!("{}{}", "Some(v) => tirilla_de(", "&negocio, caja.ancho, v, false)");
+        assert!(
+            fuente.contains(&aguja),
+            "la venta dejó de imprimir la tirilla completa",
+        );
+    }
 }
