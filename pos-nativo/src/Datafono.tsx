@@ -84,7 +84,7 @@ export default function Datafono() {
             onClick={() => { setRed(id); guardar({ red: id }); }}
             className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-3 rounded-xl border-2 transition-colors ${
               red === id
-                ? 'border-marca bg-marca text-sobre-marca'
+                ? 'border-slate-900 bg-slate-900 text-white'
                 : 'border-slate-200 text-slate-500 hover:border-slate-300'
             }`}
           >

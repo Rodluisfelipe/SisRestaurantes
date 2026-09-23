@@ -88,7 +88,7 @@ export default function OpcionesLinea({
                       aria-pressed={puesta}
                       className={`min-h-[64px] p-2.5 rounded-xl border-2 text-left flex flex-col justify-between gap-1 active:scale-95 transition-transform duration-75 ${
                         puesta
-                          ? 'border-marca bg-marca text-sobre-marca'
+                          ? 'border-slate-900 bg-slate-900 text-white'
                           : pendiente
                             ? 'border-amber-300 bg-white text-slate-800'
                             : 'border-slate-200 bg-white text-slate-800'

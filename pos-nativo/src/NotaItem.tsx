@@ -89,7 +89,7 @@ export default function NotaItem({
                 onClick={() => sumar(f)}
                 className={`h-toque px-3 rounded-xl text-[13px] font-bold border-2 transition-colors ${
                   activa
-                    ? 'border-marca bg-marca text-sobre-marca'
+                    ? 'border-slate-900 bg-slate-900 text-white'
                     : 'border-slate-200 text-slate-600 hover:border-slate-300'
                 }`}
               >

@@ -118,7 +118,7 @@ export default function SelectorVariante({
           onClick={() => onElegir('')}
           className={`col-span-2 h-11 rounded-xl text-[12.5px] font-bold border-2 transition-colors ${
             elegida === ''
-              ? 'border-marca bg-marca text-sobre-marca'
+              ? 'border-slate-900 bg-slate-900 text-white'
               : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
           }`}
         >
@@ -132,7 +132,7 @@ export default function SelectorVariante({
             title={v}
             className={`h-11 px-2 rounded-xl text-[12.5px] font-bold border-2 truncate transition-colors ${
               elegida === v
-                ? 'border-marca bg-marca text-sobre-marca'
+                ? 'border-slate-900 bg-slate-900 text-white'
                 : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
             }`}
           >

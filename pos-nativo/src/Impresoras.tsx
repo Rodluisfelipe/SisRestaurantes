@@ -86,7 +86,7 @@ export default function Impresoras({ onCerrar }: { onCerrar: () => void }) {
               onClick={() => setPestana(id)}
               className={`flex-1 flex items-center justify-center gap-2 h-toque rounded-xl text-[13px] font-bold border-2 transition-colors ${
                 pestana === id
-                  ? 'border-marca bg-marca text-sobre-marca'
+                  ? 'border-slate-900 bg-slate-900 text-white'
                   : 'border-slate-200 text-slate-500 hover:border-slate-300'
               }`}
             >
@@ -200,7 +200,7 @@ function Ficha({
             key={id}
             onClick={() => cambiarTipo(id)}
             className={`flex-1 h-toque rounded-lg text-[11.5px] font-bold border-2 transition-colors ${
-              tipo === id ? 'border-marca bg-marca text-sobre-marca' : 'border-slate-200 text-slate-500'
+              tipo === id ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 text-slate-500'
             }`}
           >
             {etiqueta}
@@ -283,7 +283,7 @@ function Ficha({
               key={ancho}
               onClick={() => onCambiar({ ...valor, ancho: ancho as number })}
               className={`h-toque px-3 rounded-lg text-[11.5px] font-bold border-2 ${
-                valor.ancho === ancho ? 'border-marca bg-marca text-sobre-marca' : 'border-slate-200 text-slate-500'
+                valor.ancho === ancho ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 text-slate-500'
               }`}
             >
               {etiqueta} mm
@@ -313,7 +313,7 @@ function Ficha({
                   onClick={() => onCambiar({ ...valor, qr: id })}
                   title={id === 'imagen' ? 'Funciona en casi todas' : id === 'nativo' ? 'Más nítido, pero no todas lo entienden' : 'Sin QR'}
                   className={`h-9 px-2.5 rounded-lg text-[11.5px] font-bold border-2 ${
-                    (valor.qr ?? 'imagen') === id ? 'border-marca bg-marca text-sobre-marca' : 'border-slate-200 text-slate-500'
+                    (valor.qr ?? 'imagen') === id ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 text-slate-500'
                   }`}
                 >
                   {etiqueta}

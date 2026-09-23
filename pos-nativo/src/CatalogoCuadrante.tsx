@@ -260,16 +260,27 @@ export default function CatalogoCuadrante({
         </button>
 
         {/* Los puntos de página, tocables. Con más de ocho páginas se cambia
-            por el contador: veinte puntos no se distinguen ni se aciertan. */}
-        {paginas <= 8 ? (
+            por el contador: veinte puntos no se distinguen ni se aciertan.
+
+            Con una sola página no hay nada que elegir: se deja el espacio
+            —para que la rejilla no cambie de alto al filtrar— pero sin un
+            botón. Antes era una barra del color de la marca a lo ancho de la
+            pantalla con un "1" encima: lo más llamativo de la caja, y lo
+            único que no servía para nada. */}
+        {paginas === 1 ? (
+          <span className="flex-1 h-12" aria-hidden />
+        ) : paginas <= 8 ? (
           <div className="flex-1 flex items-center gap-1.5">
             {Array.from({ length: paginas }, (_, i) => (
               <button
                 key={i}
                 onClick={() => setPagina(i)}
                 className={`flex-1 h-12 rounded-xl text-[13px] font-bold tabular-nums border-2 transition-colors ${
+                  /* Oscuro neutro y no el color de la marca: es un indicador
+                     de dónde está el cajero, no una acción, y en pantalla
+                     compite con la carta. */
                   i === pagina
-                    ? 'border-marca bg-marca text-sobre-marca'
+                    ? 'border-slate-800 bg-slate-800 text-white'
                     : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
                 }`}
               >

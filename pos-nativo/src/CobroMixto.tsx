@@ -188,7 +188,7 @@ export default function CobroMixto({
                     onClick={() => { setPropinaPct(p); setPropinaOtra(''); }}
                     className={`flex-1 h-toque rounded-xl text-[13px] font-bold border-2 tabular-nums transition-colors ${
                       elegido
-                        ? 'border-marca bg-marca text-sobre-marca'
+                        ? 'border-slate-900 bg-slate-900 text-white'
                         : 'border-slate-200 text-slate-500 hover:border-slate-300'
                     }`}
                   >
@@ -258,7 +258,7 @@ export default function CobroMixto({
                 key={m}
                 onClick={() => setMetodo(m)}
                 className={`flex-1 flex items-center justify-center gap-2 h-toque rounded-xl text-[13px] font-bold border-2 transition-colors ${
-                  elegido ? 'border-marca bg-marca text-sobre-marca' : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                  elegido ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 text-slate-500 hover:border-slate-300'
                 }`}
               >
                 <Icono size={17} strokeWidth={2.25} />

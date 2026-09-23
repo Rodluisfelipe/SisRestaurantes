@@ -184,7 +184,7 @@ export default function Devolucion({
                   onClick={() => setMedio(id)}
                   className={`flex-1 flex items-center justify-center gap-2 h-toque rounded-xl text-[13px] font-bold border-2 transition-colors ${
                     medio === id
-                      ? 'border-marca bg-marca text-sobre-marca'
+                      ? 'border-slate-900 bg-slate-900 text-white'
                       : 'border-slate-200 text-slate-500 hover:border-slate-300'
                   }`}
                 >

@@ -12,8 +12,10 @@ export default {
       },
       colors: {
         /* El color del negocio, que llega del panel y se aplica en tiempo de
-           ejecución sobre la variable CSS. Se usa en lo que el cajero mira mil
-           veces al día: el botón de cobrar, la selección y los avisos. */
+           ejecución sobre la variable CSS. Solo para la identidad —quién
+           atiende, la mesa abierta, la pantalla del cliente—: ni las acciones
+           (van en `accion`, verde) ni lo seleccionado (oscuro neutro). Con una
+           marca roja, un botón o una selección roja se leen como un error. */
         marca: 'var(--marca)',
         'marca-viva': 'var(--marca-viva)',
         'sobre-marca': 'var(--sobre-marca)',
