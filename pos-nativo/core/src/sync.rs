@@ -163,6 +163,47 @@ pub fn estado(conexion: &Connection) -> Result<(i64, i64)> {
     Ok((pendientes, apartadas))
 }
 
+/// Una fila apartada, para mostrarle al negocio qué quedó sin subir y por qué.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct Apartada {
+    pub entidad: String,
+    pub detalle: String,
+    pub error: String,
+    pub creado_en: String,
+}
+
+/// Lo apartado, con el motivo que dio el servidor.
+pub fn apartadas(conexion: &Connection) -> Result<Vec<Apartada>> {
+    let mut consulta = conexion.prepare(
+        "SELECT entidad, payload, ultimo_error, creado_en FROM outbox
+          WHERE apartada = 1 AND enviado_en IS NULL ORDER BY id LIMIT 200",
+    )?;
+    let filas = consulta.query_map([], |f| {
+        let payload: String = f.get(1)?;
+        let json: serde_json::Value = serde_json::from_str(&payload).unwrap_or_default();
+        // Lo que un humano reconoce: "GO AMERICAN x1", "Venta #42".
+        let detalle = json["detalle"].as_str().map(str::to_string)
+            .or_else(|| json["consecutivo"].as_i64().map(|n| format!("Venta #{n}")))
+            .unwrap_or_default();
+        Ok(Apartada { entidad: f.get(0)?, detalle, error: f.get(2)?, creado_en: f.get(3)? })
+    })?;
+    filas.collect()
+}
+
+/// Vuelve a poner en la cola lo apartado.
+///
+/// Se aparta lo que el servidor rechazó tres veces, y eso casi siempre es un
+/// error del servidor o de una versión vieja de él —un tipo que no conocía,
+/// una validación de más—, no de la venta. Cuando el servidor se arregla, la
+/// caja tiene que poder subirlo sin que nadie toque la base a mano.
+pub fn reintentar_apartadas(conexion: &Connection) -> Result<usize> {
+    conexion.execute(
+        "UPDATE outbox SET apartada = 0, intentos = 0, proximo_intento = 0, ultimo_error = ''
+          WHERE apartada = 1 AND enviado_en IS NULL",
+        [],
+    )
+}
+
 #[cfg(test)]
 mod pruebas {
     use super::*;
@@ -332,5 +373,23 @@ mod pruebas {
         let servidor = Fingido::siempre_ok();
         procesar_cola(&c, &servidor, 10, 2_000, AHORA).unwrap();
         assert_eq!(servidor.recibidos.borrow().len(), 0);
+    }
+
+    #[test]
+    fn lo_apartado_se_puede_volver_a_subir() {
+        let c = db::abrir_en_memoria().unwrap();
+        c.execute(
+            "INSERT INTO outbox (entidad, entidad_id, operacion, payload, creado_en, intentos, ultimo_error, apartada)
+             VALUES ('excepcion', 'x1', 'crear', '{\"detalle\":\"GO AMERICAN x1\"}', 'hoy', 3, 'rechazado 400', 1)",
+            [],
+        )
+        .unwrap();
+
+        let lista = apartadas(&c).unwrap();
+        assert_eq!(lista[0].detalle, "GO AMERICAN x1");
+        assert_eq!(lista[0].error, "rechazado 400");
+
+        assert_eq!(reintentar_apartadas(&c).unwrap(), 1);
+        assert_eq!(estado(&c).unwrap(), (1, 0), "vuelve a estar pendiente y ya no apartada");
     }
 }

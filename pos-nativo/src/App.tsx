@@ -44,6 +44,7 @@ import PedidosWeb from './PedidosWeb';
 import VentasTurno from './VentasTurno';
 import ProductoLibre from './ProductoLibre';
 import Agotados from './Agotados';
+import Apartadas from './Apartadas';
 import { columnaDe, recienLlegados } from './reglasPedidosWeb';
 import { billetesProbables } from './cobroRapido';
 import { leerCantidad, leerPrecioLibre, lineaARepetir } from './atajosBusqueda';
@@ -295,6 +296,7 @@ function Caja({
   const [verVentas, setVerVentas] = useState(false);
   const [verLibre, setVerLibre] = useState(false);
   const [verAgotados, setVerAgotados] = useState(false);
+  const [verApartadas, setVerApartadas] = useState(false);
   /* El aviso de que la tirilla no salió. Va como toast y no como bloqueo: la
      venta ya está cobrada y guardada, y el cajero tiene que poder seguir
      atendiendo mientras alguien le pone papel a la impresora. */
@@ -643,17 +645,29 @@ function Caja({
       return;
     }
 
-    /* Con opciones, entra **ya** al ticket con lo estándar marcado, y sus
-       opciones aparecen debajo del ticket para cambiar lo que el cliente pida.
+    /* Qué pasa al tocar un producto con opciones depende de si hay algo que
+       **hay que** preguntar.
 
-       Antes la carta se cambiaba por una pantalla de opciones con su botón de
-       confirmar: un cambio de pantalla y un toque de más por cada combo, que
-       es lo que más se vende. Ahora el combo normal es un toque, el distinto
-       es un toque más por cada cosa que cambia, y la carta no se va nunca. */
+       - Solo opcionales (la hamburguesa con "sin tomate" y adiciones): entra
+         directo, un toque. Lo normal es pedirla como viene; si no, se toca la
+         línea del ticket y se cambia.
+       - Con obligatorios (el combo con su bebida): entra al ticket y las
+         opciones ocupan el centro, grandes, con lo obligatorio primero. Se
+         vuelve a la carta con Listo, Enter, Esc o escribiendo.
+
+       Se probó dejar la carta y las opciones juntas en el centro, y también
+       las opciones en la columna del ticket: las dos aplastaban algo —las
+       casillas de la carta o el ticket— hasta volverlo ilegible. */
     const visibles = gruposQuePreguntar(grupos);
     const elegidas = predeterminadas(visibles);
     const d = derivar(visibles, elegidas);
     gruposDe.current[p.id] = visibles;
+
+    if (!visibles.some((g) => g.obligatorio || (g.subgrupos || []).some((sg) => sg.obligatorio))) {
+      agregar(p, d.extras, d.sobreprecio);
+      return;
+    }
+
     const indice = carrito.length;
     setCarrito((c) => agregarLineaAparte(c, p, d.extras, d.sobreprecio, multiplicador));
     /* Sin señalar la línea: el dígito que se teclee después es la cantidad
@@ -817,10 +831,14 @@ function Caja({
     const elegidas = marcar(abierta.elegidas, g.id, sub, opcion, g.multiple, null, false);
     const d = derivar(abierta.grupos, elegidas);
     const { indice, producto } = abierta;
-    setAbierta({ ...abierta, elegidas });
     setCarrito((c) => c.map((l, i) => (
       i === indice ? { ...l, precio: producto.precio + d.sobreprecio, extras: d.extras } : l
     )));
+    /* Si el producto solo tiene obligatorios de una opción, elegir el último
+       ya lo dice todo: vuelve a la carta sin pedir Listo. Con opcionales no,
+       porque el cliente puede estar por decir "y sin cebolla". */
+    const soloObligatorios = abierta.grupos.every((x) => x.obligatorio && !x.multiple);
+    setAbierta(soloObligatorios && d.faltan.length === 0 ? null : { ...abierta, elegidas });
     buscador.current?.focus();
   };
 
@@ -1190,7 +1208,7 @@ function Caja({
     cobrandoAhora || anulando !== null || pidiendoDescuento ||
     porAutorizar !== null || anotando !== null || pidiendoGaveta || descartando !== null ||
     pidiendoDevolucion || devolucionPorAutorizar !== null || verImpresoras || verNube ||
-    verTurno || verEspera || verCliente || verRecompensas || verVentas || verLibre || verAgotados;
+    verTurno || verEspera || verCliente || verRecompensas || verVentas || verLibre || verAgotados || verApartadas;
 
   useEffect(() => {
     if (hayModal) buscador.current?.blur();
@@ -1379,13 +1397,14 @@ function Caja({
         )}
 
         {cola.apartadas > 0 && (
-          <span
-            title="La nube rechazó estas ventas. Están guardadas, pero necesitan revisión."
+          <button
+            onClick={() => setVerApartadas(true)}
+            title="La nube rechazó estos registros. Están guardados en la caja: toca para ver por qué y reintentar."
             className="flex items-center gap-2 px-3 h-toque rounded-xl bg-red-500 text-white text-[12.5px] font-bold"
           >
             <CloudOff size={16} strokeWidth={2.5} />
             {cola.apartadas} rechazadas
-          </span>
+          </button>
         )}
 
         {/* Separador: a partir de aquí son herramientas, no estado. */}
@@ -1544,6 +1563,16 @@ function Caja({
           </span>
         ) : null}
       </div>
+
+      {verApartadas && (
+        <Apartadas
+          onCerrar={() => {
+            setVerApartadas(false);
+            estadoSync().then(setCola).catch(() => {});
+            buscador.current?.focus();
+          }}
+        />
+      )}
 
       {verAgotados && (
         <Agotados
@@ -1999,7 +2028,7 @@ function Caja({
             {rubros.length > 1 && ['', ...rubros].map((r) => (
               <button
                 key={r || 'todos'}
-                onClick={() => setRubro(r)}
+                onClick={() => { setRubro(r); setAbierta(null); }}
                 className={`flex-shrink-0 px-3 h-11 rounded-xl text-left text-[12.5px] font-bold border-2 transition-colors truncate ${
                   rubro === r
                     ? 'border-marca bg-marca text-sobre-marca'
@@ -2096,6 +2125,8 @@ function Caja({
                       setBusqueda(conCantidad.resto);
                       return;
                     }
+                    // Escribir o escanear es seguir marcando: vuelve a la carta.
+                    if (e.target.value) setAbierta(null);
                     setBusqueda(e.target.value);
                   }}
                   onKeyDown={enterEnBusqueda}
@@ -2113,15 +2144,28 @@ function Caja({
               </div>
 
 
-              <CatalogoCuadrante
-                productos={productos}
-                carpeta={carpeta}
-                onTocar={tocar}
-                busqueda={busqueda}
-                rubro={rubro}
-                conAtajos={!hayModal}
-                modo={modo}
-              />
+              {/* Opciones o carta, nunca las dos a la vez: juntas se aplastaban. */}
+              {abierta && carrito[abierta.indice] ? (
+                <OpcionesLinea
+                  titulo={carrito[abierta.indice].nombre}
+                  cantidad={carrito[abierta.indice].cantidad}
+                  precio={carrito[abierta.indice].precio}
+                  grupos={abierta.grupos}
+                  elegidas={abierta.elegidas}
+                  onTocar={tocarOpcion}
+                  onCerrar={() => { setAbierta(null); buscador.current?.focus(); }}
+                />
+              ) : (
+                <CatalogoCuadrante
+                  productos={productos}
+                  carpeta={carpeta}
+                  onTocar={tocar}
+                  busqueda={busqueda}
+                  rubro={rubro}
+                  conAtajos={!hayModal}
+                  modo={modo}
+                />
+              )}
             </>
           )}
         </section>
@@ -2170,7 +2214,7 @@ function Caja({
                     anotar una vez cada tantas ventas. El icono tiene 44 px de
                     zona tocable aunque se dibuje pequeño. */}
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="text-[13px] font-semibold truncate flex items-center gap-1">
+                  <p className="text-[13px] font-semibold leading-tight line-clamp-2 break-words">
                     {i.nombre}{i.variante ? <span className="text-slate-400"> · {i.variante}</span> : null}
                     {yaComandada(indice) && (
                       /* Lo que la cocina ya tiene. Quitarlo pide supervisor, y
@@ -2259,17 +2303,6 @@ function Caja({
               </div>
             )}
           </div>
-
-          {abierta && carrito[abierta.indice] && (
-            <OpcionesLinea
-              titulo={carrito[abierta.indice].nombre}
-              cantidad={carrito[abierta.indice].cantidad}
-              grupos={abierta.grupos}
-              elegidas={abierta.elegidas}
-              onTocar={tocarOpcion}
-              onCerrar={() => { setAbierta(null); buscador.current?.focus(); }}
-            />
-          )}
 
           <div className="flex-shrink-0 p-3 border-t border-slate-200 space-y-2">
             {descuento.monto > 0 && (

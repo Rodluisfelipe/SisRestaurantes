@@ -30,7 +30,7 @@ const posExcepcionSchema = new mongoose.Schema({
 
   tipo: {
     type: String,
-    enum: ['anular_item', 'descuento', 'abrir_cajon', 'descartar_pausada'],
+    enum: ['anular_item', 'anular_borrador', 'descuento', 'abrir_cajon', 'descartar_pausada'],
     required: true,
     index: true,
   },

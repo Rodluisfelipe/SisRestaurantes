@@ -30,6 +30,7 @@ const montar = (elegidas = {}) => {
     <OpcionesLinea
       titulo="Combo Go"
       cantidad={1}
+      precio={20000}
       grupos={[BEBIDA, ADICIONES]}
       elegidas={elegidas}
       onTocar={onTocar}
@@ -46,7 +47,7 @@ describe('OpcionesLinea', () => {
     expect(screen.getByText('Tocineta')).toBeTruthy();
   });
 
-  it('no tiene botón de confirmar ni de siguiente', () => {
+  it('no tiene confirmar ni siguiente: solo Listo para volver a la carta', () => {
     montar();
     expect(screen.queryByText(/confirmar|siguiente/i)).toBeNull();
   });
@@ -57,14 +58,25 @@ describe('OpcionesLinea', () => {
     expect(onTocar).toHaveBeenCalledWith(BEBIDA, 'Malteada', '');
   });
 
-  it('señala el obligatorio sin elegir', () => {
+  it('señala el obligatorio sin elegir, también en la barra', () => {
     montar();
-    expect(screen.getByText('falta')).toBeTruthy();
+    expect(screen.getByText('elige uno')).toBeTruthy();
+    expect(screen.getByText('Falta: Bebida')).toBeTruthy();
+  });
+
+  it('lo obligatorio va primero aunque el panel lo tenga después', () => {
+    render(
+      <OpcionesLinea titulo="Combo" cantidad={1} precio={1} grupos={[ADICIONES, BEBIDA]}
+        elegidas={{}} onTocar={() => {}} onCerrar={() => {}} />,
+    );
+    const secciones = document.querySelectorAll('[data-grupo]');
+    expect(secciones[0].getAttribute('data-grupo')).toBe('g-bebida');
   });
 
   it('con la bebida elegida ya no falta nada y se ve marcada', () => {
     montar({ [clave('g-bebida', '', 'Coca-Cola')]: 1 });
-    expect(screen.queryByText('falta')).toBeNull();
+    expect(screen.queryByText('elige uno')).toBeNull();
+    expect(screen.getByText('Ya está en el ticket')).toBeTruthy();
     expect(screen.getByText('Coca-Cola').closest('button')?.getAttribute('aria-pressed')).toBe('true');
   });
 
@@ -73,9 +85,9 @@ describe('OpcionesLinea', () => {
     expect(screen.getByText(/\+.*4\.000/)).toBeTruthy();
   });
 
-  it('se cierra con la X', () => {
+  it('Listo vuelve a la carta', () => {
     const { onCerrar } = montar();
-    fireEvent.click(screen.getByLabelText('Cerrar opciones'));
+    fireEvent.click(screen.getByText('Listo'));
     expect(onCerrar).toHaveBeenCalled();
   });
 });

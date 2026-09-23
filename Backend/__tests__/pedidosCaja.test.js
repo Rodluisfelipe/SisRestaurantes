@@ -126,3 +126,30 @@ describe('agotados desde la caja', () => {
     expect(pos).toContain('productsRouter.avisarCambioDeProductos(');
   });
 });
+
+describe('las excepciones que manda la caja', () => {
+  const { validarExcepcion } = require('../utils/pos');
+  const modelo = fs.readFileSync(path.join(__dirname, '..', 'Models', 'PosExcepcion.js'), 'utf8');
+
+  it('acepta quitar un borrador sin supervisor', () => {
+    // Las 9 apartadas de Go Burger eran esto: el servidor no conocía el tipo.
+    const r = validarExcepcion({
+      id: '0192f3a1-aaaa-7bbb-8ccc-123456789abc',
+      tipo: 'anular_borrador',
+      detalle: 'GO AMERICAN x1',
+      monto: 32500,
+      motivo: 'Quitado antes de mandar a cocina',
+      cajero: 'Daniel',
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it('el modelo también lo acepta, o se caería al guardar', () => {
+    expect(modelo).toContain("'anular_borrador'");
+  });
+
+  it('anular algo que ya fue a cocina sigue exigiendo quién autorizó', () => {
+    const r = validarExcepcion({ id: '0192f3a1-aaaa-7bbb-8ccc-123456789abc', tipo: 'anular_item', motivo: 'Se equivocó' });
+    expect(r.ok).toBe(false);
+  });
+});

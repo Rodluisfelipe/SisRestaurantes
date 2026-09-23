@@ -334,6 +334,25 @@ export interface ResumenSync {
 }
 
 /** Sube lo pendiente y baja el catálogo. También corre solo cada 30 s. */
+/** Algo que la nube rechazó y quedó apartado. */
+export interface Apartada {
+  entidad: string;
+  detalle: string;
+  error: string;
+  creado_en: string;
+}
+
+export async function apartadas(): Promise<Apartada[]> {
+  if (!enTauri) return [];
+  return invoke<Apartada[]>('apartadas');
+}
+
+/** Vuelve a subir lo apartado: para cuando el servidor ya se arregló. */
+export async function reintentarApartadas(): Promise<ResumenSync> {
+  if (!enTauri) return { enviadas: 0, fallidas: 0, apartadas: 0, catalogo: 0, clientes: 0, error: 'Modo navegador' };
+  return invoke<ResumenSync>('reintentar_apartadas');
+}
+
 export async function sincronizar(): Promise<ResumenSync> {
   if (!enTauri) {
     return { enviadas: 0, fallidas: 0, apartadas: 0, catalogo: 0, clientes: 0, error: 'Modo navegador' };

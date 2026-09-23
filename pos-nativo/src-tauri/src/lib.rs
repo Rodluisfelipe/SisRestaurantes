@@ -1631,6 +1631,28 @@ fn apagados(estado: State<Estado>) -> Result<Vec<Apagado>, String> {
     filas.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
 }
 
+/// Lo que la nube rechazó y quedó apartado, con el motivo.
+#[tauri::command]
+fn apartadas(estado: State<Estado>) -> Result<Vec<sync::Apartada>, String> {
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    sync::apartadas(&base).map_err(|e| e.to_string())
+}
+
+/// Vuelve a encolar lo apartado y sube de una.
+#[tauri::command]
+async fn reintentar_apartadas(app: tauri::AppHandle) -> Result<ResumenSync, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let estado = app.state::<Estado>();
+        {
+            let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+            sync::reintentar_apartadas(&base).map_err(|e| e.to_string())?;
+        }
+        Ok(sincronizar_ahora(&estado, &app))
+    })
+    .await
+    .unwrap_or_else(|e| Err(format!("el reintento se interrumpió: {e}")))
+}
+
 /// Lo que el panel decide sobre el trato de esta caja con el cajero.
 ///
 /// Estos valores bajaban con la configuración y se guardaban, pero la
@@ -2805,6 +2827,8 @@ pub fn run() {
             hardware_del_panel,
             ajustes_caja,
             resumen_turno,
+            apartadas,
+            reintentar_apartadas,
             marcar_agotado,
             apagados,
             pedidos_web,

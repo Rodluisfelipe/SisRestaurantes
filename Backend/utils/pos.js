@@ -450,7 +450,12 @@ function validarCierre(cuerpo) {
 }
 
 /** Los tipos de excepción que la caja puede reportar. */
-const TIPOS_EXCEPCION = ['anular_item', 'descuento', 'abrir_cajon', 'descartar_pausada'];
+/* `anular_borrador` es quitar una línea que todavía no fue a cocina: un error
+   de tecleo. Se registra sin supervisor —pedirlo en cada dedo mal puesto
+   vuelve la firma un trámite— y cuenta en el arqueo como señal: diez borrados
+   en un turno es como se ve un cobro de palabra. La caja lo mandaba desde que
+   existe, y el servidor lo rechazaba por no conocerlo: quedaban apartados. */
+const TIPOS_EXCEPCION = ['anular_item', 'anular_borrador', 'descuento', 'abrir_cajon', 'descartar_pausada'];
 
 /**
  * Valida una excepción del mostrador.
