@@ -60,22 +60,36 @@ if (!IDENTIDAD || !SECRETA) {
  * Si Bold responde que la firma es inválida, lo que hay que mover es el orden
  * de estos cuatro valores, no el resto del archivo.
  */
-function firmar({ orderId, amount, currency, secret }) {
-  const cadena = `${orderId}${amount}${currency}${secret}`;
-  return crypto.createHash('sha256').update(cadena).digest('hex');
+const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
+const hmac = (llave, s) => crypto.createHmac('sha256', llave).update(s).digest('hex');
+
+function formulas({ orderId, amount, currency, secret }) {
+  const d = `${orderId}${amount}${currency}`;
+  return [
+    { id: 'A', como: 'sha256(orden+monto+moneda+secreta)', firma: sha(`${d}${secret}`) },
+    { id: 'B', como: 'sha256(secreta+orden+monto+moneda)', firma: sha(`${secret}${d}`) },
+    { id: 'C', como: 'hmac-sha256(secreta, orden+monto+moneda)', firma: hmac(secret, d) },
+    { id: 'D', como: 'sha256(orden+monto+moneda+secreta) en MAYUSCULA', firma: sha(`${d}${secret}`).toUpperCase() },
+    { id: 'E', como: 'sha256 con separadores: orden|monto|moneda|secreta',
+      firma: sha(`${orderId}|${amount}|${currency}|${secret}`) },
+  ];
 }
 
-const orderId = `MENUBY-PRUEBA-${Date.now()}`;
-const hash = firmar({ orderId, amount: MONTO, currency: MONEDA, secret: SECRETA });
+/* Cada formula lleva su propia orden: Bold rechaza una orden repetida, y sin
+   esto el segundo boton fallaria por eso y no por la firma. */
+const base = Date.now();
+const intentos = formulas({ orderId: 'X', amount: MONTO, currency: MONEDA, secret: SECRETA })
+  .map((f) => {
+    const orderId = `MENUBY-${f.id}-${base}`;
+    const [real] = formulas({ orderId, amount: MONTO, currency: MONEDA, secret: SECRETA })
+      .filter((x) => x.id === f.id);
+    return { ...real, orderId };
+  });
 
 /* Se imprime qué se firmó, con la secreta tapada: sin esto, depurar una firma
    rechazada es adivinar. */
-console.log('Datos de la venta');
-console.log(`  orderId   ${orderId}`);
-console.log(`  amount    ${MONTO}`);
-console.log(`  currency  ${MONEDA}`);
-console.log(`  cadena    ${orderId}${MONTO}${MONEDA}<secreta …${SECRETA.slice(-4)}>`);
-console.log(`  sha256    ${hash}`);
+console.log(`Monto ${MONTO} ${MONEDA} - secreta ...${SECRETA.slice(-4)}`);
+for (const i of intentos) console.log(`  ${i.id}  ${i.como}`);
 
 const html = `<!doctype html>
 <html lang="es">
@@ -94,8 +108,9 @@ const html = `<!doctype html>
     dl { font-size: 12px; color: #475569; background: #f1f5f9; padding: 12px;
          border-radius: 10px; margin: 0 0 16px; }
     dt { font-weight: 700; } dd { margin: 0 0 8px; word-break: break-all; font-family: ui-monospace, monospace; }
-    button { width: 100%; height: 48px; border: 0; border-radius: 12px; background: #0f172a;
-             color: #fff; font-size: 15px; font-weight: 800; cursor: pointer; }
+    button { width: 100%; min-height: 44px; margin-bottom: 8px; border: 0; border-radius: 10px;
+             background: #0f172a; color: #fff; font-size: 12.5px; font-weight: 700;
+             cursor: pointer; padding: 8px 12px; text-align: left; }
     #estado { margin-top: 12px; font-size: 13px; font-weight: 600; min-height: 20px; }
   </style>
 </head>
@@ -105,13 +120,14 @@ const html = `<!doctype html>
     <p>Cobro de $${MONTO.toLocaleString('es-CO')} con las llaves de pruebas.
        No uses datos reales de tarjeta.</p>
 
-    <dl>
-      <dt>orderId</dt><dd>${orderId}</dd>
-      <dt>hash</dt><dd>${hash}</dd>
-    </dl>
+    <p>Cada botón usa una fórmula distinta para el hash de integridad.
+       Pruébalos en orden hasta que uno pase de la pantalla de error.</p>
 
-    <button id="pagar">Pagar embebido</button>
-    <button id="pagar-redir" style="margin-top:8px;background:#475569">Pagar redirigido</button>
+    ${intentos.map((i) => `
+      <button class="intento" data-id="${i.id}">
+        ${i.id} · ${i.como}
+      </button>`).join('')}
+
     <div id="estado"></div>
   </div>
 
@@ -125,31 +141,33 @@ const html = `<!doctype html>
       decir('No cargó el script de Bold. ¿Hay internet? ¿Algún bloqueador?', '#dc2626');
     }
 
-    const intentar = (modo) => {
+    const INTENTOS = ${JSON.stringify(intentos.map((i) => ({ id: i.id, como: i.como, firma: i.firma, orderId: i.orderId })))};
+
+    const intentar = (id) => {
       if (typeof BoldCheckout === 'undefined') return;
+      const intento = INTENTOS.find((x) => x.id === id);
       try {
-        const cfg = {
-          orderId: ${JSON.stringify(orderId)},
+        const checkout = new BoldCheckout({
+          orderId: intento.orderId,
           currency: ${JSON.stringify(MONEDA)},
           amount: ${JSON.stringify(String(MONTO))},
           apiKey: ${JSON.stringify(IDENTIDAD)},
-          integritySignature: ${JSON.stringify(hash)},
+          integritySignature: intento.firma,
           description: 'Prueba de integración MenuBy',
-          redirectionUrl: location.origin + '/vuelta',
-        };
-        /* Embebido abre un iframe; redirigido se va a Bold y vuelve. Se
-           prueban los dos porque fallan por razones distintas, y cuál sirve
-           decide cómo se integra en el menú. */
-        if (modo === 'embebido') cfg.renderMode = 'embedded';
-        const checkout = new BoldCheckout(cfg);
-        decir('Abriendo la pasarela…', '#0f172a');
+          // Sin url de retorno: Bold rechaza localhost y devuelve BTN-001,
+          // que parece un fallo de firma y no lo es. En produccion va el
+          // dominio https real.
+          renderMode: 'embedded',
+        });
+        decir('Probando ' + id + ': ' + intento.como, '#0f172a');
         checkout.open();
       } catch (e) {
         decir('Error al abrir: ' + e.message, '#dc2626');
       }
     };
-    document.getElementById('pagar').addEventListener('click', () => intentar('embebido'));
-    document.getElementById('pagar-redir').addEventListener('click', () => intentar('redirigido'));
+    for (const b of document.querySelectorAll('.intento')) {
+      b.addEventListener('click', () => intentar(b.dataset.id));
+    }
   </script>
 </body>
 </html>`;
