@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronLeft, Copy } from 'lucide-react';
 import { pesos, type ExtraElegido, type GrupoExtra, type Producto } from './nativo';
 import { clave, cuantasEn, derivar, marcar, type Elegidas } from './reglasExtras';
@@ -14,17 +14,17 @@ import { clave, cuantasEn, derivar, marcar, type Elegidas } from './reglasExtras
  *
  * La geometría es la misma que la de la carta: mismas columnas, mismo alto de
  * casilla, mismo sitio para la barra de abajo. No es estética; es lo que hace
- * que el dedo caiga donde ya sabe. Si las opciones aparecieran con otro tamaño,
- * el primer toque después de la transformación fallaría siempre.
+ * que el dedo caiga donde ya sabe.
  *
- * **Llega premarcada y avanza sola.** Los grupos obligatorios vienen con la
- * opción estándar puesta, así que el combo normal se confirma de un toque y
- * el distinto se cambia tocando la opción. Tocar una excluyente marca y pasa
- * al grupo siguiente; al resolver el último, la línea entra al carrito y
- * vuelve la carta.
+ * **Todo en una pantalla.** Antes esto iba grupo por grupo y, con varias
+ * unidades, una vuelta completa por cada una: tres combos de dos grupos eran
+ * seis pantallas seguidas de "siguiente". Ahora los grupos se ven todos,
+ * apilados, y se confirma una sola vez. El cajero toca únicamente lo que
+ * cambia respecto de lo que ya viene premarcado, que en el pedido normal es
+ * nada.
  *
- * Con varias unidades, "los N restantes iguales" cierra todo de una: tres
- * combos normales son dos toques —el producto y ese botón—.
+ * Con varias unidades hay pestañas arriba y "todas iguales", que es el caso
+ * que de verdad ocurre: tres combos normales siguen siendo dos toques.
  */
 export default function RejillaInGridExtras({
   producto,
@@ -53,150 +53,190 @@ export default function RejillaInGridExtras({
     () => Array.from({ length: cantidad }, () => ({ ...(inicial ?? {}) })),
   );
   const [unidad, setUnidad] = useState(0);
-  const [paso, setPaso] = useState(0);
 
-  const grupo = grupos[paso];
+  /* Para llevar al cajero al grupo que le falta cuando intenta confirmar sin
+     resolverlo. Decirle "falta algo" sin mostrarle dónde, en una pantalla que
+     puede tener seis grupos, es hacerlo buscar. */
+  const seccionesRef = useRef<Record<string, HTMLDivElement | null>>({});
 
-  /* Todo lo que hay que tocar de este grupo, sea del grupo o de un subgrupo.
-     Se aplanan porque para el cajero son casillas: que una opción cuelgue de
-     un subgrupo es una distinción del panel, no del mostrador. */
-  const opciones = useMemo(() => {
-    if (!grupo) return [];
-    const sueltas = (grupo.opciones || []).map((o) => ({ ...o, sub: '' }));
-    const anidadas = (grupo.subgrupos || []).flatMap((sg) =>
+  const elegidas = porUnidad[unidad];
+
+  /* Las opciones de un grupo, con las de sus subgrupos mezcladas. Se aplanan
+     porque para el cajero son casillas: que una opción cuelgue de un subgrupo
+     es una distinción del panel, no del mostrador. */
+  const opcionesDe = (g: GrupoExtra) => {
+    const sueltas = (g.opciones || []).map((o) => ({ ...o, sub: '' }));
+    const anidadas = (g.subgrupos || []).flatMap((sg) =>
       (sg.opciones || []).map((o) => ({ ...o, sub: sg.titulo })),
     );
     return [...sueltas, ...anidadas];
-  }, [grupo]);
+  };
 
-  const derivados = useMemo(
-    () => porUnidad.map((e) => derivar(grupos, e)),
-    [grupos, porUnidad],
-  );
+  const derivado = useMemo(() => derivar(grupos, elegidas), [grupos, elegidas]);
+
+  /** Un grupo obligatorio sin nada marcado. Es lo que traba el confirmar. */
+  const faltaEn = (g: GrupoExtra) => {
+    if (!g.obligatorio) return false;
+    const sueltas = cuantasEn(elegidas, g.id, '') > 0;
+    const enSub = (g.subgrupos || []).some((sg) => cuantasEn(elegidas, g.id, sg.titulo) > 0);
+    return !sueltas && !enSub;
+  };
+
+  const pendientes = grupos.filter(faltaEn);
 
   const terminar = (todas: Elegidas[]) => {
-    const salida = todas.map((e) => {
+    onListo(todas.map((e) => {
       const d = derivar(grupos, e);
       return { extras: d.extras, sobreprecio: d.sobreprecio };
-    });
-    onListo(salida);
+    }));
   };
 
-  /* Avanzar: al siguiente grupo, o a la siguiente unidad, o afuera.
-     Recibe el estado ya actualizado porque React no lo tiene todavía cuando
-     esto corre desde el manejador del toque. */
-  const avanzar = (todas: Elegidas[]) => {
-    if (paso + 1 < grupos.length) {
-      setPaso(paso + 1);
+  const tocarOpcion = (g: GrupoExtra, nombre: string, sub: string) => {
+    /* Ya no avanza solo al marcar. Avanzar era lo que obligaba a recorrer la
+       pantalla en orden; acá el cajero toca en el orden en que el cliente
+       habla, que nunca es el orden de los grupos. */
+    setPorUnidad(porUnidad.map((e, i) => (
+      i === unidad ? marcar(e, g.id, sub, nombre, g.multiple, null, false) : e
+    )));
+  };
+
+  const confirmar = () => {
+    if (pendientes.length > 0) {
+      seccionesRef.current[pendientes[0].id]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
-    if (unidad + 1 < cantidad) {
-      setUnidad(unidad + 1);
-      setPaso(0);
-      return;
-    }
-    terminar(todas);
+    terminar(porUnidad);
   };
 
-  const tocarOpcion = (nombre: string, sub: string) => {
-    if (!grupo) return;
-
-    const siguiente = porUnidad.map((e, i) =>
-      i === unidad ? marcar(e, grupo.id, sub, nombre, grupo.multiple, null, false) : e,
-    );
-    setPorUnidad(siguiente);
-
-    /* Un grupo de varias opciones no avanza solo: el cajero todavía puede
-       querer marcar otra salsa. Ese sí necesita el botón de seguir. */
-    if (!grupo.multiple) avanzar(siguiente);
-  };
-
-  /* El acelerador del caso frecuente: los N iguales. Se ofrece solo cuando hay
-     más de una unidad y la que se está armando ya está completa, porque antes
-     de eso no hay nada que copiar. */
-  const copiarAlResto = () => {
+  /* El acelerador del caso frecuente: las N iguales. Copia lo que está armado
+     a todas las unidades y cierra. */
+  const todasIguales = () => {
     const modelo = porUnidad[unidad];
     terminar(porUnidad.map(() => ({ ...modelo })));
-  };
-
-  const atras = () => {
-    if (paso > 0) { setPaso(paso - 1); return; }
-    if (unidad > 0) { setUnidad(unidad - 1); setPaso(grupos.length - 1); return; }
-    onCancelar();
   };
 
   useEffect(() => {
     const tecla = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { e.preventDefault(); onCancelar(); }
-      if (e.key === 'Backspace') { e.preventDefault(); atras(); }
+      if (e.key === 'Enter') { e.preventDefault(); confirmar(); }
     };
     window.addEventListener('keydown', tecla);
     return () => window.removeEventListener('keydown', tecla);
   });
 
-  if (!grupo) return null;
+  if (grupos.length === 0) return null;
 
-  const estaCompleta = derivados[unidad].faltan.length === 0;
-  const faltaEnEste = cuantasEn(porUnidad[unidad], grupo.id, '') === 0
-    && (grupo.subgrupos || []).every((sg) => cuantasEn(porUnidad[unidad], grupo.id, sg.titulo) === 0);
+  /** Si una unidad está lista, para el punto de la pestaña. */
+  const listaLa = (i: number) => grupos.every((g) => {
+    if (!g.obligatorio) return true;
+    const e = porUnidad[i];
+    return cuantasEn(e, g.id, '') > 0
+      || (g.subgrupos || []).some((sg) => cuantasEn(e, g.id, sg.titulo) > 0);
+  });
 
   return (
     <div className="flex-1 flex flex-col min-h-0 gap-2">
-      {/* La cabecera dice dónde está el cajero. Con tres combos y dos grupos
-          cada uno son seis pantallas seguidas, y sin esto no hay forma de
-          saber cuál se está armando. */}
+      {/* La cabecera: qué se está armando y, con varias unidades, cuál. */}
       <div className="flex-shrink-0 flex items-center gap-2 px-3 h-12 rounded-xl bg-slate-900 text-white">
         <span className="text-[13px] font-black truncate">{producto.nombre}</span>
-        <span className="text-slate-500">›</span>
-        <span className="text-[13px] font-bold text-amber-300 uppercase truncate">
-          {grupo.nombre}
-        </span>
 
-        <span className="ml-auto flex-shrink-0 text-[11.5px] font-bold text-slate-400 tabular-nums">
-          {grupos.length > 1 && `Paso ${paso + 1} de ${grupos.length}`}
-          {grupos.length > 1 && cantidad > 1 && ' · '}
-          {cantidad > 1 && `Combo ${unidad + 1} de ${cantidad}`}
+        {cantidad > 1 && (
+          /* Pestañas y no pasos: el cajero salta a la unidad que el cliente
+             acaba de cambiar sin tener que recorrer las anteriores. */
+          <div className="flex items-center gap-1 ml-2">
+            {porUnidad.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setUnidad(i)}
+                className={`w-9 h-8 rounded-lg text-[12.5px] font-black tabular-nums flex items-center justify-center gap-1 ${
+                  i === unidad ? 'bg-white text-slate-900' : 'bg-white/10 text-slate-300'
+                }`}
+              >
+                {i + 1}
+                <span className={`w-1.5 h-1.5 rounded-full ${listaLa(i) ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+              </button>
+            ))}
+          </div>
+        )}
+
+        <span className="ml-auto flex-shrink-0 text-[11.5px] font-bold tabular-nums">
+          {derivado.sobreprecio > 0
+            ? <span className="text-amber-300">+{pesos(derivado.sobreprecio)}</span>
+            : <span className="text-slate-400">sin recargo</span>}
         </span>
       </div>
 
-      {/* Las opciones, con la misma geometría que la carta. */}
-      <div
-        className="flex-1 grid gap-2 min-h-0 content-start"
-        style={{ gridTemplateColumns: `repeat(${columnas}, minmax(0, 1fr))` }}
-      >
-        {opciones.map((o) => {
-          const puesta = (porUnidad[unidad][clave(grupo.id, o.sub, o.nombre)] || 0) > 0;
-          return (
-            <button
-              key={o.sub + o.nombre}
-              onClick={() => tocarOpcion(o.nombre, o.sub)}
-              className={`min-h-[96px] p-3 rounded-xl border-2 text-left flex flex-col justify-between active:scale-95 transition-transform duration-75 ${
-                puesta
-                  ? 'border-marca bg-marca text-sobre-marca'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-              }`}
-            >
-              <span className="text-[15px] font-bold leading-tight line-clamp-2">
-                {o.nombre}
-              </span>
+      {/* Todos los grupos, uno debajo de otro. Desplaza solo esta zona: la
+          cabecera y la barra de abajo no se mueven, que es lo que permite
+          confirmar sin volver arriba. */}
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-0.5">
+        {grupos.map((g) => {
+          const falta = faltaEn(g);
+          const opciones = opcionesDe(g);
 
-              <span className="flex items-center gap-1.5">
-                {o.precio > 0 ? (
-                  <span className={`text-[13px] font-black tabular-nums font-mono ${
-                    puesta ? 'opacity-90' : 'text-slate-500'
+          return (
+            <div key={g.id} ref={(el) => { seccionesRef.current[g.id] = el; }}>
+              <div className="flex items-center gap-2 mb-1.5 px-0.5">
+                <span className={`text-[12px] font-black uppercase tracking-wide ${
+                  falta ? 'text-amber-600' : 'text-slate-400'
+                }`}>
+                  {g.nombre}
+                </span>
+
+                {g.obligatorio && (
+                  <span className={`text-[10.5px] font-bold px-1.5 py-0.5 rounded ${
+                    falta ? 'bg-amber-100 text-amber-700' : 'bg-emerald-50 text-emerald-600'
                   }`}>
-                    +{pesos(o.precio)}
-                  </span>
-                ) : (
-                  <span className={`text-[12px] font-semibold ${
-                    puesta ? 'opacity-80' : 'text-slate-400'
-                  }`}>
-                    incluido
+                    {falta ? 'falta elegir' : 'listo'}
                   </span>
                 )}
-                {puesta && <Check size={15} strokeWidth={3} className="ml-auto" />}
-              </span>
-            </button>
+
+                {g.multiple && !g.obligatorio && (
+                  <span className="text-[10.5px] font-semibold text-slate-400">puedes marcar varias</span>
+                )}
+              </div>
+
+              <div
+                className="grid gap-2"
+                style={{ gridTemplateColumns: `repeat(${columnas}, minmax(0, 1fr))` }}
+              >
+                {opciones.map((o) => {
+                  const puesta = (elegidas[clave(g.id, o.sub, o.nombre)] || 0) > 0;
+                  return (
+                    <button
+                      key={o.sub + o.nombre}
+                      onClick={() => tocarOpcion(g, o.nombre, o.sub)}
+                      className={`min-h-[96px] p-3 rounded-xl border-2 text-left flex flex-col justify-between active:scale-95 transition-transform duration-75 ${
+                        puesta
+                          ? 'border-marca bg-marca text-sobre-marca'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                      }`}
+                    >
+                      <span className="text-[15px] font-bold leading-tight line-clamp-2">
+                        {o.nombre}
+                      </span>
+
+                      <span className="flex items-center gap-1.5">
+                        {o.precio > 0 ? (
+                          <span className={`text-[13px] font-black tabular-nums font-mono ${
+                            puesta ? 'opacity-90' : 'text-slate-500'
+                          }`}>
+                            +{pesos(o.precio)}
+                          </span>
+                        ) : (
+                          <span className={`text-[12px] font-semibold ${
+                            puesta ? 'opacity-80' : 'text-slate-400'
+                          }`}>
+                            incluido
+                          </span>
+                        )}
+                        {puesta && <Check size={15} strokeWidth={3} className="ml-auto" />}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </div>
@@ -204,45 +244,38 @@ export default function RejillaInGridExtras({
       {/* La barra de abajo, en el mismo sitio que la paginación de la carta. */}
       <div className="flex-shrink-0 flex items-center gap-2">
         <button
-          onClick={atras}
+          onClick={onCancelar}
           className="flex items-center gap-2 px-4 h-12 rounded-xl border-2 border-slate-200 bg-white text-[13px] font-bold text-slate-600 active:scale-95 transition-transform duration-75"
         >
           <ChevronLeft size={18} strokeWidth={2.5} />
-          {paso === 0 && unidad === 0 ? 'Cancelar' : 'Atrás'}
+          Cancelar
         </button>
 
-        {/* El camino rápido del caso frecuente: los N iguales.
-
-            Aparece en cuanto la unidad que se está armando está completa, que
-            con las opciones premarcadas es desde el primer momento. Tres
-            combos normales quedan resueltos en dos toques: el producto y
-            este botón. */}
-        {cantidad > 1 && unidad + 1 < cantidad && estaCompleta && (
+        {cantidad > 1 && pendientes.length === 0 && (
           <button
-            onClick={copiarAlResto}
+            onClick={todasIguales}
             className="flex items-center gap-2 px-4 h-12 rounded-xl bg-emerald-600 text-white text-[13px] font-black active:scale-95 transition-transform duration-75"
           >
             <Copy size={16} strokeWidth={2.5} />
-            Los {cantidad - unidad - 1} restantes iguales
+            Las {cantidad} iguales
           </button>
         )}
 
-        {/* Seguir o confirmar, **siempre a la vista**.
-
-            Estuvo un tiempo solo en los grupos de varias opciones, con el
-            argumento de que los excluyentes ya avanzan con el toque. Dejó de
-            valer cuando las opciones empezaron a llegar premarcadas: el combo
-            normal no necesita que se toque nada, y sin este botón no había
-            forma de decir que está bien así. */}
+        {/* Confirmar nunca se deshabilita: lleva al grupo que falta.
+            Un botón apagado en un mostrador no explica qué falta, y con varios
+            grupos en pantalla el cajero se queda mirando sin saber cuál. */}
         <button
-          onClick={() => avanzar(porUnidad)}
-          disabled={grupo.obligatorio && faltaEnEste}
-          className="ml-auto px-6 h-12 rounded-xl bg-marca text-sobre-marca text-[14px] font-black disabled:opacity-30 active:scale-95 transition-transform duration-75"
+          onClick={confirmar}
+          className={`ml-auto px-6 h-12 rounded-xl text-[14px] font-black active:scale-95 transition-transform duration-75 ${
+            pendientes.length > 0
+              ? 'bg-amber-500 text-white'
+              : 'bg-marca text-sobre-marca'
+          }`}
         >
-          {paso + 1 < grupos.length
-            ? 'Siguiente'
-            : unidad + 1 < cantidad
-              ? `Siguiente combo (${unidad + 2} de ${cantidad})`
+          {pendientes.length > 0
+            ? `Falta ${pendientes[0].nombre}`
+            : cantidad > 1
+              ? `Confirmar ${cantidad}`
               : 'Confirmar'}
         </button>
       </div>
