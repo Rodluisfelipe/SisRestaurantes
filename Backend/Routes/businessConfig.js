@@ -335,7 +335,20 @@ router.get("/by-slug/:slug", async (req, res) => {
       });
     }
     
-    res.json(config);
+    /* Si el negocio cobra con tarjeta. Va acá y no en un endpoint aparte
+       porque el menú ya pide esto para dibujarse, y una petición mas solo
+       para un booleano retrasaria la carta. El objeto de la cuenta no sale:
+       la llave de identidad se pide al firmar, cuando ya hay un pedido. */
+    const BoldCuenta = require('../Models/BoldCuenta');
+    const bold = await BoldCuenta.findOne({ businessId: config._id })
+      .select('identidad secretaEnc activa')
+      .lean()
+      .catch(() => null);
+
+    res.json({
+      ...config.toObject(),
+      boldActivo: !!(bold && bold.activa && bold.identidad && bold.secretaEnc),
+    });
   } catch (error) {
     logger.error('Error obteniendo configuración por slug', error, req);
     res.status(500).json(formatHttpError(req, 'Error al obtener la configuración del negocio', 500));
