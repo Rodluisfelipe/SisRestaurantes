@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaHistory, FaTimes, FaShoppingCart, FaHeart, FaClock, FaCheckCircle, FaChevronDown, FaRedo, FaMapMarkerAlt, FaChair, FaTruck, FaBoxOpen, FaStar, FaUtensils } from 'react-icons/fa';
 import api from '../services/api';
+import { esSinCuenta } from '../utils/cuentaCliente';
 import logger from '../utils/logger';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import { Capa } from './ui';
 
 /**
  * Modal para mostrar historial de pedidos y permitir re-ordenar rápidamente
@@ -55,7 +57,9 @@ const OrderHistoryModal = ({ show, onClose, businessId, customerPhone, onReorder
       }
     } catch (err) {
       logger.error('Error loading order history:', err);
-      setError('No se pudo cargar el historial');
+      setError(esSinCuenta(err)
+        ? 'Tu cuenta se activa en este celular con tu primer pedido. Desde ahí verás aquí ' + 'tus pedidos.'
+        : 'No se pudo cargar el historial');
     } finally {
       setLoading(false);
     }
@@ -152,6 +156,7 @@ const OrderHistoryModal = ({ show, onClose, businessId, customerPhone, onReorder
         className={`fixed inset-0 z-50 ${fullScreen ? '' : 'bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center'}`}
         onClick={fullScreen ? undefined : onClose}
       >
+        <Capa onCerrar={onClose} />
         <motion.div
           initial={fullScreen ? { x: '100%' } : { y: '100%', opacity: 0 }}
           animate={fullScreen ? { x: 0 } : { y: 0, opacity: 1 }}
@@ -281,12 +286,12 @@ const OrderHistoryModal = ({ show, onClose, businessId, customerPhone, onReorder
                             </div>
                             <div className="flex items-center gap-2 text-[11px] text-slate-400">
                               <span className="flex items-center gap-1">
-                                <FaClock className="text-[9px]" />
+                                <FaClock className="text-2xs" />
                                 {formatDate(order.completedAt || order.createdAt)}
                               </span>
                               <span>•</span>
                               <span className={`flex items-center gap-0.5 font-medium ${typeConf.text}`}>
-                                <TypeIcon className="text-[9px]" />
+                                <TypeIcon className="text-2xs" />
                                 {typeConf.label}
                               </span>
                               <span>•</span>
@@ -303,7 +308,7 @@ const OrderHistoryModal = ({ show, onClose, businessId, customerPhone, onReorder
                               animate={{ rotate: isExpanded ? 180 : 0 }}
                               transition={{ duration: 0.2 }}
                             >
-                              <FaChevronDown className="text-[10px] text-slate-300" />
+                              <FaChevronDown className="text-2xs text-slate-300" />
                             </motion.div>
                           </div>
                         </div>
@@ -366,7 +371,7 @@ const OrderHistoryModal = ({ show, onClose, businessId, customerPhone, onReorder
                                         }`}
                                         title="Agregar a favoritos"
                                       >
-                                        <FaHeart className="text-[10px]" />
+                                        <FaHeart className="text-2xs" />
                                       </button>
                                     </div>
                                   </div>

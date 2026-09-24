@@ -30,6 +30,7 @@ import DeliveryLocationMap from './DeliveryLocationMap';
 import useOrdersDashboard from '../hooks/useOrdersDashboard';
 import api from '../services/api';
 import { enlaceWhatsApp } from '../utils/whatsapp';
+import { Capa, Boton } from './ui';
 
 // Inline admin chat for order details
 const AdminOrderChat = ({ orderId, messages: initialMessages, isOpen, onClose }) => {
@@ -92,7 +93,7 @@ const AdminOrderChat = ({ orderId, messages: initialMessages, isOpen, onClose })
           <span className="text-[13px] font-bold">Chat con cliente</span>
         </div>
         <button onClick={onClose} className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
-          <FaTimes className="text-[10px]" />
+          <FaTimes className="text-2xs" />
         </button>
       </div>
 
@@ -109,7 +110,7 @@ const AdminOrderChat = ({ orderId, messages: initialMessages, isOpen, onClose })
                 : 'bg-white border border-slate-200 text-slate-700 rounded-2xl rounded-bl-md shadow-sm'
             }`}>
               <p className="break-words">{m.text}</p>
-              <p className={`text-[9px] mt-0.5 ${m.sender === 'business' ? 'text-blue-200' : 'text-slate-400'}`}>{formatTime(m.timestamp)}</p>
+              <p className={`text-2xs mt-0.5 ${m.sender === 'business' ? 'text-blue-200' : 'text-slate-400'}`}>{formatTime(m.timestamp)}</p>
             </div>
           </div>
         ))}
@@ -171,11 +172,11 @@ const GiftPanel = ({ order, businessName }) => {
         </div>
         {g.hidePrices && (
           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-pink-700 bg-white border border-pink-200 rounded-lg px-2.5 py-1.5">
-            <FaExclamationTriangle className="text-[10px] text-pink-500" /> No incluir factura ni precios en la entrega
+            <FaExclamationTriangle className="text-2xs text-pink-500" /> No incluir factura ni precios en la entrega
           </div>
         )}
         <div className="bg-white border border-pink-200 rounded-lg p-2.5">
-          <p className="text-[10px] uppercase tracking-wide text-pink-400 font-bold mb-1">Mensaje para enviar al destinatario</p>
+          <p className="text-2xs uppercase tracking-wide text-pink-400 font-bold mb-1">Mensaje para enviar al destinatario</p>
           <p className="text-[12px] text-slate-600 whitespace-pre-line mb-2">{recipientMsg}</p>
           <div className="grid grid-cols-2 gap-1.5">
             <a href={waUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 bg-green-500 hover:bg-green-600 text-white py-2.5 rounded-lg text-xs font-bold transition-colors active:scale-[0.97]">
@@ -425,7 +426,7 @@ function ModernOrdersDashboard() {
               onClick={goToKitchenScreen}
               className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-colors"
             >
-              <FaUtensils className="text-[10px]" />
+              <FaUtensils className="text-2xs" />
               <span className="hidden sm:inline">Cocina</span>
             </button>
           )}
@@ -441,7 +442,7 @@ function ModernOrdersDashboard() {
               }}
               className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-colors"
             >
-              <FaTv className="text-[10px]" />
+              <FaTv className="text-2xs" />
               <span className="hidden sm:inline">Pantalla</span>
             </button>
           )}
@@ -451,7 +452,7 @@ function ModernOrdersDashboard() {
             onClick={() => setShowQuickOrder(true)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100 transition-colors"
           >
-            <FaPlus className="text-[10px]" />
+            <FaPlus className="text-2xs" />
             <span className="hidden sm:inline">Pedido</span>
           </button>
 
@@ -519,7 +520,7 @@ function ModernOrdersDashboard() {
                 >
                   <span>{f.label}</span>
                   {count > 0 && (
-                    <span className={`min-w-[16px] h-[16px] px-1 rounded-full text-[9px] font-bold flex items-center justify-center leading-none ${
+                    <span className={`min-w-[16px] h-[16px] px-1 rounded-full text-2xs font-bold flex items-center justify-center leading-none ${
                       isActive ? 'bg-red-500 text-white' : 'bg-slate-200 text-slate-500'
                     }`}>
                       {count}
@@ -546,10 +547,10 @@ function ModernOrdersDashboard() {
                       : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'
                   }`}
                 >
-                  <FilterIcon className="text-[10px]" />
+                  <FilterIcon className="text-2xs" />
                   <span>{f.label}</span>
                   {count > 0 && (
-                    <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none ${
+                    <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-2xs font-bold leading-none ${
                       isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
                     }`}>
                       {count}
@@ -662,6 +663,7 @@ function ModernOrdersDashboard() {
               setShowChatModal(false);
             }}
           >
+            <Capa onCerrar={() => { setSelectedOrder(null); setOrderDetails(null); setShowChatModal(false); }} />
             <motion.div
               initial={{ opacity: 0, y: 100 }}
               animate={{ opacity: 1, y: 0 }}
@@ -694,9 +696,9 @@ function ModernOrdersDashboard() {
                         onClick={() => setShowChatModal(prev => !prev)}
                         className="relative flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 px-2.5 py-2 rounded-lg text-[11px] font-semibold border border-blue-200/60 transition-colors"
                       >
-                        <FaCommentDots className="text-[10px]" /> Chat
+                        <FaCommentDots className="text-2xs" /> Chat
                         {(orderDetails.messages || []).filter(m => m.sender === 'customer').length > 0 && (
-                          <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                          <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-2xs font-bold rounded-full flex items-center justify-center">
                             {(orderDetails.messages || []).filter(m => m.sender === 'customer').length}
                           </span>
                         )}
@@ -719,12 +721,12 @@ function ModernOrdersDashboard() {
                   {/* Row 1: Customer + Phone */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 min-w-0">
-                      <FaUser className="text-[10px] text-slate-400 shrink-0" />
+                      <FaUser className="text-2xs text-slate-400 shrink-0" />
                       <span className="text-[13px] font-semibold text-slate-800 truncate">{orderDetails.customerName}</span>
                     </div>
                     {orderDetails.phone && (
                       <a href={`tel:${orderDetails.phone}`} className="flex items-center gap-1.5 text-[12px] text-slate-500 hover:text-blue-500 shrink-0 tabular-nums">
-                        <FaPhone className="text-[9px]" /> {orderDetails.phone}
+                        <FaPhone className="text-2xs" /> {orderDetails.phone}
                       </a>
                     )}
                   </div>
@@ -733,12 +735,12 @@ function ModernOrdersDashboard() {
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-slate-500">
                     {orderDetails.tableNumber && (
                       <span className="flex items-center gap-1">
-                        <FaChair className="text-[9px] text-slate-300" /> {businessConfig?.businessType === 'hotel' ? 'Hab.' : 'Mesa'} {orderDetails.tableNumber}
+                        <FaChair className="text-2xs text-slate-300" /> {businessConfig?.businessType === 'hotel' ? 'Hab.' : 'Mesa'} {orderDetails.tableNumber}
                       </span>
                     )}
                     {orderDetails.orderType === 'delivery' && orderDetails.address && (
                       <span className="flex items-center gap-1">
-                        <FaHome className="text-[9px] text-slate-300" /> {orderDetails.address}
+                        <FaHome className="text-2xs text-slate-300" /> {orderDetails.address}
                       </span>
                     )}
                   {orderDetails.orderType === 'delivery' && orderDetails.deliveryCoordinates?.lat && (
@@ -748,29 +750,29 @@ function ModernOrdersDashboard() {
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 text-blue-500 hover:text-blue-600 font-semibold"
                       >
-                        <FaMapMarkerAlt className="text-[9px]" /> Ver en Maps
+                        <FaMapMarkerAlt className="text-2xs" /> Ver en Maps
                       </a>
                     )}
                     {orderDetails.orderType === 'delivery' && orderDetails.deliveryZoneName && (
                       <span className="flex items-center gap-1">
-                        <FaMapMarkerAlt className="text-[9px] text-slate-300" /> {orderDetails.deliveryZoneName}
+                        <FaMapMarkerAlt className="text-2xs text-slate-300" /> {orderDetails.deliveryZoneName}
                       </span>
                     )}
                     {orderDetails.orderType === 'delivery' && orderDetails.deliveryFee > 0 && (
                       <span className="flex items-center gap-1 font-semibold text-slate-600">
-                        <FaTruck className="text-[9px] text-slate-300" /> Envío ${orderDetails.deliveryFee.toLocaleString()}
+                        <FaTruck className="text-2xs text-slate-300" /> Envío ${orderDetails.deliveryFee.toLocaleString()}
                       </span>
                     )}
                     <span className="flex items-center gap-1">
-                      <FaClock className="text-[9px] text-slate-300" /> {calculateTimeElapsed(orderDetails.createdAt)}
+                      <FaClock className="text-2xs text-slate-300" /> {calculateTimeElapsed(orderDetails.createdAt)}
                     </span>
                     {orderDetails.paymentMethod && (
                       <span className="flex items-center gap-1">
-                        <FaCreditCard className="text-[9px] text-slate-300" /> {PAYMENT_LABELS[orderDetails.paymentMethod] || orderDetails.paymentMethod}
+                        <FaCreditCard className="text-2xs text-slate-300" /> {PAYMENT_LABELS[orderDetails.paymentMethod] || orderDetails.paymentMethod}
                       </span>
                     )}
                     {(() => { const si = getStatusInfo(orderDetails.status); return (
-                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${si.bgColor} ${si.textColor}`}>
+                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-2xs font-bold ${si.bgColor} ${si.textColor}`}>
                         <si.Icon className="text-[7px]" /> {si.label}
                       </span>
                     ); })()}
@@ -778,21 +780,21 @@ function ModernOrdersDashboard() {
 
                   {orderDetails.orderType === 'delivery' && orderDetails.deliveryNeedsConfirmation && (
                     <div className="flex items-center gap-1.5 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200">
-                      <FaExclamationTriangle className="text-[10px] text-amber-500 shrink-0" />
+                      <FaExclamationTriangle className="text-2xs text-amber-500 shrink-0" />
                       <span className="text-[11px] font-semibold text-amber-700">Envío por confirmar — fuera de zonas automáticas</span>
                     </div>
                   )}
 
                   {orderDetails.customerNotes && (
                     <div className="flex items-start gap-1.5 bg-amber-50/60 px-2.5 py-1.5 rounded-lg">
-                      <FaTag className="text-[9px] text-amber-400 mt-0.5 shrink-0" />
+                      <FaTag className="text-2xs text-amber-400 mt-0.5 shrink-0" />
                       <p className="text-[12px] text-amber-700">{orderDetails.customerNotes}</p>
                     </div>
                   )}
 
                   {orderDetails.orderChannel === 'inapp' && (
                     <div className="flex items-center gap-1.5 text-[11px] text-indigo-600 font-medium">
-                      <FaMoneyBillWave className="text-[9px]" /> Pedido in-app
+                      <FaMoneyBillWave className="text-2xs" /> Pedido in-app
                     </div>
                   )}
                 </div>
@@ -813,65 +815,59 @@ function ModernOrdersDashboard() {
 
                 {/* ── Action Buttons — TOP ── */}
                 <div className="space-y-1.5">
-                  {/* Primary actions */}
+                  {/* Primary actions: verde confirma, rojo rechaza, oscuro avanza. */}
                   {orderDetails.status === ORDER_STATUS.PAYMENT_UPLOADED && (
                     <div className="flex gap-2">
-                      <button onClick={() => confirmPayment(orderDetails._id)} className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl text-sm font-bold transition-colors active:scale-[0.98]">
-                        <FaCheckCircle className="text-xs" /> Confirmar pago
-                      </button>
-                      <button onClick={() => rejectPayment(orderDetails._id)} className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white px-5 py-3 rounded-xl text-sm font-bold transition-colors active:scale-[0.98]">
-                        <FaTimesCircle className="text-xs" /> Rechazar
-                      </button>
+                      <Boton variante="accion" redondo={false} className="flex-1" icono={<FaCheckCircle className="text-xs" />} onClick={() => confirmPayment(orderDetails._id)}>
+                        Confirmar pago
+                      </Boton>
+                      <Boton variante="peligro" redondo={false} icono={<FaTimesCircle className="text-xs" />} onClick={() => rejectPayment(orderDetails._id)}>
+                        Rechazar
+                      </Boton>
                     </div>
                   )}
 
-                  {orderDetails.status === ORDER_STATUS.PAYMENT_CONFIRMED && (
-                    <button onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.IN_PROGRESS)} className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl text-sm font-bold transition-colors active:scale-[0.98]">
-                      <FaPlay className="text-xs" /> Iniciar preparación
-                    </button>
+                  {(orderDetails.status === ORDER_STATUS.PAYMENT_CONFIRMED || orderDetails.status === ORDER_STATUS.PENDING) && (
+                    <Boton variante="oscuro" redondo={false} bloque icono={<FaPlay className="text-xs" />} onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.IN_PROGRESS)}>
+                      Iniciar preparación
+                    </Boton>
                   )}
 
                   {orderDetails.status === ORDER_STATUS.PENDING_PAYMENT && (
-                    <button onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.PAYMENT_CONFIRMED)} className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl text-sm font-bold transition-colors active:scale-[0.98]">
-                      <FaCheckCircle className="text-xs" /> Confirmar pago
-                    </button>
-                  )}
-
-                  {orderDetails.status === ORDER_STATUS.PENDING && (
-                    <button onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.IN_PROGRESS)} className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl text-sm font-bold transition-colors active:scale-[0.98]">
-                      <FaPlay className="text-xs" /> Iniciar preparación
-                    </button>
+                    <Boton variante="accion" redondo={false} bloque icono={<FaCheckCircle className="text-xs" />} onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.PAYMENT_CONFIRMED)}>
+                      Confirmar pago
+                    </Boton>
                   )}
 
                   {orderDetails.status === ORDER_STATUS.IN_PROGRESS && (
                     <div className="space-y-1.5">
                       {orderDetails.orderType === 'delivery' && !orderDetails.deliveryToken && !orderDetails.deliveryPersonId && !orderDetails.confirmationCode && (
-                        <button onClick={() => setAssignDomiOrder(orderDetails)} className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl text-sm font-bold transition-colors active:scale-[0.98]">
-                          <FaMotorcycle className="text-sm" /> Asignar domiciliario
-                        </button>
+                        <Boton variante="secundario" redondo={false} bloque icono={<FaMotorcycle className="text-sm" />} onClick={() => setAssignDomiOrder(orderDetails)}>
+                          Asignar domiciliario
+                        </Boton>
                       )}
-                      <button onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.COMPLETED)} className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl text-sm font-bold transition-colors active:scale-[0.98]">
-                        <FaCheck className="text-xs" /> {orderDetails.orderType === 'delivery' ? 'Completar pedido' : 'Marcar como completado'}
-                      </button>
+                      <Boton variante="accion" redondo={false} bloque icono={<FaCheck className="text-xs" />} onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.COMPLETED)}>
+                        {orderDetails.orderType === 'delivery' ? 'Completar pedido' : 'Marcar como completado'}
+                      </Boton>
                     </div>
                   )}
 
                   {/* Secondary actions row */}
                   <div className="grid grid-cols-2 gap-1.5">
                     {!orderDetails.sentToKitchen && (
-                      <button onClick={() => sendToKitchen(orderDetails._id)} className="flex items-center justify-center gap-1.5 bg-orange-50 hover:bg-orange-100 text-orange-600 py-2.5 rounded-xl text-xs font-semibold border border-orange-200/60 transition-colors active:scale-[0.97]">
-                        <FaUtensils className="text-[10px]" /> Enviar a cocina
-                      </button>
+                      <Boton variante="secundario" redondo={false} tamano="md" className="text-xs" icono={<FaUtensils className="text-2xs" />} onClick={() => sendToKitchen(orderDetails._id)}>
+                        Enviar a cocina
+                      </Boton>
                     )}
                     {orderDetails.status !== ORDER_STATUS.COMPLETED && orderDetails.status !== ORDER_STATUS.CANCELLED && orderDetails.status !== ORDER_STATUS.DELIVERED && (
-                      <button onClick={() => setAddItemsOrder(orderDetails)} className="flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 py-2.5 rounded-xl text-xs font-semibold border border-blue-200/60 transition-colors active:scale-[0.97]">
-                        <FaPlus className="text-[10px]" /> Agregar productos
-                      </button>
+                      <Boton variante="secundario" redondo={false} tamano="md" className="text-xs" icono={<FaPlus className="text-2xs" />} onClick={() => setAddItemsOrder(orderDetails)}>
+                        Agregar productos
+                      </Boton>
                     )}
                     {orderDetails.status !== ORDER_STATUS.COMPLETED && orderDetails.status !== ORDER_STATUS.CANCELLED && orderDetails.status !== ORDER_STATUS.DELIVERED && (
-                      <button onClick={() => { if (window.confirm('¿Cancelar pedido #' + orderDetails.orderNumber + '?')) { updateOrderStatus(orderDetails._id, ORDER_STATUS.CANCELLED); setOrderDetails(null); } }} className="flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-500 py-2.5 rounded-xl text-xs font-semibold border border-red-200/60 transition-colors active:scale-[0.97]">
-                        <FaTimes className="text-[9px]" /> Cancelar pedido
-                      </button>
+                      <Boton variante="peligro-suave" redondo={false} tamano="md" className="text-xs" icono={<FaTimes className="text-2xs" />} onClick={() => { if (window.confirm('¿Cancelar pedido #' + orderDetails.orderNumber + '?')) { updateOrderStatus(orderDetails._id, ORDER_STATUS.CANCELLED); setOrderDetails(null); } }}>
+                        Cancelar pedido
+                      </Boton>
                     )}
                   </div>
                 </div>
@@ -898,7 +894,7 @@ function ModernOrdersDashboard() {
                       disabled={printingChanges}
                       className="w-full flex items-center justify-center gap-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white py-2.5 text-xs font-bold transition-colors active:scale-[0.98]"
                     >
-                      <FaPrint className="text-[10px]" />
+                      <FaPrint className="text-2xs" />
                       {printingChanges ? 'Enviando...' : 'Imprimir comanda de cambios'}
                     </button>
                   </div>
@@ -915,7 +911,7 @@ function ModernOrdersDashboard() {
                             <span className="text-[13px] font-medium text-slate-800">{item.name}</span>
                             <span className="text-[11px] text-slate-400">x{item.quantity}</span>
                             {item.isLoyaltyReward && (
-                              <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold inline-flex items-center gap-0.5">{AI.gift('w-3 h-3')} Loyalty</span>
+                              <span className="text-2xs px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold inline-flex items-center gap-0.5">{AI.gift('w-3 h-3')} Loyalty</span>
                             )}
                           </div>
                           {item.selectedToppings && item.selectedToppings.length > 0 && (
@@ -924,7 +920,7 @@ function ModernOrdersDashboard() {
                                 const tags = [];
                                 if (topping.optionName) {
                                   tags.push(
-                                    <span key={`t-${toppingIndex}`} className="text-[10px] text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded">
+                                    <span key={`t-${toppingIndex}`} className="text-2xs text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded">
                                       + {topping.groupName && <>{topping.groupName}: </>}{topping.optionName}{topping.price > 0 && ` ($${topping.price.toLocaleString()})`}
                                     </span>
                                   );
@@ -932,7 +928,7 @@ function ModernOrdersDashboard() {
                                 if (topping.subGroups) {
                                   topping.subGroups.forEach((sg, si) => {
                                     tags.push(
-                                      <span key={`s-${toppingIndex}-${si}`} className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
+                                      <span key={`s-${toppingIndex}-${si}`} className="text-2xs text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
                                         + {sg.subGroupTitle && <>{sg.subGroupTitle}: </>}{sg.optionName}{sg.price > 0 && ` ($${sg.price.toLocaleString()})`}
                                       </span>
                                     );
@@ -945,7 +941,7 @@ function ModernOrdersDashboard() {
                         </div>
                         <div className="text-right shrink-0 ml-3">
                           <p className="text-[13px] font-semibold text-slate-800">${(item.price * item.quantity).toLocaleString()}</p>
-                          {item.quantity > 1 && <p className="text-[10px] text-slate-400">${item.price.toLocaleString()} c/u</p>}
+                          {item.quantity > 1 && <p className="text-2xs text-slate-400">${item.price.toLocaleString()} c/u</p>}
 
                           {puedeEditarItems(orderDetails) && item._id && (
                             <div className="flex items-center justify-end gap-1 mt-1.5">
@@ -996,34 +992,34 @@ function ModernOrdersDashboard() {
                 )}
 
                 {/* ── Total ── */}
-                <div className="bg-slate-800 rounded-xl px-4 py-3 space-y-1">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 space-y-1">
                   {(orderDetails.deliveryFee > 0 || orderDetails.couponCode || orderDetails.deliveryNeedsConfirmation) && (
-                    <div className="flex justify-between items-center text-slate-400 text-[12px]">
+                    <div className="flex justify-between items-center text-slate-500 text-[12px]">
                       <span>Subtotal</span>
                       <span>${(orderDetails.totalAmount || 0).toLocaleString()}</span>
                     </div>
                   )}
                   {orderDetails.deliveryFee > 0 && (
-                    <div className="flex justify-between items-center text-slate-400 text-[12px]">
+                    <div className="flex justify-between items-center text-slate-500 text-[12px]">
                       <span>Envío</span>
                       <span>${orderDetails.deliveryFee.toLocaleString()}</span>
                     </div>
                   )}
                   {orderDetails.deliveryNeedsConfirmation && !orderDetails.deliveryFee && (
-                    <div className="flex justify-between items-center text-amber-400 text-[12px]">
+                    <div className="flex justify-between items-center text-amber-600 text-[12px]">
                       <span>Envío</span>
                       <span>Por confirmar</span>
                     </div>
                   )}
                   {orderDetails.couponCode && (
-                    <div className="flex justify-between items-center text-emerald-400 text-[12px]">
+                    <div className="flex justify-between items-center text-emerald-700 text-[12px]">
                       <span>Cupón ({orderDetails.couponCode})</span>
                       <span>-${(orderDetails.discountAmount || 0).toLocaleString()}</span>
                     </div>
                   )}
-                  <div className="flex justify-between items-center pt-1">
-                    <span className="text-sm font-bold text-white">Total</span>
-                    <span className="text-lg font-bold text-white">
+                  <div className="flex justify-between items-center pt-2 mt-1 border-t border-slate-200">
+                    <span className="text-sm font-bold text-slate-900">Total</span>
+                    <span className="text-lg font-bold text-slate-900">
                       {orderDetails.couponCode
                         ? `$${((orderDetails.totalAmount || 0) + (orderDetails.deliveryFee || 0) - (orderDetails.discountAmount || 0)).toLocaleString()}`
                         : orderDetails.deliveryNeedsConfirmation && !orderDetails.deliveryFee
@@ -1055,14 +1051,14 @@ function ModernOrdersDashboard() {
                     onClick={async () => { try { await api.post(`/print-agent/print-comanda/${orderDetails._id}`); } catch { handlePrintOrder(orderDetails); } }}
                     className="flex items-center justify-center gap-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 py-2.5 rounded-xl text-xs font-semibold border border-slate-200/60 transition-colors active:scale-[0.97]"
                   >
-                    <FaPrint className="text-[10px]" /> Imprimir comanda
+                    <FaPrint className="text-2xs" /> Imprimir comanda
                   </button>
                   {orderDetails.status !== 'pending' && orderDetails.status !== 'pending_payment' && (
                     <button
                       onClick={async () => { try { await api.post(`/print-agent/print-receipt/${orderDetails._id}`); } catch { handlePrintOrder(orderDetails); } }}
                       className="flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 py-2.5 rounded-xl text-xs font-semibold border border-emerald-200/60 transition-colors active:scale-[0.97]"
                     >
-                      <FaMoneyBillWave className="text-[10px]" /> Imprimir recibo
+                      <FaMoneyBillWave className="text-2xs" /> Imprimir recibo
                     </button>
                   )}
                 </div>
@@ -1094,6 +1090,7 @@ function ModernOrdersDashboard() {
             className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60]"
             onClick={() => setShowProofModal(false)}
           >
+            <Capa onCerrar={() => setShowProofModal(false)} />
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

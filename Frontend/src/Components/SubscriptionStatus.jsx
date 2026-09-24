@@ -271,7 +271,7 @@ const SubscriptionStatus = ({
                   PRO
                 </span>
               </div>
-              <span className="text-[9px] text-violet-300/60 leading-tight font-medium transition-colors duration-300 group-hover:text-violet-300/90">
+              <span className="text-2xs text-violet-300/60 leading-tight font-medium transition-colors duration-300 group-hover:text-violet-300/90">
                 Activo
               </span>
             </div>
@@ -281,7 +281,7 @@ const SubscriptionStatus = ({
               <span className="text-sm font-bold tabular-nums bg-gradient-to-b from-violet-200 to-purple-300 bg-clip-text text-transparent transition-all duration-300 group-hover:from-white group-hover:to-violet-200">
                 {subscription.daysRemaining > 0 ? subscription.daysRemaining : '∞'}
               </span>
-              <span className="block text-[8px] text-violet-400/50 font-medium leading-tight transition-colors duration-300 group-hover:text-violet-300/70">días</span>
+              <span className="block text-2xs text-violet-400/50 font-medium leading-tight transition-colors duration-300 group-hover:text-violet-300/70">días</span>
             </div>
           </div>
 
@@ -313,12 +313,12 @@ const SubscriptionStatus = ({
                 {getPlanText(subscription.planType)}
               </span>
               {tier.tier >= 3 && (
-                <span className={`text-[8px] font-extrabold ${tier.badgeText} ${tier.badgeBg} px-1.5 py-0.5 rounded-full uppercase leading-none tracking-wider`}>
+                <span className={`text-2xs font-extrabold ${tier.badgeText} ${tier.badgeBg} px-1.5 py-0.5 rounded-full uppercase leading-none tracking-wider`}>
                   {tier.shortLabel}
                 </span>
               )}
             </div>
-            <span className="text-[9px] text-slate-400 leading-tight font-medium">
+            <span className="text-2xs text-slate-400 leading-tight font-medium">
               Activo
             </span>
           </div>
@@ -327,7 +327,7 @@ const SubscriptionStatus = ({
             <span className={`text-xs font-bold tabular-nums ${tier.daysBg}`}>
               {subscription.daysRemaining > 0 ? subscription.daysRemaining : '∞'}
             </span>
-            <span className="block text-[8px] text-slate-400 font-medium leading-tight">días</span>
+            <span className="block text-2xs text-slate-400 font-medium leading-tight">días</span>
           </div>
         </div>
       </button>
@@ -370,12 +370,12 @@ const SubscriptionStatus = ({
           {isExpired ? (
             <div className="text-red-600">
               <FaExclamationTriangle className="mx-auto mb-0.5 text-sm" />
-              <p className="text-[10px] font-semibold">DESACTIVADO</p>
+              <p className="text-2xs font-semibold">DESACTIVADO</p>
             </div>
           ) : isInGracePeriod ? (
             <div className="text-yellow-600">
               <FaClock className="mx-auto mb-0.5 text-sm" />
-              <p className="text-[10px] font-semibold">
+              <p className="text-2xs font-semibold">
                 {subscription.daysRemaining < 0 ? 'EXPIRO' : `${subscription.daysRemaining}d`}
               </p>
             </div>
@@ -402,35 +402,35 @@ const SubscriptionStatus = ({
 
                 {graceUntilDate && (timeRemaining.days > 0 || timeRemaining.hours > 0 || timeRemaining.minutes > 0 || timeRemaining.seconds > 0) ? (
                   <div className={`${urgentBadge} rounded-lg p-2`}>
-                    <p className={`text-[10px] font-medium ${urgentText} text-center mb-1`}>Tiempo restante:</p>
+                    <p className={`text-2xs font-medium ${urgentText} text-center mb-1`}>Tiempo restante:</p>
                     <div className="flex items-center justify-center gap-1.5 tabular-nums">
                       {timeRemaining.days > 0 && (
                         <div className="text-center">
                           <div className={`text-base font-bold ${urgentText}`}>{timeRemaining.days}</div>
-                          <div className={`text-[9px] ${urgentAccent}`}>dias</div>
+                          <div className={`text-2xs ${urgentAccent}`}>dias</div>
                         </div>
                       )}
                       <div className="text-center">
                         <div className={`text-base font-bold ${urgentText}`}>{String(timeRemaining.hours).padStart(2, '0')}</div>
-                        <div className={`text-[9px] ${urgentAccent}`}>hrs</div>
+                        <div className={`text-2xs ${urgentAccent}`}>hrs</div>
                       </div>
                       <div className="text-center">
                         <div className={`text-base font-bold ${urgentText}`}>{String(timeRemaining.minutes).padStart(2, '0')}</div>
-                        <div className={`text-[9px] ${urgentAccent}`}>min</div>
+                        <div className={`text-2xs ${urgentAccent}`}>min</div>
                       </div>
                       <div className="text-center">
                         <div className={`text-base font-bold ${urgentText}`}>{String(timeRemaining.seconds).padStart(2, '0')}</div>
-                        <div className={`text-[9px] ${urgentAccent}`}>seg</div>
+                        <div className={`text-2xs ${urgentAccent}`}>seg</div>
                       </div>
                     </div>
-                    <p className={`text-[9px] ${urgentAccent} mt-1 text-center`}>
+                    <p className={`text-2xs ${urgentAccent} mt-1 text-center`}>
                       Desactivacion: {formatDateTime(graceUntilDate)}
                     </p>
                   </div>
                 ) : (
                   <div className="bg-red-100 rounded-lg p-2 text-center">
                     <p className="text-xs font-bold text-red-800">Desactivacion inminente</p>
-                    {graceUntilDate && <p className="text-[10px] text-red-600 mt-0.5">{formatDateTime(graceUntilDate)}</p>}
+                    {graceUntilDate && <p className="text-2xs text-red-600 mt-0.5">{formatDateTime(graceUntilDate)}</p>}
                   </div>
                 )}
               </div>
@@ -441,7 +441,7 @@ const SubscriptionStatus = ({
                     Tu suscripcion expiro el {formatDate(subscription.periodEnd || subscription.endDate)}.
                     Tienes <strong>{graceDaysRemaining} dias</strong> para renovar.
                   </p>
-                  <p className={`text-[10px] ${urgentAccent} font-medium mb-2`}>
+                  <p className={`text-2xs ${urgentAccent} font-medium mb-2`}>
                     Despues del periodo de gracia el menu quedara desactivado.
                   </p>
                 </div>
@@ -450,7 +450,7 @@ const SubscriptionStatus = ({
                   className={`w-full px-3 py-1.5 ${isUrgent ? 'bg-red-600 hover:bg-red-700' : 'bg-yellow-600 hover:bg-yellow-700'} text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5`}
                 >
                   <span>Renovar Ahora</span>
-                  <FaArrowRight className="text-[10px]" />
+                  <FaArrowRight className="text-2xs" />
                 </button>
               </div>
             </div>
@@ -472,7 +472,7 @@ const SubscriptionStatus = ({
                 className="w-full mt-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5"
               >
                 <span>Renovar Suscripcion</span>
-                <FaArrowRight className="text-[10px]" />
+                <FaArrowRight className="text-2xs" />
               </button>
             </div>
           </div>

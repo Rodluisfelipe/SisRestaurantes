@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
 import { useBusinessConfig } from '../../Context/BusinessContext';
+import { Capa } from '../ui';
 
 /**
  * La configuración de una caja registradora, desde el panel.
@@ -82,6 +83,7 @@ export default function ConfigCaja({ caja, onCerrar }) {
 
   return (
     <div className="fixed inset-0 z-40 bg-black/50 flex items-center justify-center p-4" onClick={onCerrar}>
+      <Capa onCerrar={onCerrar} />
       <div
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-2xl max-h-[92vh] flex flex-col bg-white rounded-2xl shadow-2xl"

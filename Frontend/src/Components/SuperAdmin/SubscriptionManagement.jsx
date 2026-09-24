@@ -640,7 +640,7 @@ const SubscriptionManagement = () => {
               className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 text-sm outline-none focus:border-cyan-500 transition-all resize-none"
               rows="3" placeholder="Información adicional..." />
             <div className="flex justify-end mt-1">
-              <p className={`text-[10px] ${formData.notes.length > 500 ? 'text-red-600' : 'text-slate-400'}`}>
+              <p className={`text-2xs ${formData.notes.length > 500 ? 'text-red-600' : 'text-slate-400'}`}>
                 {formData.notes.length}/500
               </p>
             </div>

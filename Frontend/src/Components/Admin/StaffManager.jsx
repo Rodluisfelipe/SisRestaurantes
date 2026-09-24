@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaUserPlus, FaTrash, FaUsers, FaEye, FaEyeSlash, FaTimes, FaCamera, FaSave, FaToggleOn, FaToggleOff, FaClock, FaPercent, FaDollarSign, FaEdit, FaCheck } from 'react-icons/fa';
 import api from '../../services/api';
+import { Capa } from '../ui';
 
 const ROLE_LABELS = { staff: 'Cajero', manager: 'Gerente' };
 const DAYS = [
@@ -129,6 +130,7 @@ const EditProfileModal = ({ member, businessId, onClose, onSaved }) => {
       className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex lg:items-center items-end justify-center lg:p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
+      <Capa onCerrar={onClose} />
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -227,7 +229,7 @@ const EditProfileModal = ({ member, businessId, onClose, onSaved }) => {
                   rows={3}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl lg:rounded-lg text-[14px] lg:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 lg:focus:ring-blue-200 focus:border-transparent lg:focus:border-blue-400 resize-none"
                 />
-                <p className="text-[10px] text-slate-300 text-right mt-0.5">{(form.bio || '').length}/500</p>
+                <p className="text-2xs text-slate-300 text-right mt-0.5">{(form.bio || '').length}/500</p>
               </div>
 
               {/* Public toggle */}
@@ -366,7 +368,7 @@ const EditProfileModal = ({ member, businessId, onClose, onSaved }) => {
                       <div className={`w-4 h-4 rounded flex-shrink-0 border-2 flex items-center justify-center transition-colors ${
                         isSelected ? 'border-blue-500 bg-blue-500' : 'border-slate-300'
                       }`}>
-                        {isSelected && <FaCheck className="text-white text-[8px]" />}
+                        {isSelected && <FaCheck className="text-white text-2xs" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-slate-700 truncate">{svc.name}</p>
@@ -600,7 +602,7 @@ const StaffManager = ({ businessId }) => {
                   <p className="text-sm font-semibold text-slate-800">{member.name || member.username}</p>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs text-slate-400">{member.username}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+                    <span className={`text-2xs px-1.5 py-0.5 rounded-full font-semibold ${
                       member.role === 'manager'
                         ? 'bg-purple-50 text-purple-600'
                         : 'bg-blue-50 text-blue-600'
@@ -608,23 +610,23 @@ const StaffManager = ({ businessId }) => {
                       {ROLE_LABELS[member.role] || member.role}
                     </span>
                     {member.specialty && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 font-medium">
+                      <span className="text-2xs px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 font-medium">
                         {member.specialty}
                       </span>
                     )}
                     {member.isPublic && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium">
+                      <span className="text-2xs px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 font-medium">
                         Público
                       </span>
                     )}
                     {member.commissionType && member.commissionType !== 'none' && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">
+                      <span className="text-2xs px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">
                         {member.commissionType === 'percentage' ? `${member.commissionValue}%` : `$${member.commissionValue}`}
                       </span>
                     )}
                   </div>
                   {member.lastLogin && (
-                    <p className="text-[10px] text-slate-300 mt-0.5">
+                    <p className="text-2xs text-slate-300 mt-0.5">
                       Último acceso: {new Date(member.lastLogin).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </p>
                   )}

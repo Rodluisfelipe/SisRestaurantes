@@ -78,7 +78,7 @@ export default function CrewEmployerSignup({ onSwitch, onBack }) {
             <span className="text-base font-black text-white">C</span>
           </div>
           <div>
-            <p className="text-[9.5px] font-extrabold uppercase tracking-[0.2em] text-slate-400">Crew</p>
+            <p className="text-2xs font-extrabold uppercase tracking-[0.2em] text-slate-400">Crew</p>
             <p className="text-[13px] font-black text-slate-800">Soy un empleador</p>
           </div>
         </div>
@@ -99,7 +99,7 @@ export default function CrewEmployerSignup({ onSwitch, onBack }) {
           {step === 0 && (
             <motion.div key="picker" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }}>
               <div className="text-center mb-8">
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-400 mb-2">Paso 1 de 2</p>
+                <p className="text-2xs font-extrabold uppercase tracking-[0.2em] text-slate-400 mb-2">Paso 1 de 2</p>
                 <h1 className="text-[28px] font-black leading-tight text-slate-800">¿Quién publica el turno?</h1>
                 <p className="text-[12.5px] text-slate-500 mt-2 leading-relaxed">
                   Tu cuenta queda en revisión antes de publicar. Te avisamos en máximo 24 h.
@@ -128,7 +128,7 @@ export default function CrewEmployerSignup({ onSwitch, onBack }) {
           {step === 1 && (
             <motion.div key="form" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }}>
               <div className="mb-5">
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-400 mb-1">Paso 2 de 2</p>
+                <p className="text-2xs font-extrabold uppercase tracking-[0.2em] text-slate-400 mb-1">Paso 2 de 2</p>
                 <h1 className="text-[24px] font-black leading-tight text-slate-800">
                   {kind === 'individual' ? 'Cuéntanos sobre ti' : 'Cuéntanos sobre tu negocio'}
                 </h1>
@@ -166,7 +166,7 @@ export default function CrewEmployerSignup({ onSwitch, onBack }) {
 
                 {kind === 'business' && (
                   <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400 mb-2">Tipo de negocio</label>
+                    <label className="block text-2xs font-extrabold uppercase tracking-[0.18em] text-slate-400 mb-2">Tipo de negocio</label>
                     <div className="grid grid-cols-3 gap-1.5">
                       {BUSINESS_TYPES.map((t) => {
                         const active = form.businessType === t.key;
@@ -175,7 +175,7 @@ export default function CrewEmployerSignup({ onSwitch, onBack }) {
                             key={t.key}
                             type="button"
                             onClick={() => setForm({ ...form, businessType: t.key })}
-                            className={`p-2 rounded-xl text-[10.5px] font-bold transition flex flex-col items-center gap-0.5 ${
+                            className={`p-2 rounded-xl text-2xs font-bold transition flex flex-col items-center gap-0.5 ${
                               active
                                 ? 'bg-red-50 border border-red-200 text-red-700'
                                 : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'
@@ -219,7 +219,7 @@ export default function CrewEmployerSignup({ onSwitch, onBack }) {
                   {loading ? 'Creando cuenta…' : 'Crear cuenta'}
                 </motion.button>
 
-                <p className="text-center text-[10.5px] text-slate-400 leading-relaxed">
+                <p className="text-center text-2xs text-slate-400 leading-relaxed">
                   Al crear tu cuenta aceptas que SuperAdmin revise tu solicitud. Pagas comisión solo cuando completas un turno. <strong className="text-slate-600">10%</strong> estándar, <strong className="text-slate-600">15%</strong> en urgencias.
                 </p>
               </div>
@@ -261,7 +261,7 @@ function KindCard({ active, onSelect, emoji, title, desc }) {
 function Field({ label, value, onChange, placeholder, type = 'text', prefix }) {
   return (
     <div>
-      <label className="block text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400 mb-1.5">{label}</label>
+      <label className="block text-2xs font-extrabold uppercase tracking-[0.18em] text-slate-400 mb-1.5">{label}</label>
       <div className="flex items-center rounded-2xl bg-slate-50 border border-slate-200 focus-within:border-red-400 focus-within:ring-2 focus-within:ring-red-100 transition">
         {prefix && <span className="pl-3.5 text-[14px] font-bold text-slate-500 tabular-nums">{prefix}</span>}
         <input

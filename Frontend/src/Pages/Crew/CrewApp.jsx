@@ -92,7 +92,7 @@ export default function CrewApp() {
   if (needsOnboarding) return <CrewOnboarding onDone={refreshMe} />;
 
   return (
-    <div className="bg-[#0a0a14] min-h-[100dvh]">
+    <div className="bg-crew-noche min-h-[100dvh]">
       <AnimatePresence mode="wait">
         <motion.div
           key={tab}
@@ -130,7 +130,7 @@ export default function CrewApp() {
       {/* Bottom nav — hidden when sub-views are open */}
       <nav className={`fixed bottom-0 left-0 right-0 z-40 transition-transform duration-200 ${(subView || editingProfile || chatOpen || shiftDetailOpen) ? 'translate-y-full' : 'translate-y-0'}`}>
         {/* Gradient fade */}
-        <div className="absolute inset-x-0 -top-8 h-8 bg-gradient-to-t from-[#0a0a14] to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 -top-8 h-8 bg-gradient-to-t from-crew-noche to-transparent pointer-events-none" />
         <div className="relative bg-[#0f0f1a]/90 backdrop-blur-2xl border-t border-white/[0.06]">
           <div className="flex items-center justify-around px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] max-w-md mx-auto">
             {TABS.map((t) => {
@@ -163,7 +163,7 @@ export default function CrewApp() {
                   <span className={`relative transition-colors duration-200 ${active ? 'text-white' : 'text-white/30'}`}>
                     {t.icon(active)}
                   </span>
-                  <span className={`relative text-[10px] font-bold tracking-wide transition-colors duration-200 ${active ? 'text-white' : 'text-white/25'}`}>
+                  <span className={`relative text-2xs font-bold tracking-wide transition-colors duration-200 ${active ? 'text-white' : 'text-white/25'}`}>
                     {t.label}
                   </span>
                 </motion.button>

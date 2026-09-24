@@ -50,7 +50,7 @@ export default function DailyQuests({ onRewardClaimed }) {
   if (loading && quests.length === 0) {
     return (
       <section>
-        <h2 className="text-[10px] font-extrabold text-white/30 uppercase tracking-[0.15em] mb-2.5">Misiones de hoy</h2>
+        <h2 className="text-2xs font-extrabold text-white/30 uppercase tracking-[0.15em] mb-2.5">Misiones de hoy</h2>
         <div className="h-32 rounded-2xl border border-white/[0.06] bg-white/[0.02] animate-pulse" />
       </section>
     );
@@ -63,12 +63,12 @@ export default function DailyQuests({ onRewardClaimed }) {
   return (
     <section>
       <div className="flex items-center justify-between mb-2.5">
-        <h2 className="text-[10px] font-extrabold text-white/30 uppercase tracking-[0.15em]">Misiones de hoy</h2>
+        <h2 className="text-2xs font-extrabold text-white/30 uppercase tracking-[0.15em]">Misiones de hoy</h2>
         {allDone && (
           <motion.span
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="px-2 py-0.5 text-[10px] font-extrabold bg-red-500/15 text-red-400 border border-red-500/30 rounded-full"
+            className="px-2 py-0.5 text-2xs font-extrabold bg-red-500/15 text-red-400 border border-red-500/30 rounded-full"
           >
             ¡Completaste todas!
           </motion.span>

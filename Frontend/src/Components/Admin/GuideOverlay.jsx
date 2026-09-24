@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBusinessConfig } from '../../Context/BusinessContext';
 import AI from './AdminIcons';
+import { Capa } from '../ui';
 
 /**
  * Guías explicativas por sección.
@@ -246,6 +247,7 @@ export default function GuideOverlay({ sectionId, isOpen, onClose }) {
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
           onClick={onClose}
         >
+          <Capa onCerrar={onClose} />
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}

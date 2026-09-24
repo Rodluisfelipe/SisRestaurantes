@@ -65,11 +65,11 @@ function telefonoLegible(p) {
 /* Los dos chulos, igual que en WhatsApp: el estado del mensaje se lee de un
    vistazo sin tener que explicarlo. */
 function EstadoMensaje({ estado }) {
-  if (estado === 'failed') return <FaExclamationTriangle className="text-red-400 text-[10px]" title="No se entregó" />;
-  if (estado === 'read') return <FaCheckDouble className="text-sky-400 text-[10px]" title="Leído" />;
-  if (estado === 'delivered') return <FaCheckDouble className="text-slate-400 text-[10px]" title="Entregado" />;
-  if (estado === 'sent') return <FaCheck className="text-slate-400 text-[10px]" title="Enviado" />;
-  return <FaSpinner className="text-slate-300 text-[10px] animate-spin" title="Enviando" />;
+  if (estado === 'failed') return <FaExclamationTriangle className="text-red-400 text-2xs" title="No se entregó" />;
+  if (estado === 'read') return <FaCheckDouble className="text-sky-400 text-2xs" title="Leído" />;
+  if (estado === 'delivered') return <FaCheckDouble className="text-slate-400 text-2xs" title="Entregado" />;
+  if (estado === 'sent') return <FaCheck className="text-slate-400 text-2xs" title="Enviado" />;
+  return <FaSpinner className="text-slate-300 text-2xs animate-spin" title="Enviando" />;
 }
 
 /* ── Buscar y filtrar la lista ── */
@@ -100,7 +100,7 @@ function Filtros({ chats, filtro, setFiltro }) {
           className={`shrink-0 px-2.5 py-1 rounded-full text-[12px] font-medium transition-colors ${
             filtro === f.id
               ? 'bg-[#d9fdd3] text-[#027d69]'
-              : 'bg-[#f0f2f5] text-[#54656f] hover:bg-[#e9edef]'
+              : 'bg-wa-fondo text-wa-gris hover:bg-wa-linea'
           }`}
         >
           {f.txt}
@@ -354,7 +354,7 @@ function Burbuja({ mensaje: m, pegado, businessId }) {
         <div className={`flex items-center gap-1 justify-end -mb-0.5 mt-0.5 ${
           desnudo ? 'text-slate-500' : mio ? 'text-emerald-800/50' : 'text-slate-400/70'
         }`}>
-          <span className="text-[10.5px]">
+          <span className="text-2xs">
             {new Date(m.sentAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
           </span>
           {mio && <EstadoMensaje estado={m.status} />}
@@ -750,7 +750,7 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
           servía de nada; los filtros sí, y desde acá cruzan toda la pantalla
           en vez de apretarse en la columna de la izquierda. */}
       {!pleno && (
-        <div className="hidden lg:flex items-center gap-3 px-4 h-[42px] bg-white border-b border-[#e9edef] shrink-0">
+        <div className="hidden lg:flex items-center gap-3 px-4 h-[42px] bg-white border-b border-wa-linea shrink-0">
           <span className="text-[13px] font-bold text-slate-700 shrink-0">Chats de WhatsApp</span>
           <span className="w-px h-4 bg-slate-200 shrink-0" />
           <Filtros chats={chats} filtro={filtro} setFiltro={setFiltro} />
@@ -794,22 +794,22 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
         {/* Lista de chats */}
         {/* En celular solo cabe una columna: con un chat abierto —o con las
             plantillas— la lista se aparta. */}
-        <div className={`border-r border-[#e9edef] min-h-0 flex flex-col bg-white ${
+        <div className={`border-r border-wa-linea min-h-0 flex flex-col bg-white ${
           chatActivo || vista !== 'chats' ? 'hidden lg:flex' : 'flex'
         }`}>
           {/* La cabecera del negocio va acá dentro y no cruzando toda la
               pantalla: es la barra de perfil de WhatsApp Web, y así la
               conversación empieza en el borde de arriba. */}
-          <div className="flex items-center gap-2.5 px-4 py-2 bg-[#f0f2f5] shrink-0 h-[59px]">
-            <span className="w-10 h-10 rounded-full bg-[#00a884] text-white grid place-items-center shrink-0 text-lg">
+          <div className="flex items-center gap-2.5 px-4 py-2 bg-wa-fondo shrink-0 h-[59px]">
+            <span className="w-10 h-10 rounded-full bg-wa-verde text-white grid place-items-center shrink-0 text-lg">
               <FaWhatsapp />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[14px] font-semibold text-[#111b21] truncate leading-tight">
+              <p className="text-[14px] font-semibold text-wa-tinta truncate leading-tight">
                 {cuenta.verifiedName || 'WhatsApp del negocio'}
               </p>
-              <p className="text-[12px] text-[#667781] truncate flex items-center gap-1.5">
-                <span className={`w-1.5 h-1.5 rounded-full ${cuenta.lastError ? 'bg-red-500' : 'bg-[#00a884]'}`} />
+              <p className="text-[12px] text-wa-gris-2 truncate flex items-center gap-1.5">
+                <span className={`w-1.5 h-1.5 rounded-full ${cuenta.lastError ? 'bg-red-500' : 'bg-wa-verde'}`} />
                 {cuenta.displayNumber || cuenta.phoneNumberId}
               </p>
             </div>
@@ -818,7 +818,7 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
               onClick={() => setVista(vista === 'plantillas' ? 'chats' : 'plantillas')}
               title="Plantillas"
               className={`w-9 h-9 rounded-full grid place-items-center transition-colors ${
-                vista === 'plantillas' ? 'bg-[#00a884] text-white' : 'text-[#54656f] hover:bg-black/5'
+                vista === 'plantillas' ? 'bg-wa-verde text-white' : 'text-wa-gris hover:bg-black/5'
               }`}
             >
               <FaFileAlt className="text-[15px]" />
@@ -827,7 +827,7 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
               onClick={() => setVista(vista === 'consultas' ? 'chats' : 'consultas')}
               title="Consultas del dueño"
               className={`w-9 h-9 rounded-full grid place-items-center transition-colors ${
-                vista === 'consultas' ? 'bg-[#00a884] text-white' : 'text-[#54656f] hover:bg-black/5'
+                vista === 'consultas' ? 'bg-wa-verde text-white' : 'text-wa-gris hover:bg-black/5'
               }`}
             >
               <FaChartBar className="text-[15px]" />
@@ -835,7 +835,7 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
             <button
               onClick={() => { cargarChats(); if (chatActivo) abrirChat(chatActivo, { silencioso: true }); }}
               title="Actualizar"
-              className="w-9 h-9 rounded-full grid place-items-center text-[#54656f] hover:bg-black/5 transition-colors"
+              className="w-9 h-9 rounded-full grid place-items-center text-wa-gris hover:bg-black/5 transition-colors"
             >
               <FaSyncAlt className="text-[14px]" />
             </button>
@@ -843,7 +843,7 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
               <button
                 onClick={onSalir}
                 title="Volver al panel"
-                className="w-9 h-9 rounded-full grid place-items-center text-[#54656f] hover:bg-black/5 transition-colors"
+                className="w-9 h-9 rounded-full grid place-items-center text-wa-gris hover:bg-black/5 transition-colors"
               >
                 <FaSignOutAlt className="text-[15px]" />
               </button>
@@ -855,7 +855,7 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
                 <a
                   href={`/${businessConfig.slug}/whatsapp`}
                   title="Abrir a pantalla completa"
-                  className="w-9 h-9 rounded-full grid place-items-center text-[#54656f] hover:bg-black/5 transition-colors"
+                  className="w-9 h-9 rounded-full grid place-items-center text-wa-gris hover:bg-black/5 transition-colors"
                 >
                   <FaExpand className="text-[14px]" />
                 </a>
@@ -865,19 +865,19 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
 
           {/* Buscar y filtrar. Con veinte conversaciones, encontrar la de un
               cliente que llamó hace un rato era ir bajando y leyendo nombres. */}
-          <div className="px-3 py-2 bg-white shrink-0 space-y-2 border-b border-[#e9edef]">
+          <div className="px-3 py-2 bg-white shrink-0 space-y-2 border-b border-wa-linea">
             <div className="relative">
-              <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-[#54656f] text-xs" />
+              <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-wa-gris text-xs" />
               <input
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 placeholder="Buscar un chat"
-                className="w-full rounded-lg bg-[#f0f2f5] pl-11 pr-8 py-2 text-[14px] text-[#111b21] placeholder:text-[#667781] focus:outline-none focus:ring-1 focus:ring-[#00a884]/40"
+                className="w-full rounded-lg bg-wa-fondo pl-11 pr-8 py-2 text-[14px] text-wa-tinta placeholder:text-wa-gris-2 focus:outline-none focus:ring-1 focus:ring-wa-verde/40"
               />
               {busqueda && (
                 <button
                   onClick={() => setBusqueda('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#667781] hover:text-[#111b21] font-bold"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-wa-gris-2 hover:text-wa-tinta font-bold"
                 >
                   ×
                 </button>
@@ -920,29 +920,29 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
                     <button
                       onClick={() => abrirChat(c.contactPhone)}
                       className={`w-full text-left pl-4 pr-0 flex gap-3 transition-colors ${
-                        activo ? 'bg-[#f0f2f5]' : 'hover:bg-[#f5f6f6]'
+                        activo ? 'bg-wa-fondo' : 'hover:bg-[#f5f6f6]'
                       }`}
                     >
                       <div className="py-3">
                         <Avatar nombre={c.contactName} telefono={c.contactPhone} punto={sinLeer} />
                       </div>
-                      <div className="min-w-0 flex-1 py-3 pr-4 border-b border-[#e9edef]">
+                      <div className="min-w-0 flex-1 py-3 pr-4 border-b border-wa-linea">
                         <div className="flex items-baseline justify-between gap-2">
-                          <p className="text-[16px] text-[#111b21] truncate leading-tight">
+                          <p className="text-[16px] text-wa-tinta truncate leading-tight">
                             {c.contactName || telefonoLegible(c.contactPhone)}
                           </p>
-                          <span className={`text-[12px] shrink-0 ${sinLeer ? 'text-[#00a884] font-medium' : 'text-[#667781]'}`}>
+                          <span className={`text-[12px] shrink-0 ${sinLeer ? 'text-wa-verde font-medium' : 'text-wa-gris-2'}`}>
                             {tiempoRelativo(c.lastAt)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between gap-2 mt-1">
-                          <p className={`text-[13.5px] truncate flex items-center gap-1 ${sinLeer ? 'text-[#111b21]' : 'text-[#667781]'}`}>
+                          <p className={`text-[13.5px] truncate flex items-center gap-1 ${sinLeer ? 'text-wa-tinta' : 'text-wa-gris-2'}`}>
                             {c.lastDirection === 'out' && <span className="text-[#8696a0] shrink-0">Tú:</span>}
                             {Icono && <Icono className="text-[11px] shrink-0" />}
                             {c.lastText || (Icono ? 'Archivo adjunto' : '—')}
                           </p>
                           {sinLeer && (
-                            <span className="shrink-0 min-w-[20px] h-[20px] px-1.5 rounded-full bg-[#00a884] text-white text-[11px] font-medium grid place-items-center">
+                            <span className="shrink-0 min-w-[20px] h-[20px] px-1.5 rounded-full bg-wa-verde text-white text-[11px] font-medium grid place-items-center">
                               {c.sinLeer}
                             </span>
                           )}
@@ -961,13 +961,13 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
         <div className={`flex flex-col min-h-0 ${chatActivo || vista !== 'chats' ? '' : 'hidden lg:flex'}`}>
           {vista === 'consultas' ? (
             <>
-              <div className="lg:hidden flex items-center gap-3 px-4 h-[59px] bg-[#f0f2f5] shrink-0">
-                <button onClick={() => setVista('chats')} className="p-1.5 -ml-1.5 text-[#54656f]">
+              <div className="lg:hidden flex items-center gap-3 px-4 h-[59px] bg-wa-fondo shrink-0">
+                <button onClick={() => setVista('chats')} className="p-1.5 -ml-1.5 text-wa-gris">
                   <FaArrowLeft className="text-sm" />
                 </button>
-                <p className="text-[16px] text-[#111b21]">Consultas del dueño</p>
+                <p className="text-[16px] text-wa-tinta">Consultas del dueño</p>
               </div>
-              <div className="flex-1 min-h-0 overflow-y-auto bg-[#f0f2f5] border-l border-[#e9edef]">
+              <div className="flex-1 min-h-0 overflow-y-auto bg-wa-fondo border-l border-wa-linea">
                 <NumerosDeConsulta businessId={businessId} />
               </div>
             </>
@@ -977,13 +977,13 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
             <>
               {/* En celular la lista está oculta, así que el botón de volver a
                   los chats tiene que estar acá o no hay salida. */}
-              <div className="lg:hidden flex items-center gap-3 px-4 h-[59px] bg-[#f0f2f5] shrink-0">
-                <button onClick={() => setVista('chats')} className="p-1.5 -ml-1.5 text-[#54656f]">
+              <div className="lg:hidden flex items-center gap-3 px-4 h-[59px] bg-wa-fondo shrink-0">
+                <button onClick={() => setVista('chats')} className="p-1.5 -ml-1.5 text-wa-gris">
                   <FaArrowLeft className="text-sm" />
                 </button>
-                <p className="text-[16px] text-[#111b21]">Plantillas</p>
+                <p className="text-[16px] text-wa-tinta">Plantillas</p>
               </div>
-              <div className="flex-1 min-h-0 overflow-y-auto bg-[#f0f2f5] border-l border-[#e9edef]">
+              <div className="flex-1 min-h-0 overflow-y-auto bg-wa-fondo border-l border-wa-linea">
                 <Plantillas businessId={businessId} />
               </div>
             </>
@@ -991,13 +991,13 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
             /* Con ningún chat abierto, el espacio se aprovecha para lo que el
                negocio no va a ir a buscar por su cuenta: qué canal le está
                trayendo pedidos. */
-            <div className="flex-1 min-h-0 overflow-y-auto bg-[#f0f2f5] border-b-4 border-[#00a884]">
+            <div className="flex-1 min-h-0 overflow-y-auto bg-wa-fondo border-b-4 border-wa-verde">
               <div className="px-5 pt-10 pb-2 text-center">
-                <span className="w-16 h-16 rounded-full bg-[#e9edef] grid place-items-center mx-auto mb-4 text-[#54656f] text-3xl">
+                <span className="w-16 h-16 rounded-full bg-wa-linea grid place-items-center mx-auto mb-4 text-wa-gris text-3xl">
                   <FaWhatsapp />
                 </span>
                 <p className="text-[24px] font-light text-[#41525d]">Elige una conversación</p>
-                <p className="text-[13px] text-[#667781] mt-2">
+                <p className="text-[13px] text-wa-gris-2 mt-2">
                   Mientras tanto, mira qué canal te está trayendo pedidos.
                 </p>
               </div>
@@ -1010,10 +1010,10 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
               {/* Con quién se está hablando, también en pantalla grande. Antes
                   esto solo salía en el celular: en el computador, si el cliente
                   era nuevo, no aparecía su número por ningún lado. */}
-              <div className="flex items-center gap-3 px-4 py-2 bg-[#f0f2f5] shrink-0 h-[59px] border-l border-[#e9edef]">
+              <div className="flex items-center gap-3 px-4 py-2 bg-wa-fondo shrink-0 h-[59px] border-l border-wa-linea">
                 <button
                   onClick={() => setChatActivo(null)}
-                  className="p-1.5 -ml-1.5 text-[#54656f] hover:text-[#111b21] lg:hidden"
+                  className="p-1.5 -ml-1.5 text-wa-gris hover:text-wa-tinta lg:hidden"
                 >
                   <FaArrowLeft className="text-sm" />
                 </button>
@@ -1026,12 +1026,12 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
                 >
                   <Avatar nombre={chatSeleccionado?.contactName} telefono={chatActivo} grande />
                   <div className="min-w-0">
-                    <p className="text-[16px] text-[#111b21] truncate leading-tight">
+                    <p className="text-[16px] text-wa-tinta truncate leading-tight">
                       {chatSeleccionado?.contactName || telefonoLegible(chatActivo)}
                     </p>
-                    <p className="text-[13px] text-[#667781] truncate">
+                    <p className="text-[13px] text-wa-gris-2 truncate">
                       {telefonoLegible(chatActivo)}
-                      {puedeResponder && <span className="text-[#00a884]"> · puedes responder</span>}
+                      {puedeResponder && <span className="text-wa-verde"> · puedes responder</span>}
                     </p>
                   </div>
                 </button>
@@ -1052,18 +1052,18 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
                     el pedido, así que se queda a la vista. */}
                 <button
                   onClick={() => setTomandoPedido(true)}
-                  className={`items-center gap-1.5 bg-[#00a884] hover:bg-[#029072] text-white px-3 py-2 rounded-lg text-xs font-bold transition-colors active:scale-95 shrink-0 ${
+                  className={`items-center gap-1.5 bg-wa-verde hover:bg-[#029072] text-white px-3 py-2 rounded-lg text-xs font-bold transition-colors active:scale-95 shrink-0 ${
                     fichaAbierta ? 'flex xl:hidden' : 'flex'
                   }`}
                 >
-                  <FaShoppingBag className="text-[10px]" /> Tomar pedido
+                  <FaShoppingBag className="text-2xs" /> Tomar pedido
                 </button>
 
                 <button
                   onClick={alternarFicha}
                   title={fichaAbierta ? 'Ocultar los datos del cliente' : 'Ver los datos del cliente'}
                   className={`w-9 h-9 shrink-0 rounded-full grid place-items-center transition-colors ${
-                    fichaAbierta ? 'bg-[#00a884] text-white' : 'text-[#54656f] hover:bg-black/5'
+                    fichaAbierta ? 'bg-wa-verde text-white' : 'text-wa-gris hover:bg-black/5'
                   }`}
                 >
                   <FaUser className="text-[14px]" />
@@ -1082,7 +1082,7 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
                 <div
                   ref={scrollRef}
                   onScroll={alDesplazar}
-                  className="h-full overflow-y-auto px-4 sm:px-8 lg:px-16 py-4 bg-[#efeae2] border-l border-[#e9edef]"
+                  className="h-full overflow-y-auto px-4 sm:px-8 lg:px-16 py-4 bg-[#efeae2] border-l border-wa-linea"
                   /* El papel tramado de WhatsApp, dibujado con un degradado en
                      vez de una imagen: no suma una petición ni un archivo al
                      bundle, y sobre blanco liso las burbujas blancas no se
@@ -1130,14 +1130,14 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
                     onClick={bajarAlFinal}
                     className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800/90 hover:bg-slate-900 text-white text-[11px] font-bold shadow-lg backdrop-blur transition-colors"
                   >
-                    <FaArrowDown className="text-[9px]" /> Mensajes nuevos
+                    <FaArrowDown className="text-2xs" /> Mensajes nuevos
                   </button>
                 )}
               </div>
 
               {/* Responder — o la razón por la que no se puede */}
               {puedeResponder ? (
-                <div className="bg-[#f0f2f5] shrink-0 border-l border-[#e9edef]">
+                <div className="bg-wa-fondo shrink-0 border-l border-wa-linea">
                   {/* Lo que más se escribe en un restaurante, en un toque. Se
                       pone en el cuadro en vez de enviarse solo: casi siempre hay
                       que rematarlo con la hora o el valor del domicilio. */}
@@ -1174,7 +1174,7 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
                       onClick={() => archivoRef.current?.click()}
                       disabled={subiendo}
                       title="Adjuntar una foto o un archivo"
-                      className="w-11 h-11 shrink-0 rounded-full text-[#54656f] hover:bg-black/5 disabled:opacity-40 grid place-items-center transition-colors"
+                      className="w-11 h-11 shrink-0 rounded-full text-wa-gris hover:bg-black/5 disabled:opacity-40 grid place-items-center transition-colors"
                     >
                       {subiendo ? <FaSpinner className="animate-spin text-lg" /> : <FaPaperclip className="text-lg" />}
                     </button>
@@ -1187,13 +1187,13 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
                       }}
                       rows={1}
                       placeholder="Escribe un mensaje"
-                      className="flex-1 resize-none rounded-lg bg-white px-4 py-2.5 text-[15px] leading-relaxed text-[#111b21] placeholder:text-[#8696a0] focus:outline-none"
+                      className="flex-1 resize-none rounded-lg bg-white px-4 py-2.5 text-[15px] leading-relaxed text-wa-tinta placeholder:text-[#8696a0] focus:outline-none"
                     />
                     <button
                       type="submit"
                       disabled={!borrador.trim() || enviando}
                       title="Enviar"
-                      className="w-11 h-11 shrink-0 rounded-full text-[#54656f] hover:bg-black/5 disabled:opacity-40 disabled:hover:bg-transparent grid place-items-center transition-colors"
+                      className="w-11 h-11 shrink-0 rounded-full text-wa-gris hover:bg-black/5 disabled:opacity-40 disabled:hover:bg-transparent grid place-items-center transition-colors"
                     >
                       {enviando ? <FaSpinner className="animate-spin text-lg" /> : <FaPaperPlane className="text-lg" />}
                     </button>
@@ -1224,7 +1224,7 @@ export default function WhatsAppInbox({ pleno = false, onSalir, onVerPerfil }) {
         {/* Ficha del cliente — columna propia en pantalla ancha, y solo si la
             abrieron. Cerrada es el estado normal: al atender manda la
             conversación. */}
-        <aside className={`flex-col min-h-0 border-l border-[#e9edef] bg-[#f0f2f5] ${
+        <aside className={`flex-col min-h-0 border-l border-wa-linea bg-wa-fondo ${
           fichaAbierta ? 'hidden xl:flex' : 'hidden'
         }`}>
           {chatActivo ? (
@@ -1335,15 +1335,15 @@ function ResumenWhatsApp({ chats, businessId }) {
   ];
 
   return (
-    <div className="shrink-0 grid grid-cols-2 lg:grid-cols-4 bg-white border-t border-[#e9edef]">
+    <div className="shrink-0 grid grid-cols-2 lg:grid-cols-4 bg-white border-t border-wa-linea">
       {tarjetas.map((t) => (
         <div
           key={t.txt}
-          className={`px-4 py-3 border-r border-[#e9edef] last:border-r-0 ${
+          className={`px-4 py-3 border-r border-wa-linea last:border-r-0 ${
             t.alerta ? 'bg-amber-50/70' : ''
           }`}
         >
-          <p className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wide">{t.txt}</p>
+          <p className="text-2xs font-bold text-slate-400 uppercase tracking-wide">{t.txt}</p>
           <p className={`text-xl font-bold leading-tight mt-0.5 ${t.alerta ? 'text-amber-600' : 'text-slate-800'}`}>
             {t.valor}
           </p>
@@ -1371,7 +1371,7 @@ function EstadoDelBot({ estado, reactivando, onReactivar }) {
         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 text-[11.5px] font-bold transition-colors shrink-0 disabled:opacity-60"
       >
         {reactivando
-          ? <><FaSpinner className="animate-spin text-[10px]" /> Devolviendo…</>
+          ? <><FaSpinner className="animate-spin text-2xs" /> Devolviendo…</>
           : <><FaRobot className="text-[11px]" /> Bot en pausa · Reactivar</>}
       </button>
     );
@@ -1429,7 +1429,7 @@ function RespuestasRapidas({ slug, nombre, onElegir }) {
                 onClick={() => { onElegir(o.mensaje); setAbierto(false); }}
                 className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-[11.5px] font-semibold text-slate-600 hover:text-emerald-700 transition-colors"
               >
-                <o.icono className="text-[10px]" /> {o.txt}
+                <o.icono className="text-2xs" /> {o.txt}
               </button>
             ))}
           </div>
@@ -1469,7 +1469,7 @@ function FichaRail({ ficha, cargando, telefono, nombreChat, onTomarPedido, onVer
 
         {ficha && !esConocido && (
           <span className="inline-flex items-center gap-1.5 mt-3 px-2.5 py-1 rounded-full bg-sky-100 text-sky-700 text-[11px] font-bold">
-            <FaUserPlus className="text-[9px]" /> Cliente nuevo
+            <FaUserPlus className="text-2xs" /> Cliente nuevo
           </span>
         )}
 
@@ -1478,7 +1478,7 @@ function FichaRail({ ficha, cargando, telefono, nombreChat, onTomarPedido, onVer
         <div className="flex gap-2 mt-4">
           <button
             onClick={onTomarPedido}
-            className="flex-1 flex items-center justify-center gap-2 bg-[#00a884] hover:bg-[#029072] text-white px-3 py-2.5 rounded-xl text-[13px] font-bold transition-colors active:scale-[0.98]"
+            className="flex-1 flex items-center justify-center gap-2 bg-wa-verde hover:bg-[#029072] text-white px-3 py-2.5 rounded-xl text-[13px] font-bold transition-colors active:scale-[0.98]"
           >
             <FaShoppingBag className="text-[11px]" /> Tomar pedido
           </button>
@@ -1509,7 +1509,7 @@ function FichaRail({ ficha, cargando, telefono, nombreChat, onTomarPedido, onVer
 
           {cliente?.address && (
             <div className="px-5 py-3.5 border-b border-slate-100">
-              <p className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wide mb-1">Dirección</p>
+              <p className="text-2xs font-bold text-slate-400 uppercase tracking-wide mb-1">Dirección</p>
               <p className="text-[13px] text-slate-600 leading-relaxed flex items-start gap-2">
                 <FaHome className="text-slate-300 mt-0.5 shrink-0 text-[11px]" />
                 {cliente.address}
@@ -1520,7 +1520,7 @@ function FichaRail({ ficha, cargando, telefono, nombreChat, onTomarPedido, onVer
           {/* Un pedido en curso es lo primero que hay que saber al contestar */}
           {pedidosEnCurso.length > 0 && (
             <div className="px-5 py-3.5 border-b border-slate-100">
-              <p className="text-[10.5px] font-bold text-amber-600 uppercase tracking-wide mb-2">En curso</p>
+              <p className="text-2xs font-bold text-amber-600 uppercase tracking-wide mb-2">En curso</p>
               <div className="space-y-1.5">
                 {pedidosEnCurso.map((p) => (
                   <div key={p._id} className="bg-amber-50 border border-amber-200/70 rounded-xl px-3 py-2.5">
@@ -1537,7 +1537,7 @@ function FichaRail({ ficha, cargando, telefono, nombreChat, onTomarPedido, onVer
 
           {ultimosPedidos.length > 0 && (
             <div className="px-5 py-3.5">
-              <p className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wide mb-2">
+              <p className="text-2xs font-bold text-slate-400 uppercase tracking-wide mb-2">
                 Últimos pedidos
               </p>
               <ul className="space-y-1.5">
@@ -1545,7 +1545,7 @@ function FichaRail({ ficha, cargando, telefono, nombreChat, onTomarPedido, onVer
                   <li key={p._id} className="bg-white border border-slate-200/70 rounded-xl px-3 py-2.5">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[12.5px] font-bold text-slate-600">#{p.orderNumber}</span>
-                      <span className="text-[10.5px] text-slate-400">
+                      <span className="text-2xs text-slate-400">
                         {new Date(p.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}
                       </span>
                       <span className="text-[12.5px] font-bold text-slate-600 ml-auto">{pesos(p.total)}</span>
@@ -1570,7 +1570,7 @@ function Dato({ valor, etiqueta, resalta }) {
   return (
     <div className="bg-slate-50/60 px-3 py-3 text-center">
       <p className={`text-[15px] font-bold truncate ${resalta ? 'text-amber-600' : 'text-slate-700'}`}>{valor}</p>
-      <p className="text-[10.5px] text-slate-400 uppercase tracking-wide mt-0.5">{etiqueta}</p>
+      <p className="text-2xs text-slate-400 uppercase tracking-wide mt-0.5">{etiqueta}</p>
     </div>
   );
 }
@@ -1617,25 +1617,25 @@ function FichaCliente({ ficha, cargando }) {
       <div className="px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-1.5">
         {cliente?.name && (
           <span className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold">
-            <FaUser className="text-slate-400 text-[10px]" /> {cliente.name}
+            <FaUser className="text-slate-400 text-2xs" /> {cliente.name}
           </span>
         )}
         {cliente?.totalOrders > 0 && (
           <span className="flex items-center gap-1.5 text-xs text-slate-500">
-            <FaShoppingBag className="text-slate-400 text-[10px]" />
+            <FaShoppingBag className="text-slate-400 text-2xs" />
             {cliente.totalOrders} pedido{cliente.totalOrders === 1 ? '' : 's'}
             {cliente.totalSpent > 0 && <strong className="text-slate-700">· {pesos(cliente.totalSpent)}</strong>}
           </span>
         )}
         {fidelidad?.points > 0 && (
           <span className="flex items-center gap-1.5 text-xs text-amber-600">
-            <FaGift className="text-[10px]" /> {fidelidad.points} pts
+            <FaGift className="text-2xs" /> {fidelidad.points} pts
             {fidelidad.currentTier && ` · ${fidelidad.currentTier}`}
           </span>
         )}
         {cliente?.address && (
           <span className="flex items-center gap-1.5 text-xs text-slate-500 min-w-0">
-            <FaHome className="text-slate-400 text-[10px] shrink-0" />
+            <FaHome className="text-slate-400 text-2xs shrink-0" />
             <span className="truncate max-w-[220px]" title={cliente.address}>{cliente.address}</span>
           </span>
         )}
@@ -1646,7 +1646,7 @@ function FichaCliente({ ficha, cargando }) {
         <div className="px-4 pb-3 space-y-1.5">
           {pedidosEnCurso.map((p) => (
             <div key={p._id} className="flex items-center gap-2 bg-amber-50 border border-amber-200/70 rounded-lg px-3 py-2">
-              <FaClock className="text-amber-500 text-[10px] shrink-0" />
+              <FaClock className="text-amber-500 text-2xs shrink-0" />
               <span className="text-xs text-amber-800 font-semibold">#{p.orderNumber}</span>
               <span className="text-xs text-amber-700">{estados[p.status] || p.status}</span>
               <span className="text-xs text-amber-600 ml-auto font-semibold">{pesos(p.total)}</span>
@@ -1666,7 +1666,7 @@ function FichaCliente({ ficha, cargando }) {
               <li key={p._id} className="text-xs bg-white border border-slate-200/70 rounded-lg px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-semibold text-slate-700">#{p.orderNumber}</span>
-                  <span className="text-slate-400 text-[10px]">
+                  <span className="text-slate-400 text-2xs">
                     {new Date(p.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}
                   </span>
                   <span className="font-semibold text-slate-600 ml-auto">{pesos(p.total)}</span>
@@ -1720,7 +1720,7 @@ function Marcas({ chat }) {
   return (
     <div className="flex flex-wrap gap-1 mt-1.5">
       {marcas.map((m) => (
-        <span key={m.txt} className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${m.clase}`}>
+        <span key={m.txt} className={`px-1.5 py-0.5 rounded text-2xs font-semibold ${m.clase}`}>
           {m.txt}
         </span>
       ))}
@@ -1837,7 +1837,7 @@ function OrigenPedidos({ businessId }) {
                 style={{ width: `${Math.max(2, (o.ventas / mayor) * 100)}%` }}
               />
             </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">
+            <p className="text-2xs text-slate-400 mt-0.5">
               Ticket promedio {pesos(o.ticketPromedio)}
             </p>
           </li>
@@ -1979,7 +1979,7 @@ function NumerosDeConsulta({ businessId }) {
           <button
             type="submit"
             disabled={guardando || !telefono.trim()}
-            className="px-4 py-2 rounded-lg bg-[#00a884] hover:bg-[#029072] disabled:bg-slate-200 text-white text-sm font-bold transition-colors"
+            className="px-4 py-2 rounded-lg bg-wa-verde hover:bg-[#029072] disabled:bg-slate-200 text-white text-sm font-bold transition-colors"
           >
             {guardando ? 'Agregando…' : 'Agregar'}
           </button>
@@ -2209,7 +2209,7 @@ function Plantillas({ businessId }) {
               <li key={p.id || p.name} className="border border-slate-200 rounded-xl px-3.5 py-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-semibold text-slate-700 truncate">{p.name}</span>
-                  <span className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-bold ${e.clase}`}>{e.texto}</span>
+                  <span className={`shrink-0 px-2 py-0.5 rounded text-2xs font-bold ${e.clase}`}>{e.texto}</span>
                 </div>
                 {p.cuerpo && <p className="text-xs text-slate-500 mt-1 whitespace-pre-wrap">{p.cuerpo}</p>}
                 {/* El motivo de Meta se muestra tal cual: es la única pista para corregirla. */}

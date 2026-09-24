@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import { Capa } from './ui';
 
 const SHAPES = {
   square: { label: 'Cuadrada', icon: '◻' },
@@ -176,7 +177,7 @@ export default function TableMapEditor({ tables, onUpdateTable, onDeleteTable, o
               onDoubleClick={(e) => { e.stopPropagation(); setEditModal(table._id); }}
             >
               <span className="font-bold text-xs sm:text-sm leading-tight pointer-events-none">{table.tableNumber}</span>
-              <span className="text-[10px] sm:text-xs opacity-70 pointer-events-none">{table.capacity}p</span>
+              <span className="text-2xs sm:text-xs opacity-70 pointer-events-none">{table.capacity}p</span>
             </div>
           );
         })}
@@ -223,6 +224,7 @@ function EditTableModal({ table, isHotel, onSave, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <Capa onCerrar={onClose} />
       <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-5" onClick={e => e.stopPropagation()}>
         <h3 className="text-lg font-bold text-gray-800 mb-4">Editar {tLabel}</h3>
         <form onSubmit={handleSubmit} className="space-y-3">

@@ -25,7 +25,7 @@ export default function CrewEmployerLanding({ onLogin, onSignup }) {
           </div>
           <div className="leading-tight">
             <span className="block text-[15px] font-black text-slate-900 tracking-tight">crew</span>
-            <span className="block text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">para empleadores</span>
+            <span className="block text-2xs font-bold uppercase tracking-[0.2em] text-slate-400">para empleadores</span>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
@@ -50,7 +50,7 @@ export default function CrewEmployerLanding({ onLogin, onSignup }) {
           {/* Copy */}
           <div>
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-              <p className="inline-flex items-center gap-2 text-[10.5px] font-black uppercase tracking-[0.2em] text-slate-500 mb-5">
+              <p className="inline-flex items-center gap-2 text-2xs font-black uppercase tracking-[0.2em] text-slate-500 mb-5">
                 <span className="w-6 h-px bg-red-500" /> Marketplace de turnos
               </p>
               <h1 className="text-[44px] sm:text-[68px] lg:text-[80px] font-black leading-[0.92] tracking-[-0.02em] text-slate-900">
@@ -107,7 +107,7 @@ export default function CrewEmployerLanding({ onLogin, onSignup }) {
       <section className="relative px-5 sm:px-8 py-20 sm:py-28">
         <div className="max-w-7xl mx-auto">
           <div className="max-w-3xl">
-            <p className="inline-flex items-center gap-2 text-[10.5px] font-black uppercase tracking-[0.2em] text-slate-500 mb-4">
+            <p className="inline-flex items-center gap-2 text-2xs font-black uppercase tracking-[0.2em] text-slate-500 mb-4">
               <span className="w-6 h-px bg-red-500" /> El recorrido
             </p>
             <h2 className="text-[36px] sm:text-[54px] font-black leading-[0.95] tracking-[-0.02em] text-slate-900">
@@ -147,7 +147,7 @@ export default function CrewEmployerLanding({ onLogin, onSignup }) {
       <section className="relative px-5 sm:px-8 py-20 sm:py-28 bg-slate-50 border-y border-slate-100">
         <div className="max-w-6xl mx-auto">
           <div className="max-w-3xl">
-            <p className="inline-flex items-center gap-2 text-[10.5px] font-black uppercase tracking-[0.2em] text-slate-500 mb-4">
+            <p className="inline-flex items-center gap-2 text-2xs font-black uppercase tracking-[0.2em] text-slate-500 mb-4">
               <span className="w-6 h-px bg-red-500" /> Antes y después
             </p>
             <h2 className="text-[36px] sm:text-[54px] font-black leading-[0.95] tracking-[-0.02em]">
@@ -160,7 +160,7 @@ export default function CrewEmployerLanding({ onLogin, onSignup }) {
           <div className="mt-12 grid lg:grid-cols-2 gap-3">
             {/* Sin Crew */}
             <div className="rounded-3xl border-2 border-dashed border-slate-300 bg-white p-8">
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 mb-3">Hoy, sin Crew</p>
+              <p className="text-2xs font-black uppercase tracking-[0.25em] text-slate-400 mb-3">Hoy, sin Crew</p>
               <ul className="space-y-3.5">
                 <BadItem>Llamas amigos a las 6 a.m. para cubrir el turno</BadItem>
                 <BadItem>No sabes si la persona va a llegar o no</BadItem>
@@ -171,7 +171,7 @@ export default function CrewEmployerLanding({ onLogin, onSignup }) {
             </div>
             {/* Con Crew */}
             <div className="rounded-3xl border-2 border-red-500 bg-gradient-to-br from-red-50 to-white p-8 shadow-lg shadow-red-500/10">
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-red-500 mb-3">Con Crew</p>
+              <p className="text-2xs font-black uppercase tracking-[0.25em] text-red-500 mb-3">Con Crew</p>
               <ul className="space-y-3.5">
                 <GoodItem>Publicas a las 6 a.m. y recibes postulantes en minutos</GoodItem>
                 <GoodItem>Ves nivel, calificación y turnos previos antes de aceptar</GoodItem>
@@ -187,7 +187,7 @@ export default function CrewEmployerLanding({ onLogin, onSignup }) {
       {/* PREGUNTA CLAVE — una sola, en prosa */}
       <section className="relative px-5 sm:px-8 py-20 sm:py-28">
         <div className="max-w-3xl mx-auto">
-          <p className="inline-flex items-center gap-2 text-[10.5px] font-black uppercase tracking-[0.2em] text-slate-500 mb-4">
+          <p className="inline-flex items-center gap-2 text-2xs font-black uppercase tracking-[0.2em] text-slate-500 mb-4">
             <span className="w-6 h-px bg-red-500" /> La pregunta que más nos hacen
           </p>
           <h2 className="text-[28px] sm:text-[42px] font-black leading-[1.05] tracking-[-0.02em] mb-6">
@@ -270,7 +270,7 @@ function ProductPreview() {
     >
       {/* Card postulante */}
       <div className="relative rounded-3xl border border-slate-200 bg-white shadow-[0_24px_80px_-20px_rgba(0,0,0,0.12)] p-5">
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Nuevo postulante</p>
+        <p className="text-2xs font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Nuevo postulante</p>
         <div className="flex items-start gap-3">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-400 to-orange-500 flex items-center justify-center text-[20px] font-black text-white">
             M
@@ -278,13 +278,13 @@ function ProductPreview() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
               <p className="text-[15px] font-black truncate">María Sánchez</p>
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-2xs font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
                 ✓ Verificada
               </span>
             </div>
             <p className="text-[11.5px] text-slate-500 mt-0.5">Nivel 8 · 4.9★ (42 reseñas) · 47 turnos completados</p>
           </div>
-          <span className="shrink-0 px-2 py-0.5 text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
+          <span className="shrink-0 px-2 py-0.5 text-2xs font-black bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
             92% match
           </span>
         </div>
@@ -308,11 +308,11 @@ function ProductPreview() {
         transition={{ duration: 0.6, delay: 0.3 }}
         className="absolute -bottom-6 -left-4 sm:-left-8 max-w-[260px] rounded-2xl bg-white border border-slate-200 shadow-xl p-4"
       >
-        <p className="text-[9.5px] font-black uppercase tracking-[0.2em] text-red-500 mb-1">Tu turno publicado</p>
+        <p className="text-2xs font-black uppercase tracking-[0.2em] text-red-500 mb-1">Tu turno publicado</p>
         <p className="text-[13px] font-black text-slate-900 leading-tight">Mesero sábado en la noche</p>
-        <p className="text-[10.5px] text-slate-500 mt-0.5">Sáb 15 nov · 18:00–23:00 · 5h</p>
+        <p className="text-2xs text-slate-500 mt-0.5">Sáb 15 nov · 18:00–23:00 · 5h</p>
         <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5">
-          <span className="text-[10px] text-slate-400">Pago al trabajador</span>
+          <span className="text-2xs text-slate-400">Pago al trabajador</span>
           <span className="text-[14px] font-black text-emerald-600 tabular-nums">$80.000</span>
         </div>
       </motion.div>
@@ -322,7 +322,7 @@ function ProductPreview() {
         initial={{ opacity: 0, scale: 0.6 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5, delay: 0.6 }}
-        className="absolute -top-3 -right-3 px-3 py-1.5 rounded-full bg-red-500 text-white text-[10.5px] font-black uppercase tracking-wider shadow-lg shadow-red-500/40"
+        className="absolute -top-3 -right-3 px-3 py-1.5 rounded-full bg-red-500 text-white text-2xs font-black uppercase tracking-wider shadow-lg shadow-red-500/40"
       >
         +3 postulantes
       </motion.div>
@@ -333,7 +333,7 @@ function ProductPreview() {
 function Stat({ label, value }) {
   return (
     <div className="rounded-lg bg-slate-50 border border-slate-100 px-2 py-1.5">
-      <p className="text-[8.5px] font-black uppercase tracking-wider text-slate-400">{label}</p>
+      <p className="text-2xs font-black uppercase tracking-wider text-slate-400">{label}</p>
       <p className="text-[11.5px] font-black text-slate-900 truncate">{value}</p>
     </div>
   );
@@ -358,7 +358,7 @@ function Frame({ n, title, body, mock }) {
       viewport={{ once: true, margin: '-50px' }}
       transition={{ duration: 0.5 }}
     >
-      <span className="text-[10.5px] font-black tracking-[0.25em] text-red-500 uppercase">{n} ·</span>
+      <span className="text-2xs font-black tracking-[0.25em] text-red-500 uppercase">{n} ·</span>
       <h3 className="text-[20px] sm:text-[24px] font-black text-slate-900 leading-tight mt-1.5 tracking-tight">{title}</h3>
       <p className="text-[13px] text-slate-500 mt-2 leading-relaxed">{body}</p>
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -376,7 +376,7 @@ function MockPublish() {
       <Row label="Pago / hora" value="$16.000" />
       <Row label="Personas" value="2" />
       <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Se reserva</span>
+        <span className="text-2xs font-black uppercase tracking-wider text-slate-400">Se reserva</span>
         <span className="text-[14px] font-black tabular-nums">$176.000</span>
       </div>
     </div>
@@ -397,9 +397,9 @@ function MockApplicants() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[12px] font-black text-slate-900 leading-tight">{a.name}</p>
-            <p className="text-[9.5px] text-slate-500">Nivel {a.lv}</p>
+            <p className="text-2xs text-slate-500">Nivel {a.lv}</p>
           </div>
-          <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span className="text-2xs font-black px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
             {a.score}%
           </span>
         </div>
@@ -411,7 +411,7 @@ function MockApplicants() {
 function MockCheckin() {
   return (
     <div className="space-y-3 text-center">
-      <p className="text-[9.5px] font-black uppercase tracking-[0.2em] text-amber-700">Código de llegada</p>
+      <p className="text-2xs font-black uppercase tracking-[0.2em] text-amber-700">Código de llegada</p>
       <div className="flex justify-center gap-1.5">
         {['F', '7', 'K', '2', 'M', '9'].map((c, i) => (
           <div key={i} className="w-9 h-11 rounded-lg bg-amber-50 border-2 border-amber-300 flex items-center justify-center text-[18px] font-black text-amber-800 tabular-nums">
@@ -419,7 +419,7 @@ function MockCheckin() {
           </div>
         ))}
       </div>
-      <p className="text-[10.5px] text-slate-500">El trabajador lo escribe en su app al llegar</p>
+      <p className="text-2xs text-slate-500">El trabajador lo escribe en su app al llegar</p>
     </div>
   );
 }
@@ -448,7 +448,7 @@ function Cost() {
     <section className="relative px-5 sm:px-8 py-20 sm:py-28">
       <div className="max-w-6xl mx-auto grid lg:grid-cols-[1fr_1.1fr] gap-10 lg:gap-16 items-center">
         <div>
-          <p className="inline-flex items-center gap-2 text-[10.5px] font-black uppercase tracking-[0.2em] text-slate-500 mb-4">
+          <p className="inline-flex items-center gap-2 text-2xs font-black uppercase tracking-[0.2em] text-slate-500 mb-4">
             <span className="w-6 h-px bg-red-500" /> El cálculo claro
           </p>
           <h2 className="text-[36px] sm:text-[54px] font-black leading-[0.95] tracking-[-0.02em]">
@@ -494,7 +494,7 @@ function Cost() {
               <CalcRow label="Pago al trabajador" value={formatCOP(totalPay)} />
               <CalcRow label={`Comisión Crew (${(rate * 100).toFixed(0)}%)`} value={formatCOP(commission)} sub />
               <div className="pt-2 mt-2 border-t border-slate-200 flex items-baseline justify-between">
-                <span className="text-[10.5px] font-black uppercase tracking-[0.2em] text-slate-500">Total que reservas</span>
+                <span className="text-2xs font-black uppercase tracking-[0.2em] text-slate-500">Total que reservas</span>
                 <motion.span
                   key={grandTotal}
                   initial={{ scale: 0.96, opacity: 0.6 }}
@@ -518,7 +518,7 @@ function CalcSlider({ label, value, min, max, step, onChange, format }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[10.5px] font-black uppercase tracking-[0.18em] text-slate-500">{label}</span>
+        <span className="text-2xs font-black uppercase tracking-[0.18em] text-slate-500">{label}</span>
         <span className="text-[14px] font-black text-slate-900 tabular-nums">{format(value)}</span>
       </div>
       <input

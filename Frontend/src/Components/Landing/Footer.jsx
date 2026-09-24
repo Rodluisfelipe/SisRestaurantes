@@ -82,7 +82,7 @@ const Footer = () => {
           <div className="col-span-2">
             <Link to="/" className="flex items-center gap-2.5 mb-4 sm:mb-5">
               <img src="/logo.jpeg" alt="Menuby - Menú Digital para Restaurantes" width="36" height="36" className="w-9 h-9 rounded-[11px] object-cover" style={{ boxShadow: '0 2px 10px rgba(232,0,45,0.15)' }} />
-              <span className="text-xl font-extrabold tracking-tight text-[#17120F]" style={{ fontFamily: display }}>
+              <span className="text-xl font-extrabold tracking-tight text-menuby-tinta" style={{ fontFamily: display }}>
                 Menu<span className="text-red-600">by</span>
               </span>
             </Link>
@@ -103,7 +103,7 @@ const Footer = () => {
           {/* Links */}
           {sections.map((section) => (
             <div key={section.title}>
-              <h3 className="text-[#17120F] text-xs font-bold uppercase tracking-wider mb-3 sm:mb-4">{section.title}</h3>
+              <h3 className="text-menuby-tinta text-xs font-bold uppercase tracking-wider mb-3 sm:mb-4">{section.title}</h3>
               <ul className="space-y-1.5 sm:space-y-2">
                 {section.links.map((link) => (
                   <li key={link.name}>

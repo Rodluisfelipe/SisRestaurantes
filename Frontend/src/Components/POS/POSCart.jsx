@@ -36,7 +36,7 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
                     {tableLabel} {selectedTable.tableNumber} <X className="w-3 h-3 inline" />
                   </button>
                   {openTab && (
-                    <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">Cuenta abierta</span>
+                    <span className="text-2xs font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">Cuenta abierta</span>
                   )}
                 </div>
               )}
@@ -51,7 +51,7 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
             {heldOrders.length > 0 && (
               <button onClick={() => setShowHeld(!showHeld)} className={`${iconBtn} relative ${showHeld ? 'text-amber-600 bg-amber-50' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'}`} title="Ventas congeladas">
                 <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a5 5 0 015 5v3H7V7a5 5 0 015-5z" /><rect x="3" y="10" width="18" height="12" rx="2" /></svg>
-                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 bg-amber-500 text-white text-[10px] font-black rounded-full flex items-center justify-center">{heldOrders.length}</span>
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-amber-500 text-white text-2xs font-black rounded-full flex items-center justify-center">{heldOrders.length}</span>
               </button>
             )}
             {cart.length > 0 && (
@@ -66,7 +66,7 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
       {/* Held orders panel */}
       {showHeld && heldOrders.length > 0 && (
         <div className="border-b border-amber-100 bg-amber-50/60 px-3 py-2.5 space-y-2 max-h-44 overflow-y-auto flex-shrink-0">
-          <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest flex items-center gap-1.5">
+          <p className="text-2xs font-black text-amber-600 uppercase tracking-widest flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
             Ventas congeladas
           </p>
@@ -78,7 +78,7 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
               <div key={held.id} className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5 border border-amber-100 shadow-sm">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-slate-700">{hc} items · <span style={{ color: themeColor }}>${ht.toLocaleString()}</span></p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">{held.tableNumber ? `${tableLabel} ${held.tableNumber} · ` : ''}{mins < 1 ? '<1' : mins} min</p>
+                  <p className="text-2xs text-slate-400 mt-0.5">{held.tableNumber ? `${tableLabel} ${held.tableNumber} · ` : ''}{mins < 1 ? '<1' : mins} min</p>
                 </div>
                 <button onClick={() => { onRecallHeldOrder(held.id); setShowHeld(false); }} className="px-3 py-1.5 rounded-lg text-[11px] font-black text-white transition-colors shadow-sm" style={{ backgroundColor: themeColor }}>Retomar</button>
                 <button onClick={() => onDeleteHeldOrder(held.id)} className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all">
@@ -138,7 +138,7 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
                       </button>
                     </div>
                     <div className="text-right">
-                      {item.quantity > 1 && <p className="text-[10px] text-slate-400 tabular-nums">${unitPrice.toLocaleString()} c/u</p>}
+                      {item.quantity > 1 && <p className="text-2xs text-slate-400 tabular-nums">${unitPrice.toLocaleString()} c/u</p>}
                       <p className="text-[15px] font-black text-slate-900 tabular-nums">${lineTotal.toLocaleString()}</p>
                     </div>
                   </div>
@@ -155,7 +155,7 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
           <div className="flex items-end justify-between mb-3">
             <span className="text-[13px] font-semibold text-slate-400">{itemCount} artículo{itemCount !== 1 ? 's' : ''}</span>
             <div className="text-right">
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Total a cobrar</p>
+              <p className="text-2xs text-slate-400 font-black uppercase tracking-widest">Total a cobrar</p>
               <p className="text-[32px] font-black text-slate-900 leading-none tabular-nums mt-0.5">${total.toLocaleString()}</p>
             </div>
           </div>
@@ -194,11 +194,11 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
         <div className="border-t border-slate-200/70 bg-white p-4 flex-shrink-0">
           <div className="flex items-end justify-between mb-3">
             <div>
-              <p className="text-[10px] text-emerald-600 font-black uppercase tracking-widest">Cuenta {tableLabel} {selectedTable.tableNumber}</p>
+              <p className="text-2xs text-emerald-600 font-black uppercase tracking-widest">Cuenta {tableLabel} {selectedTable.tableNumber}</p>
               <p className="text-[13px] text-slate-400 font-semibold mt-0.5">{(openTab.items || []).reduce((s, i) => s + i.quantity, 0)} artículo(s) · Orden #{openTab.orderNumber}</p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Total cuenta</p>
+              <p className="text-2xs text-slate-400 font-black uppercase tracking-widest">Total cuenta</p>
               <p className="text-[30px] font-black text-slate-900 leading-none tabular-nums mt-0.5">${(openTab.totalAmount || 0).toLocaleString()}</p>
             </div>
           </div>

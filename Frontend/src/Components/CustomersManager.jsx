@@ -9,6 +9,7 @@ import { logSystem } from '../utils/systemLogger';
 import { formatCurrency as fmtCurrency } from '../utils/currency';
 import { toast } from 'sonner';
 import { enlaceWhatsApp } from '../utils/whatsapp';
+import { Capa } from './ui';
 
 /**
  * `busquedaInicial` llega desde los chats de WhatsApp: al abrir la ficha de
@@ -469,7 +470,7 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              <FaCrown className="text-[9px]" /> VIP ({stats?.vipCustomers || 0})
+              <FaCrown className="text-2xs" /> VIP ({stats?.vipCustomers || 0})
             </button>
             <button
               onClick={() => setStatusFilter('inactive')}
@@ -529,11 +530,11 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
               <table className="min-w-full divide-y divide-slate-100">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Cliente</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Contacto</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Nivel</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{isService ? 'Última Cita' : 'Último Pedido'}</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Acciones</th>
+                    <th className="px-4 py-2.5 text-left text-2xs font-semibold text-slate-500 uppercase tracking-wider">Cliente</th>
+                    <th className="px-4 py-2.5 text-left text-2xs font-semibold text-slate-500 uppercase tracking-wider">Contacto</th>
+                    <th className="px-4 py-2.5 text-left text-2xs font-semibold text-slate-500 uppercase tracking-wider">Nivel</th>
+                    <th className="px-4 py-2.5 text-left text-2xs font-semibold text-slate-500 uppercase tracking-wider">{isService ? 'Última Cita' : 'Último Pedido'}</th>
+                    <th className="px-4 py-2.5 text-left text-2xs font-semibold text-slate-500 uppercase tracking-wider">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -550,30 +551,30 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
                                 {customer.name.charAt(0).toUpperCase()}
                               </div>
                               {isVIP && (
-                                <FaCrown className="absolute -top-1 -right-1 text-[8px] text-purple-500" />
+                                <FaCrown className="absolute -top-1 -right-1 text-2xs text-purple-500" />
                               )}
                             </div>
                             <div>
                               <p className="text-xs font-semibold text-slate-800">{customer.name}</p>
-                              <p className="text-[10px] text-slate-400">#{customer._id.slice(-6)}</p>
+                              <p className="text-2xs text-slate-400">#{customer._id.slice(-6)}</p>
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-2.5">
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-1.5 text-xs text-slate-700">
-                              <FaPhone className="text-[9px] text-slate-400" /> {customer.phone}
+                              <FaPhone className="text-2xs text-slate-400" /> {customer.phone}
                             </div>
                             {customer.email && (
                               <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                                <FaEnvelope className="text-[8px]" /> <span className="truncate max-w-[160px]">{customer.email}</span>
+                                <FaEnvelope className="text-2xs" /> <span className="truncate max-w-[160px]">{customer.email}</span>
                               </div>
                             )}
                           </div>
                         </td>
                         <td className="px-4 py-2.5">
                           <div className="space-y-1">
-                            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${level.color}`}>
+                            <span className={`inline-block px-1.5 py-0.5 rounded text-2xs font-semibold ${level.color}`}>
                               {level.name}
                             </span>
                             <div className="flex items-center gap-2 text-[11px] text-slate-500">
@@ -585,7 +586,7 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
                         </td>
                         <td className="px-4 py-2.5">
                           <p className="text-xs font-medium text-slate-700">{formatRelativeDate(customer.lastOrderDate)}</p>
-                          <p className="text-[10px] text-slate-400">{formatDate(customer.lastOrderDate)}</p>
+                          <p className="text-2xs text-slate-400">{formatDate(customer.lastOrderDate)}</p>
                         </td>
                         <td className="px-4 py-2.5">
                           <div className="flex items-center gap-1">
@@ -649,31 +650,31 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
                       </div>
                       <div>
                         <p className="text-[13px] font-semibold text-slate-800">{customer.name}</p>
-                        <p className="text-[10px] text-slate-400">#{customer._id.slice(-6)}</p>
+                        <p className="text-2xs text-slate-400">#{customer._id.slice(-6)}</p>
                       </div>
                     </div>
-                    <span className={`px-1.5 py-0.5 rounded-lg text-[10px] font-semibold ${level.color}`}>
+                    <span className={`px-1.5 py-0.5 rounded-lg text-2xs font-semibold ${level.color}`}>
                       {level.name}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-1.5 mb-2">
                     <div className="bg-slate-50/80 rounded-xl px-2.5 py-1.5">
-                      <p className="text-[10px] text-slate-400">{isService ? 'Citas' : 'Pedidos'}</p>
+                      <p className="text-2xs text-slate-400">{isService ? 'Citas' : 'Pedidos'}</p>
                       <p className="text-sm font-bold text-slate-800">{customer.totalOrders || 0}</p>
                     </div>
                     <div className="bg-slate-50/80 rounded-xl px-2.5 py-1.5">
-                      <p className="text-[10px] text-slate-400">Total</p>
+                      <p className="text-2xs text-slate-400">Total</p>
                       <p className="text-xs font-bold text-emerald-600">${(customer.totalSpent || 0).toLocaleString('es-CO', { minimumFractionDigits: 0 })}</p>
                     </div>
                   </div>
 
                   <div className="mb-2.5 space-y-0.5">
                     <div className="flex items-center gap-1.5 text-xs text-slate-700">
-                      <FaPhone className="text-[9px] text-slate-400" /> {customer.phone}
+                      <FaPhone className="text-2xs text-slate-400" /> {customer.phone}
                     </div>
                     <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                      <FaCalendarAlt className="text-[8px]" /> {formatRelativeDate(customer.lastOrderDate)}
+                      <FaCalendarAlt className="text-2xs" /> {formatRelativeDate(customer.lastOrderDate)}
                     </div>
                   </div>
 
@@ -717,7 +718,7 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
                   disabled={currentPage === 1}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-200 transition-colors"
                 >
-                  <FaChevronLeft className="text-[9px]" /> Anterior
+                  <FaChevronLeft className="text-2xs" /> Anterior
                 </button>
                 <span className="text-xs text-slate-500">
                   {currentPage} / {pagination.total}
@@ -727,7 +728,7 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
                   disabled={currentPage === pagination.total}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-200 transition-colors"
                 >
-                  Siguiente <FaChevronRight className="text-[9px]" />
+                  Siguiente <FaChevronRight className="text-2xs" />
                 </button>
               </div>
 
@@ -742,7 +743,7 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
                     disabled={currentPage === 1}
                     className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
-                    <FaChevronLeft className="text-[10px]" />
+                    <FaChevronLeft className="text-2xs" />
                   </button>
                   {Array.from({ length: Math.min(pagination.total, 7) }, (_, i) => {
                     let pageNum;
@@ -774,7 +775,7 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
                     disabled={currentPage === pagination.total}
                     className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
-                    <FaChevronRight className="text-[10px]" />
+                    <FaChevronRight className="text-2xs" />
                   </button>
                 </div>
               </div>
@@ -793,6 +794,7 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
             className="fixed inset-0 bg-black/40 flex lg:items-center items-end justify-center lg:p-4 z-50 overflow-y-auto"
             onClick={() => setShowCustomerModal(false)}
           >
+            <Capa onCerrar={() => setShowCustomerModal(false)} />
             <motion.div
               initial={{ opacity: 0, y: 100 }}
               animate={{ opacity: 1, y: 0 }}
@@ -813,16 +815,16 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
                       {selectedCustomer.name.charAt(0).toUpperCase()}
                     </div>
                     {(selectedCustomer.totalOrders || 0) >= 10 && (
-                      <FaCrown className="absolute -top-1 -right-1 text-[8px] text-purple-500" />
+                      <FaCrown className="absolute -top-1 -right-1 text-2xs text-purple-500" />
                     )}
                   </div>
                   <div>
                     <h2 className="text-sm font-bold text-slate-800">{selectedCustomer.name}</h2>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${getCustomerLevel(selectedCustomer.totalOrders || 0).color}`}>
+                      <span className={`px-1.5 py-0.5 rounded text-2xs font-semibold ${getCustomerLevel(selectedCustomer.totalOrders || 0).color}`}>
                         {getCustomerLevel(selectedCustomer.totalOrders || 0).name}
                       </span>
-                      <span className="text-[10px] text-slate-400">{getCustomerAge(selectedCustomer.createdAt)}</span>
+                      <span className="text-2xs text-slate-400">{getCustomerAge(selectedCustomer.createdAt)}</span>
                     </div>
                   </div>
                 </div>
@@ -853,9 +855,9 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
               {/* Tab Bar */}
               <div className="flex border-b border-slate-100 px-5 gap-1">
                 {[
-                  { id: 'resumen', label: 'Resumen', icon: <FaChartBar className="text-[9px]" /> },
-                  { id: 'notas', label: 'Notas', icon: <FaStickyNote className="text-[9px]" /> },
-                  { id: 'tags', label: 'Tags', icon: <FaTags className="text-[9px]" /> },
+                  { id: 'resumen', label: 'Resumen', icon: <FaChartBar className="text-2xs" /> },
+                  { id: 'notas', label: 'Notas', icon: <FaStickyNote className="text-2xs" /> },
+                  { id: 'tags', label: 'Tags', icon: <FaTags className="text-2xs" /> },
                 ].map(tab => (
                   <button
                     key={tab.id}
@@ -888,59 +890,59 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
                   {/* Stats Grid */}
                   <div className="grid grid-cols-4 gap-2">
                     <div className="bg-blue-50 rounded-lg p-2.5 text-center">
-                      <FaBoxOpen className="text-[10px] text-blue-500 mx-auto mb-1" />
+                      <FaBoxOpen className="text-2xs text-blue-500 mx-auto mb-1" />
                       <p className="text-sm font-bold text-slate-800">{selectedCustomer.totalOrders || 0}</p>
-                      <p className="text-[10px] text-slate-400">{isService ? 'Citas' : 'Pedidos'}</p>
+                      <p className="text-2xs text-slate-400">{isService ? 'Citas' : 'Pedidos'}</p>
                     </div>
                     <div className="bg-emerald-50 rounded-lg p-2.5 text-center">
-                      <FaDollarSign className="text-[10px] text-emerald-500 mx-auto mb-1" />
+                      <FaDollarSign className="text-2xs text-emerald-500 mx-auto mb-1" />
                       <p className="text-xs font-bold text-slate-800">${(selectedCustomer.totalSpent || 0).toLocaleString('es-CO', { minimumFractionDigits: 0 })}</p>
-                      <p className="text-[10px] text-slate-400">Total</p>
+                      <p className="text-2xs text-slate-400">Total</p>
                     </div>
                     <div className="bg-purple-50 rounded-lg p-2.5 text-center">
-                      <FaChartBar className="text-[10px] text-purple-500 mx-auto mb-1" />
+                      <FaChartBar className="text-2xs text-purple-500 mx-auto mb-1" />
                       <p className="text-xs font-bold text-slate-800">
                         ${((selectedCustomer.totalOrders || 0) > 0 ? (selectedCustomer.totalSpent / selectedCustomer.totalOrders) : 0).toLocaleString('es-CO', { minimumFractionDigits: 0 })}
                       </p>
-                      <p className="text-[10px] text-slate-400">Promedio</p>
+                      <p className="text-2xs text-slate-400">Promedio</p>
                     </div>
                     <div className="bg-orange-50 rounded-lg p-2.5 text-center">
-                      <FaCalendarAlt className="text-[10px] text-orange-500 mx-auto mb-1" />
+                      <FaCalendarAlt className="text-2xs text-orange-500 mx-auto mb-1" />
                       <p className="text-[11px] font-bold text-slate-800">{formatRelativeDate(selectedCustomer.lastOrderDate)}</p>
-                      <p className="text-[10px] text-slate-400">Último</p>
+                      <p className="text-2xs text-slate-400">Último</p>
                     </div>
                   </div>
 
                   {/* Contact Info */}
                   <div className="bg-slate-50 rounded-lg p-4 space-y-3">
-                    <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                      <FaUsers className="text-[9px]" /> Información de Contacto
+                    <h3 className="text-2xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                      <FaUsers className="text-2xs" /> Información de Contacto
                     </h3>
                     <div className="grid md:grid-cols-2 gap-2">
                       <div className="bg-white p-3 rounded-lg border border-slate-100">
-                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
-                          <FaPhone className="text-[8px]" /> Teléfono
+                        <label className="text-2xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
+                          <FaPhone className="text-2xs" /> Teléfono
                         </label>
                         <p className="text-xs font-semibold text-slate-800">{selectedCustomer.phone}</p>
                       </div>
                       <div className="bg-white p-3 rounded-lg border border-slate-100">
-                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
-                          <FaEnvelope className="text-[8px]" /> Email
+                        <label className="text-2xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
+                          <FaEnvelope className="text-2xs" /> Email
                         </label>
                         <p className="text-xs font-semibold text-slate-800">{selectedCustomer.email || 'No especificado'}</p>
                       </div>
                     </div>
                     {selectedCustomer.address && (
                       <div className="bg-white p-3 rounded-lg border border-slate-100">
-                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
-                          <FaMapMarkerAlt className="text-[8px]" /> Dirección
+                        <label className="text-2xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
+                          <FaMapMarkerAlt className="text-2xs" /> Dirección
                         </label>
                         <p className="text-xs font-semibold text-slate-800">{selectedCustomer.address}</p>
                       </div>
                     )}
                     <div className="bg-white p-3 rounded-lg border border-slate-100">
-                      <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
-                        <FaCalendarAlt className="text-[8px]" /> Miembro desde
+                      <label className="text-2xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
+                        <FaCalendarAlt className="text-2xs" /> Miembro desde
                       </label>
                       <p className="text-xs font-bold text-slate-800">
                         {selectedCustomer.createdAt ? new Date(selectedCustomer.createdAt).toLocaleDateString('es-ES', { 
@@ -949,7 +951,7 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
                           year: 'numeric' 
                         }) : 'Fecha no disponible'}
                       </p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">{getCustomerAge(selectedCustomer.createdAt)} como cliente</p>
+                      <p className="text-2xs text-slate-400 mt-0.5">{getCustomerAge(selectedCustomer.createdAt)} como cliente</p>
                     </div>
                   </div>
                 </div>
@@ -976,7 +978,7 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
                         {savingNote ? '...' : <FaPlus size={10} />}
                       </button>
                     </div>
-                    <p className="text-[10px] text-slate-300 text-right">{newNote.length}/1000</p>
+                    <p className="text-2xs text-slate-300 text-right">{newNote.length}/1000</p>
 
                     {/* Notes list */}
                     {loadingNotes ? (
@@ -995,11 +997,11 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
                           <div key={note._id || idx} className="bg-slate-50 rounded-lg p-3 border border-slate-100">
                             <p className="text-xs text-slate-700 whitespace-pre-wrap">{note.text}</p>
                             <div className="flex items-center gap-2 mt-2">
-                              <span className="text-[10px] text-slate-400">
+                              <span className="text-2xs text-slate-400">
                                 {note.createdByName || 'Admin'}
                               </span>
-                              <span className="text-[10px] text-slate-300">•</span>
-                              <span className="text-[10px] text-slate-400">
+                              <span className="text-2xs text-slate-300">•</span>
+                              <span className="text-2xs text-slate-400">
                                 {note.createdAt ? new Date(note.createdAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
                               </span>
                             </div>
@@ -1058,8 +1060,8 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
                         ))}
                       </div>
                     )}
-                    {savingTags && <p className="text-[10px] text-blue-500">Guardando...</p>}
-                    <p className="text-[10px] text-slate-300">{customerTags.length}/20 tags</p>
+                    {savingTags && <p className="text-2xs text-blue-500">Guardando...</p>}
+                    <p className="text-2xs text-slate-300">{customerTags.length}/20 tags</p>
                   </div>
                 )}
               </div>
@@ -1081,6 +1083,7 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
               setWhatsappMenuCustomer(null);
             }}
           >
+            <Capa onCerrar={() => { setShowWhatsAppMenu(false); setWhatsappMenuCustomer(null); }} />
             <motion.div
               initial={{ scale: 0.97, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -1096,7 +1099,7 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-slate-800">Enviar WhatsApp</h3>
-                    <p className="text-[10px] text-slate-400">a {whatsappMenuCustomer.name.split(' ')[0]}</p>
+                    <p className="text-2xs text-slate-400">a {whatsappMenuCustomer.name.split(' ')[0]}</p>
                   </div>
                 </div>
                 <button
@@ -1130,17 +1133,17 @@ const CustomersManager = ({ busquedaInicial = '' }) => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-slate-800">{label}</p>
-                      <p className="text-[10px] text-slate-400">{desc}</p>
+                      <p className="text-2xs text-slate-400">{desc}</p>
                     </div>
-                    <FaChevronRight className="text-[8px] text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <FaChevronRight className="text-2xs text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
                 ))}
               </div>
 
               {/* Footer */}
               <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100">
-                <p className="text-[10px] text-slate-400 text-center flex items-center justify-center gap-1">
-                  <FaWhatsapp className="text-[8px]" /> Se abrirá WhatsApp con el mensaje pre-escrito
+                <p className="text-2xs text-slate-400 text-center flex items-center justify-center gap-1">
+                  <FaWhatsapp className="text-2xs" /> Se abrirá WhatsApp con el mensaje pre-escrito
                 </p>
               </div>
             </motion.div>

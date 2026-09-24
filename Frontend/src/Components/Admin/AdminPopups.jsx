@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../../services/api';
 import { useBusinessConfig } from '../../Context/BusinessContext';
 import ImageUploader from './ImageUploader';
+import { Capa } from '../ui';
 
 const FREQUENCY_LABELS = {
   once: 'Una sola vez',
@@ -69,7 +70,7 @@ const toInputDate = (d) => {
 const StatPill = ({ label, value, color }) => (
   <div className="flex-1 min-w-0 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2 text-center">
     <p className={`text-lg font-black tabular-nums ${color || 'text-slate-800'}`}>{value}</p>
-    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</p>
+    <p className="text-2xs font-bold text-slate-400 uppercase tracking-wider">{label}</p>
   </div>
 );
 
@@ -286,7 +287,7 @@ export default function AdminPopups() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-slate-800 truncate">{p.title}</h3>
-                    <span className={`shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded-full ${p.active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                    <span className={`shrink-0 text-2xs font-black px-1.5 py-0.5 rounded-full ${p.active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
                       {p.active ? 'Activo' : 'Pausado'}
                     </span>
                   </div>
@@ -327,6 +328,7 @@ export default function AdminPopups() {
       {/* Editor */}
       {editing && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={closeEditor}>
+          <Capa onCerrar={closeEditor} />
           <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 shrink-0">
               <h2 className="font-black text-slate-800">{editing._id ? 'Editar anuncio' : 'Nuevo anuncio'}</h2>
@@ -361,7 +363,7 @@ export default function AdminPopups() {
                         className={`p-2 rounded-xl border-2 transition-all text-center ${active ? 'shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}
                         style={active ? { borderColor: themeColor } : { borderColor: undefined }}>
                         <FormatGlyph preview={f.preview} />
-                        <p className="text-[10px] font-bold text-slate-500 mt-1 leading-tight">{f.label}</p>
+                        <p className="text-2xs font-bold text-slate-500 mt-1 leading-tight">{f.label}</p>
                       </button>
                     );
                   })}
@@ -472,6 +474,7 @@ export default function AdminPopups() {
       {/* Visor de contactos */}
       {leadsPopup && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={() => setLeadsPopup(null)}>
+          <Capa onCerrar={() => setLeadsPopup(null)} />
           <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 shrink-0">
               <div className="min-w-0">
@@ -501,7 +504,7 @@ export default function AdminPopups() {
                     <div key={l._id} className="rounded-xl border border-slate-100 bg-slate-50 px-3.5 py-2.5">
                       <div className="flex items-center justify-between gap-2">
                         <p className="font-bold text-slate-800 text-sm truncate">{l.name || l.email || l.phone || 'Sin nombre'}</p>
-                        <span className="text-[10px] text-slate-400 shrink-0">{new Date(l.createdAt).toLocaleDateString('es-CO')}</span>
+                        <span className="text-2xs text-slate-400 shrink-0">{new Date(l.createdAt).toLocaleDateString('es-CO')}</span>
                       </div>
                       <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-[12px] text-slate-500">
                         {l.email && <span>✉ {l.email}</span>}

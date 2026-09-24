@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BACKEND_URL } from '../../config';
+import { Capa } from '../ui';
 
 const API_BASE = `${BACKEND_URL}/api`;
 const IMG_BASE = BACKEND_URL;
@@ -568,6 +569,7 @@ function AnnouncementManagement() {
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
             onClick={() => setShowDetail(false)}
           >
+            <Capa onCerrar={() => setShowDetail(false)} />
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

@@ -28,7 +28,7 @@ export default function WhatsAppPanel() {
     /* La franja verde de arriba y el fondo gris son de WhatsApp Web: la
        aplicación queda flotando encima, no pegada a los bordes. */
     <div className="h-dvh bg-[#dadbd3] overflow-hidden">
-      <div className="absolute inset-x-0 top-0 h-32 bg-[#00a884]" />
+      <div className="absolute inset-x-0 top-0 h-32 bg-wa-verde" />
       <div className="relative h-full max-w-[1600px] mx-auto lg:py-5 lg:px-6">
         <AdminSectionErrorBoundary sectionName="Chats WhatsApp" onGoBack={volver}>
           {/* Acá sí es navegación: esta pantalla vive fuera del panel, así que

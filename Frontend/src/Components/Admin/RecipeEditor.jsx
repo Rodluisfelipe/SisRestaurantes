@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../services/api';
+import { Capa } from '../ui';
 
 /**
  * Receta de un producto: qué insumos consume una unidad.
@@ -86,6 +87,7 @@ export default function RecipeEditor({ producto, businessId, themeColor, onClose
 
   return (
     <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40" onClick={onClose}>
+      <Capa onCerrar={onClose} />
       <div
         className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[88vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}

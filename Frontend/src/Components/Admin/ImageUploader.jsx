@@ -126,7 +126,7 @@ export default function ImageUploader({
               : 'text-slate-500 hover:text-slate-700'
           }`}
         >
-          <FaLink className="text-[10px]" />
+          <FaLink className="text-2xs" />
           <span>URL</span>
         </button>
         <button
@@ -138,7 +138,7 @@ export default function ImageUploader({
               : 'text-slate-500 hover:text-slate-700'
           }`}
         >
-          <FaUpload className="text-[10px]" />
+          <FaUpload className="text-2xs" />
           <span>Subir</span>
         </button>
       </div>
@@ -203,7 +203,7 @@ export default function ImageUploader({
                 <span className="text-xs text-blue-600 font-medium">Toca para subir</span>
                 <span className="text-xs text-slate-400"> o arrastra una imagen</span>
               </div>
-              <span className="text-[10px] text-slate-400">JPEG, PNG, WebP • Máx 5MB</span>
+              <span className="text-2xs text-slate-400">JPEG, PNG, WebP • Máx 5MB</span>
             </div>
           )}
         </div>
@@ -212,7 +212,7 @@ export default function ImageUploader({
       {/* Error */}
       {error && (
         <p className="text-red-500 text-xs flex items-center gap-1">
-          <FaTimes className="text-[10px]" /> {error}
+          <FaTimes className="text-2xs" /> {error}
         </p>
       )}
 
@@ -233,15 +233,15 @@ export default function ImageUploader({
             <span className="text-xs text-slate-400">No se pudo cargar</span>
           </div>
           <div className="absolute top-2 right-2 flex gap-1">
-            <span className="bg-emerald-500/90 text-white px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1">
-              <FaCheck className="text-[8px]" /> Preview
+            <span className="bg-emerald-500/90 text-white px-2 py-0.5 rounded-full text-2xs font-medium flex items-center gap-1">
+              <FaCheck className="text-2xs" /> Preview
             </span>
             <button
               type="button"
               onClick={handleClear}
               className="bg-red-500/90 hover:bg-red-600 text-white w-5 h-5 rounded-full flex items-center justify-center transition-colors"
             >
-              <FaTimes className="text-[8px]" />
+              <FaTimes className="text-2xs" />
             </button>
           </div>
         </div>

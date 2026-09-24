@@ -48,6 +48,22 @@ export default [
          dependencias —`}, [algo]);`— **eso revienta**. Si está dentro del
          cuerpo de una función, no. La diferencia es cuándo se evalúa. */
       'no-use-before-define': ['warn', { functions: false, classes: true, variables: true }],
+      /* El sistema de diseño (tailwind.config.js). Letra de menos de 11 px no
+         se lee en un celular, y el menú llegó a tener más de 1.000 textos de
+         8 a 10 px. En aviso y no en error porque todavía quedan en pantallas
+         del panel sin migrar; que no entren nuevos. Usar `text-2xs` (11 px) o
+         la escala normal de Tailwind. */
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector: 'Literal[value=/text-.(8|9|10)(.5)?px/]',
+          message: 'Letra de menos de 11 px no se lee en un celular: usa text-2xs o text-xs.',
+        },
+        {
+          selector: 'TemplateElement[value.raw=/text-.(8|9|10)(.5)?px/]',
+          message: 'Letra de menos de 11 px no se lee en un celular: usa text-2xs o text-xs.',
+        },
+      ],
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },

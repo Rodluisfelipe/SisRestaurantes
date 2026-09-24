@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { menuCssVars, derivePalette, shade } from '../utils/menuTokens';
 import { formatCurrency } from '../utils/currency';
+import { Capa } from './ui';
 
 /**
  * La vitrina de un dueño con varios negocios.
@@ -418,6 +419,7 @@ export default function PortafolioPublico() {
           className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-4"
           onClick={() => setCompartiendo(false)}
         >
+          <Capa onCerrar={() => setCompartiendo(false)} />
           <div
             className="rounded-[var(--mb-radius-sheet)] p-5 w-full max-w-sm"
             style={{ background: 'var(--mb-card)' }}
@@ -556,7 +558,7 @@ function Dato({ valor, etiqueta, resaltado }) {
       >
         {valor}
       </span>
-      <span className="block text-[10.5px] sm:text-[11px] font-medium truncate" style={{ color: 'var(--mb-ink-2)' }}>
+      <span className="block text-2xs sm:text-[11px] font-medium truncate" style={{ color: 'var(--mb-ink-2)' }}>
         {etiqueta}
       </span>
     </div>
@@ -743,7 +745,7 @@ function FilaDeTops({ negocio, tops }) {
 
               {pr.esTop && (
                 <span
-                  className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md text-[9.5px] font-black tracking-wide"
+                  className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md text-2xs font-black tracking-wide"
                   style={{ background: 'var(--mb-accent)', color: 'var(--mb-on-accent)' }}
                 >
                   TOP {pr.rank}

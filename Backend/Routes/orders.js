@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const Order = require("../Models/Order");
 const CompletedOrder = require("../Models/CompletedOrder");
 const Customer = require("../Models/Customer");
+const { emitirLlave, abreCuenta, pedidoParaCliente } = require("../utils/cuentaCliente");
 const BusinessConfig = require("../Models/BusinessConfig");
 const { ObjectId } = require("mongoose").Types;
 const socketService = require("../services/socketService");
@@ -730,7 +731,12 @@ router.post("/", (req, res, next) => {
     
     res.status(201).json({
       ...savedOrder.toObject(),
-      customerToken: customerToken // Include token in response for client tracking
+      customerToken: customerToken, // Include token in response for client tracking
+      /* La llave de "Mi cuenta" para el celular que pidió. Nunca cuando crea
+         el pedido el personal: esa respuesta va al panel, no al cliente. */
+      ...(!esPersonalDelNegocio(req) && phone
+        ? { cuentaToken: emitirLlave({ businessId: businessObjectId, telefono: phone }) }
+        : {}),
     });
   } catch (error) {
     logger.error("Error creating order", error);
@@ -945,7 +951,9 @@ router.get('/track/:id', publicOrderLimiter, async (req, res) => {
       statusHistory: order.statusHistory,
       messages: order.messages || [],
       createdAt: order.createdAt,
-      updatedAt: order.updatedAt
+      updatedAt: order.updatedAt,
+      // Quien tiene el token de seguimiento pidió desde este celular: su cuenta.
+      ...(order.phone ? { cuentaToken: emitirLlave({ businessId: order.businessId, telefono: order.phone }) } : {}),
     };
 
     res.json(trackingData);
@@ -1019,6 +1027,10 @@ router.post('/:id/messages/business', tenantAuth, async (req, res) => {
 });
 
 // Get my orders by phone + businessId (public endpoint) - MUST be before /:id
+/* Los pedidos de un cliente: solo con la llave de su cuenta (ver
+   utils/cuentaCliente). Antes bastaba el teléfono y la respuesta traía los
+   pedidos completos, con el token de seguimiento incluido: cualquiera podía
+   ver pedidos ajenos y subirles un comprobante de pago. */
 router.get('/my-orders', publicOrderLimiter, async (req, res) => {
   try {
     const { phone, businessId } = req.query;
@@ -1033,23 +1045,55 @@ router.get('/my-orders', publicOrderLimiter, async (req, res) => {
     }
 
     const businessObjectId = businessResult.businessId;
+    if (!abreCuenta(req, businessObjectId, phone)) {
+      return res.status(401).json({ codigo: 'SIN_CUENTA', message: 'Tu cuenta se activa en este celular con tu primer pedido.' });
+    }
 
-    // Get active orders (not completed/cancelled)
-    const activeOrders = await Order.find({
-      businessId: businessObjectId,
-      phone: phone,
-      status: { $nin: [ORDER_STATUS.COMPLETED, ORDER_STATUS.CANCELLED, ORDER_STATUS.DELIVERED] }
-    }).sort({ createdAt: -1 }).limit(10).lean();
+    const [activeOrders, completedOrders] = await Promise.all([
+      Order.find({
+        businessId: businessObjectId,
+        phone: phone,
+        status: { $nin: [ORDER_STATUS.COMPLETED, ORDER_STATUS.CANCELLED, ORDER_STATUS.DELIVERED] }
+      }).sort({ createdAt: -1 }).limit(10).lean(),
+      CompletedOrder.find({
+        businessId: businessObjectId,
+        phone: phone
+      }).sort({ completedAt: -1 }).limit(10).lean(),
+    ]);
 
-    // Get recent completed orders
-    const completedOrders = await CompletedOrder.find({
-      businessId: businessObjectId,
-      phone: phone
-    }).sort({ completedAt: -1 }).limit(10).lean();
+    /* Se conservan los campos que ya leen las pantallas del menú (en inglés)
+       y se quitan los internos: notas del personal, historial de cambios,
+       domiciliario, datos de pago de la pasarela. */
+    const seguro = (o) => {
+      const p = pedidoParaCliente(o);
+      return {
+        _id: o._id,
+        orderNumber: o.orderNumber,
+        status: o.status,
+        orderType: o.orderType,
+        orderChannel: o.orderChannel,
+        items: o.items,
+        totalAmount: o.totalAmount,
+        finalAmount: o.finalAmount,
+        deliveryFee: o.deliveryFee,
+        discountAmount: o.discountAmount,
+        couponCode: o.couponCode,
+        paymentMethod: o.paymentMethod,
+        phone: o.phone,
+        address: o.address,
+        cancellationReason: o.cancellationReason,
+        autoExpired: o.autoExpired,
+        tableNumber: o.tableNumber,
+        createdAt: o.createdAt,
+        completedAt: o.completedAt,
+        reviewed: o.reviewed,
+        ...(p.seguimiento ? { customerToken: p.seguimiento } : {}),
+      };
+    };
 
     res.json({
-      active: activeOrders,
-      completed: completedOrders
+      active: activeOrders.map(seguro),
+      completed: completedOrders.map(seguro)
     });
   } catch (error) {
     logger.error('Error fetching my orders', error);

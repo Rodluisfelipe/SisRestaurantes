@@ -269,6 +269,7 @@ const businessConfigSchema = new mongoose.Schema({
     /* Menú V2 ("perfil + historias"). Ya no es beta: es el menú por defecto.
        Se conserva el flag —y el botón del superadmin— para poder devolver un
        negocio puntual al menú anterior si algo no le funciona. */
+    // Sin efecto: el menú V2 es el único. Se conserva por los documentos que ya lo tienen.
     menuV2: { type: Boolean, default: true }
   },
   // "Los más pedidos" — sección premium de recomendados en el menú

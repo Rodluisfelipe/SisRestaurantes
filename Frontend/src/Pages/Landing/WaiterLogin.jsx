@@ -29,8 +29,8 @@ const WaiterLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FBFAF8]">
-      <section className="min-h-screen flex items-center justify-center px-4 pt-20 pb-8 bg-gradient-to-br from-[#FBFAF8] via-[#FBEEE9] to-[#FBFAF8]">
+    <div className="min-h-screen bg-menuby-crema">
+      <section className="min-h-screen flex items-center justify-center px-4 pt-20 pb-8 bg-gradient-to-br from-menuby-crema via-menuby-suave to-menuby-crema">
         <div className="w-full">
           <div className="max-w-md mx-auto">
             <motion.div
@@ -39,15 +39,15 @@ const WaiterLogin = () => {
               transition={{ duration: 0.7 }}
               className="text-center mb-5"
             >
-              <div className="w-14 h-14 rounded-2xl bg-[#E8002D] flex items-center justify-center mx-auto mb-3 shadow-md">
+              <div className="w-14 h-14 rounded-2xl bg-menuby flex items-center justify-center mx-auto mb-3 shadow-md">
                 <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z" /><path d="M6 1v3M10 1v3M14 1v3" />
                 </svg>
               </div>
-              <h1 className="text-[26px] sm:text-[28px] font-extrabold text-[#17120F] mb-1" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", letterSpacing: '-0.025em' }}>
+              <h1 className="text-[26px] sm:text-[28px] font-extrabold text-menuby-tinta mb-1" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", letterSpacing: '-0.025em' }}>
                 Acceso Mesero
               </h1>
-              <p className="text-[14px] text-[#6E655C]">
+              <p className="text-[14px] text-menuby-gris">
                 Ingresa con el usuario que te dio el administrador
               </p>
             </motion.div>
@@ -56,7 +56,7 @@ const WaiterLogin = () => {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.15 }}
-              className="bg-white rounded-[26px] shadow-[0_20px_60px_rgba(23,18,15,0.10)] border border-[#EFEAE3] p-6 sm:p-7"
+              className="bg-white rounded-[26px] shadow-[0_20px_60px_rgba(23,18,15,0.10)] border border-menuby-borde p-6 sm:p-7"
             >
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
@@ -69,7 +69,7 @@ const WaiterLogin = () => {
                     required
                     autoFocus
                     autoCapitalize="none"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors text-gray-900 bg-white placeholder-gray-400"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-menuby focus:border-menuby transition-colors text-gray-900 bg-white placeholder-gray-400"
                     placeholder="Tu usuario"
                   />
                 </div>
@@ -83,7 +83,7 @@ const WaiterLogin = () => {
                       value={password}
                       onChange={(e) => { setPassword(e.target.value); if (error) setError(''); }}
                       required
-                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors text-gray-900 bg-white placeholder-gray-400"
+                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-menuby focus:border-menuby transition-colors text-gray-900 bg-white placeholder-gray-400"
                       placeholder="Tu contraseña"
                     />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -106,7 +106,7 @@ const WaiterLogin = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-3.5 bg-[#E8002D] hover:bg-[#A80020] disabled:opacity-50 text-white font-bold rounded-xl transition-all duration-200 hover:shadow-lg active:scale-[0.98] flex items-center justify-center"
+                  className="w-full py-3.5 bg-menuby hover:bg-menuby-fuerte disabled:opacity-50 text-white font-bold rounded-xl transition-all duration-200 hover:shadow-lg active:scale-[0.98] flex items-center justify-center"
                   style={{ boxShadow: '0 8px 24px rgba(232,0,45,0.26)' }}
                 >
                   {isLoading ? (
@@ -121,9 +121,9 @@ const WaiterLogin = () => {
               </form>
 
               <div className="mt-5 text-center">
-                <p className="text-[13px] text-[#6E655C]">
+                <p className="text-[13px] text-menuby-gris">
                   ¿Eres dueño del negocio?{' '}
-                  <Link to="/login" className="text-[#E8002D] hover:text-[#A80020] font-semibold">Inicia sesión aquí</Link>
+                  <Link to="/login" className="text-menuby hover:text-menuby-fuerte font-semibold">Inicia sesión aquí</Link>
                 </p>
               </div>
             </motion.div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import api from '../../services/api';
+import { Capa } from '../ui';
 
 const MODES = [
   { id: 'manual', title: 'Manual', desc: 'Tú asignas cada pedido a mano desde la cola.', icon: 'hand' },
@@ -82,6 +83,7 @@ export default function DeliverySettingsModal({ slug, isOpen, onClose }) {
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           onClick={() => onClose(false)}
         >
+          <Capa onCerrar={() => onClose(false)} />
           <motion.div
             className="bg-white w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-hidden flex flex-col"
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}

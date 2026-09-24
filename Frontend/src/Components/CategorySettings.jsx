@@ -4,6 +4,7 @@ import { FaFolderOpen, FaPlus, FaTrash, FaTag, FaAlignLeft, FaGripVertical, FaSa
 import api from '../services/api';
 import { useParams } from 'react-router-dom';
 import { socket } from '../services/socket';
+import { Capa } from './ui';
 
 const LOCAL_STORAGE_KEY = 'categoryOrderSettings';
 
@@ -12,6 +13,7 @@ const DeleteCategoryModal = ({ isOpen, onClose, onConfirm, category }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 bg-black/40 flex lg:items-center items-end justify-center z-50" onClick={onClose}>
+      <Capa onCerrar={onClose} />
       <div
         className="bg-white rounded-t-2xl lg:rounded-xl p-5 max-w-sm w-full mx-0 lg:mx-4 shadow-lg border border-slate-100 lg:border-slate-200"
         onClick={(e) => e.stopPropagation()}
@@ -289,7 +291,7 @@ const CategorySettings = () => {
             exit={{ opacity: 0, height: 0 }}
             className="px-3 py-2 bg-red-50 text-red-700 text-xs font-medium flex items-center gap-2 rounded-lg border border-red-100"
           >
-            <FaExclamationTriangle className="text-[10px]" /> {error}
+            <FaExclamationTriangle className="text-2xs" /> {error}
           </motion.div>
         )}
         {successMessage && (
@@ -299,7 +301,7 @@ const CategorySettings = () => {
             exit={{ opacity: 0, height: 0 }}
             className="px-3 py-2 bg-emerald-50 text-emerald-700 text-xs font-medium flex items-center gap-2 rounded-lg border border-emerald-100"
           >
-            <FaCheck className="text-[10px]" /> {successMessage}
+            <FaCheck className="text-2xs" /> {successMessage}
           </motion.div>
         )}
       </AnimatePresence>
@@ -317,7 +319,7 @@ const CategorySettings = () => {
                   : 'bg-blue-500 text-white hover:bg-blue-600'
               }`}
             >
-              <FaSave className="text-[10px]" />
+              <FaSave className="text-2xs" />
               {saveLoading ? 'Guardando...' : 'Guardar Orden'}
             </button>
             <button
@@ -333,7 +335,7 @@ const CategorySettings = () => {
             onClick={() => setSortMode(true)}
             className="px-3 py-1.5 text-xs font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-1.5"
           >
-            <FaGripVertical className="text-[10px]" />
+            <FaGripVertical className="text-2xs" />
             Reordenar Categorías
           </button>
         )}
@@ -359,8 +361,8 @@ const CategorySettings = () => {
                 onDragEnd={handleDragEnd}
                 className="flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-grab active:cursor-grabbing hover:bg-slate-50 transition-colors"
               >
-                <FaGripVertical className="text-slate-300 text-[10px] flex-shrink-0" />
-                <span className="bg-blue-50 text-blue-600 font-semibold text-[10px] w-5 h-5 rounded flex items-center justify-center flex-shrink-0">
+                <FaGripVertical className="text-slate-300 text-2xs flex-shrink-0" />
+                <span className="bg-blue-50 text-blue-600 font-semibold text-2xs w-5 h-5 rounded flex items-center justify-center flex-shrink-0">
                   {index + 1}
                 </span>
                 <div className="flex-1 min-w-0">
@@ -388,7 +390,7 @@ const CategorySettings = () => {
             <form onSubmit={handleSubmit} className="p-4 space-y-3">
               <div>
                 <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 mb-1.5">
-                  <FaTag className="text-[10px] text-slate-400" />
+                  <FaTag className="text-2xs text-slate-400" />
                   Nombre de la Categoría
                 </label>
                 <input
@@ -403,7 +405,7 @@ const CategorySettings = () => {
 
               <div>
                 <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 mb-1.5">
-                  <FaAlignLeft className="text-[10px] text-slate-400" />
+                  <FaAlignLeft className="text-2xs text-slate-400" />
                   Descripción
                 </label>
                 <textarea
@@ -419,7 +421,7 @@ const CategorySettings = () => {
                 type="submit"
                 className="w-full bg-red-500 lg:bg-blue-500 text-white py-2.5 lg:py-2 rounded-xl lg:rounded-lg hover:opacity-90 transition-colors text-[13px] lg:text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-[0.97] lg:active:scale-100"
               >
-                <FaPlus className="text-[10px]" />
+                <FaPlus className="text-2xs" />
                 Crear Categoría
               </button>
             </form>
@@ -500,7 +502,7 @@ const CategorySettings = () => {
                                   : 'bg-blue-500 text-white hover:bg-blue-600'
                               }`}
                             >
-                              <FaSave className="text-[10px]" />
+                              <FaSave className="text-2xs" />
                               {editLoading ? 'Guardando...' : 'Guardar'}
                             </button>
                           </div>
@@ -517,7 +519,7 @@ const CategorySettings = () => {
                                 <p className="text-[11px] text-slate-400 truncate">{category.description}</p>
                               )}
                             </div>
-                            <span className="bg-slate-100 text-slate-500 text-[10px] font-medium px-1.5 py-0.5 rounded flex-shrink-0">
+                            <span className="bg-slate-100 text-slate-500 text-2xs font-medium px-1.5 py-0.5 rounded flex-shrink-0">
                               #{displayOrder}
                             </span>
                           </div>

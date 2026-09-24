@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import api from '../../services/api';
 import { useBusinessConfig } from '../../Context/BusinessContext';
+import { Capa } from '../ui';
 
 /**
  * Despachar un pedido: con quién salió y con qué guía.
@@ -50,6 +51,7 @@ export default function ModalDespacho({ pedido, onClose, onListo }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-[60] flex items-end lg:items-center justify-center lg:p-4" onClick={onClose}>
+      <Capa onCerrar={onClose} />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

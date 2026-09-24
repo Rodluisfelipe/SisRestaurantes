@@ -117,15 +117,15 @@ const RestaurantCard = ({ restaurant, userLocation, variant = 'default' }) => {
             {/* Time badge */}
             {deliveryTime && (
               <div className="absolute bottom-2 left-2 bg-white/95 backdrop-blur-sm rounded-lg px-2 py-0.5 shadow-sm">
-                <span className="text-[10px] font-bold text-gray-800">{deliveryTime} min</span>
+                <span className="text-2xs font-bold text-gray-800">{deliveryTime} min</span>
               </div>
             )}
             {delivery?.free && (
               <div className="absolute top-2 left-2 bg-red-500 rounded-lg px-1.5 py-0.5">
-                <span className="text-[9px] font-bold text-white">GRATIS</span>
+                <span className="text-2xs font-bold text-white">GRATIS</span>
               </div>
             )}
-            {(sinPedidos || !isOpen) && <div className="absolute inset-0 bg-white/60 flex items-center justify-center"><span className="text-[10px] font-bold text-gray-500 bg-white px-2 py-0.5 rounded-full">{sinPedidos ? 'Sin pedidos' : 'Cerrado'}</span></div>}
+            {(sinPedidos || !isOpen) && <div className="absolute inset-0 bg-white/60 flex items-center justify-center"><span className="text-2xs font-bold text-gray-500 bg-white px-2 py-0.5 rounded-full">{sinPedidos ? 'Sin pedidos' : 'Cerrado'}</span></div>}
           </div>
           <div className="mt-2 px-0.5">
             <p className="text-[13px] font-bold text-gray-900 truncate leading-tight">{restaurant.businessName}</p>
@@ -216,7 +216,7 @@ const RestaurantCard = ({ restaurant, userLocation, variant = 'default' }) => {
                 <h3 className="text-[15px] font-bold text-gray-900 truncate">{restaurant.businessName}</h3>
                 {/* Entrar a una tienda no es entrar a un restaurante: se avisa antes del clic. */}
                 {restaurant.tipoTienda === 'ecommerce' && (
-                  <span className="flex-shrink-0 text-[10px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">Tienda</span>
+                  <span className="flex-shrink-0 text-2xs font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">Tienda</span>
                 )}
               </div>
 

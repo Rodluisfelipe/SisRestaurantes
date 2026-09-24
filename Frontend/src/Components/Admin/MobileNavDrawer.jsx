@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { esTienda } from '../../utils/tienda';
+import { Capa } from '../ui';
 
 /* ═══ iOS-style section icon components ═══ */
 const SectionIcon = ({ bg, children }) => (
@@ -179,7 +180,9 @@ export default function MobileNavDrawer({ isOpen, onClose, activeTab, setActiveT
             transition={{ duration: 0.2 }}
             className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-[55] lg:hidden"
             onClick={onClose}
-          />
+          >
+            <Capa onCerrar={onClose} />
+          </motion.div>
 
           {/* Sheet */}
           <motion.div

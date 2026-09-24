@@ -13,6 +13,7 @@ import {
   FaTag, FaAlignLeft, FaFolderOpen, FaDollarSign, FaImage,
   FaCheese, FaGripVertical, FaExclamationTriangle, FaMagic, FaClock
 } from 'react-icons/fa';
+import { Capa } from '../ui';
 
 /**
  * Modal wizard de Crear/Editar producto + Grid de productos.
@@ -133,6 +134,7 @@ export default function ProductManager({
             className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex lg:items-center items-end justify-center lg:p-4"
             onClick={() => { setShowProductModal(false); setEditingProduct(null); }}
           >
+            <Capa onCerrar={() => { setShowProductModal(false); setEditingProduct(null); }} />
             <div
               onClick={(e) => e.stopPropagation()}
               className="bg-white rounded-t-2xl lg:rounded-xl shadow-xl border border-slate-100 lg:border-slate-200 max-w-2xl lg:max-w-5xl w-full max-h-[92vh] lg:max-h-[92vh] overflow-hidden flex flex-col"
@@ -171,8 +173,8 @@ export default function ProductManager({
                         ? 'bg-emerald-100 text-emerald-700'
                         : 'bg-white text-slate-400 border border-slate-200'
                     }`}>
-                      <span className="text-[10px] font-bold">
-                        {currentStep > step.num ? <FaCheck className="text-[9px]" /> : step.num}
+                      <span className="text-2xs font-bold">
+                        {currentStep > step.num ? <FaCheck className="text-2xs" /> : step.num}
                       </span>
                       <span className="hidden sm:inline">{step.label}</span>
                     </div>
@@ -193,19 +195,19 @@ export default function ProductManager({
                       <div className="space-y-1">
                         <div className="flex items-center justify-between">
                           <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-                            <FaTag className="text-slate-400 text-[10px]" />Nombre *
+                            <FaTag className="text-slate-400 text-2xs" />Nombre *
                           </label>
                           <button
                             type="button"
                             onClick={generateAiNames}
                             disabled={aiNamesLoading || (!form.description.trim() && !form.name.trim())}
-                            className="flex items-center gap-1 text-[10px] font-semibold text-violet-600 hover:text-violet-700 disabled:text-slate-300 disabled:cursor-not-allowed transition-colors px-2 py-0.5 rounded-md hover:bg-violet-50"
+                            className="flex items-center gap-1 text-2xs font-semibold text-violet-600 hover:text-violet-700 disabled:text-slate-300 disabled:cursor-not-allowed transition-colors px-2 py-0.5 rounded-md hover:bg-violet-50"
                             title="La IA sugiere nombres creativos basados en la descripción"
                           >
                             {aiNamesLoading ? (
                               <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" strokeWidth="3" strokeDasharray="31.4" strokeLinecap="round" /></svg>
                             ) : (
-                              <FaMagic className="text-[10px]" />
+                              <FaMagic className="text-2xs" />
                             )}
                             {aiNamesLoading ? 'Generando...' : <><span className="inline-flex items-center gap-0.5">{AI.sparkle('w-3 h-3')} Sugerir nombres</span></>}
                           </button>
@@ -214,7 +216,7 @@ export default function ProductManager({
                           className={`w-full rounded-lg border bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-3 py-2 text-sm transition-all ${touchedFields.name && !form.name.trim() ? 'border-red-300 bg-red-50/50' : 'border-slate-200'}`}
                           placeholder="Ej: Hamburguesa Clásica" required />
                         {touchedFields.name && !form.name.trim() && (
-                          <p className="text-red-500 text-xs flex items-center gap-1"><FaExclamationTriangle className="text-[10px]" />Campo obligatorio</p>
+                          <p className="text-red-500 text-xs flex items-center gap-1"><FaExclamationTriangle className="text-2xs" />Campo obligatorio</p>
                         )}
                         {/* AI Name Suggestions */}
                         <AnimatePresence>
@@ -227,11 +229,11 @@ export default function ProductManager({
                             >
                               <div className="mt-1.5 bg-violet-50 border border-violet-200 rounded-xl p-2.5 space-y-1">
                                 <div className="flex items-center justify-between mb-1">
-                                  <span className="text-[10px] font-bold text-violet-600 uppercase tracking-wide flex items-center gap-1">
-                                    <FaMagic className="text-[8px]" /> Nombres sugeridos por IA
+                                  <span className="text-2xs font-bold text-violet-600 uppercase tracking-wide flex items-center gap-1">
+                                    <FaMagic className="text-2xs" /> Nombres sugeridos por IA
                                   </span>
                                   <button type="button" onClick={() => setShowAiNames(false)} className="text-violet-400 hover:text-violet-600">
-                                    <FaTimes className="text-[10px]" />
+                                    <FaTimes className="text-2xs" />
                                   </button>
                                 </div>
                                 {aiNamesLoading ? (
@@ -248,7 +250,7 @@ export default function ProductManager({
                                       className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-violet-100 rounded-lg transition-colors flex items-center justify-between group"
                                     >
                                       <span>{name}</span>
-                                      <span className="text-[10px] text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity">Usar</span>
+                                      <span className="text-2xs text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity">Usar</span>
                                     </button>
                                   ))
                                 ) : (
@@ -270,7 +272,7 @@ export default function ProductManager({
                       </div>
                       <div className="space-y-1">
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-                          <FaAlignLeft className="text-slate-400 text-[10px]" />Descripción
+                          <FaAlignLeft className="text-slate-400 text-2xs" />Descripción
                         </label>
                         <textarea name="description" value={form.description} onChange={handleChange} rows="2"
                           className="w-full rounded-lg border border-slate-200 bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-3 py-2 text-sm transition-all resize-none"
@@ -278,7 +280,7 @@ export default function ProductManager({
                       </div>
                       <div className="space-y-1">
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-                          <FaFolderOpen className="text-slate-400 text-[10px]" />Categoría *
+                          <FaFolderOpen className="text-slate-400 text-2xs" />Categoría *
                         </label>
                         <select name="category" value={form.category} onChange={handleChange} onBlur={() => handleBlur('category')}
                           className={`w-full rounded-lg border bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-slate-900 px-3 py-2 text-sm transition-all cursor-pointer ${touchedFields.category && !form.category ? 'border-red-300 bg-red-50/50' : 'border-slate-200'}`}>
@@ -286,7 +288,7 @@ export default function ProductManager({
                           {categories.map(cat => <option key={cat._id} value={cat._id}>{cat.name}</option>)}
                         </select>
                         {touchedFields.category && !form.category && (
-                          <p className="text-red-500 text-xs flex items-center gap-1"><FaExclamationTriangle className="text-[10px]" />Selecciona una categoría</p>
+                          <p className="text-red-500 text-xs flex items-center gap-1"><FaExclamationTriangle className="text-2xs" />Selecciona una categoría</p>
                         )}
                       </div>
 
@@ -295,7 +297,7 @@ export default function ProductManager({
                         <>
                           <div className="space-y-1">
                             <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-                              <FaTag className="text-slate-400 text-[10px]" />Tipo de artículo
+                              <FaTag className="text-slate-400 text-2xs" />Tipo de artículo
                             </label>
                             <div className="flex gap-2">
                               <button type="button" onClick={() => setForm(prev => ({ ...prev, itemType: 'product', durationMinutes: '' }))}
@@ -315,7 +317,7 @@ export default function ProductManager({
                           {form.itemType === 'service' && (
                             <div className="space-y-1">
                               <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-                                <FaClock className="text-slate-400 text-[10px]" />Duración del servicio *
+                                <FaClock className="text-slate-400 text-2xs" />Duración del servicio *
                               </label>
                               <select name="durationMinutes" value={form.durationMinutes} onChange={handleChange}
                                 className="w-full rounded-lg border border-slate-200 bg-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 px-3 py-2 text-sm transition-all cursor-pointer">
@@ -339,7 +341,7 @@ export default function ProductManager({
                     <div className="space-y-4">
                       <div className="space-y-1">
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-                          <FaDollarSign className="text-slate-400 text-[10px]" />Precio *
+                          <FaDollarSign className="text-slate-400 text-2xs" />Precio *
                         </label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 flex items-center pl-3"><span className="text-slate-500 font-semibold text-sm">$</span></div>
@@ -348,7 +350,7 @@ export default function ProductManager({
                             placeholder="29.000" required />
                         </div>
                         {touchedFields.price && (!form.price || parseFloat(form.price.replace(/\./g, '')) <= 0) && (
-                          <p className="text-red-500 text-xs flex items-center gap-1"><FaExclamationTriangle className="text-[10px]" />Precio inválido</p>
+                          <p className="text-red-500 text-xs flex items-center gap-1"><FaExclamationTriangle className="text-2xs" />Precio inválido</p>
                         )}
                       </div>
                       {/* Dónde se vende.
@@ -534,7 +536,7 @@ export default function ProductManager({
 
                       <div className="space-y-1">
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-                          <FaImage className="text-slate-400 text-[10px]" />{isService ? 'Fotos del servicio' : 'Fotos del producto'}
+                          <FaImage className="text-slate-400 text-2xs" />{isService ? 'Fotos del servicio' : 'Fotos del producto'}
                         </label>
                         <GaleriaProducto
                           valor={form.images && form.images.length ? form.images : (form.image ? [form.image] : [])}
@@ -636,14 +638,14 @@ export default function ProductManager({
                     <button type="button"
                       onClick={() => setCurrentStep(prev => prev - 1)}
                       className="flex-1 px-3 py-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium flex items-center justify-center gap-1.5">
-                      <FaChevronLeft className="text-[10px]" /><span>Anterior</span>
+                      <FaChevronLeft className="text-2xs" /><span>Anterior</span>
                     </button>
                   )}
                   {editingProduct && (enPc || currentStep === 1) && (
                     <button type="button"
                       onClick={() => { setEditingProduct(null); setForm({ name: '', description: '', price: '', category: '', image: '', toppingGroups: [] }); setTouchedFields({}); setCurrentStep(1); setShowToppingsSection(false); setShowProductModal(false); }}
                       className="flex-1 px-3 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium flex items-center justify-center gap-1.5">
-                      <FaTimes className="text-[10px]" /><span>Cancelar</span>
+                      <FaTimes className="text-2xs" /><span>Cancelar</span>
                     </button>
                   )}
                   {!enPc && currentStep < 3 ? (
@@ -660,7 +662,7 @@ export default function ProductManager({
                         setCurrentStep(prev => prev + 1);
                       }}
                       className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-1.5">
-                      <span>Siguiente</span><FaChevronRight className="text-[10px]" />
+                      <span>Siguiente</span><FaChevronRight className="text-2xs" />
                     </button>
                   ) : (
                     <button type="button"
@@ -679,7 +681,7 @@ export default function ProductManager({
                         handleSubmit(e);
                       }}
                       className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-1.5">
-                      <FaCheck className="text-[10px]" />
+                      <FaCheck className="text-2xs" />
                       <span>{editingProduct ? 'Actualizar' : (isService ? 'Crear Servicio' : 'Crear Producto')}</span>
                     </button>
                   )}
@@ -717,11 +719,11 @@ export default function ProductManager({
                 {/* Status badges */}
                 <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
                   {product.isFeatured && (
-                    <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-0.5">
-                      <FaStar className="text-[8px]" /> Destacado
+                    <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full text-2xs font-semibold flex items-center gap-0.5">
+                      <FaStar className="text-2xs" /> Destacado
                     </span>
                   )}
-                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                  <span className={`px-1.5 py-0.5 rounded-full text-2xs font-semibold ${
                     isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                   }`}>
                     {isActive ? 'Activo' : 'Inactivo'}
@@ -734,8 +736,8 @@ export default function ProductManager({
                 <div className="flex items-start justify-between gap-2 mb-1">
                   <h3 className="text-sm font-semibold text-slate-900 line-clamp-1">{product.name}</h3>
                 </div>
-                <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mb-1.5">
-                  <FaFolderOpen className="text-[8px]" /> {categoryName}
+                <span className="text-2xs text-slate-500 font-medium flex items-center gap-1 mb-1.5">
+                  <FaFolderOpen className="text-2xs" /> {categoryName}
                 </span>
                 <p className="text-xs text-slate-500 leading-relaxed line-clamp-2 flex-grow mb-3">{product.description}</p>
 
@@ -744,7 +746,7 @@ export default function ProductManager({
                   <button onClick={() => editProduct(product)}
                     className="flex-1 flex items-center justify-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-600 px-2 py-2.5 min-h-[44px] rounded-lg text-[11px] font-medium transition-colors"
                     title="Editar">
-                    <FaEdit className="text-[10px]" /><span>Editar</span>
+                    <FaEdit className="text-2xs" /><span>Editar</span>
                   </button>
                   <button onClick={() => handleToggleProduct(product._id)}
                     className={`flex-1 flex items-center justify-center gap-1 px-2 py-2.5 min-h-[44px] rounded-lg text-[11px] font-medium transition-colors ${
@@ -753,13 +755,13 @@ export default function ProductManager({
                         : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600'
                     }`}
                     title={isActive ? 'Pausar' : 'Activar'}>
-                    {isActive ? <FaPause className="text-[10px]" /> : <FaPlay className="text-[10px]" />}
+                    {isActive ? <FaPause className="text-2xs" /> : <FaPlay className="text-2xs" />}
                     <span>{isActive ? 'Pausar' : 'Activar'}</span>
                   </button>
                   <button onClick={() => deleteProduct(product._id)}
                     className="flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 p-2.5 min-h-[44px] rounded-lg transition-colors"
                     title="Eliminar">
-                    <FaTrash className="text-[10px]" />
+                    <FaTrash className="text-2xs" />
                   </button>
                   <button onClick={() => handleToggleFeatured(product._id)}
                     className={`flex items-center justify-center p-2.5 min-h-[44px] rounded-lg transition-colors ${
@@ -768,7 +770,7 @@ export default function ProductManager({
                         : 'bg-slate-100 hover:bg-slate-200 text-slate-400'
                     }`}
                     title={product.isFeatured ? 'Quitar destacado' : 'Destacar'}>
-                    <FaStar className="text-[10px]" />
+                    <FaStar className="text-2xs" />
                   </button>
                 </div>
               </div>

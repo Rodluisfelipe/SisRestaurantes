@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '../../config';
+import { Capa } from '../ui';
 
 const BannerApproval = () => {
   const [banners, setBanners] = useState([]);
@@ -321,6 +322,7 @@ const BannerApproval = () => {
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
             onClick={closeRejectModal}
           >
+            <Capa onCerrar={closeRejectModal} />
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

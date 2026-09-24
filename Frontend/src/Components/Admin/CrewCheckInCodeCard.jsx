@@ -80,7 +80,7 @@ export default function CrewCheckInCodeCard({ bookingId, businessId, code, onReg
               {qrUrl && (
                 <div className="flex flex-col items-center gap-2 mb-3 p-3 rounded-xl bg-white border border-slate-200">
                   <img src={qrUrl} alt={`QR ${code}`} className="w-44 h-44" />
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                  <p className="text-2xs font-extrabold uppercase tracking-wider text-slate-500">
                     También escaneable con la cámara
                   </p>
                 </div>

@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef } from "react";
-import { fetchBusinesses, activateBusiness, deleteBusiness, togglePosBeta, toggleMenuV2, toggleMarketplace,
+import { fetchBusinesses, activateBusiness, deleteBusiness, togglePosBeta, toggleMarketplace,
   setTipoTienda, toggleSupplier, getBusinessCredentials, resetBusinessCredentials, toggleAddon } from "../../services/superadminApi";
 import { socket } from "../../services/socket";
 import { motion, AnimatePresence } from "framer-motion";
 import { SAToast } from "../../Components/SuperAdmin/ui";
+import { Capa } from '../../Components/ui';
 
 function generatePassword() {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
@@ -62,6 +63,7 @@ function ResetCredentialsModal({ business, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <Capa onCerrar={onClose} />
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 8 }}
@@ -101,24 +103,24 @@ function ResetCredentialsModal({ business, onClose, onSuccess }) {
               <p className="text-[11px] text-slate-500">Entrega estos datos al negocio de forma segura:</p>
               <div className="space-y-2 bg-slate-50 border border-slate-200 rounded-xl p-3">
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Correo / Usuario</p>
+                  <p className="text-2xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Correo / Usuario</p>
                   <p className="text-[13px] font-mono text-slate-800">{saved.username}</p>
                 </div>
                 {saved.password && (
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Contraseña nueva</p>
+                    <p className="text-2xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Contraseña nueva</p>
                     <div className="flex items-center gap-2">
                       <p className="text-[13px] font-mono text-slate-800 flex-1">{saved.password}</p>
                       <button
                         onClick={() => { navigator.clipboard.writeText(saved.password); }}
-                        className="px-2 py-1 rounded-lg bg-slate-200 text-[10px] font-semibold text-slate-600 hover:bg-slate-300 transition-colors"
+                        className="px-2 py-1 rounded-lg bg-slate-200 text-2xs font-semibold text-slate-600 hover:bg-slate-300 transition-colors"
                       >
                         Copiar
                       </button>
                     </div>
                   </div>
                 )}
-                <p className="text-[10px] text-amber-600">El negocio deberá cambiar la contraseña en su próximo ingreso.</p>
+                <p className="text-2xs text-amber-600">El negocio deberá cambiar la contraseña en su próximo ingreso.</p>
               </div>
               <button onClick={onClose} className="w-full py-2.5 rounded-xl bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200 transition-colors">
                 Cerrar
@@ -178,7 +180,7 @@ function ResetCredentialsModal({ business, onClose, onSuccess }) {
                     Generar
                   </button>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1.5">
+                <p className="text-2xs text-slate-400 mt-1.5">
                   Al cambiar la contraseña, todas las sesiones activas del negocio quedan cerradas y deberán reingresar.
                 </p>
               </div>
@@ -272,17 +274,6 @@ export default function BusinessTable({ refreshTrigger }) {
       loadBusinesses();
     } catch (err) {
       showMessage("Error al cambiar POS beta", "error");
-    }
-  };
-
-  const handleToggleMenuV2 = async (b) => {
-    const current = b.features?.menuV2 || false;
-    try {
-      await toggleMenuV2(b._id, !current);
-      showMessage(`Menú V2 ${current ? 'desactivado' : 'activado'} para ${b.businessName}`);
-      loadBusinesses();
-    } catch (err) {
-      showMessage("Error al cambiar Menú V2", "error");
     }
   };
 
@@ -586,19 +577,6 @@ export default function BusinessTable({ refreshTrigger }) {
                       <span className={`w-1.5 h-1.5 rounded-full ${b.features?.posBetaEnabled ? 'bg-purple-400' : 'bg-slate-300'}`} />
                       {b.features?.posBetaEnabled ? 'POS ✓' : 'POS'}
                     </button>
-                    {/* Menú V2 (perfil + historias) — beta por negocio */}
-                    <button
-                      onClick={() => handleToggleMenuV2(b)}
-                      title={b.features?.menuV2 ? 'Devolver este negocio al menú anterior' : 'Reactivar el Menú V2 (es el menú por defecto)'}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 ml-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
- b.features?.menuV2
- ? 'bg-sky-100 text-sky-600 border border-sky-200 hover:bg-sky-200'
- : 'bg-slate-100 text-slate-400 border border-slate-200 hover:text-slate-900'
- }`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full ${b.features?.menuV2 ? 'bg-sky-400' : 'bg-slate-300'}`} />
-                      {b.features?.menuV2 ? 'V2 ✓' : 'V2'}
-                    </button>
                     {/* Complementos vendidos aparte del plan */}
                     {COMPLEMENTOS.map((addon) => {
                       const activo = (b.activeAddons || []).includes(addon.key);
@@ -759,7 +737,7 @@ export default function BusinessTable({ refreshTrigger }) {
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-slate-900 text-sm truncate">{b.businessName}</h3>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-medium ${
  b.isActive
  ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
  : 'bg-slate-100 text-slate-500 border border-slate-200'
@@ -767,7 +745,7 @@ export default function BusinessTable({ refreshTrigger }) {
                       <span className={`w-1 h-1 rounded-full ${b.isActive ? 'bg-emerald-400' : 'bg-slate-300'}`} />
                       {b.isActive ? 'Activo' : 'Inactivo'}
                     </span>
-                    <button onClick={() => copySlug(b.slug)} className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 hover:text-slate-600 transition-colors">
+                    <button onClick={() => copySlug(b.slug)} className="font-mono text-2xs px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 hover:text-slate-600 transition-colors">
                       {b.slug}
                     </button>
                   </div>
@@ -781,7 +759,7 @@ export default function BusinessTable({ refreshTrigger }) {
               {/* Acciones — en dos filas y con etiqueta. Antes iban los ocho
                   controles en una sola línea sangrada 56px: en móvil se
                   amontonaban y cuatro quedaban como iconos mudos. */}
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Funciones</p>
+              <p className="text-2xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Funciones</p>
               <div className="flex flex-wrap items-center gap-1.5 mb-3">
                 <button
                   onClick={() => handleTogglePos(b)}
@@ -796,20 +774,6 @@ export default function BusinessTable({ refreshTrigger }) {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
                   </svg>
                   POS
-                </button>
-                <button
-                  onClick={() => handleToggleMenuV2(b)}
-                  className={`flex items-center justify-center gap-1 px-2.5 py-2 rounded-lg text-xs font-medium transition-all ${
- b.features?.menuV2
- ? 'bg-sky-100 text-sky-600 border border-sky-200'
- : 'bg-slate-50 text-slate-400 border border-slate-200'
- }`}
-                  title={b.features?.menuV2 ? 'Devolver este negocio al menú anterior' : 'Reactivar el Menú V2 (es el menú por defecto)'}
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                  V2
                 </button>
                 <button
                   onClick={() => handleToggleMarketplace(b)}
@@ -841,7 +805,7 @@ export default function BusinessTable({ refreshTrigger }) {
                 </button>
               </div>
 
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Acciones</p>
+              <p className="text-2xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Acciones</p>
               <div className="grid grid-cols-2 gap-1.5">
                 <button
                   onClick={() => handleOpenMenu(b)}

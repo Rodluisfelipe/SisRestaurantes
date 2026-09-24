@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import superadminApi from '../../services/superadminApi';
 import { SAButton, SAModal, SABadge, SAEmptyState, SAToast } from './ui';
+import { Capa } from '../ui';
 
 const STATUS_TABS = [
   { key: 'pending', label: 'En revisión' },
@@ -88,7 +89,7 @@ export default function CrewKYCManagement() {
             >
               {t.label}
               {(counts[t.key] || 0) > 0 && (
-                <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
+                <span className={`px-1.5 py-0.5 text-2xs font-bold rounded-full ${
  t.key === 'pending' ? 'bg-amber-100 text-amber-700'
  : t.key === 'approved' ? 'bg-emerald-100 text-emerald-700'
  : 'bg-rose-100 text-rose-700'
@@ -140,7 +141,7 @@ export default function CrewKYCManagement() {
                 <p className="text-[11px] text-slate-500 truncate">{w.phone}{w.university ? ` · ${w.university}` : ''}</p>
                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                   <StatusPill status={w.kyc?.status} />
-                  <span className="text-[10px] text-slate-400">{formatRelative(w.kyc?.submittedAt)}</span>
+                  <span className="text-2xs text-slate-400">{formatRelative(w.kyc?.submittedAt)}</span>
                 </div>
               </div>
             </button>
@@ -250,6 +251,7 @@ export default function CrewKYCManagement() {
           onClick={() => setLightbox(null)}
           className="fixed inset-0 z-[90] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out"
         >
+          <Capa onCerrar={() => setLightbox(null)} />
           <img src={lightbox.src} alt={lightbox.label} className="max-h-[92vh] max-w-full rounded-lg shadow-2xl" />
           <p className="absolute top-4 left-1/2 -translate-x-1/2 text-xs font-medium text-slate-500 bg-black/40 px-3 py-1.5 rounded-full">{lightbox.label}</p>
         </motion.div>
@@ -275,7 +277,7 @@ function StatusPill({ status }) {
 function DetailStat({ label, value, children }) {
   return (
     <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</p>
+      <p className="text-2xs font-bold text-slate-500 uppercase tracking-wider">{label}</p>
       <div className="text-sm font-semibold text-slate-900 mt-0.5">{children || value}</div>
     </div>
   );
@@ -284,7 +286,7 @@ function DetailStat({ label, value, children }) {
 function DocCard({ label, src, onZoom }) {
   if (!src) {
     return (
-      <div className="aspect-[4/3] rounded-lg border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-[10px] text-slate-400 text-center px-2">
+      <div className="aspect-[4/3] rounded-lg border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-2xs text-slate-400 text-center px-2">
         Sin {label.toLowerCase()}
       </div>
     );
@@ -296,8 +298,8 @@ function DocCard({ label, src, onZoom }) {
     >
       <img src={src} alt={label} className="absolute inset-0 w-full h-full object-cover transition group-hover:scale-[1.04]" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-90" />
-      <p className="absolute bottom-1.5 left-2 right-2 text-[10px] font-bold text-white truncate">{label}</p>
-      <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-bold bg-slate-100 text-slate-700 rounded backdrop-blur-sm">
+      <p className="absolute bottom-1.5 left-2 right-2 text-2xs font-bold text-white truncate">{label}</p>
+      <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 text-2xs font-bold bg-slate-100 text-slate-700 rounded backdrop-blur-sm">
         Ampliar
       </span>
     </button>

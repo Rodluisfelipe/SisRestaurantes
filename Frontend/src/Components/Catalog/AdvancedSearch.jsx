@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Filter, MapPin, Clock, Star } from 'lucide-react';
+import { Capa } from '../ui';
 
 const AdvancedSearch = ({ isOpen, onClose, onSearch }) => {
   const [filters, setFilters] = useState({
@@ -79,6 +80,7 @@ const AdvancedSearch = ({ isOpen, onClose, onSearch }) => {
         className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
         onClick={onClose}
       >
+        <Capa onCerrar={onClose} />
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}

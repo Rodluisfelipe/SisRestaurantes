@@ -122,14 +122,14 @@ export default function MenuHealthScore({
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-lg font-extrabold text-slate-900 leading-none tabular-nums">{score}</span>
-            <span className="text-[9px] font-semibold text-slate-400">/100</span>
+            <span className="text-2xs font-semibold text-slate-400">/100</span>
           </div>
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-bold text-slate-800">Salud de tu menú</h3>
-            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white bg-gradient-to-r ${tone.bg}`}>{tone.label}</span>
+            <span className={`text-2xs font-bold px-1.5 py-0.5 rounded-full text-white bg-gradient-to-r ${tone.bg}`}>{tone.label}</span>
           </div>
           <p className="text-[11px] text-slate-500 mt-0.5">
             {pending.length === 0

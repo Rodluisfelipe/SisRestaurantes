@@ -99,9 +99,9 @@ export default function BranchManager({ businessId }) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-slate-800 text-sm">{branch.branchLabel || branch.businessName}</span>
-                  {branch.isMainBranch && <span className="text-[10px] font-bold uppercase tracking-wide text-indigo-600 bg-indigo-100 px-1.5 py-0.5 rounded-full">Principal</span>}
-                  {branch.useSharedMenu && <span className="text-[10px] font-bold uppercase tracking-wide text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-full">Menú compartido</span>}
-                  {isActive && <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full">Aquí ahora</span>}
+                  {branch.isMainBranch && <span className="text-2xs font-bold uppercase tracking-wide text-indigo-600 bg-indigo-100 px-1.5 py-0.5 rounded-full">Principal</span>}
+                  {branch.useSharedMenu && <span className="text-2xs font-bold uppercase tracking-wide text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-full">Menú compartido</span>}
+                  {isActive && <span className="text-2xs font-bold uppercase tracking-wide text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full">Aquí ahora</span>}
                 </div>
                 <div className="text-xs text-slate-400 mt-0.5">menuby.tech/{branch.slug}</div>
               </div>

@@ -281,7 +281,7 @@ function ToppingGroupsManager() {
             exit={{ opacity: 0, height: 0 }}
             className="px-3 py-2 bg-red-50 text-red-700 text-xs font-medium flex items-center gap-2 rounded-lg border border-red-100"
           >
-            <FaExclamationTriangle className="text-[10px] flex-shrink-0" /> {error}
+            <FaExclamationTriangle className="text-2xs flex-shrink-0" /> {error}
           </motion.div>
         )}
       </AnimatePresence>
@@ -312,7 +312,7 @@ function ToppingGroupsManager() {
                 <div className="space-y-3">
                   <div>
                     <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 mb-1.5">
-                      <FaTag className="text-[10px] text-slate-400" /> Nombre del Grupo
+                      <FaTag className="text-2xs text-slate-400" /> Nombre del Grupo
                     </label>
                     <input
                       type="text"
@@ -326,7 +326,7 @@ function ToppingGroupsManager() {
 
                   <div>
                     <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 mb-1.5">
-                      <FaAlignLeft className="text-[10px] text-slate-400" /> Descripción
+                      <FaAlignLeft className="text-2xs text-slate-400" /> Descripción
                     </label>
                     <input
                       type="text"
@@ -339,7 +339,7 @@ function ToppingGroupsManager() {
 
                   <div>
                     <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 mb-1.5">
-                      <FaDollarSign className="text-[10px] text-slate-400" /> Precio Base
+                      <FaDollarSign className="text-2xs text-slate-400" /> Precio Base
                     </label>
                     <div className="relative">
                       <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-sm">$</span>
@@ -365,7 +365,7 @@ function ToppingGroupsManager() {
                 <div className="space-y-3">
                   <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
                     <h4 className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-2">
-                      <FaCog className="text-[10px] text-slate-400" /> Configuración
+                      <FaCog className="text-2xs text-slate-400" /> Configuración
                     </h4>
                     <div className="space-y-2">
                       <label className="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-blue-300 transition-colors">
@@ -421,7 +421,7 @@ function ToppingGroupsManager() {
               {/* Options Section */}
               <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
                 <h4 className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-2">
-                  <FaListUl className="text-[10px] text-slate-400" /> Opciones del Grupo
+                  <FaListUl className="text-2xs text-slate-400" /> Opciones del Grupo
                 </h4>
 
                 {currentGroup.options.length === 0 ? (
@@ -455,7 +455,7 @@ function ToppingGroupsManager() {
                           className="flex-1 min-w-0 rounded-md border border-slate-200 text-xs text-slate-800 placeholder-slate-400 px-2.5 py-1.5 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
                         />
                         <div className="relative w-24 flex-shrink-0">
-                          <span className="absolute inset-y-0 left-0 flex items-center pl-2 text-slate-400 text-[10px]">$</span>
+                          <span className="absolute inset-y-0 left-0 flex items-center pl-2 text-slate-400 text-2xs">$</span>
                           <input
                             type="number"
                             inputMode="decimal"
@@ -470,7 +470,7 @@ function ToppingGroupsManager() {
                           onClick={() => handleDeleteOption(index)}
                           className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors flex-shrink-0"
                         >
-                          <FaTimes className="text-[10px]" />
+                          <FaTimes className="text-2xs" />
                         </button>
 
                         {imageEditor?.kind === 'opt' && imageEditor.index === index && (
@@ -503,14 +503,14 @@ function ToppingGroupsManager() {
                   onClick={handleAddOption}
                   className="mt-2 w-full py-2 border border-dashed border-slate-300 text-slate-500 rounded-lg hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50/50 transition-colors text-xs font-medium flex items-center justify-center gap-1.5"
                 >
-                  <FaPlus className="text-[10px]" /> Agregar Opción
+                  <FaPlus className="text-2xs" /> Agregar Opción
                 </button>
               </div>
 
               {/* Subgroups Section */}
               <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
                 <h4 className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-2">
-                  <FaLayerGroup className="text-[10px] text-slate-400" /> Subgrupos
+                  <FaLayerGroup className="text-2xs text-slate-400" /> Subgrupos
                 </h4>
 
                 {currentGroup.subGroups.length === 0 ? (
@@ -537,7 +537,7 @@ function ToppingGroupsManager() {
                             onClick={() => handleDeleteSubGroup(subGroupIndex)}
                             className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
                           >
-                            <FaTimes className="text-[10px]" />
+                            <FaTimes className="text-2xs" />
                           </button>
                         </div>
 
@@ -606,7 +606,7 @@ function ToppingGroupsManager() {
                               >
                                 {option.image
                                   ? <img src={option.image} alt="" className="w-full h-full object-cover" />
-                                  : <FaImage className="text-slate-300 text-[10px]" />}
+                                  : <FaImage className="text-slate-300 text-2xs" />}
                               </button>
                               <input
                                 type="text"
@@ -616,7 +616,7 @@ function ToppingGroupsManager() {
                                 className="flex-1 rounded-md border border-slate-200 text-xs text-slate-800 placeholder-slate-400 px-2 py-1 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
                               />
                               <div className="relative w-20 flex-shrink-0">
-                                <span className="absolute inset-y-0 left-0 flex items-center pl-2 text-slate-400 text-[10px]">$</span>
+                                <span className="absolute inset-y-0 left-0 flex items-center pl-2 text-slate-400 text-2xs">$</span>
                                 <input
                                   type="number"
                                   inputMode="decimal"
@@ -631,7 +631,7 @@ function ToppingGroupsManager() {
                                 onClick={() => handleDeleteSubGroupOption(subGroupIndex, optionIndex)}
                                 className="p-1 text-red-400 hover:text-red-600 rounded transition-colors"
                               >
-                                <FaTimes className="text-[9px]" />
+                                <FaTimes className="text-2xs" />
                               </button>
 
                               {imageEditor?.kind === 'sub' && imageEditor.si === subGroupIndex && imageEditor.oi === optionIndex && (
@@ -674,7 +674,7 @@ function ToppingGroupsManager() {
                   onClick={handleAddSubGroup}
                   className="mt-2 w-full py-2 border border-dashed border-slate-300 text-slate-500 rounded-lg hover:border-purple-300 hover:text-purple-500 hover:bg-purple-50/50 transition-colors text-xs font-medium flex items-center justify-center gap-1.5"
                 >
-                  <FaPlus className="text-[10px]" /> Agregar Subgrupo
+                  <FaPlus className="text-2xs" /> Agregar Subgrupo
                 </button>
               </div>
 
@@ -693,7 +693,7 @@ function ToppingGroupsManager() {
                   type="submit"
                   className="flex-1 bg-red-500 lg:bg-blue-500 text-white py-2.5 lg:py-2 rounded-xl lg:rounded-lg hover:opacity-90 transition-colors text-[13px] lg:text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-[0.97] lg:active:scale-100"
                 >
-                  {isEditing ? <FaEdit className="text-[10px]" /> : <FaPlus className="text-[10px]" />}
+                  {isEditing ? <FaEdit className="text-2xs" /> : <FaPlus className="text-2xs" />}
                   {isEditing ? 'Actualizar Grupo' : 'Crear Grupo'}
                 </button>
               </div>
@@ -759,12 +759,12 @@ function ToppingGroupsManager() {
 
                     {/* Badges */}
                     <div className="flex gap-1.5 mb-2">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                      <span className={`px-1.5 py-0.5 rounded text-2xs font-medium ${
                         group.isMultipleChoice ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'
                       }`}>
                         {group.isMultipleChoice ? 'Múltiple' : 'Única'}
                       </span>
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                      <span className={`px-1.5 py-0.5 rounded text-2xs font-medium ${
                         group.isRequired ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-500'
                       }`}>
                         {group.isRequired ? 'Obligatorio' : 'Opcional'}
@@ -774,7 +774,7 @@ function ToppingGroupsManager() {
                     {/* Main Options */}
                     {group.options && group.options.length > 0 && (
                       <div className="mb-2">
-                        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Opciones</p>
+                        <p className="text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Opciones</p>
                         <div className="space-y-0.5">
                           {group.options.map((option, idx) => (
                             <div key={idx} className={`flex items-center justify-between py-1 px-2 rounded text-xs ${
@@ -785,7 +785,7 @@ function ToppingGroupsManager() {
                                   {option.name}
                                 </span>
                                 {option.active === false && (
-                                  <span className="text-[9px] bg-red-100 text-red-600 px-1 py-0.5 rounded flex-shrink-0">Agotado</span>
+                                  <span className="text-2xs bg-red-100 text-red-600 px-1 py-0.5 rounded flex-shrink-0">Agotado</span>
                                 )}
                               </div>
                               <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -801,7 +801,7 @@ function ToppingGroupsManager() {
                                   }`}
                                   title={option.active !== false ? 'Desactivar' : 'Activar'}
                                 >
-                                  {option.active !== false ? <FaEye className="text-[9px]" /> : <FaEyeSlash className="text-[9px]" />}
+                                  {option.active !== false ? <FaEye className="text-2xs" /> : <FaEyeSlash className="text-2xs" />}
                                 </button>
                               </div>
                             </div>
@@ -813,24 +813,24 @@ function ToppingGroupsManager() {
                     {/* Subgroups */}
                     {group.subGroups && group.subGroups.length > 0 && (
                       <div>
-                        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Subgrupos</p>
+                        <p className="text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Subgrupos</p>
                         <div className="space-y-1.5">
                           {group.subGroups.map((subGroup, idx) => (
                             <div key={`subgroup-${idx}`} className="bg-purple-50/50 rounded-lg p-2 border-l-2 border-purple-300">
                               <div className="flex items-center justify-between mb-1">
                                 <span className="text-xs font-medium text-slate-700">{subGroup.title}</span>
                                 <div className="flex gap-1">
-                                  <span className="text-[9px] px-1 py-0.5 bg-purple-100 text-purple-600 rounded">
+                                  <span className="text-2xs px-1 py-0.5 bg-purple-100 text-purple-600 rounded">
                                     {subGroup.isMultipleChoice ? 'Múltiple' : 'Única'}
                                   </span>
                                   {subGroup.isMultipleChoice && subGroup.maxSelections > 0 && (
-                                    <span className="text-[9px] px-1 py-0.5 bg-amber-100 text-amber-700 rounded">Máx {subGroup.maxSelections}</span>
+                                    <span className="text-2xs px-1 py-0.5 bg-amber-100 text-amber-700 rounded">Máx {subGroup.maxSelections}</span>
                                   )}
                                   {subGroup.isMultipleChoice && subGroup.allowRepeats && (
-                                    <span className="text-[9px] px-1 py-0.5 bg-indigo-100 text-indigo-700 rounded">Repetible</span>
+                                    <span className="text-2xs px-1 py-0.5 bg-indigo-100 text-indigo-700 rounded">Repetible</span>
                                   )}
                                   {subGroup.isRequired && (
-                                    <span className="text-[9px] px-1 py-0.5 bg-red-100 text-red-600 rounded">Req</span>
+                                    <span className="text-2xs px-1 py-0.5 bg-red-100 text-red-600 rounded">Req</span>
                                   )}
                                 </div>
                               </div>
@@ -846,7 +846,7 @@ function ToppingGroupsManager() {
                                           {option.name}
                                         </span>
                                         {option.active === false && (
-                                          <span className="text-[8px] bg-red-100 text-red-600 px-1 rounded flex-shrink-0">Agotado</span>
+                                          <span className="text-2xs bg-red-100 text-red-600 px-1 rounded flex-shrink-0">Agotado</span>
                                         )}
                                       </div>
                                       <div className="flex items-center gap-1 flex-shrink-0">
@@ -862,7 +862,7 @@ function ToppingGroupsManager() {
                                           }`}
                                           title={option.active !== false ? 'Desactivar' : 'Activar'}
                                         >
-                                          {option.active !== false ? <FaEye className="text-[8px]" /> : <FaEyeSlash className="text-[8px]" />}
+                                          {option.active !== false ? <FaEye className="text-2xs" /> : <FaEyeSlash className="text-2xs" />}
                                         </button>
                                       </div>
                                     </div>

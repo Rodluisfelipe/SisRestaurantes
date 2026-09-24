@@ -12,6 +12,7 @@ import {
   FaUserMd, FaRedo, FaStickyNote
 } from 'react-icons/fa';
 import { enlaceWhatsApp } from '../../utils/whatsapp';
+import { Capa } from '../ui';
 
 const STATUS_LABELS = {
   pending: { label: 'Pendiente', color: 'bg-amber-100 text-amber-700', dot: 'bg-amber-500' },
@@ -361,7 +362,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
                     {/* Date/Time */}
                     <div className="flex items-center gap-3 sm:w-48 flex-shrink-0">
                       <div className="w-10 h-10 rounded-lg bg-indigo-50 flex flex-col items-center justify-center">
-                        <span className="text-[10px] font-bold text-indigo-600 uppercase leading-none">
+                        <span className="text-2xs font-bold text-indigo-600 uppercase leading-none">
                           {new Date(booking.bookingDate).toLocaleDateString('es-CO', { weekday: 'short' })}
                         </span>
                         <span className="text-sm font-bold text-indigo-800 leading-none">
@@ -384,15 +385,15 @@ export default function BookingsManager({ businessId, businessConfig }) {
                     <div className="flex-1 min-w-0 cursor-pointer hover:bg-slate-50 rounded-lg p-1 -m-1 transition-colors"
                          onClick={() => booking.phone && openCustomerPanel(booking.phone, booking.customerName)}>
                       <p className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
-                        <FaUser className="text-[10px] text-slate-400" />
+                        <FaUser className="text-2xs text-slate-400" />
                         {booking.customerName}
                         {booking.recurrence?.type && (
-                          <span className="text-[9px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5">
+                          <span className="text-2xs bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5">
                             <FaRedo className="text-[7px]" />
                             {booking.recurrence.type === 'weekly' ? 'Semanal' : booking.recurrence.type === 'biweekly' ? 'Quincenal' : 'Mensual'}
                           </span>
                         )}
-                        {booking.phone && <span className="text-[10px] text-indigo-400 ml-1">ver ficha →</span>}
+                        {booking.phone && <span className="text-2xs text-indigo-400 ml-1">ver ficha →</span>}
                       </p>
                       <p className="text-xs text-slate-500 truncate">
                         {booking.items?.map(i => i.name).join(', ')}
@@ -400,12 +401,12 @@ export default function BookingsManager({ businessId, businessConfig }) {
                       <div className="flex items-center gap-2 mt-0.5">
                         {booking.phone && (
                           <p className="text-[11px] text-slate-400 flex items-center gap-1">
-                            <FaPhone className="text-[8px]" />{booking.phone}
+                            <FaPhone className="text-2xs" />{booking.phone}
                           </p>
                         )}
                         {booking.staffName && (
                           <p className="text-[11px] text-indigo-500 flex items-center gap-1">
-                            <FaUserMd className="text-[8px]" />{booking.staffName}
+                            <FaUserMd className="text-2xs" />{booking.staffName}
                           </p>
                         )}
                       </div>
@@ -421,7 +422,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
                             const sname = staffList.find(s => s._id === sid)?.name || null;
                             assignStaff(booking._id, sid || null, sname);
                           }}
-                          className="text-[10px] border border-slate-200 rounded-lg px-1.5 py-1 bg-white text-slate-600"
+                          className="text-2xs border border-slate-200 rounded-lg px-1.5 py-1 bg-white text-slate-600"
                           title="Asignar profesional"
                         >
                           <option value="">Sin asignar</option>
@@ -434,7 +435,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
 
                     {/* Status + Actions */}
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 ${st.color}`}>
+                      <span className={`px-2 py-1 rounded-full text-2xs font-bold flex items-center gap-1 ${st.color}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
                         {st.label}
                       </span>
@@ -495,12 +496,12 @@ export default function BookingsManager({ businessId, businessConfig }) {
             <div className="min-w-[700px]">
               {/* Day headers */}
               <div className="grid grid-cols-8 gap-px bg-slate-200 rounded-t-xl overflow-hidden">
-                <div className="bg-slate-50 p-2 text-[10px] font-bold text-slate-400 text-center">Hora</div>
+                <div className="bg-slate-50 p-2 text-2xs font-bold text-slate-400 text-center">Hora</div>
                 {getCalendarWeek().map((day, i) => {
                   const isToday = getDateStr(day) === todayStr;
                   return (
                     <div key={i} className={`p-2 text-center ${isToday ? 'bg-indigo-50' : 'bg-slate-50'}`}>
-                      <p className={`text-[10px] font-bold uppercase ${isToday ? 'text-indigo-600' : 'text-slate-400'}`}>
+                      <p className={`text-2xs font-bold uppercase ${isToday ? 'text-indigo-600' : 'text-slate-400'}`}>
                         {calendarDayNames[i]}
                       </p>
                       <p className={`text-sm font-bold ${isToday ? 'text-indigo-700' : 'text-slate-700'}`}>
@@ -515,7 +516,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
               <div className="bg-slate-200 space-y-px rounded-b-xl overflow-hidden">
                 {hours.map(hour => (
                   <div key={hour} className="grid grid-cols-8 gap-px min-h-[40px]">
-                    <div className="bg-slate-50 flex items-center justify-center text-[10px] font-medium text-slate-400">
+                    <div className="bg-slate-50 flex items-center justify-center text-2xs font-medium text-slate-400">
                       {hour}
                     </div>
                     {getCalendarWeek().map((day, di) => {
@@ -526,7 +527,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
                             const st = STATUS_LABELS[b.bookingStatus] || STATUS_LABELS.pending;
                             return (
                               <div key={b._id}
-                                className={`rounded px-1 py-0.5 text-[9px] font-medium truncate cursor-pointer hover:opacity-80 ${st.color}`}
+                                className={`rounded px-1 py-0.5 text-2xs font-medium truncate cursor-pointer hover:opacity-80 ${st.color}`}
                                 title={`${b.customerName} — ${b.items?.map(i => i.name).join(', ')}`}
                                 onClick={() => b.phone && openCustomerPanel(b.phone, b.customerName)}>
                                 {b.customerName}
@@ -642,11 +643,11 @@ export default function BookingsManager({ businessId, businessConfig }) {
                       const max = Math.max(...stats.dailyDistribution, 1);
                       return (
                         <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                          <span className="text-[10px] font-bold text-indigo-600">{count || ''}</span>
+                          <span className="text-2xs font-bold text-indigo-600">{count || ''}</span>
                           <div className="w-full bg-slate-100 rounded-t-md overflow-hidden flex-1 flex items-end">
                             <div className="w-full bg-indigo-400 rounded-t-md transition-all" style={{ height: `${(count / max) * 100}%` }} />
                           </div>
-                          <span className="text-[10px] font-medium text-slate-500">{DAY_NAMES[i]}</span>
+                          <span className="text-2xs font-medium text-slate-500">{DAY_NAMES[i]}</span>
                         </div>
                       );
                     })}
@@ -667,7 +668,9 @@ export default function BookingsManager({ businessId, businessConfig }) {
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/30 z-40"
               onClick={closeCustomerPanel}
-            />
+            >
+              <Capa onCerrar={closeCustomerPanel} />
+            </motion.div>
             {/* Panel */}
             <motion.div
               initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
@@ -695,7 +698,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
                       <div>
                         <p className="font-bold text-slate-900">{customerData.customer.name}</p>
                         <p className="text-sm text-slate-500 flex items-center gap-1">
-                          <FaPhone className="text-[10px]" />{customerData.customer.phone}
+                          <FaPhone className="text-2xs" />{customerData.customer.phone}
                         </p>
                       </div>
                     </div>
@@ -708,7 +711,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
                       </a>
                       <a href={`tel:${customerData.customer.phone}`}
                         className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-slate-200 text-slate-700 text-xs font-medium hover:bg-slate-300 transition-colors">
-                        <FaPhone className="text-[10px]" /> Llamar
+                        <FaPhone className="text-2xs" /> Llamar
                       </a>
                     </div>
                   </div>
@@ -736,7 +739,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
                   {/* General customer data */}
                   {customerData.customer.totalOrders > 0 && (
                     <div className="bg-slate-50 rounded-xl p-3">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Datos Generales</p>
+                      <p className="text-2xs font-bold text-slate-400 uppercase mb-2">Datos Generales</p>
                       <div className="space-y-1 text-xs text-slate-600">
                         <p>Total pedidos/citas: <span className="font-bold">{customerData.customer.totalOrders}</span></p>
                         <p>Total gastado: <span className="font-bold">${(customerData.customer.totalSpent || 0).toLocaleString()}</span></p>
@@ -754,8 +757,8 @@ export default function BookingsManager({ businessId, businessConfig }) {
 
                   {/* Booking History */}
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 flex items-center gap-1">
-                      <FaHistory className="text-[9px]" /> Historial de Citas
+                    <p className="text-2xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-1">
+                      <FaHistory className="text-2xs" /> Historial de Citas
                     </p>
                     {customerData.bookings.length === 0 ? (
                       <p className="text-xs text-slate-400 text-center py-4">Sin citas registradas</p>
@@ -769,7 +772,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
                                 <span className="text-xs font-bold text-slate-900">
                                   {new Date(b.bookingDate).toLocaleDateString('es-CO', { weekday: 'short', month: 'short', day: 'numeric' })}
                                 </span>
-                                <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${st.color}`}>
+                                <span className={`px-1.5 py-0.5 rounded-full text-2xs font-bold ${st.color}`}>
                                   {st.label}
                                 </span>
                               </div>
@@ -806,7 +809,9 @@ export default function BookingsManager({ businessId, businessConfig }) {
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/40 z-50"
               onClick={() => !completing && setCompleteModal(null)}
-            />
+            >
+              <Capa onCerrar={() => !completing && setCompleteModal(null)} />
+            </motion.div>
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -830,7 +835,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
                     placeholder="Ej: Corte + tintura castaño, preferencia para próxima vez..."
                     className="w-full border border-slate-200 rounded-lg p-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
                   />
-                  <p className="text-[10px] text-slate-400 text-right mt-0.5">{completeNote.length}/1000</p>
+                  <p className="text-2xs text-slate-400 text-right mt-0.5">{completeNote.length}/1000</p>
                 </div>
                 <div className="flex gap-2">
                   <button

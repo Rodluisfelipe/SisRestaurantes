@@ -13,6 +13,7 @@ import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import AI from './Admin/AdminIcons';
 import { enlaceWhatsApp } from '../utils/whatsapp';
+import { Capa } from './ui';
 
 /* ═══════════════════════════════════════════ */
 /*              CONSTANTS                      */
@@ -187,7 +188,7 @@ const PhonePreview = ({ program, themeColor, businessName }) => {
                     >
                       <div className="text-sm">{AI.medal('w-4 h-4', i === 0 ? 'bronze' : i === 1 ? 'silver' : i === 2 ? 'gold' : undefined)}</div>
                       <p className="text-xs font-bold text-slate-700 truncate">{tier.name}</p>
-                      <p className="text-[10px] text-slate-400">x{tier.multiplier}</p>
+                      <p className="text-2xs text-slate-400">x{tier.multiplier}</p>
                     </div>
                   ))}
                 </div>
@@ -225,7 +226,7 @@ const PhonePreview = ({ program, themeColor, businessName }) => {
           </div>
         </div>
       </div>
-      <p className="text-center text-[10px] text-slate-400 mt-3 font-medium">Así lo ven tus clientes</p>
+      <p className="text-center text-2xs text-slate-400 mt-3 font-medium">Así lo ven tus clientes</p>
     </div>
   );
 };
@@ -584,7 +585,7 @@ const LoyaltyManager = () => {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg lg:text-xl font-bold text-slate-800">Programa de Fidelidad</h2>
-              <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded-full bg-amber-100 text-amber-600 border border-amber-200/80">Beta</span>
+              <span className="px-1.5 py-0.5 text-2xs font-bold uppercase rounded-full bg-amber-100 text-amber-600 border border-amber-200/80">Beta</span>
             </div>
             <p className="hidden lg:block text-sm text-slate-400">Convierte visitantes en clientes frecuentes</p>
           </div>
@@ -671,7 +672,7 @@ const LoyaltyManager = () => {
             <span className="text-base">{tab.emoji}</span>
             <div className="text-left hidden sm:block">
               <p className="text-xs font-semibold leading-tight">{tab.label}</p>
-              <p className="text-[10px] text-slate-400 font-normal">{tab.desc}</p>
+              <p className="text-2xs text-slate-400 font-normal">{tab.desc}</p>
             </div>
             <span className="sm:hidden text-xs">{tab.label}</span>
           </button>
@@ -815,7 +816,7 @@ const LoyaltyManager = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <h4 className="text-sm font-bold text-slate-800 truncate">{reward.name}</h4>
-                          {!reward.isActive && <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded-full">Inactiva</span>}
+                          {!reward.isActive && <span className="text-2xs px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded-full">Inactiva</span>}
                         </div>
                         <p className="text-xs text-slate-500 mt-0.5">
                           {reward.type === 'discount_percent' && `${reward.discountValue}% de descuento`}
@@ -828,10 +829,10 @@ const LoyaltyManager = () => {
                             {reward.pointsCost} pts
                           </span>
                           {moneyEquiv != null && (
-                            <span className="text-[10px] text-slate-400">≈ ${moneyEquiv.toLocaleString('es-CO')} en compras</span>
+                            <span className="text-2xs text-slate-400">≈ ${moneyEquiv.toLocaleString('es-CO')} en compras</span>
                           )}
                           {reward.applicableOrderModes?.length > 0 && (
-                            <span className="text-[10px] text-slate-400 inline-flex items-center gap-0.5">
+                            <span className="text-2xs text-slate-400 inline-flex items-center gap-0.5">
                               {reward.applicableOrderModes.map(v => {
                                 const opt = ORDER_MODE_OPTIONS.find(o => o.value === v);
                                 return opt ? <span key={v}>{opt.emoji}</span> : null;
@@ -841,7 +842,7 @@ const LoyaltyManager = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-[10px] text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">{reward.timesRedeemed || 0} canjes</span>
+                        <span className="text-2xs text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">{reward.timesRedeemed || 0} canjes</span>
                         <button onClick={() => openRewardModal(reward)} className="p-2 rounded-lg hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors">
                           <FaEdit className="w-3.5 h-3.5" />
                         </button>
@@ -923,17 +924,17 @@ const LoyaltyManager = () => {
                       </div>
                       <div className="grid grid-cols-3 gap-3">
                         <div>
-                          <label className="block text-[10px] font-semibold text-slate-400 mb-1 uppercase tracking-wider">Puntos mínimos</label>
+                          <label className="block text-2xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Puntos mínimos</label>
                           <input type="number" inputMode="numeric" value={tier.minPoints} onChange={e => updateTier(idx, 'minPoints', Number(e.target.value) || 0)}
                             className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-slate-200 text-[14px] lg:text-sm font-semibold text-center focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none" min="0" />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-semibold text-slate-400 mb-1 uppercase tracking-wider">Multiplicador</label>
+                          <label className="block text-2xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Multiplicador</label>
                           <input type="number" inputMode="decimal" value={tier.multiplier} onChange={e => updateTier(idx, 'multiplier', Number(e.target.value) || 1)}
                             className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-slate-200 text-[14px] lg:text-sm font-semibold text-center focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none" min="1" step="0.5" />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-semibold text-slate-400 mb-1 uppercase tracking-wider">Color</label>
+                          <label className="block text-2xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Color</label>
                           <input type="color" value={tier.color} onChange={e => updateTier(idx, 'color', e.target.value)}
                             className="w-full h-9 rounded-lg border border-slate-200 cursor-pointer" />
                         </div>
@@ -993,11 +994,11 @@ const LoyaltyManager = () => {
                             </span>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-semibold text-slate-700 truncate">{c.customerId?.name || c.phone}</p>
-                              <p className="text-[10px] text-slate-400">{c.phone} · {c.totalOrders} {isService ? 'citas' : 'pedidos'}</p>
+                              <p className="text-2xs text-slate-400">{c.phone} · {c.totalOrders} {isService ? 'citas' : 'pedidos'}</p>
                             </div>
                             <div className="text-right">
                               <p className="text-sm font-bold text-slate-800">{c.points} pts</p>
-                              {c.currentTier && <p className="text-[10px] text-slate-400">{c.currentTier}</p>}
+                              {c.currentTier && <p className="text-2xs text-slate-400">{c.currentTier}</p>}
                             </div>
                           </div>
                         ))}
@@ -1052,21 +1053,21 @@ const LoyaltyManager = () => {
                           </span>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-slate-700 truncate">{c.customerId?.name || c.phone}</p>
-                            <p className="text-[10px] text-slate-400">
+                            <p className="text-2xs text-slate-400">
                               {c.phone} &middot; {c.totalOrders} {isService ? 'citas' : 'pedidos'}
                               {c.currentTier && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-semibold">{c.currentTier}</span>}
                             </p>
                           </div>
                           <div className="text-right">
                             <p className="text-base font-black text-slate-800">{c.points.toLocaleString('es-CO')}</p>
-                            <p className="text-[10px] text-slate-400">puntos</p>
+                            <p className="text-2xs text-slate-400">puntos</p>
                           </div>
                         </div>
 
                         {/* Claimable rewards */}
                         {claimable.length > 0 && (
                           <div className="mt-3 pt-3 border-t border-slate-100">
-                            <p className="text-[10px] font-semibold text-emerald-600 mb-2 flex items-center gap-0.5">{AI.gift('w-3 h-3')} Puede reclamar:</p>
+                            <p className="text-2xs font-semibold text-emerald-600 mb-2 flex items-center gap-0.5">{AI.gift('w-3 h-3')} Puede reclamar:</p>
                             <div className="flex flex-wrap gap-1.5">
                               {claimable.map(reward => (
                                 <a
@@ -1122,6 +1123,7 @@ const LoyaltyManager = () => {
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex lg:items-center items-end justify-center lg:p-4"
             onClick={() => setShowRewardModal(false)}
           >
+            <Capa onCerrar={() => setShowRewardModal(false)} />
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               onClick={e => e.stopPropagation()}
@@ -1303,7 +1305,7 @@ const LoyaltyManager = () => {
                           );
                         })}
                       </div>
-                      <p className="mt-1.5 text-[10px] text-slate-400">
+                      <p className="mt-1.5 text-2xs text-slate-400">
                         {rewardForm.applicableOrderModes.length === 0
                           ? <span className="flex items-center gap-1">{AI.checkCircle('w-3 h-3 text-green-500')} Aplica para todos los modos</span>
                           : `Solo para: ${rewardForm.applicableOrderModes.map(v => ORDER_MODE_OPTIONS.find(o => o.value === v)?.label).join(', ')}`}

@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import crewApi from '../../../services/crewApi';
 import { crewToast } from './crewToast';
 import { cannon } from './confettiBurst';
+import { Capa } from '../../../Components/ui';
 
 const ICONS = {
   send: <path d="M22 2l-7 20-4-9-9-4 20-7z" />,
@@ -96,7 +97,7 @@ export default function MissionsDial({ onRewardClaimed }) {
         </span>
 
         <div className="flex flex-col items-start leading-tight">
-          <span className="text-[9.5px] font-extrabold uppercase tracking-[0.12em] text-white/40">Misiones</span>
+          <span className="text-2xs font-extrabold uppercase tracking-[0.12em] text-white/40">Misiones</span>
           <span className="text-[12px] font-extrabold text-white tabular-nums">
             {quests.filter((q) => q.claimed).length}/{quests.length}
           </span>
@@ -112,7 +113,7 @@ export default function MissionsDial({ onRewardClaimed }) {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: 'spring', stiffness: 500, damping: 18 }}
-              className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-400 text-black text-[10px] font-black flex items-center justify-center shadow-lg shadow-amber-500/40 border-2 border-[#0a0a14]"
+              className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-400 text-black text-2xs font-black flex items-center justify-center shadow-lg shadow-amber-500/40 border-2 border-crew-noche"
             >
               {claimableCount}
             </motion.span>
@@ -128,11 +129,12 @@ export default function MissionsDial({ onRewardClaimed }) {
             onClick={() => setOpen(false)}
             className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center sm:p-4 bg-black/70 backdrop-blur-sm font-geist"
           >
+            <Capa onCerrar={() => setOpen(false)} bloquearScroll={false} />
             <motion.div
               initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full sm:max-w-md max-h-[80vh] bg-[#0a0a14] border border-white/[0.08] sm:rounded-[28px] rounded-t-[28px] shadow-2xl text-white overflow-hidden flex flex-col"
+              className="relative w-full sm:max-w-md max-h-[80vh] bg-crew-noche border border-white/[0.08] sm:rounded-[28px] rounded-t-[28px] shadow-2xl text-white overflow-hidden flex flex-col"
             >
               <motion.div
                 animate={{ x: [0, 16, 0], y: [0, -8, 0] }}
@@ -147,7 +149,7 @@ export default function MissionsDial({ onRewardClaimed }) {
 
               <div className="relative px-5 pt-3 pb-2 flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-white/40">Diarias</p>
+                  <p className="text-2xs font-extrabold uppercase tracking-[0.2em] text-white/40">Diarias</p>
                   <h2 className="text-[18px] font-black">Misiones de hoy</h2>
                 </div>
                 <button onClick={() => setOpen(false)} className="w-8 h-8 rounded-full hover:bg-white/[0.06] flex items-center justify-center text-white/40 hover:text-white" aria-label="Cerrar">
@@ -219,7 +221,7 @@ function QuestRow({ mission, index, claiming, onClaim }) {
           <p className={`text-[13px] font-extrabold truncate ${claimed ? 'text-white/60 line-through' : 'text-white'}`}>{mission.title}</p>
           <span className={`shrink-0 text-[11px] font-extrabold tabular-nums ${claimed ? 'text-emerald-300' : done ? 'text-amber-200' : 'text-white/40'}`}>+{mission.reward} XP</span>
         </div>
-        <p className="text-[10.5px] text-white/40 leading-tight">{mission.desc}</p>
+        <p className="text-2xs text-white/40 leading-tight">{mission.desc}</p>
         <div className="mt-1.5 h-1 bg-white/[0.08] rounded-full overflow-hidden">
           <motion.div
             initial={{ width: 0 }}

@@ -79,7 +79,7 @@ const PaymentResult = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="bg-white rounded-2xl p-6 max-w-sm w-full text-center border border-[#DCE4F5] shadow-xl"
+        className="bg-white rounded-2xl p-6 max-w-sm w-full text-center border border-plataforma-borde shadow-xl"
       >
         {/* Logo del negocio */}
         {businessLogo && (
@@ -92,7 +92,7 @@ const PaymentResult = () => {
             <img 
               src={businessLogo} 
               alt={businessName} 
-              className="w-16 h-16 mx-auto rounded-full object-cover border-2 border-[#DCE4F5] shadow-md"
+              className="w-16 h-16 mx-auto rounded-full object-cover border-2 border-plataforma-borde shadow-md"
             />
           </motion.div>
         )}
@@ -134,8 +134,8 @@ const PaymentResult = () => {
             </div>
           )}
           {status === 'loading' && (
-            <div className="w-20 h-20 mx-auto rounded-full bg-gray-50 flex items-center justify-center border-2 border-[#DCE4F5]">
-              <div className="w-8 h-8 border-3 border-[#3A7AFF]/30 border-t-[#3A7AFF] rounded-full animate-spin" />
+            <div className="w-20 h-20 mx-auto rounded-full bg-gray-50 flex items-center justify-center border-2 border-plataforma-borde">
+              <div className="w-8 h-8 border-3 border-plataforma-azul/30 border-t-plataforma-azul rounded-full animate-spin" />
             </div>
           )}
         </motion.div>
@@ -149,7 +149,7 @@ const PaymentResult = () => {
             status === 'approved' ? 'text-emerald-700' :
             status === 'pending' ? 'text-amber-700' :
             status === 'failed' ? 'text-red-700' :
-            'text-[#1F2937]'
+            'text-plataforma-tinta'
           }`}
         >
           {status === 'approved' && '¡Pago Exitoso!'}
@@ -164,7 +164,7 @@ const PaymentResult = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.35 }}
-            className="text-sm text-[#6C7A92] mb-4"
+            className="text-sm text-plataforma-gris mb-4"
           >
             {businessName}
           </motion.p>
@@ -175,7 +175,7 @@ const PaymentResult = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="text-sm text-[#6C7A92] mb-5 leading-relaxed"
+          className="text-sm text-plataforma-gris mb-5 leading-relaxed"
         >
           {status === 'approved' && '¡Tu pago fue aprobado! Tu suscripción se ha activado correctamente.'}
           {status === 'pending' && 'Tu pago está siendo procesado. La suscripción se activará automáticamente cuando se confirme.'}
@@ -238,10 +238,10 @@ const PaymentResult = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
-            className="bg-[#F4F6FB] rounded-lg p-3 mb-5"
+            className="bg-plataforma-fondo rounded-lg p-3 mb-5"
           >
-            <p className="text-[10px] text-[#6C7A92] uppercase tracking-wider mb-1">Referencia de pago</p>
-            <p className="text-xs text-[#1F2937] font-mono break-all">{ref}</p>
+            <p className="text-2xs text-plataforma-gris uppercase tracking-wider mb-1">Referencia de pago</p>
+            <p className="text-xs text-plataforma-tinta font-mono break-all">{ref}</p>
           </motion.div>
         )}
 
@@ -254,7 +254,7 @@ const PaymentResult = () => {
         >
           <button
             onClick={goToAdmin}
-            className="w-full py-3 px-4 bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 active:scale-[0.98] text-white text-sm font-semibold rounded-xl transition-all shadow-md shadow-[#3A7AFF]/20 flex items-center justify-center gap-2"
+            className="w-full py-3 px-4 bg-plataforma-azul hover:bg-plataforma-azul/90 active:scale-[0.98] text-white text-sm font-semibold rounded-xl transition-all shadow-md shadow-plataforma-azul/20 flex items-center justify-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -264,7 +264,7 @@ const PaymentResult = () => {
           
           <button
             onClick={goToMenu}
-            className="w-full py-2.5 px-4 bg-white hover:bg-[#F4F6FB] text-[#6C7A92] hover:text-[#1F2937] text-sm font-medium rounded-xl transition-all border border-[#DCE4F5] flex items-center justify-center gap-2"
+            className="w-full py-2.5 px-4 bg-white hover:bg-plataforma-fondo text-plataforma-gris hover:text-plataforma-tinta text-sm font-medium rounded-xl transition-all border border-plataforma-borde flex items-center justify-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -280,10 +280,10 @@ const PaymentResult = () => {
           transition={{ delay: 0.8 }}
           className="mt-6 flex items-center justify-center gap-1.5"
         >
-          <svg className="w-3 h-3 text-[#6C7A92]/50" fill="currentColor" viewBox="0 0 20 20">
+          <svg className="w-3 h-3 text-plataforma-gris/50" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
           </svg>
-          <span className="text-[10px] text-[#6C7A92]/50">Pago seguro con ePayco</span>
+          <span className="text-2xs text-plataforma-gris/50">Pago seguro con ePayco</span>
         </motion.div>
       </motion.div>
     </div>

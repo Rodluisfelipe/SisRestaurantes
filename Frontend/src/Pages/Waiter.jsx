@@ -285,7 +285,7 @@ export default function Waiter() {
           </button>
           <div>
             <h1 className="text-sm font-bold text-slate-900 leading-tight">Comanda</h1>
-            <p className="text-[10px] text-slate-400 leading-tight">{user?.name || 'Mesero'}</p>
+            <p className="text-2xs text-slate-400 leading-tight">{user?.name || 'Mesero'}</p>
           </div>
         </div>
 
@@ -336,7 +336,7 @@ export default function Waiter() {
                 { label: 'Ocupada', color: 'bg-orange-500' },
                 { label: 'Seleccionada', color: 'bg-indigo-500' },
               ].map(l => (
-                <span key={l.label} className="flex items-center gap-1 text-[10px] text-slate-500">
+                <span key={l.label} className="flex items-center gap-1 text-2xs text-slate-500">
                   <span className={`w-2 h-2 rounded-full ${l.color}`} /> {l.label}
                 </span>
               ))}
@@ -366,7 +366,7 @@ export default function Waiter() {
                       >
                         <span className={`absolute top-2 right-2 w-2 h-2 rounded-full ${s.dot}`} />
                         <p className={`text-2xl font-black ${s.text}`}>{table.tableNumber}</p>
-                        <p className="text-[10px] font-medium text-slate-400 mt-0.5">{tableLabel}</p>
+                        <p className="text-2xs font-medium text-slate-400 mt-0.5">{tableLabel}</p>
                       </button>
                     );
                   })}
@@ -455,7 +455,7 @@ export default function Waiter() {
                         <div className="flex items-center gap-1.5 mt-1.5">
                           <span className="text-sm font-black" style={{ color: themeColor }}>${product.price?.toLocaleString()}</span>
                           {hasExtras && (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500">+Extras</span>
+                            <span className="text-2xs font-bold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500">+Extras</span>
                           )}
                         </div>
                       </button>
@@ -516,7 +516,7 @@ export default function Waiter() {
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-bold text-slate-800 leading-snug">{item.name}</p>
                               {toppingSummary && (
-                                <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">{toppingSummary}</p>
+                                <p className="text-2xs text-slate-400 mt-0.5 line-clamp-1">{toppingSummary}</p>
                               )}
                             </div>
                             <p className="text-sm font-black shrink-0" style={{ color: themeColor }}>${price.toLocaleString()}</p>
@@ -610,14 +610,14 @@ export default function Waiter() {
                 <tab.icon />
                 {tab.badge > 0 && (
                   <span
-                    className="absolute -top-1.5 -right-2.5 min-w-[18px] h-[18px] rounded-full text-white text-[10px] font-bold flex items-center justify-center px-1"
+                    className="absolute -top-1.5 -right-2.5 min-w-[18px] h-[18px] rounded-full text-white text-2xs font-bold flex items-center justify-center px-1"
                     style={{ backgroundColor: themeColor }}
                   >
                     {tab.badge}
                   </span>
                 )}
               </div>
-              <span className="text-[10px] font-bold">{tab.label}</span>
+              <span className="text-2xs font-bold">{tab.label}</span>
               {active && (
                 <motion.div
                   layoutId="waiter-tab-indicator"

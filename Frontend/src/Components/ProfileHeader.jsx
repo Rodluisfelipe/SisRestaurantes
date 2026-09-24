@@ -2,7 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
-import AccountManagementModal from './AccountManagementModal';
+import MiCuenta from './MiCuenta';
+import { UserRound } from 'lucide-react';
 import { useCustomerData } from '../hooks/useCustomerData';
 import SonandoAhora from './SonandoAhora';
 import { enlaceWhatsApp } from '../utils/whatsapp';
@@ -46,14 +47,23 @@ export default function ProfileHeader({
   onShowHistory,
   onShowReviews,
   onOrderNow,
-  showFavoritesButton = false,
   showHistoryButton = false,
   reviewStats,
   subscriptionCommercialPlan,
+  productos,
+  onAgregar,
+  onAbrirCarrito,
+  onVerPuntos,
 }) {
   const { businessId, businessConfig, businessStatus } = useBusinessConfig();
   const { customerData, customerOrders } = useCustomerData();
   const [showAccountModal, setShowAccountModal] = useState(false);
+  // "Mi cuenta" también se abre desde la pestaña "Más".
+  useEffect(() => {
+    const abrir = () => setShowAccountModal(true);
+    window.addEventListener('mb:abrir-cuenta', abrir);
+    return () => window.removeEventListener('mb:abrir-cuenta', abrir);
+  }, []);
   const [logoError, setLogoError] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [deliveryRange, setDeliveryRange] = useState(null);
@@ -300,17 +310,16 @@ export default function ProfileHeader({
               <span className="text-[#25D366]">{PH.whatsapp()}</span>
             </a>
           )}
-          {showFavoritesButton && (
-            <button
-              onClick={onShowFavorites}
-              className="w-12 flex items-center justify-center rounded-[var(--mb-radius-btn)] active:scale-[0.95] transition-transform"
-              style={{ background: 'var(--mb-surface-2)', color: 'var(--mb-ink-2)', border: '1px solid var(--mb-line)' }}
-              aria-label="Favoritos"
-              title="Favoritos"
-            >
-              {PH.heart()}
-            </button>
-          )}
+          {/* Mi cuenta: pedir de nuevo, favoritos, puntos y direcciones. */}
+          <button
+            onClick={() => setShowAccountModal(true)}
+            className="w-12 flex items-center justify-center rounded-[var(--mb-radius-btn)] active:scale-[0.95] transition-transform"
+            style={{ background: 'var(--mb-surface-2)', color: 'var(--mb-ink-2)', border: '1px solid var(--mb-line)' }}
+            aria-label="Mi cuenta"
+            title="Mi cuenta"
+          >
+            <UserRound className="w-5 h-5" strokeWidth={2} />
+          </button>
         </div>
       </div>
 
@@ -343,7 +352,7 @@ export default function ProfileHeader({
               />
               <p className="flex-1 min-w-0 truncate text-[14px] font-extrabold tracking-tight" style={{ color: 'var(--mb-ink)' }}>{name}</p>
               <span
-                className="shrink-0 inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold"
+                className="shrink-0 inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-2xs font-bold"
                 style={isOpen
                   ? { background: 'rgba(16,185,129,0.12)', color: '#047857' }
                   : { background: 'var(--mb-surface-2)', color: 'var(--mb-ink-2)' }}
@@ -365,13 +374,15 @@ export default function ProfileHeader({
         )}
       </AnimatePresence>
 
-      <AccountManagementModal
-        fullScreen
-        isOpen={showAccountModal}
+      <MiCuenta
+        open={showAccountModal}
         onClose={() => setShowAccountModal(false)}
-        customerData={customerData}
-        orders={customerOrders}
-        initialTab={hasActiveOrder ? 'orders' : 'profile'}
+        productos={productos}
+        onAgregar={onAgregar}
+        onAbrirCarrito={onAbrirCarrito ? () => { setShowAccountModal(false); onAbrirCarrito(); } : null}
+        onVerFavoritos={onShowFavorites ? () => { setShowAccountModal(false); onShowFavorites(); } : null}
+        onVerPuntos={onVerPuntos ? () => { setShowAccountModal(false); onVerPuntos(); } : null}
+        nombreGuardado={customerData?.name || ''}
       />
     </div>
   );

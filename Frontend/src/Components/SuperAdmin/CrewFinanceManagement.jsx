@@ -169,7 +169,7 @@ function TreasuryView() {
                       {formatCOP(m.total)}
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-400 w-12 text-right tabular-nums">{m.count} ops</span>
+                  <span className="text-2xs text-slate-400 w-12 text-right tabular-nums">{m.count} ops</span>
                 </div>
               );
             })}
@@ -235,7 +235,7 @@ function TreasuryView() {
                 {backfillResult.failed?.length > 0 && (
                   <details className="cursor-pointer">
                     <summary className="text-rose-600 font-semibold">{backfillResult.failed.length} fallaron — ver detalle</summary>
-                    <pre className="mt-1.5 text-[10px] text-slate-500 overflow-x-auto">{JSON.stringify(backfillResult.failed, null, 2)}</pre>
+                    <pre className="mt-1.5 text-2xs text-slate-500 overflow-x-auto">{JSON.stringify(backfillResult.failed, null, 2)}</pre>
                   </details>
                 )}
               </div>
@@ -256,9 +256,9 @@ function KpiCard({ label, value, hint, tone }) {
   };
   return (
     <div className={`rounded-xl border bg-gradient-to-br ${tones[tone]} p-3.5`}>
-      <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">{label}</p>
+      <p className="text-2xs font-bold text-slate-600 uppercase tracking-wider">{label}</p>
       <p className="text-[18px] font-extrabold text-slate-900 tabular-nums mt-1 leading-tight">{value}</p>
-      <p className="text-[10px] text-slate-500 mt-0.5">{hint}</p>
+      <p className="text-2xs text-slate-500 mt-0.5">{hint}</p>
     </div>
   );
 }
@@ -314,7 +314,7 @@ function RechargesQueue({ setToast }) {
           >
             <span className="capitalize">{s === 'pending' ? 'En revisión' : s === 'approved' ? 'Aprobadas' : 'Rechazadas'}</span>
             {(counts[s]?.count || 0) > 0 && (
-              <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
+              <span className={`px-1.5 py-0.5 text-2xs font-bold rounded-full ${
  s === 'pending' ? 'bg-amber-100 text-amber-700'
  : s === 'approved' ? 'bg-emerald-100 text-emerald-700'
  : 'bg-rose-100 text-rose-700'
@@ -346,7 +346,7 @@ function RechargesQueue({ setToast }) {
                 <p className="text-[18px] font-extrabold text-slate-900 tabular-nums">
                   {formatCOP(r.amount)}
                 </p>
-                <p className="text-[10px] text-slate-500">
+                <p className="text-2xs text-slate-500">
                   {r.paymentMethod} · {formatRelative(r.createdAt)}
                 </p>
               </div>
@@ -372,7 +372,7 @@ function RechargesQueue({ setToast }) {
             </div>
 
             <div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Comprobante</p>
+              <p className="text-2xs font-bold text-slate-500 uppercase tracking-wider mb-2">Comprobante</p>
               <a href={target.proofUrl} target="_blank" rel="noreferrer" className="block rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
                 <img src={target.proofUrl} alt="Comprobante" className="w-full max-h-[460px] object-contain" />
               </a>
@@ -489,7 +489,7 @@ function WithdrawalsQueue({ setToast }) {
           >
             {s === 'pending' ? 'Por pagar' : s === 'paid' ? 'Pagados' : 'Rechazados'}
             {(counts[s]?.count || 0) > 0 && (
-              <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
+              <span className={`px-1.5 py-0.5 text-2xs font-bold rounded-full ${
  s === 'pending' ? 'bg-amber-100 text-amber-700'
  : s === 'paid' ? 'bg-emerald-100 text-emerald-700'
  : 'bg-rose-100 text-rose-700'
@@ -523,7 +523,7 @@ function WithdrawalsQueue({ setToast }) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-slate-900 truncate">{w.workerId?.name}</p>
                 <p className="text-[18px] font-extrabold text-slate-900 tabular-nums leading-none mt-0.5">{formatCOP(w.amount)}</p>
-                <p className="text-[10px] text-slate-500 capitalize">{w.payoutMethod?.type} · {w.payoutMethod?.accountInfo}</p>
+                <p className="text-2xs text-slate-500 capitalize">{w.payoutMethod?.type} · {w.payoutMethod?.accountInfo}</p>
               </div>
               <StatusBadge status={w.status} />
             </button>
@@ -541,7 +541,7 @@ function WithdrawalsQueue({ setToast }) {
         {target && (
           <div className="space-y-4">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Monto a pagar</p>
+              <p className="text-2xs font-bold text-slate-500 uppercase tracking-wider">Monto a pagar</p>
               <p className="text-[28px] font-extrabold text-slate-900 tabular-nums">{formatCOP(target.amount)}</p>
             </div>
 
@@ -561,7 +561,7 @@ function WithdrawalsQueue({ setToast }) {
 
             {target.status === 'pending' && !rejecting && (
               <div>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Referencia del comprobante (opcional)</p>
+                <p className="text-2xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Referencia del comprobante (opcional)</p>
                 <input
                   value={externalRef}
                   onChange={(e) => setExternalRef(e.target.value)}
@@ -622,7 +622,7 @@ function StatusBadge({ status }) {
 function DetailStat({ label, value }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</p>
+      <p className="text-2xs font-bold text-slate-500 uppercase tracking-wider">{label}</p>
       <p className="text-sm font-semibold text-slate-900 truncate tabular-nums">{value || '—'}</p>
     </div>
   );

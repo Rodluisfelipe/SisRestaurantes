@@ -98,7 +98,7 @@ export default function CrewLogin({ onAuthed, onBack }) {
             <div className="absolute inset-0 bg-red-500/25 rounded-full blur-[50px] -z-10" />
           </motion.div>
 
-          <span className="inline-block px-3 py-1.5 mb-3 rounded-full bg-white/[0.06] backdrop-blur-sm border border-white/[0.12] text-[10px] font-extrabold uppercase tracking-[0.2em] text-white/70">
+          <span className="inline-block px-3 py-1.5 mb-3 rounded-full bg-white/[0.06] backdrop-blur-sm border border-white/[0.12] text-2xs font-extrabold uppercase tracking-[0.2em] text-white/70">
             Crew <span className="text-white/40">by</span> MenuBy
           </span>
 
@@ -231,13 +231,13 @@ export default function CrewLogin({ onAuthed, onBack }) {
               ].map((g, i) => (
                 <div
                   key={i}
-                  className={`w-7 h-7 rounded-full bg-gradient-to-br ${g} border-2 border-[#0a0a14] shadow-md`}
+                  className={`w-7 h-7 rounded-full bg-gradient-to-br ${g} border-2 border-crew-noche shadow-md`}
                 />
               ))}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[11px] font-extrabold text-white/90">+1.200 trabajando ya</p>
-              <p className="text-[10px] text-white/40">Bogotá · Medellín · Cali · Barranquilla</p>
+              <p className="text-2xs text-white/40">Bogotá · Medellín · Cali · Barranquilla</p>
             </div>
             <div className="flex items-center gap-1 text-red-400">
               <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.2L12 16.4 5.7 20.8 8 13.6 2 9.2h7.6L12 2z"/></svg>

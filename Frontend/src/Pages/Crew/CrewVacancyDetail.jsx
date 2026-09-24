@@ -48,7 +48,7 @@ export default function CrewVacancyDetail({ vacancyId, onBack, onApplied }) {
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-crew-noche text-white font-geist flex items-center justify-center">
         <div className="animate-spin w-8 h-8 rounded-full border-2 border-white/20 border-t-white" />
       </div>
     );
@@ -56,7 +56,7 @@ export default function CrewVacancyDetail({ vacancyId, onBack, onApplied }) {
 
   if (error || !data?.vacancy) {
     return (
-      <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist flex flex-col items-center justify-center p-8">
+      <div className="min-h-[100dvh] bg-crew-noche text-white font-geist flex flex-col items-center justify-center p-8">
         <p className="text-[14px] text-rose-300 font-bold mb-3">{error || 'No se encontró la vacante'}</p>
         <button onClick={onBack} className="px-4 py-2 rounded-xl bg-white/[0.06] border border-white/[0.10] text-white/70 font-bold text-[13px]">Volver</button>
       </div>
@@ -68,14 +68,14 @@ export default function CrewVacancyDetail({ vacancyId, onBack, onApplied }) {
   const alreadyApplied = !!data.myApplication;
 
   return (
-    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-32">
+    <div className="min-h-[100dvh] bg-crew-noche text-white font-geist pb-32">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-[#0a0a14]/85 backdrop-blur-xl border-b border-white/[0.06]">
+      <header className="sticky top-0 z-30 bg-crew-noche/85 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-md mx-auto px-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-3 flex items-center gap-3">
           <button onClick={() => view === 'apply' ? setView('detail') : onBack()} className="w-9 h-9 rounded-full bg-white/[0.06] flex items-center justify-center text-white/70 hover:text-white">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
           </button>
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40">{view === 'detail' ? 'Vacante' : 'Postularme'}</p>
+          <p className="text-2xs font-extrabold uppercase tracking-[0.18em] text-white/40">{view === 'detail' ? 'Vacante' : 'Postularme'}</p>
         </div>
       </header>
 
@@ -87,7 +87,7 @@ export default function CrewVacancyDetail({ vacancyId, onBack, onApplied }) {
               {owner.coverImage && (
                 <img src={owner.coverImage} alt="" className="absolute inset-0 w-full h-full object-cover opacity-70" />
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a14] via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-crew-noche via-transparent to-transparent" />
             </div>
 
             <main className="max-w-md mx-auto px-5 -mt-12 relative space-y-4">
@@ -103,7 +103,7 @@ export default function CrewVacancyDetail({ vacancyId, onBack, onApplied }) {
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-black truncate">{owner.name || 'Empleador'}</p>
                   {owner.verified && (
-                    <p className="text-[10px] text-emerald-300 inline-flex items-center gap-1">
+                    <p className="text-2xs text-emerald-300 inline-flex items-center gap-1">
                       <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
                       Verificado
                     </p>
@@ -126,11 +126,11 @@ export default function CrewVacancyDetail({ vacancyId, onBack, onApplied }) {
               {/* Salary */}
               {v.salary && !v.salary.hideFromCandidates && (v.salary.min || v.salary.max) && (
                 <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/[0.10] p-4">
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200">Salario</p>
+                  <p className="text-2xs font-extrabold uppercase tracking-wider text-emerald-200">Salario</p>
                   <p className="text-[22px] font-black text-emerald-300 tabular-nums mt-0.5">
                     {salaryDisplay(v.salary)}
                   </p>
-                  {v.salary.negotiable && <p className="text-[10.5px] text-emerald-200/80 mt-0.5">Negociable</p>}
+                  {v.salary.negotiable && <p className="text-2xs text-emerald-200/80 mt-0.5">Negociable</p>}
                 </div>
               )}
               {v.salary?.hideFromCandidates && (
@@ -205,7 +205,7 @@ export default function CrewVacancyDetail({ vacancyId, onBack, onApplied }) {
             </main>
 
             {/* Sticky CTA */}
-            <div className="fixed bottom-0 left-0 right-0 px-5 pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-3 bg-gradient-to-t from-[#0a0a14] via-[#0a0a14]/95 to-transparent">
+            <div className="fixed bottom-0 left-0 right-0 px-5 pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-3 bg-gradient-to-t from-crew-noche via-crew-noche/95 to-transparent">
               <div className="max-w-md mx-auto">
                 {alreadyApplied ? (
                   <div className="text-center px-4 py-3 rounded-2xl bg-emerald-500/15 border border-emerald-400/30">
@@ -291,7 +291,7 @@ function ApplyForm({ vacancy, onCancel, onSuccess }) {
           rows={4}
           className="w-full px-3.5 py-3 rounded-2xl bg-black/40 border border-white/[0.08] text-[13px] text-white placeholder-white/25 focus:outline-none focus:border-violet-400/60 resize-none"
         />
-        <p className="text-[10px] text-white/30 mt-1 text-right">{coverLetter.length} / 2000</p>
+        <p className="text-2xs text-white/30 mt-1 text-right">{coverLetter.length} / 2000</p>
       </Field>
 
       {/* Custom questions */}
@@ -393,8 +393,8 @@ function QuestionInput({ question, value, onChange, onToggleMulti }) {
 function Field({ label, hint, children }) {
   return (
     <div>
-      <label className="block text-[10.5px] font-extrabold uppercase tracking-[0.15em] text-white/50 mb-1.5">{label}</label>
-      {hint && <p className="text-[10.5px] text-white/35 mb-1.5">{hint}</p>}
+      <label className="block text-2xs font-extrabold uppercase tracking-[0.15em] text-white/50 mb-1.5">{label}</label>
+      {hint && <p className="text-2xs text-white/35 mb-1.5">{hint}</p>}
       {children}
     </div>
   );
@@ -403,7 +403,7 @@ function Field({ label, hint, children }) {
 function Section({ title, children }) {
   return (
     <section>
-      <h3 className="text-[10.5px] font-extrabold uppercase tracking-[0.18em] text-white/40 mb-2">{title}</h3>
+      <h3 className="text-2xs font-extrabold uppercase tracking-[0.18em] text-white/40 mb-2">{title}</h3>
       {children}
     </section>
   );
@@ -420,7 +420,7 @@ function ReqItem({ children }) {
 
 function Chip({ children }) {
   return (
-    <span className="px-2 py-0.5 text-[10.5px] font-bold rounded-full bg-white/[0.05] text-white/70 border border-white/[0.08]">
+    <span className="px-2 py-0.5 text-2xs font-bold rounded-full bg-white/[0.05] text-white/70 border border-white/[0.08]">
       {children}
     </span>
   );

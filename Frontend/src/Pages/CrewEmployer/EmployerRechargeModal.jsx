@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import crewEmployerApi from '../../services/crewEmployerApi';
+import { Capa } from '../../Components/ui';
 
 const PRESETS = [
   { amount: 100000, label: '100K', hint: 'Alcanza para ~7 turnos básicos' },
@@ -91,6 +92,7 @@ export default function EmployerRechargeModal({ open, onClose, onSuccess }) {
         onClick={onClose}
         className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm"
       >
+        <Capa onCerrar={onClose} bloquearScroll={false} />
         <motion.div
           initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
           transition={{ type: 'spring', damping: 28, stiffness: 280 }}
@@ -106,7 +108,7 @@ export default function EmployerRechargeModal({ open, onClose, onSuccess }) {
                 </svg>
               </div>
               <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-400">Recarga</p>
+                <p className="text-2xs font-extrabold uppercase tracking-[0.2em] text-slate-400">Recarga</p>
                 <p className="text-[13px] font-black text-slate-800">{step === 3 ? '¡Listo!' : `Paso ${step} de 2`}</p>
               </div>
             </div>
@@ -136,19 +138,19 @@ export default function EmployerRechargeModal({ open, onClose, onSuccess }) {
                           }`}
                         >
                           {p.popular && (
-                            <span className="absolute -top-2 right-3 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider rounded-full bg-amber-400 text-amber-950">
+                            <span className="absolute -top-2 right-3 px-2 py-0.5 text-2xs font-extrabold uppercase tracking-wider rounded-full bg-amber-400 text-amber-950">
                               Popular
                             </span>
                           )}
                           <p className={`text-[18px] font-black leading-none ${active ? 'text-red-600' : 'text-slate-700'}`}>${p.label}</p>
-                          <p className="text-[10px] text-slate-500 mt-1.5">{p.hint}</p>
+                          <p className="text-2xs text-slate-500 mt-1.5">{p.hint}</p>
                         </motion.button>
                       );
                     })}
                   </div>
 
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 mb-4">
-                    <label className="block text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400 mb-1.5">
+                    <label className="block text-2xs font-extrabold uppercase tracking-[0.18em] text-slate-400 mb-1.5">
                       O monto personalizado
                     </label>
                     <div className="flex items-center gap-2">
@@ -179,7 +181,7 @@ export default function EmployerRechargeModal({ open, onClose, onSuccess }) {
               {step === 2 && (
                 <motion.div key="s2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }}>
                   <div className="mb-4">
-                    <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">Total</p>
+                    <p className="text-2xs font-extrabold uppercase tracking-[0.18em] text-slate-400">Total</p>
                     <p className="text-[28px] font-black text-slate-900 tabular-nums">{formatCOP(finalAmount)}</p>
                   </div>
 
@@ -189,7 +191,7 @@ export default function EmployerRechargeModal({ open, onClose, onSuccess }) {
                       const active = method === m.id;
                       return (
                         <button key={m.id} onClick={() => setMethod(m.id)}
-                          className={`relative flex-1 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition ${
+                          className={`relative flex-1 py-2 rounded-xl text-2xs font-extrabold uppercase tracking-wider transition ${
                             active ? 'text-white' : 'text-slate-500 hover:text-slate-700'
                           }`}>
                           {active && (
@@ -211,7 +213,7 @@ export default function EmployerRechargeModal({ open, onClose, onSuccess }) {
                         <span className="text-[12px] font-bold text-slate-700">{selectedMethod.label}</span>
                       </div>
                       <button onClick={() => copyValue(selectedMethod.value, selectedMethod.id)}
-                        className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-white hover:bg-slate-100 text-slate-600 uppercase tracking-wider border border-slate-200">
+                        className="text-2xs font-extrabold px-2 py-1 rounded-full bg-white hover:bg-slate-100 text-slate-600 uppercase tracking-wider border border-slate-200">
                         {copied === selectedMethod.id ? '✓ Copiado' : 'Copiar'}
                       </button>
                     </div>
@@ -232,21 +234,21 @@ export default function EmployerRechargeModal({ open, onClose, onSuccess }) {
 
                   {/* Upload */}
                   <div className="mb-3">
-                    <label className="block text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400 mb-1.5">Comprobante</label>
+                    <label className="block text-2xs font-extrabold uppercase tracking-[0.18em] text-slate-400 mb-1.5">Comprobante</label>
                     {!preview ? (
                       <label className="flex flex-col items-center justify-center gap-2 py-6 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 hover:border-red-300 hover:bg-red-50/50 transition cursor-pointer">
                         <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                         </svg>
                         <span className="text-[12px] font-bold text-slate-600">Toca para subir imagen</span>
-                        <span className="text-[10px] text-slate-400">JPG, PNG, WebP · máx 8MB</span>
+                        <span className="text-2xs text-slate-400">JPG, PNG, WebP · máx 8MB</span>
                         <input type="file" accept="image/*" onChange={onFile} className="hidden" />
                       </label>
                     ) : (
                       <div className="relative rounded-2xl overflow-hidden border border-slate-200">
                         <img src={preview} alt="Comprobante" className="w-full max-h-[180px] object-contain bg-slate-50" />
                         <button onClick={() => { setFile(null); setPreview(null); }}
-                          className="absolute top-2 right-2 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-white text-slate-700 border border-slate-200 hover:bg-red-50 hover:text-red-600 transition">
+                          className="absolute top-2 right-2 px-2.5 py-1 rounded-full text-2xs font-extrabold uppercase tracking-wider bg-white text-slate-700 border border-slate-200 hover:bg-red-50 hover:text-red-600 transition">
                           Cambiar
                         </button>
                       </div>

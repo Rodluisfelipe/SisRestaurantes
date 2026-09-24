@@ -61,7 +61,7 @@ const OrderNotificationBanner = ({
                 {orderLabel} #{newOrderNotification.orderNumber || newOrderNotification._id?.slice(-6)}
                 {newOrderNotification.customer?.name && ` - ${newOrderNotification.customer.name}`}
               </p>
-              <p className="text-white/80 text-[10px] sm:text-xs mt-0.5">
+              <p className="text-white/80 text-2xs sm:text-xs mt-0.5">
                 Toca aquí para gestionar {isService ? 'la' : 'el'} {orderLabelLower}
               </p>
             </div>

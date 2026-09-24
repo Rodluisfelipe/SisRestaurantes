@@ -107,7 +107,7 @@ function VacancyCard({ vacancy, index, onOpen }) {
           <img src={owner.coverImage} alt="" className="absolute inset-0 w-full h-full object-cover opacity-60" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-        <span className="absolute top-2 right-2 px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wider rounded-full bg-violet-500/25 text-violet-200 border border-violet-400/30 backdrop-blur-sm">
+        <span className="absolute top-2 right-2 px-2 py-0.5 text-2xs font-extrabold uppercase tracking-wider rounded-full bg-violet-500/25 text-violet-200 border border-violet-400/30 backdrop-blur-sm">
           Vacante
         </span>
         <div className="absolute bottom-2 left-3 right-3 flex items-end gap-2.5">
@@ -133,17 +133,17 @@ function VacancyCard({ vacancy, index, onOpen }) {
           {vacancy.location?.isHybrid && <Chip>🔀 Híbrido</Chip>}
           {vacancy.location?.city && !vacancy.location.isRemote && <Chip>📍 {vacancy.location.city}</Chip>}
           {showSalary && (
-            <span className="px-2 py-0.5 text-[10.5px] font-extrabold rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 tabular-nums">
+            <span className="px-2 py-0.5 text-2xs font-extrabold rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 tabular-nums">
               {salaryLabel(vacancy.salary)}
             </span>
           )}
         </div>
 
         <div className="mt-3 flex items-center justify-between pt-2 border-t border-white/[0.06]">
-          <span className="text-[10.5px] text-white/40">
+          <span className="text-2xs text-white/40">
             {vacancy.applicationCount > 0 ? `${vacancy.applicationCount} postulantes` : 'Sé el primero en postular'}
           </span>
-          <span className="text-[10.5px] font-extrabold text-violet-300 inline-flex items-center gap-1">
+          <span className="text-2xs font-extrabold text-violet-300 inline-flex items-center gap-1">
             Ver detalle
             <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.6} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
           </span>
@@ -155,7 +155,7 @@ function VacancyCard({ vacancy, index, onOpen }) {
 
 function Chip({ children }) {
   return (
-    <span className="px-2 py-0.5 text-[10.5px] font-bold rounded-full bg-white/[0.05] text-white/70 border border-white/[0.08]">
+    <span className="px-2 py-0.5 text-2xs font-bold rounded-full bg-white/[0.05] text-white/70 border border-white/[0.08]">
       {children}
     </span>
   );

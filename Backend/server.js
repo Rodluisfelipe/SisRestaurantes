@@ -122,7 +122,7 @@ app.use(cors({
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-business-id', 'x-customer-token'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-business-id', 'x-customer-token', 'x-cuenta'],
   credentials: true,
   preflightContinue: false,
   optionsSuccessStatus: 204
@@ -236,6 +236,7 @@ app.use("/api/rentabilidad", require("./Routes/rentabilidad")); // Ventas, costo
 app.use("/api/credito", require("./Routes/credito")); // Cuentas por cobrar: crédito de los clientes
 app.use("/api/compras", require("./Routes/compras")); // Proveedores, compras, por pagar y reposición
 app.use("/api/favorites", require("./Routes/favorites")); // Productos favoritos del cliente
+app.use("/api/cuenta", require("./Routes/cuenta")); // "Mi cuenta" del cliente en el menú (con la llave del celular)
 app.use("/api/delivery-zones", require("./Routes/deliveryZones")); // Zonas de entrega
 app.use("/api/delivery-admin", require("./Routes/deliveryAdmin")); // Gestión de domiciliarios (admin)
 app.use("/api/delivery-partners", require("./Routes/deliveryPartners")); // Empresas externas de reparto (partners)

@@ -123,7 +123,7 @@ export default function ExtensionChrome() {
                 onClick={copiarDireccion}
                 className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-[11.5px] font-bold transition-colors"
               >
-                {copiado ? <><FaCheck className="text-[10px]" /> Copiado</> : <><FaCopy className="text-[10px]" /> Copiar</>}
+                {copiado ? <><FaCheck className="text-2xs" /> Copiado</> : <><FaCopy className="text-2xs" /> Copiar</>}
               </button>
             </div>
             <p className="mt-1.5">

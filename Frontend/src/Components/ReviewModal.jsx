@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
+import { Capa } from './ui';
 
 /**
  * Modal para que el cliente deje una reseña después de completar un pedido
@@ -105,6 +106,7 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
           className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4"
           onClick={handleSkip}
         >
+          <Capa onCerrar={handleSkip} />
           <motion.div
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -307,7 +309,7 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
                                     </svg>
                                   </button>
                                 ))}
-                                <span className="ml-1 text-[10.5px] text-gray-400">
+                                <span className="ml-1 text-2xs text-gray-400">
                                   {notaProducto > 0 ? 'Gracias' : 'Califica este producto'}
                                 </span>
                               </div>

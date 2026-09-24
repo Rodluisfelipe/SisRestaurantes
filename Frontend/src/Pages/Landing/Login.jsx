@@ -48,10 +48,10 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FBFAF8]">
+    <div className="min-h-screen bg-menuby-crema">
       
       {/* Hero Section */}
-      <section className="min-h-screen flex items-center justify-center px-4 pt-20 pb-8 bg-gradient-to-br from-[#FBFAF8] via-[#FBEEE9] to-[#FBFAF8]">
+      <section className="min-h-screen flex items-center justify-center px-4 pt-20 pb-8 bg-gradient-to-br from-menuby-crema via-menuby-suave to-menuby-crema">
         <div className="w-full">
           <div className="max-w-md mx-auto">
             <motion.div
@@ -60,10 +60,10 @@ const Login = () => {
               transition={{ duration: 0.8 }}
               className="text-center mb-5"
             >
-              <h1 className="text-[26px] sm:text-[28px] font-extrabold text-[#17120F] mb-1" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", letterSpacing: '-0.025em' }}>
+              <h1 className="text-[26px] sm:text-[28px] font-extrabold text-menuby-tinta mb-1" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", letterSpacing: '-0.025em' }}>
                 Bienvenido de vuelta
               </h1>
-              <p className="text-[14px] text-[#6E655C]">
+              <p className="text-[14px] text-menuby-gris">
                 Inicia sesión en tu cuenta de Menuby
               </p>
             </motion.div>
@@ -73,7 +73,7 @@ const Login = () => {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="bg-white rounded-[26px] shadow-[0_20px_60px_rgba(23,18,15,0.10)] border border-[#EFEAE3] p-6 sm:p-7"
+              className="bg-white rounded-[26px] shadow-[0_20px_60px_rgba(23,18,15,0.10)] border border-menuby-borde p-6 sm:p-7"
             >
               {/* Google Sign-In Button */}
               <div className="mb-4">
@@ -118,10 +118,10 @@ const Login = () => {
               {/* Divider */}
               <div className="relative mb-4">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-[#EFEAE3]"></div>
+                  <div className="w-full border-t border-menuby-borde"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-white text-[#6E655C]">o inicia con email</span>
+                  <span className="px-4 bg-white text-menuby-gris">o inicia con email</span>
                 </div>
               </div>
 
@@ -138,7 +138,7 @@ const Login = () => {
                     value={formData.email}
                     onChange={handleChange}
                   required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors duration-200 text-gray-900 bg-white placeholder-gray-400"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-menuby focus:border-menuby transition-colors duration-200 text-gray-900 bg-white placeholder-gray-400"
                     placeholder="tu@email.com"
                 />
               </div>
@@ -156,7 +156,7 @@ const Login = () => {
                       value={formData.password}
                       onChange={handleChange}
                   required
-                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors duration-200 text-gray-900 bg-white placeholder-gray-400"
+                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-menuby focus:border-menuby transition-colors duration-200 text-gray-900 bg-white placeholder-gray-400"
                       placeholder="Tu contraseña"
                     />
                     <button
@@ -183,13 +183,13 @@ const Login = () => {
                   <label className="flex items-center">
                 <input
                   type="checkbox"
-                      className="w-4 h-4 text-[#E8002D] border-gray-300 rounded focus:ring-[#E8002D]"
+                      className="w-4 h-4 text-menuby border-gray-300 rounded focus:ring-menuby"
                 />
                     <span className="ml-2 text-sm text-gray-600">Recordarme</span>
                 </label>
                   <Link
                     to="/forgot-password"
-                    className="text-sm text-[#E8002D] hover:text-[#A80020] font-medium"
+                    className="text-sm text-menuby hover:text-menuby-fuerte font-medium"
                   >
                   ¿Olvidaste tu contraseña?
                 </Link>
@@ -213,7 +213,7 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                  className="w-full py-3.5 bg-[#E8002D] hover:bg-[#A80020] disabled:opacity-50 text-white font-bold rounded-xl transition-all duration-200 hover:shadow-lg active:scale-[0.98] flex items-center justify-center"
+                  className="w-full py-3.5 bg-menuby hover:bg-menuby-fuerte disabled:opacity-50 text-white font-bold rounded-xl transition-all duration-200 hover:shadow-lg active:scale-[0.98] flex items-center justify-center"
                   style={{ boxShadow: '0 8px 24px rgba(232,0,45,0.26)' }}
               >
                 {isLoading ? (
@@ -233,11 +233,11 @@ const Login = () => {
 
               {/* Sign Up Link */}
               <div className="mt-5 text-center">
-                <p className="text-[14px] text-[#6E655C]">
+                <p className="text-[14px] text-menuby-gris">
                   ¿No tienes una cuenta?{' '}
                   <Link
                     to="/register"
-                    className="text-[#E8002D] hover:text-[#A80020] font-semibold"
+                    className="text-menuby hover:text-menuby-fuerte font-semibold"
                   >
                     Regístrate gratis
               </Link>

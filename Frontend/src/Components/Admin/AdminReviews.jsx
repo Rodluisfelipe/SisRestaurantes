@@ -285,7 +285,7 @@ export default function AdminReviews() {
           <div className="min-w-0">
             <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
               Qué reseñas ve el cliente
-              {savingDisplay && <FaSyncAlt className="text-[10px] text-indigo-300 animate-spin" />}
+              {savingDisplay && <FaSyncAlt className="text-2xs text-indigo-300 animate-spin" />}
             </h3>
             <p className="text-[11px] text-slate-400">La calificación que aparece en el encabezado de tu menú.</p>
           </div>
@@ -310,7 +310,7 @@ export default function AdminReviews() {
                 )}
                 <span className="text-base">{opt.icon}</span>
                 <span className={`block text-xs font-bold mt-1 ${active ? 'text-indigo-700' : 'text-slate-700'}`}>{opt.label}</span>
-                <span className="block text-[10px] text-slate-400 leading-tight">{opt.desc}</span>
+                <span className="block text-2xs text-slate-400 leading-tight">{opt.desc}</span>
               </button>
             );
           })}
@@ -331,7 +331,7 @@ export default function AdminReviews() {
           <div className="min-w-0">
             <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
               Cómo se piden las reseñas
-              {savingCollection && <FaSyncAlt className="text-[10px] text-indigo-300 animate-spin" />}
+              {savingCollection && <FaSyncAlt className="text-2xs text-indigo-300 animate-spin" />}
             </h3>
             <p className="text-[11px] text-slate-400">Qué pasa cuando un cliente va a calificarte.</p>
           </div>
@@ -357,7 +357,7 @@ export default function AdminReviews() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={`text-[13px] font-bold ${active ? 'text-indigo-700' : 'text-slate-700'}`}>{opt.icon} {opt.label}</span>
-                    {opt.badge && <span className="text-[9px] font-bold uppercase tracking-wide text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full">{opt.badge}</span>}
+                    {opt.badge && <span className="text-2xs font-bold uppercase tracking-wide text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full">{opt.badge}</span>}
                   </div>
                   <span className="block text-[11px] text-slate-500 leading-snug mt-0.5">{opt.desc}</span>
                 </div>
@@ -383,31 +383,31 @@ export default function AdminReviews() {
                       active ? 'bg-amber-400 text-white shadow-sm ring-2 ring-amber-400/25' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-100'
                     }`}
                   >
-                    {n}<FaStar className={`text-[9px] ${active ? 'text-white' : 'text-amber-400'}`} />{n < 5 ? '+' : ''}
+                    {n}<FaStar className={`text-2xs ${active ? 'text-white' : 'text-amber-400'}`} />{n < 5 ? '+' : ''}
                   </button>
                 );
               })}
             </div>
 
             {/* Diagrama: qué pasa según la calificación */}
-            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-2">Cómo funciona</p>
+            <p className="text-2xs font-bold uppercase tracking-wide text-slate-400 mb-2">Cómo funciona</p>
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-0.5 px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700 text-[11px] font-bold flex-shrink-0">
-                  {gThreshold}<FaStar className="text-[8px] text-emerald-500" />{gThreshold < 5 ? ' o más' : ''}
+                  {gThreshold}<FaStar className="text-2xs text-emerald-500" />{gThreshold < 5 ? ' o más' : ''}
                 </span>
-                <FaChevronRight className="text-[8px] text-slate-300 flex-shrink-0" />
+                <FaChevronRight className="text-2xs text-slate-300 flex-shrink-0" />
                 <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 font-medium"><GoogleG /> Se le invita a reseñar en Google</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-0.5 px-2 py-1 rounded-lg bg-slate-200 text-slate-500 text-[11px] font-bold flex-shrink-0">
-                  menos de {gThreshold}<FaStar className="text-[8px] text-slate-400" />
+                  menos de {gThreshold}<FaStar className="text-2xs text-slate-400" />
                 </span>
-                <FaChevronRight className="text-[8px] text-slate-300 flex-shrink-0" />
+                <FaChevronRight className="text-2xs text-slate-300 flex-shrink-0" />
                 <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 font-medium">🔒 Queda solo en tu panel (privada)</span>
               </div>
             </div>
-            <p className="text-[10px] text-slate-400 mt-2.5 leading-snug">Así proteges tu reputación: las malas experiencias las ves tú primero y no llegan a Google.</p>
+            <p className="text-2xs text-slate-400 mt-2.5 leading-snug">Así proteges tu reputación: las malas experiencias las ves tú primero y no llegan a Google.</p>
           </div>
         )}
 
@@ -538,7 +538,7 @@ export default function AdminReviews() {
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                {r} <FaStar className="text-[10px]" />
+                {r} <FaStar className="text-2xs" />
               </button>
             ))}
           </div>
@@ -611,12 +611,12 @@ export default function AdminReviews() {
                           {review.customerName}
                         </span>
                         {review.isVisible === false && (
-                          <span className="text-[10px] font-medium px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full">
+                          <span className="text-2xs font-medium px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full">
                             Oculta
                           </span>
                         )}
                         {review.orderType && (
-                          <span className="text-[10px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded-full">
+                          <span className="text-2xs font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded-full">
                             {orderTypeLabel(review.orderType)}
                           </span>
                         )}
@@ -688,10 +688,10 @@ export default function AdminReviews() {
                 {review.reply && replyingTo !== review._id && (
                   <div className="mt-3 bg-blue-50 border border-blue-100 rounded-xl p-3">
                     <div className="flex items-center gap-1.5 mb-1">
-                      <FaReply className="text-[10px] text-blue-500" />
+                      <FaReply className="text-2xs text-blue-500" />
                       <span className="text-[11px] font-semibold text-blue-600">Tu respuesta</span>
                       {review.repliedAt && (
-                        <span className="text-[10px] text-blue-400">• {formatDate(review.repliedAt)}</span>
+                        <span className="text-2xs text-blue-400">• {formatDate(review.repliedAt)}</span>
                       )}
                     </div>
                     <p className="text-sm text-blue-700">{review.reply}</p>
@@ -731,9 +731,9 @@ export default function AdminReviews() {
                               title="Generar respuesta con IA adaptada a tu negocio"
                             >
                               {aiReplyLoading === review._id ? (
-                                <FaSyncAlt className="text-[10px] animate-spin" />
+                                <FaSyncAlt className="text-2xs animate-spin" />
                               ) : (
-                                <FaMagic className="text-[10px]" />
+                                <FaMagic className="text-2xs" />
                               )}
                               {aiReplyLoading === review._id ? 'Generando...' : <><span className="inline-flex items-center gap-0.5">{AI.sparkle('w-3 h-3')} IA</span></>}
                             </button>
@@ -751,9 +751,9 @@ export default function AdminReviews() {
                               className="px-4 py-1.5 text-xs font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-1.5"
                             >
                               {replyLoading ? (
-                                <FaSyncAlt className="text-[10px] animate-spin" />
+                                <FaSyncAlt className="text-2xs animate-spin" />
                               ) : (
-                                <FaReply className="text-[10px]" />
+                                <FaReply className="text-2xs" />
                               )}
                               {review.reply ? 'Actualizar' : 'Enviar'}
                             </button>

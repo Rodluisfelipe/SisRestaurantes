@@ -32,9 +32,9 @@ export default function CrewFavorites({ onBack }) {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(4rem+env(safe-area-inset-bottom,0px))]">
+    <div className="min-h-[100dvh] bg-crew-noche text-white font-geist pb-[calc(4rem+env(safe-area-inset-bottom,0px))]">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-[#0a0a14]/80 backdrop-blur-2xl border-b border-white/[0.06]">
+      <header className="sticky top-0 z-30 bg-crew-noche/80 backdrop-blur-2xl border-b border-white/[0.06]">
         <div className="max-w-md mx-auto px-5 pt-[max(1.25rem,env(safe-area-inset-top,0px))] pb-4 flex items-center gap-3">
           <button onClick={onBack} className="text-white/50 hover:text-white transition" aria-label="Atrás">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>

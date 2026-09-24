@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_ENDPOINTS } from '../config';
 import { toast } from 'sonner';
+import { Capa } from './ui';
 
 export default function ComboGroupManager() {
   const [comboGroups, setComboGroups] = useState([]);
@@ -97,6 +98,7 @@ export default function ComboGroupManager() {
 
       {showComboForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <Capa onCerrar={() => setShowComboForm(false)} />
           <div className="bg-white p-6 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold mb-4">
               {currentCombo._id ? 'Editar Combo' : 'Nuevo Combo'}

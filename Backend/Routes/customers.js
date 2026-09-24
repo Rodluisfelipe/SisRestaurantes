@@ -8,6 +8,31 @@ const { tenantAuth } = require('../middleware/tenantAuth');
 const authMiddleware = require('../middleware/authMiddleware');
 const rateLimit = require('express-rate-limit');
 const logger = require('../utils/logger');
+const { abreCuenta } = require('../utils/cuentaCliente');
+const { resolveBusinessId } = require('../utils/businessResolver');
+
+/* Las rutas públicas de un cliente (las que usa el menú, no el panel) solo
+   responden a la llave de su cuenta: antes bastaba saber el teléfono para ver
+   la dirección de alguien, cambiársela o leer las notas que el personal
+   escribe sobre él. Ver utils/cuentaCliente. */
+async function soloSuCuenta(req, res, next) {
+  const crudo = req.query.businessId || req.body?.businessId;
+  const telefono = req.params.phone || req.body?.phone;
+  let businessId = null;
+  // El menú a veces manda el slug ("go-burger"); la llave guarda el id.
+  try { businessId = crudo ? await resolveBusinessId(crudo) : null; } catch { businessId = null; }
+  if (!businessId || !telefono || !abreCuenta(req, businessId, telefono)) {
+    return res.status(401).json({ codigo: 'SIN_CUENTA', error: 'Tu cuenta se activa en este celular con tu primer pedido.' });
+  }
+  return next();
+}
+
+/** El cliente visto por él mismo: sin las notas internas del personal. */
+function sinNotas(customer) {
+  if (!customer) return customer;
+  const { notes, ...resto } = customer.toObject ? customer.toObject() : customer;
+  return resto;
+}
 const {
   validateCreateCustomer,
   validateUpdateCustomer,
@@ -168,7 +193,7 @@ router.put('/:phone', tenantAuth, validateUpdateCustomer, async (req, res) => {
 });
 
 // POST /api/customers - Crear o encontrar cliente (public, rate limited)
-router.post('/', customerRateLimiter, validateCreateCustomer, async (req, res) => {
+router.post('/', customerRateLimiter, soloSuCuenta, validateCreateCustomer, async (req, res) => {
   try {
     const { businessId } = req.query;
     // Whitelist allowed fields â€” prevent stat manipulation (totalOrders, totalSpent, status)
@@ -212,7 +237,7 @@ router.post('/', customerRateLimiter, validateCreateCustomer, async (req, res) =
       await customer.save();
     }
 
-    res.status(201).json(customer);
+    res.status(201).json(sinNotas(customer));
   } catch (error) {
     logger.error('Error al crear/actualizar cliente:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -220,7 +245,8 @@ router.post('/', customerRateLimiter, validateCreateCustomer, async (req, res) =
 });
 
 // GET /api/customers/:phone/orders - Obtener pedidos del cliente (rate limited)
-router.get('/:phone/orders', customerRateLimiter, async (req, res) => {
+// Historial de un cliente para el panel: solo el personal del negocio.
+router.get('/:phone/orders', tenantAuth, async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;
@@ -286,7 +312,7 @@ router.get('/:phone/orders', customerRateLimiter, async (req, res) => {
 });
 
 // PATCH /api/customers/:phone/address - Actualizar nombre/direcciÃ³n (rate limited)
-router.patch('/:phone/address', customerRateLimiter, validateUpdateAddress, async (req, res) => {
+router.patch('/:phone/address', customerRateLimiter, soloSuCuenta, validateUpdateAddress, async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;
@@ -317,7 +343,7 @@ router.patch('/:phone/address', customerRateLimiter, validateUpdateAddress, asyn
       return res.status(404).json({ error: 'Cliente no encontrado' });
     }
 
-    res.json(customer);
+    res.json(sinNotas(customer));
   } catch (error) {
     logger.error('Error al actualizar direcciÃ³n del cliente:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -325,7 +351,7 @@ router.patch('/:phone/address', customerRateLimiter, validateUpdateAddress, asyn
 });
 
 // PUT /api/customers/:phone/settings - Actualizar configuraciones del cliente (rate limited)
-router.put('/:phone/settings', customerRateLimiter, validateUpdateSettings, async (req, res) => {
+router.put('/:phone/settings', customerRateLimiter, soloSuCuenta, validateUpdateSettings, async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;
@@ -352,7 +378,7 @@ router.put('/:phone/settings', customerRateLimiter, validateUpdateSettings, asyn
       return res.status(404).json({ error: 'Cliente no encontrado' });
     }
 
-    res.json(customer);
+    res.json(sinNotas(customer));
   } catch (error) {
     logger.error('Error al actualizar configuraciones del cliente:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -523,7 +549,7 @@ router.patch('/:id/tags', tenantAuth, validateUpdateTags, async (req, res) => {
 });
 
 // GET /api/customers/:phone - Obtener datos del cliente por telÃ©fono (rate limited) - MUST BE LAST
-router.get('/:phone', customerRateLimiter, async (req, res) => {
+router.get('/:phone', customerRateLimiter, soloSuCuenta, async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;
@@ -546,7 +572,7 @@ router.get('/:phone', customerRateLimiter, async (req, res) => {
       return res.status(404).json({ error: 'Cliente no encontrado' });
     }
 
-    res.json(customer);
+    res.json(sinNotas(customer));
   } catch (error) {
     logger.error('Error al obtener cliente:', error);
     res.status(500).json({ error: 'Error interno del servidor' });

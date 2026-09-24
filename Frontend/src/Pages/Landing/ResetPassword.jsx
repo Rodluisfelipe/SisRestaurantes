@@ -45,8 +45,8 @@ const ResetPassword = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FBFAF8]">
-      <section className="min-h-screen flex items-center justify-center px-4 pt-20 pb-8 bg-gradient-to-br from-[#FBFAF8] via-[#FBEEE9] to-[#FBFAF8]">
+    <div className="min-h-screen bg-menuby-crema">
+      <section className="min-h-screen flex items-center justify-center px-4 pt-20 pb-8 bg-gradient-to-br from-menuby-crema via-menuby-suave to-menuby-crema">
         <div className="w-full">
           <div className="max-w-md mx-auto">
             <motion.div
@@ -55,10 +55,10 @@ const ResetPassword = () => {
               transition={{ duration: 0.8 }}
               className="text-center mb-5"
             >
-              <h1 className="text-[26px] sm:text-[28px] font-extrabold text-[#17120F] mb-1" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", letterSpacing: '-0.025em' }}>
+              <h1 className="text-[26px] sm:text-[28px] font-extrabold text-menuby-tinta mb-1" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", letterSpacing: '-0.025em' }}>
                 Nueva contraseña
               </h1>
-              <p className="text-[14px] text-[#6E655C]">
+              <p className="text-[14px] text-menuby-gris">
                 Crea una contraseña segura para tu cuenta
               </p>
             </motion.div>
@@ -67,7 +67,7 @@ const ResetPassword = () => {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="bg-white rounded-[26px] shadow-[0_20px_60px_rgba(23,18,15,0.10)] border border-[#EFEAE3] p-6 sm:p-7"
+              className="bg-white rounded-[26px] shadow-[0_20px_60px_rgba(23,18,15,0.10)] border border-menuby-borde p-6 sm:p-7"
             >
               {done ? (
                 <div className="text-center py-4">
@@ -76,13 +76,13 @@ const ResetPassword = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
-                  <h2 className="text-lg font-bold text-[#17120F] mb-2">¡Listo!</h2>
-                  <p className="text-sm text-[#6E655C] mb-5">
+                  <h2 className="text-lg font-bold text-menuby-tinta mb-2">¡Listo!</h2>
+                  <p className="text-sm text-menuby-gris mb-5">
                     Tu contraseña se actualizó. Te llevamos al inicio de sesión…
                   </p>
                   <Link
                     to="/login"
-                    className="inline-block w-full py-3.5 bg-[#E8002D] hover:bg-[#A80020] text-white font-bold rounded-xl transition-all duration-200"
+                    className="inline-block w-full py-3.5 bg-menuby hover:bg-menuby-fuerte text-white font-bold rounded-xl transition-all duration-200"
                     style={{ boxShadow: '0 8px 24px rgba(232,0,45,0.26)' }}
                   >
                     Iniciar sesión ahora
@@ -102,7 +102,7 @@ const ResetPassword = () => {
                         onChange={(e) => { setPassword(e.target.value); if (error) setError(''); }}
                         required
                         autoFocus
-                        className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors duration-200 text-gray-900 bg-white placeholder-gray-400"
+                        className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-menuby focus:border-menuby transition-colors duration-200 text-gray-900 bg-white placeholder-gray-400"
                         placeholder="Tu nueva contraseña"
                       />
                       <button
@@ -148,7 +148,7 @@ const ResetPassword = () => {
                       value={confirm}
                       onChange={(e) => { setConfirm(e.target.value); if (error) setError(''); }}
                       required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors duration-200 text-gray-900 bg-white placeholder-gray-400"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-menuby focus:border-menuby transition-colors duration-200 text-gray-900 bg-white placeholder-gray-400"
                       placeholder="Repite la contraseña"
                     />
                     {confirm.length > 0 && !matches && (
@@ -172,7 +172,7 @@ const ResetPassword = () => {
                   <button
                     type="submit"
                     disabled={isLoading || !allValid || !matches}
-                    className="w-full py-3.5 bg-[#E8002D] hover:bg-[#A80020] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all duration-200 hover:shadow-lg active:scale-[0.98] flex items-center justify-center"
+                    className="w-full py-3.5 bg-menuby hover:bg-menuby-fuerte disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all duration-200 hover:shadow-lg active:scale-[0.98] flex items-center justify-center"
                     style={{ boxShadow: '0 8px 24px rgba(232,0,45,0.26)' }}
                   >
                     {isLoading ? (
@@ -189,7 +189,7 @@ const ResetPassword = () => {
                   </button>
 
                   <div className="text-center pt-1">
-                    <Link to="/login" className="text-sm text-[#6E655C] hover:text-[#17120F] font-medium">
+                    <Link to="/login" className="text-sm text-menuby-gris hover:text-menuby-tinta font-medium">
                       ← Volver a iniciar sesión
                     </Link>
                   </div>

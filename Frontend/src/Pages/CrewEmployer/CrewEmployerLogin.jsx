@@ -81,7 +81,7 @@ export default function CrewEmployerLogin({ onSwitch, onBack }) {
 function Field({ label, value, onChange, placeholder, type = 'text', prefix }) {
   return (
     <div>
-      <label className="block text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400 mb-1.5">{label}</label>
+      <label className="block text-2xs font-extrabold uppercase tracking-[0.18em] text-slate-400 mb-1.5">{label}</label>
       <div className="flex items-center rounded-2xl bg-slate-50 border border-slate-200 focus-within:border-red-400 focus-within:ring-2 focus-within:ring-red-100 transition">
         {prefix && <span className="pl-3.5 text-[14px] font-bold text-slate-500 tabular-nums">{prefix}</span>}
         <input

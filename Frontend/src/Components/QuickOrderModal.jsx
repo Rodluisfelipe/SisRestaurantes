@@ -4,6 +4,7 @@ import { FaTimes, FaSearch, FaPlus, FaMinus, FaUser, FaPhone, FaShoppingCart, Fa
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import ProductToppingsSelector from './ProductToppingsSelector';
+import { Capa } from './ui';
 
 const ORDER_TYPES = [
   { value: 'inSite', label: 'En sitio', Icon: FaChair, color: 'bg-blue-50 text-blue-600 border-blue-200' },
@@ -281,6 +282,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
         className="fixed inset-0 bg-black/50 flex items-end lg:items-center justify-center z-[70]"
         onClick={onClose}
       >
+        <Capa onCerrar={onClose} />
         <motion.div
           initial={{ opacity: 0, y: 100 }}
           animate={{ opacity: 1, y: 0 }}
@@ -300,7 +302,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
                 <div className="flex items-center gap-1.5 mt-0.5">
                   {['customer', 'products', 'review'].map((s, i) => (
                     <div key={s} className="flex items-center gap-1">
-                      <div className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center ${
+                      <div className={`w-5 h-5 rounded-full text-2xs font-bold flex items-center justify-center ${
                         step === s ? 'bg-slate-800 text-white' : i < ['customer', 'products', 'review'].indexOf(step) ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'
                       }`}>{i + 1}</div>
                       {i < 2 && <div className="w-4 h-[1px] bg-slate-200" />}
@@ -365,7 +367,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
                               <p className="text-[13px] font-medium text-slate-800 truncate">{c.name}</p>
                               <p className="text-[11px] text-slate-500">{c.phone}</p>
                             </div>
-                            <span className="text-[10px] text-slate-400">{c.totalOrders || 0} pedidos</span>
+                            <span className="text-2xs text-slate-400">{c.totalOrders || 0} pedidos</span>
                           </button>
                         ))}
                       </div>
@@ -375,7 +377,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
                       <p className="text-[11px] font-semibold text-slate-500">O ingresa manualmente:</p>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="text-[10px] text-slate-400 mb-0.5 block">Nombre *</label>
+                          <label className="text-2xs text-slate-400 mb-0.5 block">Nombre *</label>
                           <input
                             type="text"
                             value={customerName}
@@ -385,7 +387,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
                           />
                         </div>
                         <div>
-                          <label className="text-[10px] text-slate-400 mb-0.5 block">Teléfono</label>
+                          <label className="text-2xs text-slate-400 mb-0.5 block">Teléfono</label>
                           <input
                             type="tel"
                             value={customerPhone}
@@ -422,7 +424,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
               {/* Table / Address */}
               {orderType === 'inSite' && (
                 <div>
-                  <label className="text-[10px] text-slate-400 mb-0.5 block">{businessConfig?.businessType === 'hotel' ? 'Habitación' : 'Mesa'}</label>
+                  <label className="text-2xs text-slate-400 mb-0.5 block">{businessConfig?.businessType === 'hotel' ? 'Habitación' : 'Mesa'}</label>
                   <input
                     type="text"
                     value={tableNumber}
@@ -435,7 +437,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
               {orderType === 'delivery' && (
                 <div className="space-y-3">
                   <div>
-                    <label className="text-[10px] text-slate-400 mb-0.5 block">Dirección</label>
+                    <label className="text-2xs text-slate-400 mb-0.5 block">Dirección</label>
                     <input
                       type="text"
                       value={address}
@@ -470,7 +472,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
                               <div>
                                 <p className="text-[13px] font-medium text-slate-800">{zone.name}</p>
                                 {zone.estimatedTime && (
-                                  <p className="text-[10px] text-slate-400">
+                                  <p className="text-2xs text-slate-400">
                                     {typeof zone.estimatedTime === 'object'
                                       ? `${zone.estimatedTime.min}-${zone.estimatedTime.max} min`
                                       : zone.estimatedTime}
@@ -511,7 +513,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
 
               {/* Notes */}
               <div>
-                <label className="text-[10px] text-slate-400 mb-0.5 block">Notas (opcional)</label>
+                <label className="text-2xs text-slate-400 mb-0.5 block">Notas (opcional)</label>
                 <textarea
                   value={customerNotes}
                   onChange={(e) => setCustomerNotes(e.target.value)}
@@ -575,24 +577,24 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
                               <p className="text-[13px] font-medium text-slate-800 truncate">{product.name}</p>
-                              {hasToppings && <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold shrink-0">Extras</span>}
+                              {hasToppings && <span className="text-2xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold shrink-0">Extras</span>}
                             </div>
                             <p className="text-[11px] text-slate-500">${product.price?.toLocaleString()}</p>
                           </div>
                           {inCart && !hasToppings ? (
                             <div className="flex items-center gap-1.5">
                               <button onClick={() => updateCartQty(cart.indexOf(inCart), -1)} className="w-7 h-7 bg-slate-200 hover:bg-slate-300 rounded-md flex items-center justify-center">
-                                <FaMinus className="text-[8px] text-slate-600" />
+                                <FaMinus className="text-2xs text-slate-600" />
                               </button>
                               <span className="text-xs font-bold text-slate-800 w-5 text-center">{inCart.quantity}</span>
                               <button onClick={() => updateCartQty(cart.indexOf(inCart), 1)} className="w-7 h-7 bg-slate-800 hover:bg-slate-700 rounded-md flex items-center justify-center">
-                                <FaPlus className="text-[8px] text-white" />
+                                <FaPlus className="text-2xs text-white" />
                               </button>
                             </div>
                           ) : (
                             <div className="flex items-center gap-1.5">
                               {totalInCart > 0 && (
-                                <span className="text-[10px] bg-slate-800 text-white w-5 h-5 rounded-full flex items-center justify-center font-bold">{totalInCart}</span>
+                                <span className="text-2xs bg-slate-800 text-white w-5 h-5 rounded-full flex items-center justify-center font-bold">{totalInCart}</span>
                               )}
                               <button onClick={() => handleProductClick(product)} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-[11px] font-semibold rounded-lg transition-colors">
                                 {hasToppings ? 'Elegir' : 'Agregar'}
@@ -674,14 +676,14 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
                         <div className="flex items-center gap-2">
                           <span className="text-[13px] font-semibold text-slate-800">${((item.totalPrice || item.price) * item.quantity).toLocaleString()}</span>
                           <button onClick={() => removeFromCart(i)} className="text-red-400 hover:text-red-600">
-                            <FaTrash className="text-[10px]" />
+                            <FaTrash className="text-2xs" />
                           </button>
                         </div>
                       </div>
                       {item.selectedToppings && item.selectedToppings.length > 0 && (
                         <div className="mt-1 pl-2 border-l-2 border-amber-200">
                           {item.selectedToppings.map((t, ti) => (
-                            <p key={ti} className="text-[10px] text-amber-600">
+                            <p key={ti} className="text-2xs text-amber-600">
                               + {t.groupName}: {t.optionName}
                               {t.subGroups?.map((sg, si) => (
                                 <span key={si}> / {sg.optionName}</span>
@@ -709,7 +711,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
                   <span className="font-medium text-slate-700">${deliveryFee.toLocaleString()}</span>
                 </div>
               )}
-              <div className="bg-slate-800 text-white rounded-lg px-4 py-3 flex justify-between items-center">
+              <div className="bg-slate-50 border border-slate-200 text-slate-900 rounded-lg px-4 py-3 flex justify-between items-center">
                 <span className="text-sm font-bold">Total</span>
                 <span className="text-lg font-bold">${grandTotal.toLocaleString()}</span>
               </div>

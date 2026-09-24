@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import api from '../../services/api';
 import { useBusinessConfig } from '../../Context/BusinessContext';
+import { Capa } from '../ui';
 
 /**
  * Registrar una devolución o un cambio sobre un pedido.
@@ -118,6 +119,7 @@ export default function ModalDevolucion({ pedido, onClose, onListo }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-[60] flex items-end lg:items-center justify-center lg:p-4" onClick={onClose}>
+      <Capa onCerrar={onClose} />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -252,7 +254,7 @@ export default function ModalDevolucion({ pedido, onClose, onListo }) {
           </label>
 
           {/* La plata */}
-          <div className="rounded-xl bg-slate-900 text-white p-3">
+          <div className="rounded-xl bg-slate-50 border border-slate-200 text-slate-900 p-3">
             {tipo === 'devolucion' ? (
               <p className="text-[13px] font-semibold">Se le devuelven <span className="font-black">{pesos(valor)}</span></p>
             ) : diferencia === 0 ? (
@@ -262,7 +264,7 @@ export default function ModalDevolucion({ pedido, onClose, onListo }) {
             ) : (
               <p className="text-[13px] font-semibold">Se le devuelven <span className="font-black">{pesos(-diferencia)}</span></p>
             )}
-            <p className="text-[11px] text-white/60 mt-0.5">
+            <p className="text-[11px] text-slate-500 mt-0.5">
               El inventario se mueve cuando marques la devolución como recibida.
             </p>
           </div>

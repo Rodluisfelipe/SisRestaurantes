@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { burstConfetti } from './confettiBurst';
+import { Capa } from '../../../Components/ui';
 
 const BADGE_INFO = {
   first_shift: { label: 'Primer turno', desc: 'Tu primer turno completado con éxito', color: 'from-red-500 to-red-700' },
@@ -32,9 +33,10 @@ export default function BadgeReveal({ badgeKey, onClose }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-[#0a0a14]/80 backdrop-blur-md"
+        className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-crew-noche/80 backdrop-blur-md"
         onClick={onClose}
       >
+        <Capa onCerrar={onClose} />
         <motion.div
           initial={{ scale: 0.6, y: 30 }}
           animate={{ scale: 1, y: 0 }}
@@ -43,7 +45,7 @@ export default function BadgeReveal({ badgeKey, onClose }) {
           className="text-center w-full max-w-xs"
           onClick={(e) => e.stopPropagation()}
         >
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.25em] text-red-400 mb-3">Reconocimiento</p>
+          <p className="text-2xs font-extrabold uppercase tracking-[0.25em] text-red-400 mb-3">Reconocimiento</p>
 
           {/* 3D flip card */}
           <div className="perspective-[1000px] mb-5">
@@ -55,7 +57,7 @@ export default function BadgeReveal({ badgeKey, onClose }) {
             >
               {/* Back face (sealed) */}
               <div
-                className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#1a1a2e] to-[#0a0a14] flex items-center justify-center shadow-2xl"
+                className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#1a1a2e] to-crew-noche flex items-center justify-center shadow-2xl"
                 style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
               >
                 <span className="text-[60px]">?</span>

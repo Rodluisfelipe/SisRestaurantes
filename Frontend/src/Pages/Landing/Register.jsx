@@ -282,7 +282,7 @@ const Register = () => {
                 currentStep > s.num
                   ? 'bg-green-500 text-white'
                   : currentStep === s.num
-                    ? 'bg-[#E8002D] text-white'
+                    ? 'bg-menuby text-white'
                     : 'bg-gray-200 text-gray-400'
               }`}>
                 {currentStep > s.num ? '✓' : s.num}
@@ -301,8 +301,8 @@ const Register = () => {
   if (step === 3) {
     const selectedType = BUSINESS_TYPES.find(t => t.id === businessType);
     return (
-      <div className="min-h-screen bg-[#FBFAF8]">
-        <section className="py-12 sm:py-20 bg-gradient-to-br from-[#FBFAF8] via-[#FBEEE9] to-[#FBFAF8]">
+      <div className="min-h-screen bg-menuby-crema">
+        <section className="py-12 sm:py-20 bg-gradient-to-br from-menuby-crema via-menuby-suave to-menuby-crema">
           <div className="container mx-auto px-4 sm:px-6">
             <div className="max-w-md mx-auto">
               <motion.div
@@ -313,15 +313,15 @@ const Register = () => {
               >
                 {authMethod === 'google' && googleUser?.picture ? (
                   <img src={googleUser.picture} alt={googleUser.name}
-                    className="w-14 h-14 rounded-full mx-auto mb-3 border-2 border-[#E8002D] shadow-md" />
+                    className="w-14 h-14 rounded-full mx-auto mb-3 border-2 border-menuby shadow-md" />
                 ) : (
-                  <div className="w-14 h-14 bg-[#E8002D] rounded-full flex items-center justify-center mx-auto mb-3 shadow-md">
+                  <div className="w-14 h-14 bg-menuby rounded-full flex items-center justify-center mx-auto mb-3 shadow-md">
                     <span className="text-white font-bold text-xl">
                       {authMethod === 'google' ? googleUser?.name?.[0] : emailData.firstName[0]?.toUpperCase()}
                     </span>
                   </div>
                 )}
-                <h1 className="text-2xl font-extrabold text-[#17120F] mb-1" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", letterSpacing: '-0.02em' }}>
+                <h1 className="text-2xl font-extrabold text-menuby-tinta mb-1" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", letterSpacing: '-0.02em' }}>
                   {selectedType?.emoji} {selectedType?.label}
                 </h1>
                 <p className="text-sm text-gray-500">
@@ -333,7 +333,7 @@ const Register = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.15 }}
-                className="bg-white rounded-[26px] shadow-[0_20px_60px_rgba(23,18,15,0.10)] border border-[#EFEAE3] p-6 sm:p-8"
+                className="bg-white rounded-[26px] shadow-[0_20px_60px_rgba(23,18,15,0.10)] border border-menuby-borde p-6 sm:p-8"
               >
                 <StepIndicator currentStep={3} />
 
@@ -346,7 +346,7 @@ const Register = () => {
                   )}
 
                   {/* Autofill desde Google (opcional) */}
-                  <div className="rounded-2xl border border-[#EFEAE3] bg-[#FBFAF8] p-3.5">
+                  <div className="rounded-2xl border border-menuby-borde bg-menuby-crema p-3.5">
                     <div className="flex items-center gap-1.5 mb-2">
                       <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0012 23z"/><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 010-4.2V7.06H2.18a11 11 0 000 9.88l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/></svg>
                       <span className="text-xs font-semibold text-gray-600">¿Tu negocio ya está en Google?</span>
@@ -365,7 +365,7 @@ const Register = () => {
                         </span>
                       </div>
                     )}
-                    <p className="text-[10px] text-gray-400 mt-1.5">Opcional — puedes escribir el nombre a mano abajo.</p>
+                    <p className="text-2xs text-gray-400 mt-1.5">Opcional — puedes escribir el nombre a mano abajo.</p>
                   </div>
 
                   <div>
@@ -373,7 +373,7 @@ const Register = () => {
                     <input type="text" value={businessName}
                       onChange={(e) => { setBusinessName(e.target.value); setError(''); }}
                       required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors text-gray-900 bg-white"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-menuby focus:border-menuby transition-colors text-gray-900 bg-white"
                       placeholder={businessType === 'cafe' ? 'Ej: Café Aroma' : businessType === 'bakery' ? 'Ej: Dulces Delicias' : businessType === 'salon' ? 'Ej: Barbería Style' : businessType === 'spa' ? 'Ej: Spa Zen' : businessType === 'clinic' ? 'Ej: Fisio Salud' : businessType === 'services' ? 'Ej: Studio Pro' : 'Ej: La Parrilla de Juan'} />
                   </div>
 
@@ -383,7 +383,7 @@ const Register = () => {
                       <input type="tel" value={googlePhone}
                         onChange={(e) => { setGooglePhone(e.target.value); setError(''); }}
                         required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors text-gray-900 bg-white"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-menuby focus:border-menuby transition-colors text-gray-900 bg-white"
                         placeholder="+57 300 123 4567" />
                     </div>
                   )}
@@ -394,7 +394,7 @@ const Register = () => {
                         exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3 }}>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">Elige tu enlace</label>
                         <p className="text-xs text-gray-400 mb-2">
-                          Tu menú estará en: <span className="font-mono text-gray-600">menuby.tech/<span className="text-[#E8002D]">{isCustomSlug ? (customSlug || '...') : (selectedSlug || '...')}</span>/menu</span>
+                          Tu menú estará en: <span className="font-mono text-gray-600">menuby.tech/<span className="text-menuby">{isCustomSlug ? (customSlug || '...') : (selectedSlug || '...')}</span>/menu</span>
                         </p>
 
                         {isLoadingSlugs ? (
@@ -410,29 +410,29 @@ const Register = () => {
                               <label key={s.slug}
                                 className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 ${
                                   !isCustomSlug && selectedSlug === s.slug
-                                    ? 'border-[#E8002D] bg-red-50 ring-1 ring-[#E8002D]'
+                                    ? 'border-menuby bg-red-50 ring-1 ring-menuby'
                                     : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                 }`}
                                 onClick={() => { setIsCustomSlug(false); setSelectedSlug(s.slug); }}>
                                 <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                                  !isCustomSlug && selectedSlug === s.slug ? 'border-[#E8002D]' : 'border-gray-300'
+                                  !isCustomSlug && selectedSlug === s.slug ? 'border-menuby' : 'border-gray-300'
                                 }`}>
-                                  {!isCustomSlug && selectedSlug === s.slug && <div className="w-2 h-2 rounded-full bg-[#E8002D]" />}
+                                  {!isCustomSlug && selectedSlug === s.slug && <div className="w-2 h-2 rounded-full bg-menuby" />}
                                 </div>
                                 <span className="font-mono text-sm text-gray-700 flex-1">
-                                  menuby.tech/<span className="text-[#E8002D] font-semibold">{s.slug}</span>/menu
+                                  menuby.tech/<span className="text-menuby font-semibold">{s.slug}</span>/menu
                                 </span>
                                 <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full font-medium">disponible</span>
                               </label>
                             ))}
 
                             <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 ${
-                              isCustomSlug ? 'border-[#E8002D] bg-red-50 ring-1 ring-[#E8002D]' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                              isCustomSlug ? 'border-menuby bg-red-50 ring-1 ring-menuby' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                             }`} onClick={() => setIsCustomSlug(true)}>
                               <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                                isCustomSlug ? 'border-[#E8002D]' : 'border-gray-300'
+                                isCustomSlug ? 'border-menuby' : 'border-gray-300'
                               }`}>
-                                {isCustomSlug && <div className="w-2 h-2 rounded-full bg-[#E8002D]" />}
+                                {isCustomSlug && <div className="w-2 h-2 rounded-full bg-menuby" />}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <span className="text-sm text-gray-600">Personalizar enlace</span>
@@ -445,7 +445,7 @@ const Register = () => {
                                       <input type="text" value={customSlug}
                                         onChange={(e) => { setCustomSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')); setCustomSlugAvailable(null); setError(''); }}
                                         onClick={(e) => e.stopPropagation()}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] pr-8"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-menuby focus:border-menuby pr-8"
                                         placeholder="mi-negocio" autoFocus />
                                       <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
                                         {isCheckingSlug ? (
@@ -478,7 +478,7 @@ const Register = () => {
 
                   <button type="submit"
                     disabled={isLoading || (isCustomSlug && (isCheckingSlug || customSlugAvailable === false))}
-                    className="w-full py-3.5 bg-[#E8002D] hover:bg-[#A80020] disabled:bg-red-300 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] disabled:scale-100 flex items-center justify-center text-base">
+                    className="w-full py-3.5 bg-menuby hover:bg-menuby-fuerte disabled:bg-red-300 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] disabled:scale-100 flex items-center justify-center text-base">
                     {isLoading ? (
                       <>
                         <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
@@ -514,8 +514,8 @@ const Register = () => {
   // ===========================
   if (step === 2) {
     return (
-      <div className="min-h-screen bg-[#FBFAF8]">
-        <section className="py-12 sm:py-20 bg-gradient-to-br from-[#FBFAF8] via-[#FBEEE9] to-[#FBFAF8]">
+      <div className="min-h-screen bg-menuby-crema">
+        <section className="py-12 sm:py-20 bg-gradient-to-br from-menuby-crema via-menuby-suave to-menuby-crema">
           <div className="container mx-auto px-4 sm:px-6">
             <div className="max-w-md mx-auto">
               <motion.div
@@ -526,15 +526,15 @@ const Register = () => {
               >
                 {authMethod === 'google' && googleUser?.picture ? (
                   <img src={googleUser.picture} alt={googleUser.name}
-                    className="w-14 h-14 rounded-full mx-auto mb-3 border-2 border-[#E8002D] shadow-md" />
+                    className="w-14 h-14 rounded-full mx-auto mb-3 border-2 border-menuby shadow-md" />
                 ) : (
-                  <div className="w-14 h-14 bg-[#E8002D] rounded-full flex items-center justify-center mx-auto mb-3 shadow-md">
+                  <div className="w-14 h-14 bg-menuby rounded-full flex items-center justify-center mx-auto mb-3 shadow-md">
                     <span className="text-white font-bold text-xl">
                       {authMethod === 'google' ? googleUser?.name?.[0] : emailData.firstName[0]?.toUpperCase()}
                     </span>
                   </div>
                 )}
-                <h1 className="text-2xl font-extrabold text-[#17120F] mb-1" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", letterSpacing: '-0.02em' }}>
+                <h1 className="text-2xl font-extrabold text-menuby-tinta mb-1" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", letterSpacing: '-0.02em' }}>
                   ¿Qué tipo de negocio tienes?
                 </h1>
                 <p className="text-sm text-gray-500">
@@ -546,7 +546,7 @@ const Register = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.15 }}
-                className="bg-white rounded-[26px] shadow-[0_20px_60px_rgba(23,18,15,0.10)] border border-[#EFEAE3] p-6 sm:p-8"
+                className="bg-white rounded-[26px] shadow-[0_20px_60px_rgba(23,18,15,0.10)] border border-menuby-borde p-6 sm:p-8"
               >
                 <StepIndicator currentStep={2} />
 
@@ -560,12 +560,12 @@ const Register = () => {
                       onClick={() => handleSelectBusinessType(type.id)}
                       className={`relative p-4 rounded-xl border-2 text-left transition-all duration-200 group hover:shadow-md ${
                         businessType === type.id
-                          ? 'border-[#E8002D] bg-red-50 ring-1 ring-[#E8002D] shadow-md'
+                          ? 'border-menuby bg-red-50 ring-1 ring-menuby shadow-md'
                           : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                       }`}
                     >
                       <div className="text-3xl mb-2">{type.emoji}</div>
-                      <h3 className={`text-sm font-bold mb-0.5 ${businessType === type.id ? 'text-[#E8002D]' : 'text-gray-900'}`}>
+                      <h3 className={`text-sm font-bold mb-0.5 ${businessType === type.id ? 'text-menuby' : 'text-gray-900'}`}>
                         {type.label}
                       </h3>
                       <p className="text-[11px] text-gray-400 leading-tight">{type.desc}</p>
@@ -574,7 +574,7 @@ const Register = () => {
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
-                          className="absolute top-2 right-2 w-5 h-5 bg-[#E8002D] rounded-full flex items-center justify-center"
+                          className="absolute top-2 right-2 w-5 h-5 bg-menuby rounded-full flex items-center justify-center"
                         >
                           <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -605,14 +605,14 @@ const Register = () => {
   // STEP 1 - Identity
   // ===========================
   return (
-    <div className="min-h-screen bg-[#FBFAF8]">
-      <section className="py-12 sm:py-20 bg-gradient-to-br from-[#FBFAF8] via-[#FBEEE9] to-[#FBFAF8]">
+    <div className="min-h-screen bg-menuby-crema">
+      <section className="py-12 sm:py-20 bg-gradient-to-br from-menuby-crema via-menuby-suave to-menuby-crema">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="max-w-md mx-auto">
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }} className="text-center mb-6">
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-[#17120F] mb-1" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", letterSpacing: '-0.025em' }}>Crea tu menú digital gratis</h1>
-              <p className="text-[#6E655C] text-sm">Tu negocio online en 2 minutos</p>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-menuby-tinta mb-1" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", letterSpacing: '-0.025em' }}>Crea tu menú digital gratis</h1>
+              <p className="text-menuby-gris text-sm">Tu negocio online en 2 minutos</p>
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
@@ -632,7 +632,7 @@ const Register = () => {
 
               {/* ===== GOOGLE SIGN-IN - HERO SECTION ===== */}
               <div className="mb-6">
-                <div className="bg-gradient-to-b from-[#FBEEE9] to-white border border-[#F0D8CF] rounded-2xl p-6 text-center">
+                <div className="bg-gradient-to-b from-menuby-suave to-white border border-[#F0D8CF] rounded-2xl p-6 text-center">
                   <div className="flex justify-center mb-4">
                     <div className="bg-white rounded-2xl shadow-md p-1 inline-block">
                       <GoogleLogin onSuccess={handleGoogleSuccess}
@@ -644,11 +644,11 @@ const Register = () => {
 
                   {isGoogleLoading && (
                     <div className="flex items-center justify-center mb-3 gap-2">
-                      <svg className="animate-spin h-4 w-4 text-[#E8002D]" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin h-4 w-4 text-menuby" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                       </svg>
-                      <span className="text-sm text-[#E8002D] font-medium">Verificando con Google...</span>
+                      <span className="text-sm text-menuby font-medium">Verificando con Google...</span>
                     </div>
                   )}
 
@@ -716,13 +716,13 @@ const Register = () => {
                         <div>
                           <label htmlFor="firstName" className="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
                           <input type="text" id="firstName" name="firstName" value={emailData.firstName} onChange={handleEmailChange} required
-                            className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors text-gray-900 bg-white"
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-menuby focus:border-menuby transition-colors text-gray-900 bg-white"
                             placeholder="Juan" />
                         </div>
                         <div>
                           <label htmlFor="lastName" className="block text-xs font-medium text-gray-600 mb-1">Apellido</label>
                           <input type="text" id="lastName" name="lastName" value={emailData.lastName} onChange={handleEmailChange} required
-                            className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors text-gray-900 bg-white"
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-menuby focus:border-menuby transition-colors text-gray-900 bg-white"
                             placeholder="Pérez" />
                         </div>
                       </div>
@@ -730,7 +730,7 @@ const Register = () => {
                       <div>
                         <label htmlFor="email" className="block text-xs font-medium text-gray-600 mb-1">Correo electrónico</label>
                         <input type="email" id="email" name="email" value={emailData.email} onChange={handleEmailChange} required
-                          className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors text-gray-900 bg-white"
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-menuby focus:border-menuby transition-colors text-gray-900 bg-white"
                           placeholder="tu@email.com" />
                       </div>
 
@@ -739,7 +739,7 @@ const Register = () => {
                           WhatsApp
                         </label>
                         <input type="tel" id="phone" name="phone" value={emailData.phone} onChange={handleEmailChange} required
-                          className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors text-gray-900 bg-white"
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-menuby focus:border-menuby transition-colors text-gray-900 bg-white"
                           placeholder="+57 300 123 4567" />
                       </div>
 
@@ -749,7 +749,7 @@ const Register = () => {
                           <div className="relative">
                             <input type={showPassword ? 'text' : 'password'} id="password" name="password" value={emailData.password}
                               onChange={handleEmailChange} required
-                              className="w-full px-3 py-2.5 pr-10 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors text-gray-900 bg-white"
+                              className="w-full px-3 py-2.5 pr-10 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-menuby focus:border-menuby transition-colors text-gray-900 bg-white"
                               placeholder="Mín. 8 caracteres" />
                             <button type="button" onClick={() => setShowPassword(!showPassword)}
                               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -769,7 +769,7 @@ const Register = () => {
                           <div className="relative">
                             <input type={showConfirmPassword ? 'text' : 'password'} id="confirmPassword" name="confirmPassword"
                               value={emailData.confirmPassword} onChange={handleEmailChange} required
-                              className="w-full px-3 py-2.5 pr-10 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors text-gray-900 bg-white"
+                              className="w-full px-3 py-2.5 pr-10 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-menuby focus:border-menuby transition-colors text-gray-900 bg-white"
                               placeholder="Repetir" />
                             <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -789,15 +789,15 @@ const Register = () => {
                       <div className="flex items-start pt-1">
                         <input type="checkbox" id="acceptTerms" checked={acceptTerms}
                           onChange={(e) => setAcceptTerms(e.target.checked)}
-                          className="w-4 h-4 text-[#E8002D] border-gray-300 rounded focus:ring-[#E8002D] mt-0.5" />
+                          className="w-4 h-4 text-menuby border-gray-300 rounded focus:ring-menuby mt-0.5" />
                         <label htmlFor="acceptTerms" className="ml-2 text-xs text-gray-500">
-                          Acepto los{' '}<Link to="/terms" className="text-[#E8002D] hover:underline">términos</Link>{' '}
-                          y la{' '}<Link to="/privacy" className="text-[#E8002D] hover:underline">política de privacidad</Link>
+                          Acepto los{' '}<Link to="/terms" className="text-menuby hover:underline">términos</Link>{' '}
+                          y la{' '}<Link to="/privacy" className="text-menuby hover:underline">política de privacidad</Link>
                         </label>
                       </div>
 
                       <button type="submit"
-                        className="w-full py-3 bg-[#E8002D] hover:bg-[#A80020] text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center">
+                        className="w-full py-3 bg-menuby hover:bg-menuby-fuerte text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center">
                         Continuar
                         <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -811,7 +811,7 @@ const Register = () => {
               <div className="mt-6 text-center">
                 <p className="text-sm text-gray-500">
                   ¿Ya tienes cuenta?{' '}
-                  <Link to="/login" className="text-[#E8002D] hover:text-[#A80020] font-semibold">Inicia sesión</Link>
+                  <Link to="/login" className="text-menuby hover:text-menuby-fuerte font-semibold">Inicia sesión</Link>
                 </p>
               </div>
             </motion.div>

@@ -105,19 +105,19 @@ export default function Cajas() {
             </button>
           </div>
         ) : (
-          <div className="rounded-2xl bg-slate-900 text-white p-5 text-center">
-            <p className="text-[11.5px] uppercase tracking-wide text-slate-400">
+          <div className="rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 p-5 text-center">
+            <p className="text-[11.5px] uppercase tracking-wide text-slate-500">
               Escribe este código en la caja
             </p>
             {/* Enorme y espaciado: esto se lee en voz alta por teléfono o se
                 copia mirando la pantalla desde el otro lado del local. */}
             <p className="text-5xl font-black tracking-[0.15em] my-3 tabular-nums">{codigo.codigo}</p>
-            <p className="text-[12px] text-slate-400">
+            <p className="text-[12px] text-slate-500">
               Para “{codigo.nombre}” · vence en {codigo.expira_en_minutos} minutos · sirve una sola vez
             </p>
             <button
               onClick={() => { setCodigo(null); cargar(); }}
-              className="mt-4 h-10 px-4 rounded-xl bg-white text-slate-900 text-[12.5px] font-bold"
+              className="mt-4 h-10 px-4 rounded-xl bg-slate-900 text-white text-[12.5px] font-bold"
             >
               Ya la conecté
             </button>
@@ -147,21 +147,21 @@ export default function Cajas() {
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="text-[13.5px] font-bold text-slate-800">{c.nombre}</p>
                 {c.revocada ? (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-200">
+                  <span className="text-2xs font-bold px-1.5 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-200">
                     Desvinculada
                   </span>
                 ) : c.vencida ? (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+                  <span className="text-2xs font-bold px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
                     Vencida · hay que vincularla otra vez
                   </span>
                 ) : c.callada ? (
                   /* Vinculada pero muda: casi siempre es que alguien la
                      desconectó del internet, y el dueño tiene que poder verlo. */
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200">
+                  <span className="text-2xs font-bold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200">
                     Sin señal
                   </span>
                 ) : (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <span className="text-2xs font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
                     Activa
                   </span>
                 )}

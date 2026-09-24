@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchBusinessNotes, createBusinessNote, pinBusinessNote, deleteBusinessNote } from '../../services/superadminApi';
+import { Capa } from '../ui';
 
 const KINDS = [
   { id: 'call', label: 'Llamada', icon: '📞' },
@@ -62,6 +63,7 @@ export default function BusinessNotes({ business, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center sm:p-4">
+      <Capa onCerrar={onClose} />
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose}

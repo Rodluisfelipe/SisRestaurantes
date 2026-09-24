@@ -64,7 +64,7 @@ function Field({ label, value, onChange, prefix = '$', suffix = '', placeholder 
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between">
         <label className="text-[11.5px] font-semibold text-slate-500">{label}</label>
-        {hint && <span className="text-[10px] text-slate-400">{hint}</span>}
+        {hint && <span className="text-2xs text-slate-400">{hint}</span>}
       </div>
       <div className="relative flex items-center">
         {prefix && (
@@ -120,7 +120,7 @@ function Divider({ label = 'Resultados' }) {
   return (
     <div className="flex items-center gap-2 py-1">
       <div className="flex-1 h-px bg-slate-100" />
-      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</span>
+      <span className="text-2xs font-bold text-slate-400 uppercase tracking-widest">{label}</span>
       <div className="flex-1 h-px bg-slate-100" />
     </div>
   );
@@ -322,11 +322,11 @@ function CalcDescuento() {
             <Res main label="Ganancia despues" value={`$${fmt(gd)}`} good={gd >= go * 0.7} bad={gd < 0} />
             <Res label="Margen antes / despues" value={`${pct(mo)} → ${pct(md)}`} />
             {!isNaN(extraPct) && (
-              <div className="bg-slate-800 rounded-xl px-3.5 py-3 flex items-center justify-between gap-3">
-                <span className="text-[12px] font-semibold text-slate-400 leading-tight">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 flex items-center justify-between gap-3">
+                <span className="text-[12px] font-semibold text-slate-500 leading-tight">
                   Para compensar el descuento debes vender
                 </span>
-                <span className="text-[18px] font-black text-white whitespace-nowrap">{extraPct}% mas</span>
+                <span className="text-[18px] font-black text-slate-900 whitespace-nowrap">{extraPct}% mas</span>
               </div>
             )}
           </div>

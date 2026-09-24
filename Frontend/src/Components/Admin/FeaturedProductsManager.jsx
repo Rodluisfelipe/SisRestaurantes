@@ -77,7 +77,7 @@ export default function FeaturedProductsManager({
               >
                 <FaGripVertical className="text-slate-300 hover:text-slate-500 text-xs flex-shrink-0 transition-colors" />
 
-                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-2xs font-bold flex-shrink-0 ${
                   index === 0 ? 'bg-amber-100 text-amber-700' :
                   index === 1 ? 'bg-slate-200 text-slate-600' :
                   index === 2 ? 'bg-orange-100 text-orange-600' :

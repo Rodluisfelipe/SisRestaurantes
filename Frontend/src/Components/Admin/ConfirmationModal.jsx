@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import AI from './AdminIcons';
+import { Capa } from '../ui';
 
 /**
  * Modal de confirmación para edición de producto.
@@ -18,6 +19,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, product, formData }) =>
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
+      <Capa onCerrar={onClose} />
       <motion.div
         role="dialog"
         aria-modal="true"

@@ -168,19 +168,19 @@ export default function MobileBottomNav({ activeTab, setActiveTab, pendingOrders
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-                        className="absolute -top-1.5 -right-2.5 flex items-center justify-center min-w-[18px] h-[18px] px-[4px] rounded-full text-[10px] font-bold bg-red-500 text-white leading-none shadow-md shadow-red-500/30 ring-2 ring-white"
+                        className="absolute -top-1.5 -right-2.5 flex items-center justify-center min-w-[18px] h-[18px] px-[4px] rounded-full text-2xs font-bold bg-red-500 text-white leading-none shadow-md shadow-red-500/30 ring-2 ring-white"
                       >
                         {tab.badge > 99 ? '99+' : tab.badge}
                       </motion.span>
                     )}
                     {/* Servicio pending dot */}
                     {isServicioTab && pendingOrdersCount > 0 && (
-                      <span className="absolute -top-1 -right-1.5 min-w-[16px] h-4 px-0.5 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center ring-1 ring-white">
+                      <span className="absolute -top-1 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-2xs font-black rounded-full flex items-center justify-center ring-1 ring-white">
                         {pendingOrdersCount > 9 ? '9+' : pendingOrdersCount}
                       </span>
                     )}
                   </div>
-                  <span className={`text-[10px] font-semibold leading-none transition-colors duration-200 ${
+                  <span className={`text-2xs font-semibold leading-none transition-colors duration-200 ${
                     isServicioTab ? 'text-white' : isActive ? 'text-red-500' : 'text-slate-400'
                   }`}>
                     {tab.label}
@@ -213,7 +213,7 @@ export default function MobileBottomNav({ activeTab, setActiveTab, pendingOrders
                 <div className={`transition-colors duration-200 ${isMoreActive ? 'text-red-500' : 'text-slate-400'}`}>
                   {NavIcons.more()}
                 </div>
-                <span className={`text-[10px] font-semibold leading-none transition-colors duration-200 ${isMoreActive ? 'text-red-500' : 'text-slate-400'}`}>
+                <span className={`text-2xs font-semibold leading-none transition-colors duration-200 ${isMoreActive ? 'text-red-500' : 'text-slate-400'}`}>
                   Más
                 </span>
               </div>

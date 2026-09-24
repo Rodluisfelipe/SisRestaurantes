@@ -267,26 +267,6 @@ router.patch('/business/:id/addons/:addonKey', requireRole('admin'), async (req,
   }
 });
 
-// Toggle Menú V2 (perfil + historias) para un negocio — admin+
-router.patch('/business/:id/menu-v2', requireRole('admin'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { enabled } = req.body;
-    const negocio = await BusinessConfig.findByIdAndUpdate(
-      id,
-      { 'features.menuV2': !!enabled },
-      { new: true }
-    );
-    if (!negocio) return res.status(404).json({ message: 'Negocio no encontrado' });
-    const io = req.app.get('io');
-    if (io) io.emit('businesses-updated');
-    res.json(negocio);
-  } catch (error) {
-    logger.error('Error toggling menu V2', error);
-    res.status(500).json({ message: 'Error al cambiar Menú V2' });
-  }
-});
-
 /* Enviar el resumen diario ahora, para probarlo sin esperar a las 7am.
    Omite la regla de "solo si hay novedades": si lo pides, llega. */
 router.post('/digest/send-now', requireRole('admin'), async (req, res) => {

@@ -18,7 +18,7 @@ function Presentaciones({ datos, max = 3 }) {
       {visibles.map((p) => (
         <span
           key={p.etiqueta}
-          className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-[3px] text-[10px] leading-none"
+          className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-[3px] text-2xs leading-none"
         >
           <span className="font-medium text-slate-600">{p.etiqueta}</span>
           {datos.preciosDistintos && (
@@ -27,7 +27,7 @@ function Presentaciones({ datos, max = 3 }) {
         </span>
       ))}
       {resto > 0 && (
-        <span className="text-[10px] font-semibold text-slate-400">+{resto}</span>
+        <span className="text-2xs font-semibold text-slate-400">+{resto}</span>
       )}
     </div>
   );

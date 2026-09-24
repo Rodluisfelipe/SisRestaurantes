@@ -578,7 +578,7 @@ const SubscriptionPayment = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-40">
-        <div className="w-6 h-6 border-2 border-[#3A7AFF]/30 border-t-[#3A7AFF] rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-plataforma-azul/30 border-t-plataforma-azul rounded-full animate-spin" />
       </div>
     );
   }
@@ -593,7 +593,7 @@ const SubscriptionPayment = () => {
     return (
       <div className="space-y-4">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl border border-slate-100 lg:border-[#DCE4F5] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-lg">
+          className="bg-white rounded-2xl border border-slate-100 lg:border-plataforma-borde overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-lg">
           <div className={`px-6 py-8 text-center ${
             isApproved ? 'bg-emerald-50' : isPending ? 'bg-amber-50' : 'bg-red-50'
           }`}>
@@ -612,33 +612,33 @@ const SubscriptionPayment = () => {
             <h2 className={`text-xl font-bold ${isApproved ? 'text-emerald-800' : isPending ? 'text-amber-800' : 'text-red-800'}`}>
               {isApproved ? '\u00A1Pago Exitoso!' : isPending ? 'Pago en Proceso' : 'Pago No Completado'}
             </h2>
-            <p className="text-sm text-[#6C7A92] mt-2 max-w-xs mx-auto">{paymentResult.message}</p>
+            <p className="text-sm text-plataforma-gris mt-2 max-w-xs mx-auto">{paymentResult.message}</p>
           </div>
 
           <div className="px-6 py-5 space-y-3">
             {isApproved && subscription && (
               <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-4 space-y-2">
-                <div className="flex justify-between"><span className="text-xs text-[#6C7A92]">Estado</span><span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">Activa</span></div>
-                {subscription.periodEnd && <div className="flex justify-between"><span className="text-xs text-[#6C7A92]">Vigente hasta</span><span className="text-xs font-bold text-[#1F2937]">{formatDate(subscription.periodEnd)}</span></div>}
+                <div className="flex justify-between"><span className="text-xs text-plataforma-gris">Estado</span><span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">Activa</span></div>
+                {subscription.periodEnd && <div className="flex justify-between"><span className="text-xs text-plataforma-gris">Vigente hasta</span><span className="text-xs font-bold text-plataforma-tinta">{formatDate(subscription.periodEnd)}</span></div>}
               </div>
             )}
             {isPending && (
               <div className="bg-amber-50 rounded-xl border border-amber-200 p-4 flex items-start gap-3">
                 <div className="w-4 h-4 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin mt-0.5 flex-shrink-0" />
-                <div><p className="text-xs font-bold text-amber-700">Esperando confirmación</p><p className="text-[11px] text-[#6C7A92] mt-1">Se activará automáticamente cuando se confirme tu pago.</p></div>
+                <div><p className="text-xs font-bold text-amber-700">Esperando confirmación</p><p className="text-[11px] text-plataforma-gris mt-1">Se activará automáticamente cuando se confirme tu pago.</p></div>
               </div>
             )}
             {paymentResult.reference && (
-              <div className="flex justify-between items-center py-2 border-t border-[#DCE4F5]">
-                <span className="text-[10px] text-[#6C7A92]">Referencia</span>
-                <span className="text-[10px] text-[#6C7A92] font-mono">{paymentResult.reference}</span>
+              <div className="flex justify-between items-center py-2 border-t border-plataforma-borde">
+                <span className="text-2xs text-plataforma-gris">Referencia</span>
+                <span className="text-2xs text-plataforma-gris font-mono">{paymentResult.reference}</span>
               </div>
             )}
           </div>
 
           <div className="px-6 pb-6">
             <button onClick={() => { setPaymentResult(null); window.history.replaceState({}, '', window.location.pathname); loadPaymentHistory(); loadMyRequests(); }}
-              className="w-full py-3 px-4 bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 text-white text-sm font-semibold rounded-xl transition-all shadow-md shadow-[#3A7AFF]/20">
+              className="w-full py-3 px-4 bg-plataforma-azul hover:bg-plataforma-azul/90 text-white text-sm font-semibold rounded-xl transition-all shadow-md shadow-plataforma-azul/20">
               {isApproved ? 'Continuar' : isPending ? 'Volver' : 'Intentar de Nuevo'}
             </button>
           </div>
@@ -656,7 +656,7 @@ const SubscriptionPayment = () => {
       {/* MODO PRUEBAS Badge */}
       {isTestMode && (
         <div className="flex justify-center">
-          <span className="text-[9px] bg-amber-50 text-amber-600 border border-amber-200 px-2.5 py-0.5 rounded-full font-semibold tracking-wide">
+          <span className="text-2xs bg-amber-50 text-amber-600 border border-amber-200 px-2.5 py-0.5 rounded-full font-semibold tracking-wide">
             MODO PRUEBAS &mdash; {selectedGateway === 'dlocal' ? 'dLocal' : 'ePayco'}
           </span>
         </div>
@@ -700,10 +700,10 @@ const SubscriptionPayment = () => {
                     <span className="text-xs font-bold text-violet-100">Plan Anual</span>
                     <span className="text-[7px] font-black bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent px-1.5 py-0.5 rounded-full border border-violet-400/25 uppercase tracking-[0.12em] leading-none">PRO</span>
                   </div>
-                  <span className="text-[10px] text-violet-300/50 font-medium">Suscripción Premium</span>
+                  <span className="text-2xs text-violet-300/50 font-medium">Suscripción Premium</span>
                 </div>
               </div>
-              <span className="text-[9px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/20">
+              <span className="text-2xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/20">
                 Activa
               </span>
             </div>
@@ -723,7 +723,7 @@ const SubscriptionPayment = () => {
             )}
 
             {/* Info row */}
-            <div className="mt-2.5 flex items-center gap-3 text-[10px]">
+            <div className="mt-2.5 flex items-center gap-3 text-2xs">
               <span className="text-violet-200/80">
                 Vence <span className="font-semibold text-violet-100">{formatDate(subscription.periodEnd)}</span>
               </span>
@@ -749,18 +749,18 @@ const SubscriptionPayment = () => {
         </div>
       ) : (
         /* ── STANDARD CARD (monthly/quarterly/semiannual/expired/grace) ── */
-        <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-[#DCE4F5] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+        <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-plataforma-borde overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
           <div className="px-3.5 py-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-[#1F2937]">Suscripción</h3>
+              <h3 className="text-xs font-bold text-plataforma-tinta">Suscripción</h3>
               {subStatus ? (
-                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                <span className={`text-2xs font-bold px-2 py-0.5 rounded-full ${
                   subStatus.color === 'green' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
                   subStatus.color === 'yellow' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
                   'bg-red-50 text-red-700 border border-red-200'
                 }`}>{subStatus.text}</span>
               ) : (
-                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-gray-50 text-[#6C7A92] border border-[#DCE4F5]">Sin plan</span>
+                <span className="text-2xs font-bold px-2 py-0.5 rounded-full bg-gray-50 text-plataforma-gris border border-plataforma-borde">Sin plan</span>
               )}
             </div>
 
@@ -768,7 +768,7 @@ const SubscriptionPayment = () => {
               <>
                 {subscription.periodStart && subscription.periodEnd && (
                   <div className="mt-2">
-                    <div className="h-1.5 bg-[#F4F6FB] rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-plataforma-fondo rounded-full overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${Math.min(100, Math.max(2, ((Date.now() - new Date(subscription.periodStart).getTime()) / (new Date(subscription.periodEnd).getTime() - new Date(subscription.periodStart).getTime())) * 100))}%` }}
@@ -782,24 +782,24 @@ const SubscriptionPayment = () => {
                   </div>
                 )}
                 
-                <div className="mt-2 flex items-center gap-3 text-[10px] text-[#6C7A92]">
+                <div className="mt-2 flex items-center gap-3 text-2xs text-plataforma-gris">
                   <span>
-                    <span className="font-semibold text-[#1F2937]">
+                    <span className="font-semibold text-plataforma-tinta">
                       {getPlanDisplayName()}
                     </span>
                   </span>
-                  <span className="text-[#DCE4F5]">|</span>
-                  <span>Vence <span className="font-semibold text-[#1F2937]">{formatDate(subscription.periodEnd)}</span></span>
+                  <span className="text-plataforma-borde">|</span>
+                  <span>Vence <span className="font-semibold text-plataforma-tinta">{formatDate(subscription.periodEnd)}</span></span>
                   {subscription.price > 0 && (
                     <>
-                      <span className="text-[#DCE4F5]">|</span>
-                      <span className="font-semibold text-[#1F2937]">{formatCurrency(subscription.price)}</span>
+                      <span className="text-plataforma-borde">|</span>
+                      <span className="font-semibold text-plataforma-tinta">{formatCurrency(subscription.price)}</span>
                     </>
                   )}
                 </div>
 
                 {subStatus?.status === 'grace' && (
-                  <div className="mt-2 flex items-center gap-1.5 text-[10px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5 border border-amber-200">
+                  <div className="mt-2 flex items-center gap-1.5 text-2xs text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5 border border-amber-200">
                     <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                     </svg>
@@ -807,7 +807,7 @@ const SubscriptionPayment = () => {
                   </div>
                 )}
                 {subStatus?.status === 'suspended' && (
-                  <div className="mt-2 flex items-center gap-1.5 text-[10px] text-red-600 bg-red-50 rounded-lg px-2.5 py-1.5 border border-red-200">
+                  <div className="mt-2 flex items-center gap-1.5 text-2xs text-red-600 bg-red-50 rounded-lg px-2.5 py-1.5 border border-red-200">
                     <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                     </svg>
@@ -816,17 +816,17 @@ const SubscriptionPayment = () => {
                 )}
               </>
             ) : (
-              <p className="mt-1 text-[10px] text-[#6C7A92]">Activa un plan para publicar tu menú digital</p>
+              <p className="mt-1 text-2xs text-plataforma-gris">Activa un plan para publicar tu menú digital</p>
             )}
           </div>
         </div>
       )}
 
       {subscription && usageItems.length > 0 && (
-        <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-[#DCE4F5] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
-          <div className="px-3.5 py-2.5 border-b border-[#DCE4F5] flex items-center justify-between">
-            <h3 className="text-xs font-bold text-[#1F2937]">Uso de tu plan</h3>
-            <span className="text-[10px] font-semibold text-[#3A7AFF]">{getPlanDisplayName()}</span>
+        <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-plataforma-borde overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+          <div className="px-3.5 py-2.5 border-b border-plataforma-borde flex items-center justify-between">
+            <h3 className="text-xs font-bold text-plataforma-tinta">Uso de tu plan</h3>
+            <span className="text-2xs font-semibold text-plataforma-azul">{getPlanDisplayName()}</span>
           </div>
           <div className="p-3.5 space-y-2">
             {usageItems.map((item) => {
@@ -840,8 +840,8 @@ const SubscriptionPayment = () => {
               return (
                 <div key={item.key} className="rounded-lg border border-[#EEF3FF] p-2.5 bg-[#F9FBFF]">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-[10px] font-semibold text-[#1F2937]">{item.label}</span>
-                    <span className="text-[10px] font-bold text-[#1F2937]">
+                    <span className="text-2xs font-semibold text-plataforma-tinta">{item.label}</span>
+                    <span className="text-2xs font-bold text-plataforma-tinta">
                       {item.used} / {item.unlimited ? 'Ilimitado' : item.limit}
                     </span>
                   </div>
@@ -855,7 +855,7 @@ const SubscriptionPayment = () => {
                     </div>
                   )}
 
-                  <div className="mt-1 text-[9px] text-[#6C7A92]">{statusText}</div>
+                  <div className="mt-1 text-2xs text-plataforma-gris">{statusText}</div>
                 </div>
               );
             })}
@@ -874,17 +874,17 @@ const SubscriptionPayment = () => {
       {/* ==========================================
           TABS: RENOVAR / HISTORIAL
           ========================================== */}
-      <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-[#DCE4F5] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
-        <div className="flex border-b border-[#DCE4F5]">
+      <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-plataforma-borde overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+        <div className="flex border-b border-plataforma-borde">
           <button onClick={() => setActiveTab('plan')}
-            className={`flex-1 py-2 text-[11px] font-semibold transition-all relative ${activeTab === 'plan' ? 'text-[#3A7AFF]' : 'text-[#6C7A92]'}`}>
+            className={`flex-1 py-2 text-[11px] font-semibold transition-all relative ${activeTab === 'plan' ? 'text-plataforma-azul' : 'text-plataforma-gris'}`}>
             {subscription ? 'Renovar' : 'Activar Plan'}
-            {activeTab === 'plan' && <motion.div layoutId="tabIndicator" className="absolute bottom-0 left-3 right-3 h-0.5 bg-[#3A7AFF] rounded-full" />}
+            {activeTab === 'plan' && <motion.div layoutId="tabIndicator" className="absolute bottom-0 left-3 right-3 h-0.5 bg-plataforma-azul rounded-full" />}
           </button>
           <button onClick={() => setActiveTab('history')}
-            className={`flex-1 py-2 text-[11px] font-semibold transition-all relative ${activeTab === 'history' ? 'text-[#3A7AFF]' : 'text-[#6C7A92]'}`}>
-            Historial {allHistory.length > 0 && <span className="ml-0.5 text-[8px] bg-[#F4F6FB] text-[#6C7A92] px-1 py-0.5 rounded-full">{allHistory.length}</span>}
-            {activeTab === 'history' && <motion.div layoutId="tabIndicator" className="absolute bottom-0 left-3 right-3 h-0.5 bg-[#3A7AFF] rounded-full" />}
+            className={`flex-1 py-2 text-[11px] font-semibold transition-all relative ${activeTab === 'history' ? 'text-plataforma-azul' : 'text-plataforma-gris'}`}>
+            Historial {allHistory.length > 0 && <span className="ml-0.5 text-2xs bg-plataforma-fondo text-plataforma-gris px-1 py-0.5 rounded-full">{allHistory.length}</span>}
+            {activeTab === 'history' && <motion.div layoutId="tabIndicator" className="absolute bottom-0 left-3 right-3 h-0.5 bg-plataforma-azul rounded-full" />}
           </button>
         </div>
 
@@ -917,26 +917,26 @@ const SubscriptionPayment = () => {
                         isSelected
                           ? isPremium
                             ? selectedTheme
-                            : 'border-[#3A7AFF] bg-[#3A7AFF]/5'
-                          : 'border-[#DCE4F5] hover:border-[#3A7AFF]/30'
+                            : 'border-plataforma-azul bg-plataforma-azul/5'
+                          : 'border-plataforma-borde hover:border-plataforma-azul/30'
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className={`text-xs font-bold ${isPremium && isSelected ? 'text-violet-100' : 'text-[#1F2937]'}`}>
+                        <span className={`text-xs font-bold ${isPremium && isSelected ? 'text-violet-100' : 'text-plataforma-tinta'}`}>
                           {plan.label}
                         </span>
                         {isPremium && (
-                          <span className={`text-[8px] font-semibold px-1.5 py-0.5 rounded-full ${isSelected ? 'bg-violet-500/20 text-violet-200' : unselectedTheme}`}>
+                          <span className={`text-2xs font-semibold px-1.5 py-0.5 rounded-full ${isSelected ? 'bg-violet-500/20 text-violet-200' : unselectedTheme}`}>
                             {isProMax ? 'MAX' : 'PRO'}
                           </span>
                         )}
                       </div>
-                      <p className={`text-[9px] mt-1 ${isPremium && isSelected ? 'text-violet-300/80' : 'text-[#6C7A92]'}`}>
+                      <p className={`text-2xs mt-1 ${isPremium && isSelected ? 'text-violet-300/80' : 'text-plataforma-gris'}`}>
                         {plan.description}
                       </p>
-                      <p className={`text-sm font-bold mt-1 ${isPremium && isSelected ? 'text-violet-100' : 'text-[#1F2937]'}`}>
+                      <p className={`text-sm font-bold mt-1 ${isPremium && isSelected ? 'text-violet-100' : 'text-plataforma-tinta'}`}>
                         {formatCurrency(monthlyValue)}
-                        <span className={`text-[9px] font-medium ml-1 ${isPremium && isSelected ? 'text-violet-300/80' : 'text-[#6C7A92]'}`}>
+                        <span className={`text-2xs font-medium ml-1 ${isPremium && isSelected ? 'text-violet-300/80' : 'text-plataforma-gris'}`}>
                           /mes
                         </span>
                       </p>
@@ -946,29 +946,29 @@ const SubscriptionPayment = () => {
               </div>
 
               {/* Billing cycle selector */}
-              <div className="flex items-center gap-1 bg-[#F4F6FB] rounded-lg p-1">
+              <div className="flex items-center gap-1 bg-plataforma-fondo rounded-lg p-1">
                 {BILLING_CYCLES.map(cycle => (
                   <button
                     key={cycle.id}
                     type="button"
                     onClick={() => setSelectedBillingCycle(cycle.id)}
-                    className={`flex-1 py-1.5 px-2 rounded-md text-[10px] font-semibold transition-all ${
-                      selectedBillingCycle === cycle.id ? 'bg-white text-[#3A7AFF] shadow-sm' : 'text-[#6C7A92]'
+                    className={`flex-1 py-1.5 px-2 rounded-md text-2xs font-semibold transition-all ${
+                      selectedBillingCycle === cycle.id ? 'bg-white text-plataforma-azul shadow-sm' : 'text-plataforma-gris'
                     }`}
                   >
                     {cycle.label}
                     {cycle.badge && (
-                      <span className="ml-1 text-[8px] text-emerald-600">{cycle.badge}</span>
+                      <span className="ml-1 text-2xs text-emerald-600">{cycle.badge}</span>
                     )}
                   </button>
                 ))}
               </div>
 
               {/* Gateway selector — direct + pasarelas */}
-              <div className="flex items-center gap-1 bg-[#F4F6FB] rounded-lg p-1">
+              <div className="flex items-center gap-1 bg-plataforma-fondo rounded-lg p-1">
                 <button type="button" onClick={() => setSelectedGateway('direct')}
-                  className={`flex-1 py-1.5 px-2 rounded-md text-[10px] font-semibold transition-all flex items-center justify-center gap-1 ${
-                    selectedGateway === 'direct' ? 'bg-white text-[#3A7AFF] shadow-sm' : 'text-[#6C7A92]'
+                  className={`flex-1 py-1.5 px-2 rounded-md text-2xs font-semibold transition-all flex items-center justify-center gap-1 ${
+                    selectedGateway === 'direct' ? 'bg-white text-plataforma-azul shadow-sm' : 'text-plataforma-gris'
                   }`}>
                   <span>Pago Directo</span>
                   {selectedGateway !== 'direct' && <span className="text-[7px] text-emerald-600 font-semibold">Sin comisión</span>}
@@ -977,16 +977,16 @@ const SubscriptionPayment = () => {
                   <>
                     {dlocalPlans.length > 0 && (
                       <button type="button" onClick={() => setSelectedGateway('dlocal')}
-                        className={`flex-1 py-1.5 px-1.5 rounded-md text-[10px] font-semibold transition-all flex items-center justify-center gap-1 ${
-                          selectedGateway === 'dlocal' ? 'bg-white text-[#3A7AFF] shadow-sm' : 'text-[#6C7A92]'
+                        className={`flex-1 py-1.5 px-1.5 rounded-md text-2xs font-semibold transition-all flex items-center justify-center gap-1 ${
+                          selectedGateway === 'dlocal' ? 'bg-white text-plataforma-azul shadow-sm' : 'text-plataforma-gris'
                         }`}>
                         <span>dLocal</span>
                       </button>
                     )}
                     {epaycoPlans.length > 0 && (
                       <button type="button" onClick={() => setSelectedGateway('epayco')}
-                        className={`flex-1 py-1.5 px-1.5 rounded-md text-[10px] font-semibold transition-all flex items-center justify-center gap-1 ${
-                          selectedGateway === 'epayco' ? 'bg-white text-[#3A7AFF] shadow-sm' : 'text-[#6C7A92]'
+                        className={`flex-1 py-1.5 px-1.5 rounded-md text-2xs font-semibold transition-all flex items-center justify-center gap-1 ${
+                          selectedGateway === 'epayco' ? 'bg-white text-plataforma-azul shadow-sm' : 'text-plataforma-gris'
                         }`}>
                         <span>ePayco</span>
                       </button>
@@ -999,18 +999,18 @@ const SubscriptionPayment = () => {
               {selectedGateway === 'direct' && selectedPlan && (
                 <>
                   {/* Price summary */}
-                  <div className="bg-[#F4F6FB] rounded-lg p-3">
-                    <div className="flex items-center justify-between text-[10px] text-[#6C7A92]">
+                  <div className="bg-plataforma-fondo rounded-lg p-3">
+                    <div className="flex items-center justify-between text-2xs text-plataforma-gris">
                       <span>{selectedPlan.label} &mdash; Sin comisión</span>
                       <div className="text-right">
-                        <span className="text-sm font-bold text-[#1F2937]">{formatCurrency(selectedPlan.total)}</span>
+                        <span className="text-sm font-bold text-plataforma-tinta">{formatCurrency(selectedPlan.total)}</span>
                       </div>
                     </div>
                     <div className="flex items-center justify-between mt-1">
-                      <span className="text-[9px] text-[#6C7A92]">
+                      <span className="text-2xs text-plataforma-gris">
                         {selectedPlan.billingCycle === 'annual' ? 'Pago anual' : 'Pago mensual'}
                       </span>
-                      <span className="text-[9px] text-emerald-600 font-semibold">
+                      <span className="text-2xs text-emerald-600 font-semibold">
                         {formatCurrency(selectedPlan.pricePerMonth)}/mes
                       </span>
                     </div>
@@ -1018,29 +1018,29 @@ const SubscriptionPayment = () => {
 
                   {/* Payment info cards */}
                   <div className="space-y-1.5">
-                    <p className="text-[10px] font-semibold text-[#1F2937]">Transfiere a:</p>
+                    <p className="text-2xs font-semibold text-plataforma-tinta">Transfiere a:</p>
                     {DIRECT_METHODS.map(method => (
                       <button key={method.id} type="button"
                         onClick={() => { setSelectedMethod(method.id); copyToClipboard(method.value, method.id); }}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all text-left ${
                           selectedMethod === method.id
-                            ? 'border-[#3A7AFF] bg-[#3A7AFF]/5'
-                            : 'border-[#DCE4F5] hover:border-[#3A7AFF]/30'
+                            ? 'border-plataforma-azul bg-plataforma-azul/5'
+                            : 'border-plataforma-borde hover:border-plataforma-azul/30'
                         }`}>
                         <span className="h-7 w-9 flex items-center justify-center shrink-0 rounded-md bg-white border border-[#EEF1F8] overflow-hidden">
                           <img src={method.logo} alt={method.label} className="max-h-6 max-w-8 object-contain" />
                         </span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[11px] font-bold text-[#1F2937]">{method.label}</span>
-                            {method.sublabel && <span className="text-[9px] text-[#6C7A92]">({method.sublabel})</span>}
+                            <span className="text-[11px] font-bold text-plataforma-tinta">{method.label}</span>
+                            {method.sublabel && <span className="text-2xs text-plataforma-gris">({method.sublabel})</span>}
                           </div>
-                          <span className="text-sm font-bold text-[#3A7AFF] font-mono tracking-wide">{method.value}</span>
+                          <span className="text-sm font-bold text-plataforma-azul font-mono tracking-wide">{method.value}</span>
                         </div>
-                        <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full transition-all inline-flex items-center gap-1 ${
+                        <span className={`text-2xs font-semibold px-2 py-0.5 rounded-full transition-all inline-flex items-center gap-1 ${
                           copiedMethod === method.id
                             ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-[#F4F6FB] text-[#6C7A92]'
+                            : 'bg-plataforma-fondo text-plataforma-gris'
                         }`}>
                           {copiedMethod === method.id ? <><Check className="w-2.5 h-2.5" /> Copiado</> : 'Copiar'}
                         </span>
@@ -1050,12 +1050,12 @@ const SubscriptionPayment = () => {
 
                   {/* Upload proof */}
                   <div className="space-y-2">
-                    <p className="text-[10px] font-semibold text-[#1F2937]">Sube el comprobante:</p>
+                    <p className="text-2xs font-semibold text-plataforma-tinta">Sube el comprobante:</p>
                     <input type="file" ref={fileInputRef} accept="image/jpeg,image/png,image/jpg,application/pdf" onChange={handleProofChange} className="hidden" />
                     
                     {proofPreview ? (
                       <div className="relative">
-                        <img src={proofPreview} alt="Comprobante" className="w-full h-32 object-cover rounded-lg border border-[#DCE4F5]" />
+                        <img src={proofPreview} alt="Comprobante" className="w-full h-32 object-cover rounded-lg border border-plataforma-borde" />
                         <button type="button" onClick={() => { setProofFile(null); setProofPreview(null); }}
                           className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs shadow-md">
                           ✕
@@ -1063,19 +1063,19 @@ const SubscriptionPayment = () => {
                       </div>
                     ) : (
                       <button type="button" onClick={() => fileInputRef.current?.click()}
-                        className="w-full py-5 border-2 border-dashed border-[#DCE4F5] rounded-lg hover:border-[#3A7AFF]/40 transition-all flex flex-col items-center gap-1.5 bg-[#F4F6FB]/50">
-                        <svg className="w-6 h-6 text-[#6C7A92]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        className="w-full py-5 border-2 border-dashed border-plataforma-borde rounded-lg hover:border-plataforma-azul/40 transition-all flex flex-col items-center gap-1.5 bg-plataforma-fondo/50">
+                        <svg className="w-6 h-6 text-plataforma-gris" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        <span className="text-[11px] text-[#6C7A92] font-medium">Toca para subir foto del comprobante</span>
-                        <span className="text-[9px] text-[#6C7A92]/60">JPG, PNG o PDF &bull; Máx 10MB</span>
+                        <span className="text-[11px] text-plataforma-gris font-medium">Toca para subir foto del comprobante</span>
+                        <span className="text-2xs text-plataforma-gris/60">JPG, PNG o PDF &bull; Máx 10MB</span>
                       </button>
                     )}
                   </div>
 
                   {/* Submit button */}
                   <button type="button" onClick={handlePay} disabled={processing || !proofFile || hasPendingRequest}
-                    className="w-full py-2.5 bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 disabled:bg-[#DCE4F5] disabled:text-[#6C7A92] text-white text-xs font-bold rounded-lg transition-all shadow-md shadow-[#3A7AFF]/20 disabled:shadow-none flex items-center justify-center gap-1.5">
+                    className="w-full py-2.5 bg-plataforma-azul hover:bg-plataforma-azul/90 disabled:bg-plataforma-borde disabled:text-plataforma-gris text-white text-xs font-bold rounded-lg transition-all shadow-md shadow-plataforma-azul/20 disabled:shadow-none flex items-center justify-center gap-1.5">
                     {processing ? (
                       <>
                         <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -1093,7 +1093,7 @@ const SubscriptionPayment = () => {
                     )}
                   </button>
 
-                  <p className="text-center text-[9px] text-[#6C7A92]/60">
+                  <p className="text-center text-2xs text-plataforma-gris/60">
                     Nequi &middot; Daviplata &middot; Llave Breve &middot; Verificación en minutos
                   </p>
                 </>
@@ -1104,15 +1104,15 @@ const SubscriptionPayment = () => {
                 <>
                   {selectedPlan ? (
                     <>
-                      <div className="bg-[#F4F6FB] rounded-lg p-3">
-                        <div className="flex items-center justify-between text-[10px] text-[#6C7A92]">
+                      <div className="bg-plataforma-fondo rounded-lg p-3">
+                        <div className="flex items-center justify-between text-2xs text-plataforma-gris">
                           <span>{selectedPlan.label} ({formatCurrency(selectedPlan.basePrice)}) + comisión {formatCurrency(selectedPlan.commission)}</span>
-                          <span className="text-sm font-bold text-[#1F2937]">{formatCurrency(selectedPlan.total)}</span>
+                          <span className="text-sm font-bold text-plataforma-tinta">{formatCurrency(selectedPlan.total)}</span>
                         </div>
                       </div>
 
                       <button type="button" onClick={handlePay} disabled={processing}
-                        className="w-full py-2.5 bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 disabled:bg-[#DCE4F5] disabled:text-[#6C7A92] text-white text-xs font-bold rounded-lg transition-all shadow-md shadow-[#3A7AFF]/20 disabled:shadow-none flex items-center justify-center gap-1.5">
+                        className="w-full py-2.5 bg-plataforma-azul hover:bg-plataforma-azul/90 disabled:bg-plataforma-borde disabled:text-plataforma-gris text-white text-xs font-bold rounded-lg transition-all shadow-md shadow-plataforma-azul/20 disabled:shadow-none flex items-center justify-center gap-1.5">
                         {processing ? (
                           <>
                             <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -1128,14 +1128,14 @@ const SubscriptionPayment = () => {
                         )}
                       </button>
 
-                      <p className="text-center text-[9px] text-[#6C7A92]/60">
+                      <p className="text-center text-2xs text-plataforma-gris/60">
                         Tarjeta &middot; PSE &middot; Nequi &middot; Daviplata &middot; Pago seguro
                       </p>
                     </>
                   ) : (
                     <div className="text-center py-4">
-                      <p className="text-[11px] text-[#6C7A92]">No se pudieron cargar los planes de esta pasarela</p>
-                      <button onClick={loadData} className="text-[#3A7AFF] text-[10px] font-medium mt-1">Reintentar</button>
+                      <p className="text-[11px] text-plataforma-gris">No se pudieron cargar los planes de esta pasarela</p>
+                      <button onClick={loadData} className="text-plataforma-azul text-2xs font-medium mt-1">Reintentar</button>
                     </div>
                   )}
                 </>
@@ -1152,10 +1152,10 @@ const SubscriptionPayment = () => {
               
               {allHistory.length === 0 ? (
                 <div className="text-center py-6">
-                  <svg className="w-8 h-8 mx-auto text-[#DCE4F5] mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-8 h-8 mx-auto text-plataforma-borde mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
-                  <p className="text-[11px] text-[#6C7A92]">Sin historial de pagos</p>
+                  <p className="text-[11px] text-plataforma-gris">Sin historial de pagos</p>
                 </div>
               ) : (
                 <div className="space-y-1.5">
@@ -1178,21 +1178,21 @@ const SubscriptionPayment = () => {
                     
                     return (
                       <div key={payment._id || i}
-                        className="flex items-center justify-between bg-[#F4F6FB] rounded-lg px-3 py-2">
+                        className="flex items-center justify-between bg-plataforma-fondo rounded-lg px-3 py-2">
                         <div className="flex items-center gap-2.5">
-                          <span className={`text-[8px] font-semibold px-1.5 py-0.5 rounded border ${s.bg} ${s.text} ${s.border}`}>{s.label}</span>
+                          <span className={`text-2xs font-semibold px-1.5 py-0.5 rounded border ${s.bg} ${s.text} ${s.border}`}>{s.label}</span>
                           <div>
-                            <span className="text-[11px] font-semibold text-[#1F2937]">{formatPlanSummary(payment.commercialPlan, payment.billingCycle, payment.months)}</span>
-                            <span className="text-[9px] text-[#6C7A92] ml-1.5">{formatDate(payment.createdAt)}</span>
+                            <span className="text-[11px] font-semibold text-plataforma-tinta">{formatPlanSummary(payment.commercialPlan, payment.billingCycle, payment.months)}</span>
+                            <span className="text-2xs text-plataforma-gris ml-1.5">{formatDate(payment.createdAt)}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           {payment.gateway && (
-                            <span className={`text-[8px] font-medium px-1 py-0.5 rounded ${gwColors[payment.gateway] || 'bg-gray-50 text-gray-600'}`}>
+                            <span className={`text-2xs font-medium px-1 py-0.5 rounded ${gwColors[payment.gateway] || 'bg-gray-50 text-gray-600'}`}>
                               {payment.gateway === 'Directo' ? (payment.paymentMethod || 'Directo') : payment.gateway}
                             </span>
                           )}
-                          <span className="text-[11px] font-bold text-[#1F2937]">{formatCurrency(payment.totalAmount)}</span>
+                          <span className="text-[11px] font-bold text-plataforma-tinta">{formatCurrency(payment.totalAmount)}</span>
                         </div>
                       </div>
                     );

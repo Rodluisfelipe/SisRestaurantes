@@ -235,7 +235,7 @@ export default function BlogPost() {
             </nav>
 
             <div className="flex items-center gap-3 mb-4">
-              <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${categoryColors[post.category] || 'bg-gray-50 text-gray-600'}`}>
+              <span className={`text-2xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${categoryColors[post.category] || 'bg-gray-50 text-gray-600'}`}>
                 {post.category}
               </span>
               <span className="text-sm text-gray-400">{post.readTime} de lectura</span>
@@ -312,7 +312,7 @@ export default function BlogPost() {
                 >
                   <div className="h-1.5 w-full" style={{ backgroundColor: BRAND }} />
                   <div className="p-5">
-                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${categoryColors[p.category] || 'bg-gray-50 text-gray-600'}`}>
+                    <span className={`text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${categoryColors[p.category] || 'bg-gray-50 text-gray-600'}`}>
                       {p.category}
                     </span>
                     <h3 className="mt-3 text-base font-bold text-gray-900 group-hover:text-red-500 transition-colors leading-snug">

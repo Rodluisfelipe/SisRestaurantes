@@ -154,7 +154,7 @@ export default function CrewLanding({ onEnter }) {
           <div className="mt-12 grid sm:grid-cols-2 gap-3">
             {/* Tu lado */}
             <div className="relative rounded-[28px] border border-emerald-400/30 bg-gradient-to-br from-emerald-500/[0.12] via-emerald-500/[0.04] to-transparent p-7 overflow-hidden">
-              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-300">Tu lado</span>
+              <span className="text-2xs font-black uppercase tracking-[0.25em] text-emerald-300">Tu lado</span>
               <p className="text-[28px] sm:text-[40px] font-black leading-[1.05] mt-2">
                 $80.000<span className="text-[16px] text-white/50">/turno</span>
               </p>
@@ -169,7 +169,7 @@ export default function CrewLanding({ onEnter }) {
 
             {/* Lado empleador */}
             <div className="relative rounded-[28px] border border-white/[0.08] bg-white/[0.02] p-7">
-              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">Lado empleador</span>
+              <span className="text-2xs font-black uppercase tracking-[0.25em] text-white/40">Lado empleador</span>
               <p className="text-[28px] sm:text-[40px] font-black leading-[1.05] mt-2 text-white/50">
                 $88.000<span className="text-[16px] text-white/30">/turno</span>
               </p>
@@ -359,7 +359,7 @@ function Calculator({ onEnter }) {
             />
 
             <div className="pt-6 border-t border-white/[0.08]">
-              <p className="text-[10.5px] font-black uppercase tracking-[0.25em] text-white/40">Podrías ganar al mes</p>
+              <p className="text-2xs font-black uppercase tracking-[0.25em] text-white/40">Podrías ganar al mes</p>
               <motion.p
                 key={monthly}
                 initial={{ opacity: 0, y: 6 }}
@@ -393,7 +393,7 @@ function Slider({ label, value, min, max, step, onChange, suffix }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[10.5px] font-black uppercase tracking-[0.18em] text-white/40">{label}</span>
+        <span className="text-2xs font-black uppercase tracking-[0.18em] text-white/40">{label}</span>
         <span className="text-[14px] font-black text-white tabular-nums">{suffix}</span>
       </div>
       <input

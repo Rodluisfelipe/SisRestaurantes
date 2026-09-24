@@ -9,6 +9,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import crewApi from '../../../services/crewApi';
+import { Capa } from '../../../Components/ui';
 
 const CODE_LEN = 6;
 
@@ -81,11 +82,12 @@ export default function CheckInModal({ open, booking, onClose, onSuccess }) {
         onClick={onClose}
         className="fixed inset-0 z-[95] flex items-end sm:items-center justify-center sm:p-4 bg-black/75 backdrop-blur-sm font-geist"
       >
+        <Capa onCerrar={onClose} bloquearScroll={false} />
         <motion.div
           initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
           transition={{ type: 'spring', damping: 28, stiffness: 280 }}
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full sm:max-w-[420px] bg-[#0a0a14] border border-white/[0.08] sm:rounded-[28px] rounded-t-[28px] shadow-2xl text-white overflow-hidden"
+          className="relative w-full sm:max-w-[420px] bg-crew-noche border border-white/[0.08] sm:rounded-[28px] rounded-t-[28px] shadow-2xl text-white overflow-hidden"
         >
           <motion.div
             animate={{ x: [0, 12, 0], y: [0, -6, 0] }}
@@ -96,9 +98,9 @@ export default function CheckInModal({ open, booking, onClose, onSuccess }) {
           {/* Header */}
           <div className="relative px-5 pt-5 pb-3 flex items-center justify-between gap-2">
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-white/40">Check-in</p>
+              <p className="text-2xs font-extrabold uppercase tracking-[0.2em] text-white/40">Check-in</p>
               <p className="text-[14px] font-black truncate">{booking.shiftId?.title || 'Turno'}</p>
-              <p className="text-[10.5px] text-white/40 truncate">{booking.businessId?.businessName}</p>
+              <p className="text-2xs text-white/40 truncate">{booking.businessId?.businessName}</p>
             </div>
             <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-white/[0.06] flex items-center justify-center text-white/40 hover:text-white" aria-label="Cerrar">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -167,7 +169,7 @@ export default function CheckInModal({ open, booking, onClose, onSuccess }) {
                 <span className="relative">{submitting ? 'Verificando…' : 'Confirmar llegada'}</span>
               </motion.button>
 
-              <p className="text-center text-[10.5px] text-white/30 leading-relaxed">
+              <p className="text-center text-2xs text-white/30 leading-relaxed">
                 Si tu app de cámara escanea el QR del empleador, el código se autocompleta. Si no, escríbelo letra por letra.
               </p>
             </div>

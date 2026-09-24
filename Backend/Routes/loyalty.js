@@ -13,6 +13,9 @@ const {
 } = require('../middleware/validators/loyaltyValidators');
 const { getSubscriptionForBusiness, isFeatureEnabledForPlan } = require('../utils/subscriptionHelper');
 const { redimir } = require('../services/fidelizacion');
+const { abreCuenta } = require('../utils/cuentaCliente');
+
+const SIN_CUENTA = { codigo: 'SIN_CUENTA', message: 'Tu cuenta se activa en este celular con tu primer pedido.' };
 
 // Helper: get the effective businessId for admin routes
 async function getAdminBusinessId(req) {
@@ -250,6 +253,8 @@ router.get('/balance', publicLimiter, async (req, res) => {
     } catch {
       return res.json({ active: false });
     }
+    // Los puntos de alguien solo con la llave de su cuenta.
+    if (!abreCuenta(req, businessId, phone)) return res.status(401).json(SIN_CUENTA);
 
     // Check if loyalty program is active
     const program = await LoyaltyProgram.findOne({ businessId, isActive: true }).lean();
@@ -304,6 +309,8 @@ router.post('/redeem', publicLimiter, validateRedeem, async (req, res) => {
     } catch {
       return res.status(404).json({ message: 'Negocio no encontrado' });
     }
+    // Canjear puntos es gastar lo de alguien: solo con la llave de su cuenta.
+    if (!abreCuenta(req, businessId, phone)) return res.status(401).json(SIN_CUENTA);
 
     /* El canje en sí lo hace `services/fidelizacion`, que es el mismo que usa
        la caja. Aquí solo queda lo propio de esta puerta: que el cliente redime

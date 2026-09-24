@@ -33,6 +33,7 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTeamPermissions } from "./useTeamPermissions";
 import { ROLE_INFO } from "./permissions";
+import { Capa } from '../../Components/ui';
 
 const NAV_SECTIONS = [
   {
@@ -277,7 +278,9 @@ function SuperAdminDashboard() {
             exit={{ opacity: 0 }}
             onClick={() => setSidebarOpen(false)}
             className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-40 lg:hidden"
-          />
+          >
+            <Capa onCerrar={() => setSidebarOpen(false)} />
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -298,7 +301,7 @@ function SuperAdminDashboard() {
           </div>
           <div className="flex-1 min-w-0">
             <span className="text-[13px] font-semibold text-slate-900 tracking-tight">MenuBy</span>
-            <span className="text-[10px] text-slate-500 ml-1.5 font-medium">Admin</span>
+            <span className="text-2xs text-slate-500 ml-1.5 font-medium">Admin</span>
           </div>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 text-slate-500 hover:text-slate-900 rounded transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -316,7 +319,7 @@ function SuperAdminDashboard() {
         <nav className="flex-1 overflow-y-auto py-3 px-2.5">
           {visibleSections.map(section => (
             <div key={section.title} className="mb-4">
-              <p className="px-2.5 mb-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.08em]">{section.title}</p>
+              <p className="px-2.5 mb-1.5 text-2xs font-semibold text-slate-500 uppercase tracking-[0.08em]">{section.title}</p>
               {section.items.map(item => {
                 const isActive = currentView === item.id;
                 return (
@@ -357,12 +360,12 @@ function SuperAdminDashboard() {
  roleInfo?.color === 'violet' ? 'from-purple-400 to-violet-500' :
  roleInfo?.color === 'cyan' ? 'from-cyan-400 to-blue-500' :
  'from-slate-400 to-slate-500'
- } flex items-center justify-center text-[10px] font-bold text-white shrink-0`}>
+ } flex items-center justify-center text-2xs font-bold text-white shrink-0`}>
                 {String(perms.me.name || perms.me.email || '?').slice(0, 2).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[12px] font-semibold text-slate-900 truncate">{perms.me.name || (perms.me.email || '').split('@')[0] || 'SuperAdmin'}</p>
-                <p className={`text-[10px] font-bold uppercase tracking-wider ${
+                <p className={`text-2xs font-bold uppercase tracking-wider ${
  roleInfo?.color === 'amber' ? 'text-amber-700' :
  roleInfo?.color === 'violet' ? 'text-violet-700' :
  roleInfo?.color === 'cyan' ? 'text-cyan-700' :

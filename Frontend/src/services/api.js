@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_ENDPOINTS, CACHE_CONFIG } from '../config';
+import { llaveDe, guardarLlave } from '../utils/cuentaCliente';
 
 /**
  * Servicio centralizado para comunicación con el backend
@@ -39,6 +40,9 @@ api.interceptors.request.use(
         config.headers['Authorization'] = `Bearer ${token}`;
       }
     }
+    // La llave de "Mi cuenta" del menú abierto (ver utils/cuentaCliente).
+    const llave = llaveDe();
+    if (llave && !config.headers['X-Cuenta']) config.headers['X-Cuenta'] = llave;
     return config;
   },
   (error) => {
@@ -84,7 +88,8 @@ function addRefreshSubscriber(cb) {
 
 api.interceptors.response.use(
   (response) => {
-    // Las respuestas exitosas (2xx) pasan por aquí
+    // El servidor entrega la llave de "Mi cuenta" al crear o seguir un pedido.
+    if (response?.data?.cuentaToken) guardarLlave(response.data.cuentaToken);
     return response;
   },
   async (error) => {
@@ -95,7 +100,11 @@ api.interceptors.response.use(
     const esRutaDeAuth = originalRequest?.url?.includes('/auth/login')
       || originalRequest?.url?.includes('/auth/refresh');
 
-    if (error.response && error.response.status === 401 && !originalRequest._retry &&
+    /* "Sin cuenta" es del cliente del menú, no de la sesión del panel: no se
+       intenta renovar nada aunque haya una sesión del panel abierta. */
+    const esSinCuenta = error.response?.data?.codigo === 'SIN_CUENTA';
+
+    if (error.response && error.response.status === 401 && !originalRequest._retry && !esSinCuenta &&
         !esRutaDeAuth &&
         (sessionStorage.getItem('refreshToken') || localStorage.getItem('refreshToken'))) {
       if (isRefreshing) {

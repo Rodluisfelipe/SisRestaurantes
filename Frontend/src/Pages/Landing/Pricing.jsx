@@ -198,7 +198,7 @@ const Pricing = () => {
               {TRUST_STATS.map((stat) => (
                 <div key={stat.label} className="bg-white/70 border border-white rounded-2xl px-3 py-3 sm:px-4 backdrop-blur-sm">
                   <p className="text-lg sm:text-2xl font-extrabold text-[#10131A] tracking-tight">{stat.value}</p>
-                  <p className="text-[10px] sm:text-[11px] text-slate-600 uppercase tracking-[0.12em] mt-0.5">{stat.label}</p>
+                  <p className="text-2xs sm:text-[11px] text-slate-600 uppercase tracking-[0.12em] mt-0.5">{stat.label}</p>
                 </div>
               ))}
             </div>
@@ -269,7 +269,7 @@ const Pricing = () => {
                     </div>
 
                     <div className="plan-level-box rounded-2xl border p-3 sm:p-4">
-                      <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.14em]">
+                      <div className="flex items-center justify-between text-2xs font-bold uppercase tracking-[0.14em]">
                         <span>Potencia operativa</span>
                         <span>{plan.level}%</span>
                       </div>

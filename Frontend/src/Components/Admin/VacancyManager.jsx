@@ -186,7 +186,7 @@ function VacancyRowCard({ vacancy, onOpen }) {
           <p className="text-[14px] font-black text-slate-900 truncate">{vacancy.title}</p>
           <p className="text-[11px] text-slate-500 mt-0.5">{vacancy.role}</p>
         </div>
-        <span className={`shrink-0 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-full border ${tone.cls}`}>{tone.label}</span>
+        <span className={`shrink-0 px-2 py-0.5 text-2xs font-extrabold uppercase tracking-wider rounded-full border ${tone.cls}`}>{tone.label}</span>
       </div>
       <div className="grid grid-cols-3 gap-1.5">
         <MiniBox label="Postulantes" value={vacancy.applicationCount || 0} />
@@ -200,8 +200,8 @@ function VacancyRowCard({ vacancy, onOpen }) {
 function MiniBox({ label, value, small }) {
   return (
     <div className="px-2 py-1.5 rounded-lg bg-slate-50 border border-slate-100">
-      <p className="text-[8.5px] font-extrabold text-slate-400 uppercase tracking-wider">{label}</p>
-      <p className={`font-black text-slate-900 tabular-nums truncate ${small ? 'text-[10.5px]' : 'text-[13px]'}`}>{value}</p>
+      <p className="text-2xs font-extrabold text-slate-400 uppercase tracking-wider">{label}</p>
+      <p className={`font-black text-slate-900 tabular-nums truncate ${small ? 'text-2xs' : 'text-[13px]'}`}>{value}</p>
     </div>
   );
 }
@@ -299,7 +299,7 @@ function PublishForm({ apiBase, authHeaders, withParam, fee, onCreated, onCancel
         <textarea value={form.description} onChange={(e) => setField('description', e.target.value.slice(0, 4000))}
           rows={4} placeholder="Cuéntale a los candidatos sobre el rol, el equipo, el ambiente…"
           className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[13px] text-slate-800 focus:outline-none focus:border-red-400 focus:bg-white resize-none" />
-        <p className="text-[10px] text-slate-400 mt-1 text-right">{form.description.length} / 4000</p>
+        <p className="text-2xs text-slate-400 mt-1 text-right">{form.description.length} / 4000</p>
       </Field>
 
       {/* Schedule + hours */}
@@ -319,7 +319,7 @@ function PublishForm({ apiBase, authHeaders, withParam, fee, onCreated, onCancel
 
       {/* Salary */}
       <div>
-        <label className="block text-[10.5px] font-extrabold uppercase tracking-[0.15em] text-slate-500 mb-2">Salario</label>
+        <label className="block text-2xs font-extrabold uppercase tracking-[0.15em] text-slate-500 mb-2">Salario</label>
         <div className="grid grid-cols-3 gap-2 mb-2">
           <input type="number" placeholder="Mínimo" value={form.salary.min}
             onChange={(e) => setNested('salary', 'min', e.target.value)}
@@ -349,7 +349,7 @@ function PublishForm({ apiBase, authHeaders, withParam, fee, onCreated, onCancel
 
       {/* Location */}
       <div>
-        <label className="block text-[10.5px] font-extrabold uppercase tracking-[0.15em] text-slate-500 mb-2">Ubicación</label>
+        <label className="block text-2xs font-extrabold uppercase tracking-[0.15em] text-slate-500 mb-2">Ubicación</label>
         <div className="grid grid-cols-2 gap-2 mb-2">
           <input placeholder="Ciudad" value={form.location.city} onChange={(e) => setNested('location', 'city', e.target.value)}
             className="px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[13px] focus:outline-none focus:border-red-400" />
@@ -379,7 +379,7 @@ function PublishForm({ apiBase, authHeaders, withParam, fee, onCreated, onCancel
 
       {/* Requirements */}
       <div>
-        <label className="block text-[10.5px] font-extrabold uppercase tracking-[0.15em] text-slate-500 mb-2">Requisitos</label>
+        <label className="block text-2xs font-extrabold uppercase tracking-[0.15em] text-slate-500 mb-2">Requisitos</label>
         <div className="grid grid-cols-2 gap-2">
           <Field label="Experiencia mínima (años)" small>
             <input type="number" min={0} max={50} value={form.requirements.minExperienceYears}
@@ -435,10 +435,10 @@ function PublishForm({ apiBase, authHeaders, withParam, fee, onCreated, onCancel
 function Field({ label, hint, required, small, children }) {
   return (
     <div>
-      <label className={`block font-extrabold uppercase tracking-[0.15em] text-slate-500 mb-1.5 ${small ? 'text-[9.5px]' : 'text-[10.5px]'}`}>
+      <label className={`block font-extrabold uppercase tracking-[0.15em] text-slate-500 mb-1.5 ${small ? 'text-2xs' : 'text-2xs'}`}>
         {label}{required && <span className="text-red-500 ml-1">*</span>}
       </label>
-      {hint && <p className="text-[10.5px] text-slate-400 mb-1.5">{hint}</p>}
+      {hint && <p className="text-2xs text-slate-400 mb-1.5">{hint}</p>}
       {children}
     </div>
   );
@@ -456,7 +456,7 @@ function ListBuilder({ label, placeholder, items, onChange, max = 20 }) {
 
   return (
     <div>
-      <label className="block text-[10.5px] font-extrabold uppercase tracking-[0.15em] text-slate-500 mb-2">{label} <span className="text-slate-400 normal-case font-medium">({items.length}/{max})</span></label>
+      <label className="block text-2xs font-extrabold uppercase tracking-[0.15em] text-slate-500 mb-2">{label} <span className="text-slate-400 normal-case font-medium">({items.length}/{max})</span></label>
       <div className="space-y-1.5 mb-2">
         {items.map((item, i) => (
           <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200">
@@ -495,7 +495,7 @@ function QuestionBuilder({ questions, onChange }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <label className="text-[10.5px] font-extrabold uppercase tracking-[0.15em] text-slate-500">
+        <label className="text-2xs font-extrabold uppercase tracking-[0.15em] text-slate-500">
           Formulario personalizado <span className="text-slate-400 normal-case font-medium">({questions.length}/15)</span>
         </label>
         <button onClick={addQuestion} disabled={questions.length >= 15}
@@ -537,8 +537,8 @@ function QuestionEditor({ index, question, onChange, onRemove }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Pregunta {index + 1}</span>
-        <button onClick={onRemove} className="text-rose-500 hover:text-rose-600 text-[10.5px] font-extrabold uppercase tracking-wider">
+        <span className="text-2xs font-extrabold uppercase tracking-wider text-slate-500">Pregunta {index + 1}</span>
+        <button onClick={onRemove} className="text-rose-500 hover:text-rose-600 text-2xs font-extrabold uppercase tracking-wider">
           Eliminar
         </button>
       </div>
@@ -552,7 +552,7 @@ function QuestionEditor({ index, question, onChange, onRemove }) {
           const active = question.type === t.key;
           return (
             <button key={t.key} onClick={() => onChange({ type: t.key, options: ['choice', 'multichoice'].includes(t.key) ? (question.options || []) : [] })}
-              className={`py-2 rounded-lg text-[10.5px] font-bold border transition flex items-center justify-center gap-1 ${
+              className={`py-2 rounded-lg text-2xs font-bold border transition flex items-center justify-center gap-1 ${
                 active ? 'bg-violet-500 text-white border-violet-500' : 'bg-white text-slate-600 border-slate-200'
               }`}>
               <span>{t.emoji}</span>{t.label}
@@ -563,7 +563,7 @@ function QuestionEditor({ index, question, onChange, onRemove }) {
 
       {needsOptions && (
         <div className="mb-2 p-3 rounded-xl bg-white border border-slate-200">
-          <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">Opciones</p>
+          <p className="text-2xs font-extrabold uppercase tracking-wider text-slate-400 mb-2">Opciones</p>
           <div className="space-y-1.5 mb-2">
             {(question.options || []).map((opt, i) => (
               <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200">
@@ -727,13 +727,13 @@ function CandidateCard({ app, onDecide, currentStatus }) {
             <div className="px-3.5 pb-3.5 border-t border-slate-100 space-y-3">
               {app.coverLetter && (
                 <div>
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">Mensaje</p>
+                  <p className="text-2xs font-extrabold uppercase tracking-wider text-slate-400 mb-1">Mensaje</p>
                   <p className="text-[12.5px] text-slate-700 leading-relaxed whitespace-pre-line">{app.coverLetter}</p>
                 </div>
               )}
               {app.answers?.length > 0 && (
                 <div>
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">Respuestas</p>
+                  <p className="text-2xs font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">Respuestas</p>
                   <div className="space-y-2">
                     {app.answers.map((a, i) => (
                       <div key={i} className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
@@ -746,7 +746,7 @@ function CandidateCard({ app, onDecide, currentStatus }) {
               )}
               {w.bio && (
                 <div>
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">Bio</p>
+                  <p className="text-2xs font-extrabold uppercase tracking-wider text-slate-400 mb-1">Bio</p>
                   <p className="text-[12px] text-slate-600 leading-relaxed">{w.bio}</p>
                 </div>
               )}

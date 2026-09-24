@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { getBusinessSlug } from '../utils/getBusinessId';
 import { Truck } from 'lucide-react';
+import { Capa } from './ui';
 
 /* ── helpers ── */
 const hexToRgb = (hex) => {
@@ -106,6 +107,7 @@ const CouponInput = ({ onCouponApplied, onCouponRemoved, appliedCoupon, orderDat
         style={{ zIndex: 9999 }}
         onClick={handleCloseModal}
       >
+        <Capa onCerrar={handleCloseModal} />
         <motion.div
           key="coupon-sheet"
           initial={{ y: 80, opacity: 0 }}
@@ -337,10 +339,10 @@ const CouponInput = ({ onCouponApplied, onCouponRemoved, appliedCoupon, orderDat
                 <div className="flex items-center gap-1.5">
                   <span className="text-[12px] font-bold text-gray-800 tracking-wide">{appliedCoupon.coupon.code}</span>
                   {appliedCoupon.coupon.name && (
-                    <span className="text-[10px] text-gray-500 truncate">— {appliedCoupon.coupon.name}</span>
+                    <span className="text-2xs text-gray-500 truncate">— {appliedCoupon.coupon.name}</span>
                   )}
                 </div>
-                <p className="text-[10px] font-medium flex items-center gap-1" style={{ color: btnColor }}>
+                <p className="text-2xs font-medium flex items-center gap-1" style={{ color: btnColor }}>
                   {appliedCoupon.coupon.freeDelivery
                     ? <><Truck className="w-3 h-3" /> Envío gratis aplicado</>
                     : <>Ahorras <span className="font-bold">{formatCurrency(appliedCoupon.discountAmount)}</span></>
@@ -350,7 +352,7 @@ const CouponInput = ({ onCouponApplied, onCouponRemoved, appliedCoupon, orderDat
             </div>
             <button
               onClick={handleRemoveCoupon}
-              className="flex-shrink-0 ml-2 text-[10px] text-red-500 hover:text-red-700 font-semibold px-1.5 py-0.5 rounded-lg hover:bg-red-50 transition-colors"
+              className="flex-shrink-0 ml-2 text-2xs text-red-500 hover:text-red-700 font-semibold px-1.5 py-0.5 rounded-lg hover:bg-red-50 transition-colors"
             >Quitar</button>
           </div>
         </motion.div>

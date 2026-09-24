@@ -93,11 +93,11 @@ export default function PrintAgentConfig() {
       {/* Header */}
       <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
         <div className="w-6 h-6 bg-emerald-50 rounded-lg flex items-center justify-center">
-          <FaPrint className="text-[10px] text-emerald-600" />
+          <FaPrint className="text-2xs text-emerald-600" />
         </div>
         <h3 className="text-sm font-bold text-slate-800">Print Agent — Auto Impresión</h3>
         {hasKey && (
-          <span className="ml-auto flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+          <span className="ml-auto flex items-center gap-1 text-2xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
             <FaCircle className="text-[5px]" /> Activo
           </span>
         )}
@@ -136,7 +136,7 @@ export default function PrintAgentConfig() {
           <div className="space-y-4">
             {/* Key display */}
             <div>
-              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+              <label className="block text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
                 Tu clave de conexión
               </label>
               <div className="flex gap-2">
@@ -218,11 +218,11 @@ export default function PrintAgentConfig() {
                     <span className={`text-xs font-bold ${printMode === opt.value ? 'text-slate-800' : 'text-slate-500'}`}>
                       {opt.label}
                     </span>
-                    <span className="text-[10px] text-slate-400">{opt.desc}</span>
+                    <span className="text-2xs text-slate-400">{opt.desc}</span>
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] text-slate-400 leading-relaxed">
+              <p className="text-2xs text-slate-400 leading-relaxed">
                 <strong>Comanda:</strong> ticket de cocina sin precios. <strong>Recibo:</strong> ticket del cliente con precios y QR.
               </p>
             </div>
@@ -234,7 +234,7 @@ export default function PrintAgentConfig() {
                 disabled={loading}
                 className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-500 transition-colors disabled:opacity-50"
               >
-                <FaPrint className="text-[10px]" />
+                <FaPrint className="text-2xs" />
                 Enviar Prueba
               </button>
               <button
@@ -242,7 +242,7 @@ export default function PrintAgentConfig() {
                 disabled={loading}
                 className="flex-shrink-0 flex items-center justify-center gap-2 px-3 py-2.5 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
               >
-                <FaTrash className="text-[10px]" />
+                <FaTrash className="text-2xs" />
                 Revocar
               </button>
             </div>

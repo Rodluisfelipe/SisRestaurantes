@@ -255,7 +255,7 @@ function Cierres({ businessId, desde, hasta }) {
               <div className="flex-1 min-w-0">
                 <p className="text-[13.5px] font-bold text-slate-800 flex items-center gap-2">
                   {c.cajeroNombre || c.closedBy?.name || c.openedBy?.name || 'Sin nombre'}{c.cajaNombre ? ` · ${c.cajaNombre}` : ''}
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                  <span className={`text-2xs font-bold px-1.5 py-0.5 rounded-md ${
                     c.origen === 'pos-nativo' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'
                   }`}>
                     {c.origen === 'pos-nativo' ? 'Caja' : 'POS web'}

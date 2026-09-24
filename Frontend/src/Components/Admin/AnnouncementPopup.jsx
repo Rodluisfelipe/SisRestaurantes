@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '../../config';
 import { Siren, TriangleAlert, Megaphone, Info, Check } from 'lucide-react';
+import { Capa } from '../ui';
 
 const priorityConfig = {
   urgent: {
@@ -132,6 +133,7 @@ function AnnouncementPopup() {
           className="fixed inset-0 z-[100] flex items-center justify-center p-4"
           onClick={handleClose}
         >
+          <Capa onCerrar={handleClose} />
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           

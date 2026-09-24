@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import api from '../../services/api';
+import { Capa } from '../ui';
 
 /* State + event dictionaries (español) */
 const STATE_LABEL = {
@@ -68,6 +69,7 @@ export default function DeliveryTimeline({ slug, orderId, orderNumber, isOpen, o
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           onClick={onClose}
         >
+          <Capa onCerrar={onClose} />
           <motion.div
             className="bg-white w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl max-h-[88vh] overflow-hidden flex flex-col"
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
@@ -133,7 +135,7 @@ export default function DeliveryTimeline({ slug, orderId, orderNumber, isOpen, o
                               <span className="text-[11px] text-slate-400 whitespace-nowrap">{fmtDateTime(ev.createdAt)}</span>
                             </div>
                             <div className="flex items-center gap-2 mt-1">
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${tone.chip}`}>
+                              <span className={`text-2xs font-bold px-2 py-0.5 rounded-full ${tone.chip}`}>
                                 {STATE_LABEL[ev.toState] || ev.toState}
                               </span>
                               <span className="text-[11px] text-slate-400">
@@ -141,7 +143,7 @@ export default function DeliveryTimeline({ slug, orderId, orderNumber, isOpen, o
                               </span>
                             </div>
                             {ev.location?.lat && (
-                              <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                              <p className="text-2xs text-slate-400 mt-1 flex items-center gap-1">
                                 <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
                                 {ev.location.lat.toFixed(4)}, {ev.location.lon.toFixed(4)}
                               </p>

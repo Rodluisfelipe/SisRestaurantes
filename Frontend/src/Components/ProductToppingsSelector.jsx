@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useBusinessConfig } from "../Context/BusinessContext";
 import api from "../services/api";
+import { X, Maximize2, Star, AlertCircle, Heart } from "lucide-react";
+import { Hoja, Boton, Cantidad } from "./ui";
+import useFavoritos from "../hooks/useFavoritos";
+import { negocioDeLaCuenta } from "../utils/cuentaCliente";
 
 function ProductToppingsSelector({ product, onAddToCart, onClose, compact = false }) {
   const [selectedToppings, setSelectedToppings] = useState({});
@@ -10,6 +14,9 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
   const [expandedGroups, setExpandedGroups] = useState({});
   const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
+  const { esFavorito, alternar } = useFavoritos();
+  // El corazón es del cliente en el menú; el POS web usa esta ficha sin él.
+  const conFavoritos = !compact && !!negocioDeLaCuenta() && !!product?._id;
   const [isValid, setIsValid] = useState(false);
   const [expandedDesc, setExpandedDesc] = useState(false);
   const [scrollToRequired, setScrollToRequired] = useState(false);
@@ -120,13 +127,6 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
 
   const uniqueToppingGroups = getOrderedToppingGroups();
 
-  console.log('Grupos de toppings disponibles:', uniqueToppingGroups.map(g => ({
-    name: g.name, 
-    basePrice: g.basePrice,
-    hasSubGroups: g.subGroups && g.subGroups.length > 0,
-    subGroups: g.subGroups ? g.subGroups.length : 0
-  })));
-
   // Validar en tiempo real cuando cambien las selecciones
   useEffect(() => {
     const validationErrors = validateRequiredToppings();
@@ -148,14 +148,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
     }
   }, [scrollToRequired]);
 
-  // Debug para ver los datos recibidos
-  console.log('Datos enviados a ProductToppingsSelector:', {
-    toppingGroups: uniqueToppingGroups,
-    initialToppings: product.selectedToppings || []
-  });
-
   useEffect(() => {
-    console.log('ProductToppingsSelector montado');
     
     // Validar que product exista
     if (!product) {
@@ -215,7 +208,6 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
     
     // Registrar cuando el componente se desmonta
     return () => {
-      console.log('ProductToppingsSelector desmontado');
       // Asegurar que el scroll se restaure si el componente se desmonta
       document.body.classList.remove('modal-open');
     };
@@ -256,7 +248,6 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
       
       // Si hay selecciones, agregar el precio base del grupo
       if (hasSelections) {
-        console.log(`Grupo ${group.name} tiene selecciones, agregando basePrice: ${group.basePrice || 0}`);
         basePriceTotal += Number(group.basePrice || 0);
       }
       
@@ -378,13 +369,6 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
       
       return newSelectedToppings;
     });
-  };
-
-  const toggleGroup = (groupId) => {
-    setExpandedGroups(prev => ({
-      ...prev,
-      [groupId]: !prev[groupId]
-    }));
   };
 
   // Función para contar las selecciones en un grupo (incluyendo subgrupos)
@@ -685,10 +669,10 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
                     {/* Group label */}
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">{group.name}</span>
-                      {group.isRequired && <span className="text-[9px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">Requerido</span>}
-                      {Number(group.basePrice) > 0 && <span className="text-[10px] font-bold text-emerald-600">+${group.basePrice?.toLocaleString()}</span>}
+                      {group.isRequired && <span className="text-2xs font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">Requerido</span>}
+                      {Number(group.basePrice) > 0 && <span className="text-2xs font-bold text-emerald-600">+${group.basePrice?.toLocaleString()}</span>}
                       {countSelections(group) > 0 && (
-                        <button onClick={(e) => clearGroupSelections(group._id, e)} className="text-[10px] font-bold text-red-400 hover:text-red-600 transition-colors ml-auto">Limpiar</button>
+                        <button onClick={(e) => clearGroupSelections(group._id, e)} className="text-2xs font-bold text-red-400 hover:text-red-600 transition-colors ml-auto">Limpiar</button>
                       )}
                     </div>
 
@@ -830,6 +814,35 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
     );
   }
 
+  /* Pesos colombianos sin decimales. */
+  const pesosCO = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-CO');
+
+  /* El color del negocio para textos (precios, "Ver más"). Un negocio de
+     marca amarilla o clara pondría el precio ilegible sobre blanco: en ese
+     caso el texto va en casi negro y el color queda para bordes y botón. */
+  const colorLegible = (() => {
+    const hex = String(themeBtn || '').replace('#', '');
+    if (!/^[0-9a-f]{6}$/i.test(hex)) return '#0f172a';
+    const [r, g, b] = [0, 2, 4].map((k) => parseInt(hex.slice(k, k + 2), 16) / 255)
+      .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.45 ? '#0f172a' : themeBtn;
+  })();
+
+  /* "Elige tu bebida", no "Elige elige tu bebida": muchos grupos ya se llaman
+     con el verbo, y se le quita antes de ponerlo. */
+  const elegirQue = (nombre) => {
+    const resto = String(nombre || '').trim().replace(/^elige\s+(tu|tus|el|la|los|las|un|una)?\s*/i, '');
+    return `Elige ${resto || 'una opción'}`.toLowerCase().replace(/^e/, 'E');
+  };
+
+  /* El primer grupo obligatorio sin elegir, para que el botón diga qué falta. */
+  const grupoPendiente = () => uniqueToppingGroups.find((group) => {
+    if (!group?.isRequired) return false;
+    const principal = (selectedToppings[group._id] || []).length > 0;
+    const subOk = (group.subGroups || []).some((sg) => (selectedToppings[`${group._id}_${sg._id}`] || []).length > 0);
+    return !principal && !subOk;
+  });
+
   // ── Standard (menu) mode ──
   return (
     <>
@@ -844,7 +857,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
           onClick={() => setImageExpanded(false)}
           aria-label="Cerrar imagen"
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          <X className="w-5 h-5" strokeWidth={2.5} />
         </button>
         <img
           src={fotos[fotoActual]}
@@ -856,29 +869,74 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
       </div>
     )}
 
-    <div
-      ref={backdropRef}
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-[130]"
-      onMouseDown={handleBackdropPointerDown}
-      onTouchEnd={(e) => { if (e.target === backdropRef.current) onClose(); }}
+      {/* La ficha de un producto.
+
+          Pensada como la de los menús que mejor convierten: el nombre arriba
+          y legible —no encima de la foto, sobre un degradado—, la foto entera
+          con bordes redondeados, y cada grupo de opciones **abierto**, con
+          casillas grandes y el precio de cada una en el color del negocio.
+          Abajo, la cantidad y "Agregar · $total" juntos, que es donde está el
+          pulgar.
+
+          De la anterior se conserva lo que funcionaba: la galería que se
+          desliza y se amplía, las opiniones, las tallas y colores de las
+          tiendas, los subgrupos con máximo y repetibles, "GRATIS", y el aviso
+          que lleva al grupo obligatorio que falta. */}
+    {/* Los toques no deben subir hasta la tarjeta de atrás: allí un toque
+        largo abre la vista previa del producto. */}
+    <div onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()}>
+    <Hoja
+      onCerrar={onClose}
+      etiqueta={product.name}
+      cabecera={
+        <div className="flex items-start gap-3 px-5 pt-5 pb-3">
+          <h2 className="flex-1 min-w-0 text-[22px] leading-tight font-black text-tinta tracking-tight">{product.name}</h2>
+          {conFavoritos && (
+            <button
+              className="w-10 h-10 -mt-1 rounded-full flex items-center justify-center hover:bg-superficie-2 transition-colors flex-shrink-0"
+              onClick={() => alternar(product._id)}
+              aria-label={esFavorito(product._id) ? 'Quitar de mis favoritos' : 'Guardar en mis favoritos'}
+              aria-pressed={esFavorito(product._id)}
+            >
+              <Heart
+                className={`w-5 h-5 transition-transform active:scale-125 ${esFavorito(product._id) ? 'fill-red-500 text-red-500' : 'text-tinta-2'}`}
+                strokeWidth={2.25}
+              />
+            </button>
+          )}
+          <button
+            className="w-10 h-10 -mr-1.5 -mt-1 rounded-full flex items-center justify-center text-tinta-2 hover:bg-superficie-2 transition-colors flex-shrink-0"
+            onClick={onClose}
+            aria-label="Cerrar"
+          >
+            <X className="w-5 h-5" strokeWidth={2.25} />
+          </button>
+        </div>
+      }
+      pie={
+        /* Cantidad y agregar, juntos y donde está el pulgar. */
+        <div className="flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-3 sm:py-4 border-t border-linea">
+          <Cantidad valor={quantity} onCambiar={setQuantity} tamano="lg" />
+          <Boton
+            tamano="lg"
+            mayusculas
+            className={`flex-1 min-w-0 ${isValid && !faltaElegir && !sinStock ? 'shadow-flotante' : 'opacity-70'}`}
+            onClick={handleAddToCart}
+            disabled={sinStock}
+            /* Mientras falta algo, el precio espera: el espacio es para decir qué falta. */
+            final={isValid && !faltaElegir && !sinStock ? `· ${pesosCO(displayTotal + diferenciaVariante * quantity)}` : null}
+          >
+            {/* Si falta algo, el botón lo dice: tocarlo lleva al grupo que falta. */}
+            {sinStock ? 'Agotado' : faltaElegir ? elegirQue(ejes.find((e, i) => !eleccion[i])?.nombre) : !isValid ? elegirQue(grupoPendiente()?.name) : 'Agregar'}
+          </Boton>
+        </div>
+      }
     >
-        <div
-          className="bg-white rounded-t-3xl sm:rounded-2xl max-w-lg w-full shadow-2xl flex flex-col max-h-[95vh] sm:max-h-[90vh] pb-safe"
-          onClick={handleModalClick}
-          onTouchStart={(e) => e.stopPropagation()}
-          onTouchMove={(e) => e.stopPropagation()}
-        >
-
-        {/* ── Header: product image hero + overlay info ── */}
-        <div className="relative flex-shrink-0">
-          {/* Drag indicator (mobile) */}
-          <div className="sm:hidden flex justify-center pt-2.5 pb-1 absolute top-0 left-0 right-0 z-30">
-            <div className="w-10 h-1 rounded-full bg-white/50" />
-          </div>
-
-          {fotos.length > 0 ? (
-            <div className="relative overflow-hidden rounded-t-3xl sm:rounded-t-2xl bg-slate-50">
-              {/* Se desliza con el dedo y cada foto encaja sola. */}
+        <div className="px-5 pb-5">
+          {/* La foto, entera y con bordes redondeados. Se desliza si hay varias
+              y se amplía con el botón. */}
+          {fotos.length > 0 && (
+            <div className="relative overflow-hidden rounded-2xl bg-slate-100">
               <div
                 ref={carruselRef}
                 className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
@@ -893,572 +951,293 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
                     src={foto}
                     alt={fotos.length > 1 ? `${product.name} · foto ${i + 1} de ${fotos.length}` : product.name}
                     loading={i === 0 ? 'eager' : 'lazy'}
-                    className="w-full flex-shrink-0 snap-center max-h-[50vh] object-contain"
+                    className="w-full flex-shrink-0 snap-center aspect-[4/3] object-cover"
                   />
                 ))}
               </div>
-
-              {/* Puntos arriba: abajo está el nombre y a los lados los botones. */}
               {fotos.length > 1 && (
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/35 backdrop-blur-md">
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/35 backdrop-blur-md">
                   {fotos.map((foto, i) => (
-                    <span
-                      key={'punto-' + foto + i}
-                      className={`rounded-full transition-all ${i === fotoActual ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/50'}`}
-                    />
+                    <span key={'punto-' + foto + i} className={`rounded-full transition-all ${i === fotoActual ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/55'}`} />
                   ))}
                 </div>
               )}
-
-              {/* El degradado no debe comerse el gesto del carrusel. */}
-              <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/70 via-black/20 to-black/10" />
-              {/* Expand image button */}
               <button
-                className="absolute top-3 left-3 w-8 h-8 rounded-xl bg-black/30 backdrop-blur-md text-white/90 hover:bg-black/50 transition-all flex items-center justify-center z-20"
+                className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/35 backdrop-blur-md text-white flex items-center justify-center"
                 onClick={() => setImageExpanded(true)}
                 aria-label="Ampliar imagen"
               >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-              </button>
-              {/* Close button */}
-              <button
-                className="absolute top-3 right-3 w-8 h-8 rounded-xl bg-black/30 backdrop-blur-md text-white/90 hover:bg-black/50 transition-all flex items-center justify-center z-20"
-                onClick={onClose}
-                aria-label="Cerrar"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              </button>
-              {/* Product info over image */}
-              <div className="absolute bottom-0 left-0 right-0 p-4">
-                <h2 className="text-lg sm:text-xl font-extrabold text-white drop-shadow-lg leading-tight">{product.name}</h2>
-                {product.description && (
-                  <div className="mt-1">
-                    <p className={`text-[12px] sm:text-[13px] text-white/80 leading-snug ${expandedDesc ? '' : 'line-clamp-2'}`}>{product.description}</p>
-                    {product.description.length > 60 && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setExpandedDesc(!expandedDesc); }}
-                        className="text-[11px] font-semibold text-white/60 hover:text-white/90 mt-0.5"
-                      >
-                        {expandedDesc ? 'ver menos' : 'ver más'}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="px-4 pt-4 pb-3 flex items-start justify-between border-b border-slate-100 rounded-t-3xl sm:rounded-t-2xl">
-              <div className="flex items-center gap-3 min-w-0">
-                <div 
-                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
-                  style={{ backgroundColor: `${themeBtn}12`, color: themeBtn }}
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v1m0 16v1m-8-9H3m18 0h-1M5.6 5.6l.7.7m12.1-.7l-.7.7M5.6 18.4l.7-.7m12.1.7l-.7-.7"/><circle cx="12" cy="12" r="4"/></svg>
-                </div>
-                <div className="min-w-0">
-                  <h2 className="text-base sm:text-lg font-extrabold text-slate-900 line-clamp-2">{product.name}</h2>
-                  {product.description && (
-                    <div className="mt-0.5">
-                      <p className={`text-[12px] text-slate-400 leading-snug ${expandedDesc ? '' : 'line-clamp-2'}`}>{product.description}</p>
-                      {product.description.length > 60 && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setExpandedDesc(!expandedDesc); }}
-                          className="text-[11px] font-semibold mt-0.5"
-                          style={{ color: themeBtn }}
-                        >
-                          {expandedDesc ? 'ver menos' : 'ver más'}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <button
-                className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition-all flex items-center justify-center flex-shrink-0 ml-2"
-                onClick={onClose}
-                aria-label="Cerrar"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                <Maximize2 className="w-4 h-4" />
               </button>
             </div>
           )}
-        </div>
 
-        {/* ── Body: scrollable ── */}
-        <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4 min-h-0">
+          {/* Precio y descripción */}
+          <div className={fotos.length > 0 ? 'mt-4' : ''}>
+            <p className="text-[17px] font-black tabular-nums" style={{ color: colorLegible }}>
+              {pesosCO(precioBase)}
+            </p>
+            {product.description && (
+              <div className="mt-1">
+                <p className={`text-[15px] text-tinta-2 leading-relaxed ${expandedDesc ? '' : 'line-clamp-3'}`}>{product.description}</p>
+                {product.description.length > 140 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setExpandedDesc(!expandedDesc); }}
+                    className="text-[13px] font-bold mt-0.5"
+                    style={{ color: colorLegible }}
+                  >
+                    {expandedDesc ? 'Ver menos' : 'Ver más'}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
-          {/* Lo que dijo quien ya lo compró. Arriba del todo a propósito: es lo
-              que decide la compra, sobre todo en ropa y perfumería, donde nadie
-              puede probarse nada antes de pagar. */}
+          {/* Lo que dijo quien ya lo compró: decide la compra. */}
           {opiniones?.total > 0 && (
-            <div className="mb-4 rounded-xl border border-slate-100 bg-slate-50 p-3">
+            <div className="mt-4 rounded-2xl border border-linea bg-superficie-2 p-3">
               <div className="flex items-center gap-1.5">
-                <span className="text-[15px] font-black text-slate-900 tabular-nums">{opiniones.promedio}</span>
+                <span className="text-[15px] font-black text-tinta tabular-nums">{opiniones.promedio}</span>
                 <div className="flex items-center gap-0.5">
                   {[1, 2, 3, 4, 5].map((n) => (
-                    <svg key={n} className="w-3.5 h-3.5" viewBox="0 0 24 24"
-                      fill={opiniones.promedio >= n - 0.25 ? '#facc15' : '#e2e8f0'}>
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                    </svg>
+                    <Star key={n} className={`w-3.5 h-3.5 ${opiniones.promedio >= n - 0.25 ? 'fill-yellow-400 text-yellow-400' : 'fill-slate-200 text-slate-200'}`} />
                   ))}
                 </div>
-                <span className="text-[11.5px] text-slate-400">
-                  {opiniones.total} {opiniones.total === 1 ? 'opinión' : 'opiniones'}
-                </span>
+                <span className="text-[12px] text-slate-400">{opiniones.total} {opiniones.total === 1 ? 'opinión' : 'opiniones'}</span>
               </div>
-
-              {(opiniones.comentarios || []).slice(0, 3).map((c, i) => (
-                <p key={i} className="mt-1.5 text-[12px] text-slate-600 leading-snug">
+              {(opiniones.comentarios || []).slice(0, 2).map((c, i) => (
+                <p key={i} className="mt-1.5 text-[13px] text-slate-600 leading-snug">
                   <span className="font-semibold text-slate-700">{c.nombre || 'Alguien'}:</span> “{c.texto}”
                 </p>
               ))}
             </div>
           )}
 
-          {/* Quantity stepper */}
-          <div className="flex items-center justify-between mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
-            <span className="text-sm font-semibold text-slate-700">Cantidad</span>
-            <div className="flex items-center gap-0.5">
-              <button
-                onClick={() => quantity > 1 && setQuantity(quantity - 1)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 transition-all active:scale-90"
-                style={quantity > 1 ? { backgroundColor: `${themeBtn}10`, color: themeBtn } : { backgroundColor: '#f1f5f9' }}
-                disabled={quantity <= 1}
-                aria-label="Disminuir cantidad"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M5 12h14"/></svg>
-              </button>
-              <span className="w-10 text-center font-bold text-slate-800 tabular-nums">{quantity}</span>
-              <button
-                onClick={() => setQuantity(quantity + 1)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-90"
-                style={{ backgroundColor: `${themeBtn}10`, color: themeBtn }}
-                aria-label="Aumentar cantidad"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-              </button>
-            </div>
-          </div>
-
-          {/* Indicador de opciones adicionales */}
-          {uniqueToppingGroups.length > 0 && (
-            <div className="mb-4 flex items-center gap-2.5 p-3 rounded-xl border border-slate-100 bg-slate-50/80">
-              <div 
-                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: `${themeBtn}12`, color: themeBtn }}
-              >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v1m0 16v1m-8-9H3m18 0h-1"/><circle cx="12" cy="12" r="4"/></svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-semibold text-slate-700">Opciones adicionales disponibles</p>
-                <p className="text-[11px] text-slate-400">Desliza hacia abajo para ver todas las opciones</p>
-              </div>
-              <svg className="w-4 h-4 text-slate-300 animate-bounce flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
-            </div>
-          )}
-
-          {/* Lista de grupos de toppings */}
-          {uniqueToppingGroups.length > 0 ? (
-            <div className="space-y-3">
-              {uniqueToppingGroups.map((group, index) => (
-                group && group._id ? (
-                  <div
-                    key={group._id}
-                    id={`group-${group._id}`}
-                    className={`rounded-xl border overflow-hidden transition-all duration-300 ${
-                      scrollToRequired && group.isRequired && !(selectedToppings[group._id]?.length > 0)
-                        ? 'border-red-300 bg-red-50/50 shadow-md ring-1 ring-red-200' 
-                        : countSelections(group) > 0
-                          ? 'border-slate-200 bg-white shadow-sm'
-                          : 'border-slate-150 bg-slate-50/50'
-                    }`}
-                  >
-                    {/* Group header */}
-                    <div
-                      onClick={() => toggleGroup(group._id)}
-                      className="flex items-center gap-3 p-3.5 cursor-pointer select-none"
+          {/* Tiendas: talla, color, fragancia… antes que los extras. */}
+          {ejes.map((eje, i) => (
+            <section key={eje.nombre} className="mt-6">
+              <Encabezado titulo={eje.nombre} nota={eleccion[i] ? eleccion[i] : 'Elige una'} obligatorio listo={Boolean(eleccion[i])} />
+              <div className="flex flex-wrap gap-2">
+                {eje.valores.map((valor) => {
+                  const elegido = eleccion[i] === valor;
+                  const hay = valorDisponible(i, valor);
+                  return (
+                    <button
+                      key={valor}
+                      type="button"
+                      onClick={() => elegirValor(i, valor)}
+                      disabled={!hay && !elegido}
+                      className={`min-w-[56px] h-11 px-4 rounded-full text-[14px] font-bold border-2 transition-all ${
+                        hay || elegido ? '' : 'border-slate-100 text-slate-300 line-through cursor-not-allowed'
+                      }`}
+                      style={elegido
+                        ? { borderColor: themeBtn, backgroundColor: `${themeBtn}14`, color: '#0f172a' }
+                        : hay ? { borderColor: '#e2e8f0', color: '#334155' } : undefined}
                     >
-                      {/* Icon */}
-                      <div 
-                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ 
-                          backgroundColor: countSelections(group) > 0 ? `${themeBtn}15` : '#f1f5f9',
-                          color: countSelections(group) > 0 ? themeBtn : '#94a3b8'
-                        }}
-                      >
-                        {group.isMultipleChoice ? (
-                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 12l2 2 4-4"/></svg>
-                        ) : (
-                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg>
-                        )}
-                      </div>
-
-                      {/* Text */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-sm text-slate-800 truncate">{group.name}</h3>
-                          {/* Free options badge */}
-                          {(
-                            (group.options && group.options.some(option => isFreeOption(option.name))) ||
-                            (group.subGroups && group.subGroups.some(subGroup => 
-                              subGroup.options && subGroup.options.some(option => isFreeOption(option.name))
-                            ))
-                          ) && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 flex-shrink-0">
-                              <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8L12 2z"/></svg>
-                              Gratis
-                            </span>
-                          )}
-                        </div>
-                        {/* Tags row */}
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          {group.isRequired ? (
-                            <span className="text-[10px] font-semibold text-red-500">Obligatorio</span>
-                          ) : (
-                            <span className="text-[10px] font-medium text-slate-400">Opcional</span>
-                          )}
-                          <span className="text-[8px] text-slate-300">●</span>
-                          <span className="text-[10px] font-medium text-slate-400">
-                            {group.isMultipleChoice ? 'Selección múltiple' : 'Selección única'}
-                          </span>
-                          {Number(group.basePrice) > 0 && (
-                            <>
-                              <span className="text-[8px] text-slate-300">●</span>
-                              <span className="text-[10px] font-semibold text-emerald-600">+${group.basePrice?.toLocaleString()}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Right side: count + clear + chevron */}
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        {countSelections(group) > 0 && (
-                          <>
-                            <span 
-                              className="inline-flex items-center justify-center text-[10px] font-bold rounded-full w-5 h-5"
-                              style={{ backgroundColor: `${themeBtn}15`, color: themeBtn }}
-                            >
-                              {countSelections(group)}
-                            </span>
-                            <button
-                              onClick={(e) => clearGroupSelections(group._id, e)}
-                              className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                              aria-label="Limpiar selecciones"
-                            >
-                              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                            </button>
-                          </>
-                        )}
-                        <svg
-                          className={`w-4 h-4 text-slate-400 transform transition-transform duration-200 ${expandedGroups[group._id] ? 'rotate-180' : ''}`}
-                          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
-                        >
-                          <path d="M6 9l6 6 6-6"/>
-                        </svg>
-                      </div>
-                    </div>
-                    
-                    {/* Expanded options */}
-                    {expandedGroups[group._id] && (
-                      <div className="px-3.5 pb-3.5 space-y-1.5">
-                        {/* Main options */}
-                        {Array.isArray(group.options) && group.options.length > 0 && (
-                          <div className="space-y-1.5">
-                            {group.options.filter(option => option && option._id && option.active !== false).map(option => {
-                              const isSelected = (selectedToppings[group._id] || []).includes(option._id);
-                              return (
-                                <div
-                                  key={option._id}
-                                  onClick={() => handleOptionChange(group._id, option._id)}
-                                  className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all duration-150 ${
-                                    isSelected
-                                      ? 'bg-white shadow-sm border-2'
-                                      : 'bg-white/60 hover:bg-white border border-slate-100 hover:border-slate-200'
-                                  }`}
-                                  style={isSelected ? { borderColor: `${themeBtn}40`, backgroundColor: `${themeBtn}05` } : undefined}
-                                >
-                                  <div className="flex items-center gap-2.5 min-w-0">
-                                    {/* Custom checkbox/radio */}
-                                    <div
-                                      className={`w-5 h-5 flex-shrink-0 flex items-center justify-center transition-all duration-150 ${
-                                        group.isMultipleChoice ? 'rounded-md' : 'rounded-full'
-                                      }`}
-                                      style={isSelected 
-                                        ? { backgroundColor: themeBtn, borderColor: themeBtn } 
-                                        : { backgroundColor: 'transparent', border: '2px solid #cbd5e1' }
-                                      }
-                                    >
-                                      {isSelected && (
-                                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke={themeTxt} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                                      )}
-                                    </div>
-                                    {option.image && (
-                                      <img
-                                        src={option.image}
-                                        alt=""
-                                        loading="lazy"
-                                        className="w-8 h-8 rounded-md object-cover flex-shrink-0 border border-slate-200 bg-slate-50"
-                                      />
-                                    )}
-                                    <span className={`text-sm ${isSelected ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>{option.name || 'Opción'}</span>
-                                  </div>
-                                  
-                                  {isFreeOption(option.name) ? (
-                                    <span className="text-[11px] font-bold text-emerald-500 flex-shrink-0">GRATIS</span>
-                                  ) : Number(option.price) > 0 ? (
-                                    <span className={`text-[12px] font-semibold flex-shrink-0 ${isSelected ? 'text-slate-700' : 'text-slate-400'}`}>+${option.price?.toLocaleString()}</span>
-                                  ) : null}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                        
-                        {/* Subgroups */}
-                        {Array.isArray(group.subGroups) && group.subGroups.length > 0 && (
-                          <div className="mt-2 space-y-2.5">
-                            {group.subGroups.filter(subGroup => subGroup && subGroup._id).map(subGroup => {
-                              const subSelections = selectedToppings[`${group._id}_${subGroup._id}`] || [];
-                              const atMax = subGroup.isMultipleChoice && subGroup.maxSelections > 0 && subSelections.length >= subGroup.maxSelections;
-                              return (
-                                <div key={subGroup._id} className="rounded-xl bg-slate-50/80 border border-slate-100 p-3">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <h5 className="font-bold text-[13px] text-slate-700 flex items-center gap-1.5">
-                                      {subGroup.title}
-                                      {subGroup.isMultipleChoice && subGroup.maxSelections > 0 && (
-                                        <span className={`text-[11px] font-semibold ${atMax ? 'text-amber-500' : 'text-slate-400'}`}>
-                                          ({subSelections.length}/{subGroup.maxSelections})
-                                        </span>
-                                      )}
-                                    </h5>
-                                    {subGroup.options && subGroup.options.some(option => isFreeOption(option.name)) && (
-                                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100">
-                                        <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8L12 2z"/></svg>
-                                        Gratis
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  <div className="space-y-1.5">
-                                    {Array.isArray(subGroup.options) && subGroup.options.filter(option => option && option._id && option.active !== false).map(option => {
-                                      const count = subSelections.filter(id => id === option._id).length;
-                                      const isSelected = count > 0;
-
-                                      if (subGroup.allowRepeats) {
-                                        const canAdd = !atMax;
-                                        return (
-                                          <div
-                                            key={option._id}
-                                            className={`flex items-center justify-between p-2.5 rounded-lg border-2 transition-all duration-150 ${
-                                              isSelected ? 'bg-white shadow-sm' : 'bg-white/80 border-slate-100'
-                                            }`}
-                                            style={isSelected ? { borderColor: `${themeBtn}40`, backgroundColor: `${themeBtn}05` } : undefined}
-                                          >
-                                            <div className="flex items-center gap-2.5 min-w-0">
-                                              {option.image && (
-                                                <img
-                                                  src={option.image}
-                                                  alt=""
-                                                  loading="lazy"
-                                                  className="w-8 h-8 rounded-md object-cover flex-shrink-0 border border-slate-200 bg-slate-50"
-                                                />
-                                              )}
-                                              <span className={`text-sm ${isSelected ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>{option.name || 'Opción'}</span>
-                                              {!isFreeOption(option.name) && Number(option.price) > 0 && (
-                                                <span className={`text-[12px] font-semibold ${isSelected ? 'text-slate-700' : 'text-slate-400'}`}>+${option.price?.toLocaleString()}</span>
-                                              )}
-                                            </div>
-                                            <div className="flex items-center gap-1.5 flex-shrink-0">
-                                              <button
-                                                type="button"
-                                                onClick={() => handleRepeatCountChange(group._id, subGroup._id, option._id, -1)}
-                                                disabled={count === 0}
-                                                className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm font-black transition-colors ${
-                                                  count === 0 ? 'opacity-30 cursor-not-allowed bg-slate-100' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                                                }`}
-                                              >−</button>
-                                              <span className="w-4 text-center text-sm font-bold text-slate-700 tabular-nums">{count}</span>
-                                              <button
-                                                type="button"
-                                                onClick={() => handleRepeatCountChange(group._id, subGroup._id, option._id, 1)}
-                                                disabled={!canAdd}
-                                                className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm font-black transition-colors ${
-                                                  !canAdd ? 'opacity-30 cursor-not-allowed bg-slate-100' : 'text-white'
-                                                }`}
-                                                style={canAdd ? { backgroundColor: themeBtn } : undefined}
-                                              >+</button>
-                                            </div>
-                                          </div>
-                                        );
-                                      }
-
-                                      const disabled = atMax && !isSelected;
-                                      return (
-                                        <div
-                                          key={option._id}
-                                          onClick={() => !disabled && handleOptionChange(
-                                            group._id,
-                                            option._id,
-                                            true,
-                                            subGroup._id,
-                                            !subGroup.isMultipleChoice
-                                          )}
-                                          className={`flex items-center justify-between p-2.5 rounded-lg transition-all duration-150 ${
-                                            isSelected
-                                              ? 'cursor-pointer bg-white shadow-sm border-2'
-                                              : disabled
-                                                ? 'cursor-not-allowed opacity-50 bg-white/50 border border-slate-100'
-                                                : 'cursor-pointer bg-white/80 hover:bg-white border border-slate-100 hover:border-slate-200'
-                                          }`}
-                                          style={isSelected ? { borderColor: `${themeBtn}40`, backgroundColor: `${themeBtn}05` } : undefined}
-                                        >
-                                          <div className="flex items-center gap-2.5 min-w-0">
-                                            <div
-                                              className={`w-5 h-5 flex-shrink-0 flex items-center justify-center transition-all duration-150 ${
-                                                subGroup.isMultipleChoice ? 'rounded-md' : 'rounded-full'
-                                              }`}
-                                              style={isSelected
-                                                ? { backgroundColor: themeBtn, borderColor: themeBtn }
-                                                : { backgroundColor: 'transparent', border: '2px solid #cbd5e1' }
-                                              }
-                                            >
-                                              {isSelected && (
-                                                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke={themeTxt} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                                              )}
-                                            </div>
-                                            {option.image && (
-                                              <img
-                                                src={option.image}
-                                                alt=""
-                                                loading="lazy"
-                                                className="w-8 h-8 rounded-md object-cover flex-shrink-0 border border-slate-200 bg-slate-50"
-                                              />
-                                            )}
-                                            <span className={`text-sm ${isSelected ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>{option.name || 'Opción'}</span>
-                                          </div>
-
-                                          {isFreeOption(option.name) ? (
-                                            <span className="text-[11px] font-bold text-emerald-500 flex-shrink-0">GRATIS</span>
-                                          ) : Number(option.price) > 0 ? (
-                                            <span className={`text-[12px] font-semibold flex-shrink-0 ${isSelected ? 'text-slate-700' : 'text-slate-400'}`}>+${option.price?.toLocaleString()}</span>
-                                          ) : null}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : null
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-6 px-4 text-center rounded-xl bg-slate-50 border border-slate-100">
-              <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mb-3">
-                <svg className="w-6 h-6 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                      {valor}
+                    </button>
+                  );
+                })}
               </div>
-              <p className="text-sm font-semibold text-slate-600">Sin personalización adicional</p>
-              <p className="text-[12px] text-slate-400 mt-0.5">Ajusta la cantidad y agrega al carrito.</p>
-            </div>
-          )}
-          
-          {/* Error */}
-          {error && (
-            <div className="mt-3 flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
-              <svg className="w-4 h-4 text-red-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
-          )}
-        </div>
-        
-        {/* ── Footer: price + add button ── */}
-        <div className="border-t border-slate-100 bg-white px-4 py-3 sm:py-4 flex-shrink-0 rounded-b-2xl">
-          {/* Tiendas: talla, color, fragancia… lo que el negocio haya definido */}
-          {ejes.length > 0 && (
-            <div className="mb-3 space-y-2.5">
-              {ejes.map((eje, i) => (
-                <div key={eje.nombre}>
-                  <p className="mb-1 text-[12px] font-semibold text-slate-600">
-                    {eje.nombre}
-                    {!eleccion[i] && <span className="ml-1 font-normal text-slate-400">· elige una opción</span>}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {eje.valores.map((valor) => {
-                      const elegido = eleccion[i] === valor;
-                      const hay = valorDisponible(i, valor);
-                      return (
-                        <button
-                          key={valor}
-                          type="button"
-                          onClick={() => elegirValor(i, valor)}
-                          disabled={!hay && !elegido}
-                          className={`px-3 py-1.5 rounded-full text-[13px] font-medium border transition-all ${
-                            elegido
-                              ? 'border-slate-900 bg-slate-900 text-white'
-                              : hay
-                                ? 'border-slate-200 text-slate-700 hover:border-slate-400'
-                                : 'border-slate-100 text-slate-300 line-through cursor-not-allowed'
-                          }`}
-                        >
-                          {valor}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-              {varianteElegida && (
-                <p className="text-[11.5px] text-slate-400">
-                  {!controlaStock
-                    ? 'Disponible'
-                    : Number(varianteElegida.stock) > 0
-                      ? (Number(varianteElegida.stock) <= 5
-                          ? `Quedan ${varianteElegida.stock}`
-                          : 'Disponible')
-                      : 'Agotado'}
+              {i === ejes.length - 1 && varianteElegida && (
+                <p className="mt-2 text-[12px] text-slate-400">
+                  {!controlaStock ? 'Disponible' : Number(varianteElegida.stock) > 0
+                    ? (Number(varianteElegida.stock) <= 5 ? `Quedan ${varianteElegida.stock}` : 'Disponible')
+                    : 'Agotado'}
                   {varianteElegida.sku ? ` · ${varianteElegida.sku}` : ''}
                 </p>
               )}
+            </section>
+          ))}
+
+          {/* Los grupos de opciones, todos abiertos: plegados obligaban a
+              tocar cada uno para descubrir qué había adentro. */}
+          {uniqueToppingGroups.filter((g) => g && g._id).map((group) => {
+            const seleccionadas = countSelections(group);
+            const resaltado = scrollToRequired && group.isRequired && !(selectedToppings[group._id]?.length > 0);
+            const gratisEnGrupo = (group.options || []).some((o) => isFreeOption(o.name));
+            return (
+              <section
+                key={group._id}
+                id={`group-${group._id}`}
+                className={`mt-6 scroll-mt-4 transition-all ${resaltado ? 'rounded-2xl ring-2 ring-red-300 bg-red-50/50 p-3 -mx-3' : ''}`}
+              >
+                <Encabezado
+                  titulo={group.name}
+                  nota={[
+                    group.isMultipleChoice ? 'Puedes elegir varias' : 'Elige una',
+                    Number(group.basePrice) > 0 ? `+${pesosCO(group.basePrice)}` : '',
+                    gratisEnGrupo ? 'hay opciones gratis' : '',
+                  ].filter(Boolean).join(' · ')}
+                  obligatorio={group.isRequired}
+                  listo={seleccionadas > 0}
+                  onLimpiar={seleccionadas > 0 && !group.isRequired ? (e) => clearGroupSelections(group._id, e) : null}
+                />
+
+                <div className="space-y-2">
+                  {(group.options || []).filter((o) => o && o._id && o.active !== false).map((option) => (
+                    <Opcion
+                      key={option._id}
+                      nombre={option.name || 'Opción'}
+                      imagen={option.image}
+                      precio={Number(option.price) || 0}
+                      gratis={isFreeOption(option.name)}
+                      multiple={group.isMultipleChoice}
+                      elegida={(selectedToppings[group._id] || []).includes(option._id)}
+                      onTocar={() => handleOptionChange(group._id, option._id)}
+                    />
+                  ))}
+                </div>
+
+                {(group.subGroups || []).filter((sg) => sg && sg._id).map((subGroup) => {
+                  const subSelections = selectedToppings[`${group._id}_${subGroup._id}`] || [];
+                  const atMax = subGroup.isMultipleChoice && subGroup.maxSelections > 0 && subSelections.length >= subGroup.maxSelections;
+                  return (
+                    <div key={subGroup._id} className="mt-4">
+                      <p className="mb-2 text-[13px] font-bold text-slate-700">
+                        {subGroup.title}
+                        {subGroup.isMultipleChoice && subGroup.maxSelections > 0 && (
+                          <span className={`ml-1.5 text-[12px] font-semibold ${atMax ? 'text-amber-600' : 'text-slate-400'}`}>
+                            {subSelections.length} de {subGroup.maxSelections}
+                          </span>
+                        )}
+                      </p>
+                      <div className="space-y-2">
+                        {(subGroup.options || []).filter((o) => o && o._id && o.active !== false).map((option) => {
+                          const count = subSelections.filter((id) => id === option._id).length;
+                          if (subGroup.allowRepeats) {
+                            return (
+                              <Opcion
+                                key={option._id}
+                                nombre={option.name || 'Opción'}
+                                imagen={option.image}
+                                precio={Number(option.price) || 0}
+                                gratis={isFreeOption(option.name)}
+                                elegida={count > 0}
+                                cantidad={count}
+                                puedeSumar={!atMax}
+                                onMas={() => handleRepeatCountChange(group._id, subGroup._id, option._id, 1)}
+                                onMenos={() => handleRepeatCountChange(group._id, subGroup._id, option._id, -1)}
+                              />
+                            );
+                          }
+                          const elegida = count > 0;
+                          return (
+                            <Opcion
+                              key={option._id}
+                              nombre={option.name || 'Opción'}
+                              imagen={option.image}
+                              precio={Number(option.price) || 0}
+                              gratis={isFreeOption(option.name)}
+                              multiple={subGroup.isMultipleChoice}
+                              elegida={elegida}
+                              deshabilitada={atMax && !elegida}
+                              onTocar={() => handleOptionChange(group._id, option._id, true, subGroup._id, !subGroup.isMultipleChoice)}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </section>
+            );
+          })}
+
+          {error && (
+            <div className="mt-4 flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-2xl">
+              <AlertCircle className="w-4 h-4 text-peligro flex-shrink-0" />
+              <p className="text-[14px] text-red-600">{error}</p>
             </div>
           )}
-          {/* Add to cart button — full width capsule with price embedded */}
-          <button
-            onClick={handleAddToCart}
-            disabled={faltaElegir || sinStock}
-            className={`w-full py-4 rounded-full font-bold text-[15px] flex items-center justify-center gap-3 transition-all duration-200 active:scale-[0.97] ${
-              isValid && !faltaElegir && !sinStock ? '' : 'opacity-60'
-            } ${faltaElegir || sinStock ? 'cursor-not-allowed' : ''}`}
-            style={{ 
-              backgroundColor: themeBtn, 
-              color: themeTxt,
-              boxShadow: isValid ? `0 8px 24px ${themeBtn}40` : undefined
-            }}
-          >
-            <span className="flex items-center gap-2">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
-              <span>Agregar</span>
-              {quantity > 1 && <span className="opacity-70">× {quantity}</span>}
-            </span>
-            <span className="w-px h-5 bg-white/20" />
-            <span className="font-extrabold tabular-nums text-base">
-              ${(displayTotal + diferenciaVariante * quantity).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-            </span>
-            {extraTotal > 0 && (
-              <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-white/15">
-                +${extraTotal.toLocaleString()}
-              </span>
-            )}
-          </button>
         </div>
-      </div>
+    </Hoja>
     </div>
     </>
   );
 }
 
-export default ProductToppingsSelector; 
+export default ProductToppingsSelector;
+
+/** El título de un grupo: en mayúsculas pequeñas, con lo que pide y su estado. */
+function Encabezado({ titulo, nota, obligatorio, listo, onLimpiar }) {
+  return (
+    <div className="flex items-end justify-between gap-3 mb-2.5">
+      <div className="min-w-0">
+        <h3 className="text-[13px] font-black uppercase tracking-[0.12em] text-slate-500">{titulo}</h3>
+        {nota && <p className="text-[12.5px] text-slate-400 mt-0.5">{nota}</p>}
+      </div>
+      {obligatorio ? (
+        <span className={`flex-shrink-0 text-[11.5px] font-bold px-2.5 py-1 rounded-full ${listo ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
+          {listo ? '✓ Listo' : 'Obligatorio'}
+        </span>
+      ) : onLimpiar ? (
+        <button onClick={onLimpiar} className="flex-shrink-0 text-[12px] font-semibold text-slate-400 hover:text-slate-700">Quitar</button>
+      ) : (
+        <span className="flex-shrink-0 text-[12px] font-semibold text-slate-400">Opcional</span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Una opción: una casilla grande, a lo ancho, con el nombre en negrita, el
+ * precio en el color del negocio y la marca a la derecha. Elegida, se tiñe
+ * del color del negocio. Las repetibles llevan − y + en vez de la marca.
+ */
+function Opcion({ nombre, imagen, precio, gratis, multiple, elegida, deshabilitada, onTocar, cantidad, puedeSumar, onMas, onMenos }) {
+  const { businessConfig } = useBusinessConfig();
+  const color = businessConfig?.theme?.buttonColor || '#3B82F6';
+  const repetible = typeof onMas === 'function';
+  const precioTexto = gratis ? null : precio > 0 ? `+ $${Math.round(precio).toLocaleString('es-CO')}` : null;
+
+  const contenido = (
+    <>
+      {imagen && <img src={imagen} alt="" loading="lazy" className="w-11 h-11 rounded-xl object-cover flex-shrink-0 bg-slate-100" />}
+      <span className="flex-1 min-w-0 text-[15px] font-bold text-slate-900 leading-snug">{nombre}</span>
+      {gratis && <span className="flex-shrink-0 text-[12px] font-black text-emerald-600">GRATIS</span>}
+      {precioTexto && <span className="flex-shrink-0 text-[14px] font-black tabular-nums text-slate-700">{precioTexto}</span>}
+    </>
+  );
+
+  const estilo = elegida
+    ? { borderColor: color, backgroundColor: `${color}12` }
+    : { borderColor: '#e2e8f0', backgroundColor: '#ffffff' };
+
+  if (repetible) {
+    return (
+      <div className="w-full min-h-[60px] flex items-center gap-3 px-4 py-2.5 rounded-2xl border-2 transition-colors" style={estilo}>
+        {contenido}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button type="button" onClick={onMenos} disabled={!cantidad}
+            className="w-9 h-9 rounded-full border-2 border-slate-200 flex items-center justify-center text-slate-700 disabled:opacity-30" aria-label={`Quitar ${nombre}`}>−</button>
+          <span className="w-6 text-center text-[15px] font-black tabular-nums">{cantidad}</span>
+          <button type="button" onClick={onMas} disabled={!puedeSumar}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-white disabled:opacity-30" style={{ backgroundColor: color }} aria-label={`Agregar ${nombre}`}>+</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onTocar}
+      disabled={deshabilitada}
+      aria-pressed={elegida}
+      className="w-full min-h-[60px] flex items-center gap-3 px-4 py-2.5 rounded-2xl border-2 text-left transition-colors active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
+      style={estilo}
+    >
+      {contenido}
+      {/* Círculo si es una sola; cuadro si son varias. */}
+      <span
+        className={`w-6 h-6 flex-shrink-0 flex items-center justify-center border-2 ${multiple ? 'rounded-lg' : 'rounded-full'}`}
+        style={elegida ? { borderColor: color, backgroundColor: multiple ? color : 'transparent' } : { borderColor: '#94a3b8' }}
+      >
+        {elegida && (multiple
+          ? <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+          : <span className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />)}
+      </span>
+    </button>
+  );
+}

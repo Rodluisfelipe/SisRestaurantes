@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { API_URL } from '../../config';
+import { Capa } from '../ui';
 
 const PRIORITY = {
   urgent: {
@@ -97,6 +98,7 @@ function ImageLightbox({ src, alt, onClose }) {
       aria-modal="true"
       aria-label="Imagen ampliada"
     >
+      <Capa onCerrar={onClose} bloquearScroll={false} />
       <motion.img
         initial={{ scale: 0.92, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -210,16 +212,16 @@ export default function AnnouncementInlineBar() {
                 {/* Label + title */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                    <span className={`text-[10px] font-bold uppercase tracking-wider ${cfg.sub}`}>
+                    <span className={`text-2xs font-bold uppercase tracking-wider ${cfg.sub}`}>
                       {cfg.label}
                     </span>
                     {remaining > 0 && (
-                      <span className={`text-[10px] font-bold ${cfg.sub} bg-white/80 px-1.5 py-0.5 rounded-full`}>
+                      <span className={`text-2xs font-bold ${cfg.sub} bg-white/80 px-1.5 py-0.5 rounded-full`}>
                         +{remaining} más
                       </span>
                     )}
                     {imgSrc && (
-                      <span className={`text-[10px] font-semibold ${cfg.sub} opacity-70 hidden sm:inline-flex items-center gap-1`}>
+                      <span className={`text-2xs font-semibold ${cfg.sub} opacity-70 hidden sm:inline-flex items-center gap-1`}>
                         <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
                         con imagen
                       </span>

@@ -16,12 +16,12 @@ const NotFound = () => {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="max-w-md w-full bg-white border border-[#DCE4F5] rounded-2xl shadow-xl overflow-hidden p-8 text-center"
+        className="max-w-md w-full bg-white border border-plataforma-borde rounded-2xl shadow-xl overflow-hidden p-8 text-center"
       >
-        <div className="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-[#3A7AFF]/10 mb-6">
+        <div className="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-plataforma-azul/10 mb-6">
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
-            className="h-12 w-12 text-[#3A7AFF]" 
+            className="h-12 w-12 text-plataforma-azul" 
             fill="none" 
             viewBox="0 0 24 24" 
             stroke="currentColor"
@@ -35,16 +35,16 @@ const NotFound = () => {
           </svg>
         </div>
         
-        <h1 className="text-4xl font-extrabold text-[#1F2937] mb-2">404</h1>
-        <h2 className="text-2xl font-bold text-[#1F2937] mb-4">Página no encontrada</h2>
+        <h1 className="text-4xl font-extrabold text-plataforma-tinta mb-2">404</h1>
+        <h2 className="text-2xl font-bold text-plataforma-tinta mb-4">Página no encontrada</h2>
         
         {isBusinessContext ? (
-          <p className="text-[#6C7A92] mb-6">
-            Lo sentimos, el negocio <span className="font-semibold text-[#1F2937]">"{businessId}"</span> no existe o la página que estás buscando no está disponible.
+          <p className="text-plataforma-gris mb-6">
+            Lo sentimos, el negocio <span className="font-semibold text-plataforma-tinta">"{businessId}"</span> no existe o la página que estás buscando no está disponible.
           </p>
         ) : (
-          <p className="text-[#6C7A92] mb-6">
-            Lo sentimos, la página <span className="font-semibold text-[#1F2937]">"{path}"</span> no existe o no está disponible.
+          <p className="text-plataforma-gris mb-6">
+            Lo sentimos, la página <span className="font-semibold text-plataforma-tinta">"{path}"</span> no existe o no está disponible.
           </p>
         )}
         
@@ -55,7 +55,7 @@ const NotFound = () => {
           >
             <Link 
               to="/" 
-              className="inline-flex items-center justify-center px-6 py-3 border border-transparent rounded-lg shadow-sm font-medium text-white bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3A7AFF]/50 w-full"
+              className="inline-flex items-center justify-center px-6 py-3 border border-transparent rounded-lg shadow-sm font-medium text-white bg-plataforma-azul hover:bg-plataforma-azul/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-plataforma-azul/50 w-full"
             >
               Volver al inicio
             </Link>
@@ -68,7 +68,7 @@ const NotFound = () => {
             >
               <Link 
                 to="/contact" 
-                className="inline-flex items-center justify-center px-6 py-3 border border-[#3A7AFF]/30 rounded-lg shadow-sm font-medium text-[#3A7AFF] hover:bg-[#3A7AFF]/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3A7AFF]/50 w-full"
+                className="inline-flex items-center justify-center px-6 py-3 border border-plataforma-azul/30 rounded-lg shadow-sm font-medium text-plataforma-azul hover:bg-plataforma-azul/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-plataforma-azul/50 w-full"
               >
                 Contactar soporte
               </Link>
@@ -77,9 +77,9 @@ const NotFound = () => {
         </div>
       </motion.div>
       
-      <p className="mt-8 text-[#6C7A92] text-sm">
+      <p className="mt-8 text-plataforma-gris text-sm">
         ¿Buscas crear tu propio menú digital? {' '}
-        <Link to="/register" className="text-[#3A7AFF] hover:underline">
+        <Link to="/register" className="text-plataforma-azul hover:underline">
           Regístrate gratis
         </Link>
       </p>

@@ -13,7 +13,6 @@ const SEGMENTS = {
   never_activated: { label: 'Nunca activaron', desc: 'Registrados hace más de una semana y sin un solo pedido' },
   without_pos:     { label: 'Sin POS', desc: 'Aún no tienen el punto de venta activo' },
   with_pos:        { label: 'Con POS', desc: 'Ya usan el punto de venta' },
-  without_menu_v2: { label: 'Sin menú V2', desc: 'Siguen con el menú anterior' },
   by_plan:         { label: 'Por plan', desc: 'Solo ciertos planes comerciales' },
 };
 
@@ -38,8 +37,10 @@ async function businessMatchesSegment(businessId, segment) {
         return !business.features?.posBetaEnabled;
       case 'with_pos':
         return !!business.features?.posBetaEnabled;
+      /* Ya no hay menú anterior: todos usan el mismo. Un anuncio viejo con
+         este segmento no le llega a nadie. */
       case 'without_menu_v2':
-        return !business.features?.menuV2;
+        return false;
       case 'by_plan': {
         const plans = (segment.plans || []).map((p) => String(p).toLowerCase());
         if (!plans.length) return true;

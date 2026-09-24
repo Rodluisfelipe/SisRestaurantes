@@ -172,8 +172,8 @@ function App() {
         <Route path="/reset-password/:token" element={<Suspense fallback={<div>Loading...</div>}><SuperAdminDashboard /></Suspense>} />
 
         {/* Crew — marketplace de turnos para estudiantes/casuales */}
-        <Route path="/crew" element={<Suspense fallback={<div className="flex items-center justify-center h-screen bg-[#0A0A14]"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#7B2FFF]"></div></div>}><CrewApp /></Suspense>} />
-        <Route path="/trabajar" element={<Suspense fallback={<div className="flex items-center justify-center h-screen bg-[#0A0A14]"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#7B2FFF]"></div></div>}><CrewApp /></Suspense>} />
+        <Route path="/crew" element={<Suspense fallback={<div className="flex items-center justify-center h-screen bg-crew-noche"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#7B2FFF]"></div></div>}><CrewApp /></Suspense>} />
+        <Route path="/trabajar" element={<Suspense fallback={<div className="flex items-center justify-center h-screen bg-crew-noche"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#7B2FFF]"></div></div>}><CrewApp /></Suspense>} />
 
         {/* Crew Employer — panel para empleadores externos */}
         <Route path="/empleador" element={<Suspense fallback={<div className="flex items-center justify-center h-screen bg-slate-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><CrewEmployerApp /></Suspense>} />

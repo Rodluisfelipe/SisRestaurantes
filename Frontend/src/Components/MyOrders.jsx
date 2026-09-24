@@ -5,6 +5,7 @@ import { socket } from '../services/socket';
 import logger from '../utils/logger';
 import { formatCurrency } from '../utils/currency';
 import { ClipboardList, CreditCard, Upload, CheckCircle2, ChefHat, PartyPopper, Sparkles, Home, XCircle, PackageOpen } from 'lucide-react';
+import { Capa } from './ui';
 
 const STATUS_LABELS = {
   pending: { label: 'Recibido', icon: ClipboardList, bg: 'bg-blue-100', text: 'text-blue-700' },
@@ -88,6 +89,7 @@ const MyOrders = ({ businessId, phone, businessConfig, onTrackOrder, onClose }) 
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end sm:items-center justify-center z-50">
+      <Capa onCerrar={onClose} />
       <motion.div
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}

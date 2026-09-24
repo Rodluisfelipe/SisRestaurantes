@@ -7,6 +7,18 @@ const { isValidObjectId } = require('../utils/validators');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 const rateLimit = require('express-rate-limit');
+const { abreCuenta } = require('../utils/cuentaCliente');
+
+/* Los favoritos de alguien solo con la llave de su cuenta (ver
+   utils/cuentaCliente): antes bastaba el teléfono para verlos o borrarlos. */
+function soloSuCuenta(req, res, next) {
+  const businessId = req.query.businessId || req.body?.businessId;
+  const telefono = req.query.phone || req.body?.phone;
+  if (!businessId || !telefono || !abreCuenta(req, businessId, telefono)) {
+    return res.status(401).json({ codigo: 'SIN_CUENTA', message: 'Tu cuenta se activa en este celular con tu primer pedido.' });
+  }
+  return next();
+}
 
 // Rate limiter for public favorites endpoints
 const favoritesLimiter = rateLimit({
@@ -20,7 +32,7 @@ const favoritesLimiter = rateLimit({
  * Get all favorites for a customer
  * Query params: phone, businessId
  */
-router.get('/', favoritesLimiter, async (req, res) => {
+router.get('/', favoritesLimiter, soloSuCuenta, async (req, res) => {
   try {
     const { phone, businessId } = req.query;
 
@@ -47,7 +59,7 @@ router.get('/', favoritesLimiter, async (req, res) => {
  * Add a product to favorites
  * Body: { phone, businessId, productId, productName, productPrice, productImage, selectedToppings, selectedOptions, notes }
  */
-router.post('/', favoritesLimiter, async (req, res) => {
+router.post('/', favoritesLimiter, soloSuCuenta, async (req, res) => {
   try {
     const {
       phone,
@@ -136,7 +148,7 @@ router.post('/', favoritesLimiter, async (req, res) => {
  * DELETE /api/favorites/:id
  * Remove a favorite
  */
-router.delete('/:id', favoritesLimiter, async (req, res) => {
+router.delete('/:id', favoritesLimiter, soloSuCuenta, async (req, res) => {
   try {
     const { id } = req.params;
     const { phone, businessId } = req.query;
@@ -186,6 +198,9 @@ router.post('/:id/order', favoritesLimiter, async (req, res) => {
     
     if (!favorite) {
       return res.status(404).json(formatHttpError(req, 'Favorite not found', 404));
+    }
+    if (!abreCuenta(req, favorite.businessId, favorite.phone)) {
+      return res.status(401).json({ codigo: 'SIN_CUENTA', message: 'Tu cuenta se activa en este celular con tu primer pedido.' });
     }
 
     await favorite.recordOrder();

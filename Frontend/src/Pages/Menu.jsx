@@ -5,19 +5,18 @@ const ReviewModal = lazy(() => import("../Components/ReviewModal"));
 const ReviewsSheet = lazy(() => import("../Components/ReviewsSheet"));
 import ProductCard from "../Components/Productcard";
 import { registrarOrigen, origenActual } from "../utils/origenVisita";
-import BusinessHeader from "../Components/BusinessHeader";
 // Import directo (no lazy): es el primer render del menú, un chunk aparte
 // castigaría el LCP y haría parpadear la cabecera.
 import ProfileHeader from "../Components/ProfileHeader";
 import useTipoDeEnlace from '../hooks/useTipoDeEnlace';
 import MenuStructuredData from "../Components/MenuStructuredData";
 import MenuPopup from "../Components/MenuPopup";
+import { usarCuentaDe, tieneCuenta, guardarLlave } from "../utils/cuentaCliente";
 import { menuCssVars } from "../utils/menuTokens";
 import CartSummary from "../Components/CartSummary";
 import OrderTypeSelector from "../Components/OrderTypeSelector";
 import FilterableMenu from "../Components/FilterableMenu";
 import OrderConfirmationModal from "../Components/OrderConfirmationModal";
-import CartBar from "../Components/CartBar";
 import BottomNav from "../Components/BottomNav";
 const MoreSheet = lazy(() => import("../Components/MoreSheet"));
 const MenuScreen = lazy(() => import("../Components/MenuScreen"));
@@ -29,7 +28,7 @@ import OrderHistoryModal from "../Components/OrderHistoryModal";
 import LoyaltyPage from "../Components/LoyaltyPage";
 import FeaturedProducts from "../Components/FeaturedProducts";
 import { FlyToCartProvider } from "../Components/FlyToCart";
-import { FilterableMenuSkeleton, BusinessHeaderSkeleton, ProfileHeaderSkeleton, StoriesRowSkeleton } from "../Components/MenuSkeletons";
+import { FilterableMenuSkeleton, ProfileHeaderSkeleton, StoriesRowSkeleton } from "../Components/MenuSkeletons";
 import SplashScreen from "../Components/SplashScreen";
 import RestaurantClosedOverlay from "../Components/RestaurantClosedOverlay";
 import OrderTracker from "../Components/OrderTracker";
@@ -37,6 +36,8 @@ import PaymentUpload from "../Components/PaymentUpload";
 import MyOrders from "../Components/MyOrders";
 import api from "../services/api";
 import { toast } from "sonner";
+import ProductToppingsSelector from "../Components/ProductToppingsSelector";
+import { getEffectivePrice } from "../utils/promo";
 import { resincronizarCarrito } from "../utils/preciosCarrito";
 import { cobrarConTarjeta } from "../utils/bold";
 import { formatCurrency } from "../utils/currency";
@@ -110,6 +111,8 @@ export default function Menu() {
   const [showCartSummary, setShowCartSummary] = useState(false);
   const [isSelectingToppings, setIsSelectingToppings] = useState(false);
   const { businessConfig, businessId, businessStatus, error: businessError, networkError: bizNetworkError, retryFetch: retryBizFetch } = useBusinessConfig();
+  // La llave de "Mi cuenta" es por negocio: el del menú abierto es este.
+  usarCuentaDe(businessId);
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const isHotel = businessConfig?.businessType === 'hotel';
 
@@ -132,7 +135,6 @@ export default function Menu() {
   const [businessNotFound, setBusinessNotFound] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
-  const [subscriptionPlanType, setSubscriptionPlanType] = useState(null);
   const [subscriptionCommercialPlan, setSubscriptionCommercialPlan] = useState(null);
   const [closedOverlayDismissed, setClosedOverlayDismissed] = useState(false);
 
@@ -140,6 +142,9 @@ export default function Menu() {
   const [showFavorites, setShowFavorites] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showLoyalty, setShowLoyalty] = useState(false);
+  /* La ficha de un producto abierta desde fuera de su tarjeta: un favorito o
+     "pedir de nuevo" de algo que pide elegir opciones. */
+  const [fichaAbierta, setFichaAbierta] = useState(null);
   
   // Reviews states
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -495,6 +500,15 @@ export default function Menu() {
   }, [showOrderTypeSelector, businessId]);
 
   // Recover active order from backend if sessionStorage lost it (e.g. new session)
+  /* Celulares que ya seguían un pedido antes de existir las cuentas: el token
+     de seguimiento prueba que el pedido es suyo y se cambia por la llave. */
+  useEffect(() => {
+    if (!businessId || tieneCuenta(businessId) || !activeOrderId || !activeCustomerToken) return;
+    api.post('/cuenta/llave', { orderId: activeOrderId, seguimiento: activeCustomerToken })
+      .then((r) => guardarLlave(r.data?.llave, businessId))
+      .catch(() => { /* sin llave: se activa con el próximo pedido */ });
+  }, [businessId, activeOrderId, activeCustomerToken]);
+
   useEffect(() => {
     if (activeOrderId || !isInAppMode || !orderInfo.phone || !businessId) return;
     let cancelled = false;
@@ -679,12 +693,10 @@ export default function Menu() {
           }
           
           setSubscriptionStatus(status);
-          setSubscriptionPlanType(sub.planType || null);
           setSubscriptionCommercialPlan(sub.commercialPlan || null);
         } else {
           // Sin suscripción = activo (para no bloquear el menú si no hay suscripción configurada)
           setSubscriptionStatus(null);
-          setSubscriptionPlanType(null);
           setSubscriptionCommercialPlan(null);
         }
       } catch (err) {
@@ -737,11 +749,6 @@ export default function Menu() {
     montserrat: "'Montserrat', sans-serif",
   }[menuFont] || undefined : undefined;
 
-  /* Menú V2 ("perfil + historias"): beta por negocio, la activa el SuperAdmin.
-     Apagada (por defecto) el menú se comporta exactamente igual que hoy.
-     Conmuta SOLO la capa de presentación: hooks, carrito, sheets, tracking y
-     lealtad son los mismos en ambas versiones. */
-  const menuV2 = !!businessConfig?.features?.menuV2;
   /* El tope de 900px es para una carta: leerla es una columna. Un catálogo se
      recorre con los ojos en rejilla, así que en tienda se suelta el ancho. */
   const tienda = esTienda(businessConfig);
@@ -1034,8 +1041,6 @@ export default function Menu() {
   // Calcular total de items en el carrito
   const totalItems = cart.reduce((sum, item) => sum + (item.quantity || 0), 0);
   
-  // Calcular monto total incluyendo toppings
-  const totalAmount = cart.reduce((sum, item) => sum + calculateItemPrice(item), 0);
 
   const handleOrderTypeComplete = (info) => {
     logger.info('Datos recibidos del selector de tipo:', info);
@@ -1551,7 +1556,6 @@ export default function Menu() {
               status = 'grace';
             }
             setSubscriptionStatus(status);
-            setSubscriptionPlanType(sub.planType || null);
             setSubscriptionCommercialPlan(sub.commercialPlan || null);
           }
         }
@@ -1606,12 +1610,12 @@ export default function Menu() {
   // Si el negocio no está activo, mostrar mensaje
   if (!isBusinessActive && businessId) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center text-[#1F2937] p-4">
-        <div className="bg-white rounded-xl p-8 max-w-md w-full text-center border border-[#DCE4F5] shadow-lg">
-          <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-[#3A7AFF]/10 mb-4">
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center text-plataforma-tinta p-4">
+        <div className="bg-white rounded-xl p-8 max-w-md w-full text-center border border-plataforma-borde shadow-lg">
+          <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-plataforma-azul/10 mb-4">
             <svg 
               xmlns="http://www.w3.org/2000/svg" 
-              className="h-8 w-8 text-[#3A7AFF]" 
+              className="h-8 w-8 text-plataforma-azul" 
               fill="none" 
               viewBox="0 0 24 24" 
               stroke="currentColor"
@@ -1625,10 +1629,10 @@ export default function Menu() {
             </svg>
           </div>
           <h2 className="text-xl font-bold mb-3">Este negocio no está disponible</h2>
-          <p className="text-[#6C7A92] mb-6">El negocio "{businessConfig?.businessName || 'solicitado'}" no está activo en este momento. Por favor, vuelve más tarde.</p>
+          <p className="text-plataforma-gris mb-6">El negocio "{businessConfig?.businessName || 'solicitado'}" no está activo en este momento. Por favor, vuelve más tarde.</p>
           <button 
             onClick={() => navigate('/')}
-            className="px-4 py-2 bg-[#3A7AFF] text-white rounded-lg hover:bg-[#3A7AFF]/90 w-full"
+            className="px-4 py-2 bg-plataforma-azul text-white rounded-lg hover:bg-plataforma-azul/90 w-full"
           >
             Volver al inicio
           </button>
@@ -1645,14 +1649,8 @@ export default function Menu() {
           <div className="min-h-screen bg-gray-50 pb-20 pt-safe">
             {/* El esqueleto debe calcar la cabecera que se va a montar, o el
                 salto al cargar delata el cambio de layout. */}
-            {menuV2 ? (
-              <>
-                <ProfileHeaderSkeleton />
-                <StoriesRowSkeleton />
-              </>
-            ) : (
-              <BusinessHeaderSkeleton />
-            )}
+            <ProfileHeaderSkeleton />
+            <StoriesRowSkeleton />
             <FilterableMenuSkeleton />
           </div>
         )}
@@ -1678,20 +1676,16 @@ export default function Menu() {
         (--mb-accent, --mb-surface, …). Todo lo de adentro las consume con
         bg-[var(--mb-accent)] en vez de repetir el color inline. */}
     <main
-      /* En V2 el nav flotante ocupa más alto que la CartBar: más aire abajo
-         para que no tape el final del menú. */
-      className={`min-h-screen bg-gray-50 pt-safe ${menuV2 ? 'pb-[110px]' : 'pb-20'}`}
-      /* Permite verificar en producción que el flag llega al cliente sin ningún
-         cambio visual. PR-2 lo usa para montar ProfileHeader en vez de este. */
-      data-menu-v2={menuV2 ? '1' : '0'}
+      /* El nav flotante de abajo ocupa su alto: aire para que no tape el
+         final del menú. */
+      className="min-h-screen bg-gray-50 pt-safe pb-[110px]"
       style={{
         ...menuCssVars(businessConfig?.theme?.buttonColor, { on: businessConfig?.theme?.buttonTextColor }),
         ...(menuFontFamily ? { fontFamily: menuFontFamily } : {}),
       }}
     >
       <MenuStructuredData businessConfig={businessConfig} products={products} categories={categories} />
-      {menuV2 ? (
-        <ProfileHeader
+      <ProfileHeader
           mostrarMusica={mostrarMusica}
           onShowFavorites={() => setShowFavorites(true)}
           onShowHistory={() => setShowHistory(true)}
@@ -1700,16 +1694,17 @@ export default function Menu() {
             const el = document.getElementById('menu-content');
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }}
-          showFavoritesButton={orderInfo.phone && businessConfig?.features?.favoritesEnabled !== false}
           showHistoryButton={orderInfo.phone && businessConfig?.features?.orderHistoryEnabled !== false}
           reviewStats={businessConfig?.reviewStats}
           subscriptionCommercialPlan={subscriptionCommercialPlan}
+          productos={products}
+          onAgregar={isViewOnly ? null : addToCart}
+          onAbrirCarrito={isViewOnly ? null : () => setShowCartSummary(true)}
+          onVerPuntos={() => setShowLoyalty(true)}
         />
-      ) : null}
 
       {/* Historias — bajo la cabecera de perfil. Si no hay contenido no se
           renderiza nada (StoriesRow se degrada solo). */}
-      {menuV2 && (
         <Suspense fallback={null}>
           <StoriesRow
             products={products}
@@ -1717,23 +1712,6 @@ export default function Menu() {
             addToCart={isViewOnly ? null : addToCart}
           />
         </Suspense>
-      )}
-
-      {!menuV2 ? (
-        <BusinessHeader
-          comesFromCatalog={comesFromCatalog}
-          onShowFavorites={() => setShowFavorites(true)}
-          onShowHistory={() => setShowHistory(true)}
-          onShowLoyalty={() => setShowLoyalty(true)}
-          showFavoritesButton={orderInfo.phone && businessConfig?.features?.favoritesEnabled !== false}
-          showHistoryButton={orderInfo.phone && businessConfig?.features?.orderHistoryEnabled !== false}
-          showLoyaltyButton={!!orderInfo.phone}
-          onShowReviews={(src) => { setReviewsInitialSource(typeof src === 'string' ? src : 'internal'); setShowReviewsSheet(true); }}
-          reviewStats={businessConfig?.reviewStats}
-          subscriptionPlanType={subscriptionPlanType}
-          subscriptionCommercialPlan={subscriptionCommercialPlan}
-        />
-      ) : null}
 
       {/* Banner solo-vista: todos los tipos de pedido desactivados */}
       {isViewOnly && (
@@ -1817,12 +1795,12 @@ export default function Menu() {
         />
       )}
       
-      {/* Ancla para el botón "Pedir ahora" del ProfileHeader (menú V2) */}
+      {/* Ancla para el botón "Pedir ahora" del ProfileHeader */}
       <div id="menu-content" style={{ scrollMarginTop: 'var(--mb-header-h, 0px)' }} />
 
-      {/* En V2 el menú se acota en escritorio: a pantalla completa las tarjetas
-          se estiraban hasta verse gigantes. */}
-      <div className={menuV2 && !tienda ? 'max-w-[900px] mx-auto w-full' : ''}>
+      {/* En escritorio el menú se acota: a pantalla completa las tarjetas se
+          estiraban hasta verse gigantes. */}
+      <div className={!tienda ? 'max-w-[900px] mx-auto w-full' : ''}>
       <FilterableMenu
         products={products}
         categories={categories}
@@ -1847,25 +1825,7 @@ export default function Menu() {
       />
       </div>
 
-      {/* En V2 el carrito vive en el BottomNav, así que la CartBar no se monta */}
-      {!isViewOnly && !menuV2 && (
-        <CartBar
-          cart={cart}
-          totalItems={totalItems}
-          totalAmount={totalAmount}
-          onShowCart={() => {
-            if (subscriptionStatus === 'suspended') return;
-            setShowCartSummary(true);
-          }}
-          businessConfig={businessConfig}
-          isSelectingToppings={isSelectingToppings}
-          showCartSummary={showCartSummary}
-          subscriptionStatus={subscriptionStatus}
-        />
-      )}
-
       {/* Hub "Más" — solo tiles con dato real detrás */}
-      {menuV2 && (
         <Suspense fallback={null}>
           <MoreSheet
             open={showMoreSheet}
@@ -1876,10 +1836,8 @@ export default function Menu() {
             onShowLoyalty={orderInfo?.phone ? () => setShowLoyalty(true) : null}
           />
         </Suspense>
-      )}
 
-      {/* Feed "Descubre" (V2) */}
-      {menuV2 && (
+      {/* Feed "Descubre" */}
         <Suspense fallback={null}>
           <DiscoverSheet
             open={showDiscover}
@@ -1889,10 +1847,8 @@ export default function Menu() {
             addToCart={isViewOnly ? null : addToCart}
           />
         </Suspense>
-      )}
 
-      {/* Cuenta de la mesa en vivo (V2 + QR de mesa + POS) */}
-      {menuV2 && (
+      {/* Cuenta de la mesa en vivo (QR de mesa + POS) */}
         <Suspense fallback={null}>
           <MenuScreen
             open={showTableTab}
@@ -1916,11 +1872,10 @@ export default function Menu() {
             />
           </MenuScreen>
         </Suspense>
-      )}
 
-      {/* Bottom nav del menú V2 — se oculta mientras hay un sheet abierto para
+      {/* Bottom nav del menú — se oculta mientras hay un sheet abierto para
           no competir con sus CTAs. */}
-      {menuV2 && !isViewOnly && !isSelectingToppings && !showCartSummary && !showMoreSheet && !showHistory && !showFavorites && !showTableTab && !showDiscover && (
+      {!isViewOnly && !isSelectingToppings && !showCartSummary && !showMoreSheet && !showHistory && !showFavorites && !showTableTab && !showDiscover && (
         <BottomNav
           totalItems={totalItems}
           onShowCart={() => {
@@ -2036,29 +1991,51 @@ export default function Menu() {
         />
       )}
 
+      {fichaAbierta && (
+        <ProductToppingsSelector
+          product={{
+            ...fichaAbierta,
+            price: getEffectivePrice(fichaAbierta),
+            toppingGroups: Array.isArray(fichaAbierta.toppingGroups) ? fichaAbierta.toppingGroups : [],
+          }}
+          onAddToCart={(p) => { addToCart(p); setFichaAbierta(null); }}
+          onClose={() => setFichaAbierta(null)}
+        />
+      )}
+
       {/* Modal de Favoritos */}
       <FavoritesModal
-        fullScreen={menuV2}
+        fullScreen
         show={showFavorites}
         onClose={() => setShowFavorites(false)}
         businessId={businessId}
         customerPhone={orderInfo.phone}
         theme={businessConfig?.theme}
         onAddToCart={(favoriteItem) => {
-          // Convertir favorito a formato de carrito y agregarlo
-          const cartItem = {
-            ...favoriteItem,
-            quantity: 1,
-            itemId: Date.now() + Math.random()
-          };
-          addToCart(cartItem);
+          /* Con el producto de hoy, no con la copia guardada en el favorito:
+             precio actual, y si pide elegir opciones que el favorito no trae,
+             se abre su ficha en vez de ir al carrito incompleto. */
+          const id = String(favoriteItem.productId?._id || favoriteItem.productId || '');
+          const producto = products.find((p) => String(p._id) === id);
+          if (!producto) { toast.error('Ese producto ya no está en el menú'); return; }
+          const conOpciones = (favoriteItem.selectedToppings || []).length > 0;
           setShowFavorites(false);
+          if (!conOpciones && (producto.toppingGroups || []).length > 0) { setFichaAbierta(producto); return; }
+          addToCart({
+            ...producto,
+            price: getEffectivePrice(producto),
+            selectedToppings: favoriteItem.selectedToppings || [],
+            selectedOptions: favoriteItem.selectedOptions || {},
+            notes: favoriteItem.notes || '',
+            quantity: 1,
+          });
+          toast.success(`${producto.name} está en tu carrito`);
         }}
       />
 
       {/* Modal de Historial de Pedidos */}
       <OrderHistoryModal
-        fullScreen={menuV2}
+        fullScreen
         show={showHistory}
         onClose={() => setShowHistory(false)}
         businessId={businessId}

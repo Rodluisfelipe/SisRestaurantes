@@ -81,7 +81,7 @@ export default function BranchSwitcher() {
                     {branch.branchLabel || branch.businessName}
                   </div>
                   {branch.isMainBranch && (
-                    <div className="text-[9px] text-slate-400 uppercase tracking-wide">Principal</div>
+                    <div className="text-2xs text-slate-400 uppercase tracking-wide">Principal</div>
                   )}
                 </div>
                 {isActive && (

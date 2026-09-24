@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { celebrate } from './confettiBurst';
 import AnimatedCounter from './AnimatedCounter';
+import { Capa } from '../../../Components/ui';
 
 /**
  * Pantalla completa cuando el worker sube de nivel.
@@ -22,9 +23,10 @@ export default function LevelUpCelebration({ open, fromLevel, toLevel, onClose }
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#0a0a14]/95 backdrop-blur-2xl"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-crew-noche/95 backdrop-blur-2xl"
           onClick={onClose}
         >
+          <Capa onCerrar={onClose} bloquearScroll={false} />
           {/* Background animated mesh */}
           <motion.div
             initial={{ scale: 0.8 }}

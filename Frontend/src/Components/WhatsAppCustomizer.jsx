@@ -332,7 +332,7 @@ const WhatsAppCustomizer = () => {
                   {previewText.split('\n').map((line, i) => fmtLine(line, i))}
                 </div>
                 <div className="flex justify-end mt-1">
-                  <span className="text-[10px] text-gray-400">
+                  <span className="text-2xs text-gray-400">
                     {new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>

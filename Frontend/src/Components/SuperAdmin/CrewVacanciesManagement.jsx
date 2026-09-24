@@ -115,11 +115,11 @@ export default function CrewVacanciesManagement() {
                       transition={{ duration: 0.5 }}
                       className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-md"
                     />
-                    <span className="absolute inset-0 flex items-center justify-end px-2 text-[10.5px] font-bold tabular-nums text-slate-900">
+                    <span className="absolute inset-0 flex items-center justify-end px-2 text-2xs font-bold tabular-nums text-slate-900">
                       {formatCOP(m.total)}
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-400 w-12 text-right tabular-nums">{m.count}</span>
+                  <span className="text-2xs text-slate-400 w-12 text-right tabular-nums">{m.count}</span>
                 </div>
               );
             })}
@@ -141,7 +141,7 @@ export default function CrewVacanciesManagement() {
             >
               {t.label}
               {c?.total > 0 && (
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-violet-100 text-violet-700">{c.total}</span>
+                <span className="px-1.5 py-0.5 text-2xs font-bold rounded-full bg-violet-100 text-violet-700">{c.total}</span>
               )}
             </button>
           );
@@ -150,7 +150,7 @@ export default function CrewVacanciesManagement() {
 
       {/* Owner filter */}
       <div className="flex items-center gap-1.5 flex-wrap">
-        <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500 mr-1">Origen:</span>
+        <span className="text-2xs font-bold uppercase tracking-wider text-slate-500 mr-1">Origen:</span>
         {OWNER_FILTERS.map((f) => (
           <button
             key={f.key}
@@ -213,19 +213,19 @@ export default function CrewVacanciesManagement() {
 
             {target.description && (
               <div>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Descripción</p>
+                <p className="text-2xs font-bold text-slate-500 uppercase tracking-wider mb-2">Descripción</p>
                 <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{target.description}</p>
               </div>
             )}
 
             {target.customQuestions?.length > 0 && (
               <div>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Preguntas personalizadas ({target.customQuestions.length})</p>
+                <p className="text-2xs font-bold text-slate-500 uppercase tracking-wider mb-2">Preguntas personalizadas ({target.customQuestions.length})</p>
                 <div className="space-y-1.5">
                   {target.customQuestions.map((q, i) => (
                     <div key={i} className="px-3 py-2 rounded-lg bg-slate-50 border border-slate-200">
                       <p className="text-xs font-bold text-slate-700">{q.question}{q.required && <span className="text-rose-500 ml-1">*</span>}</p>
-                      <p className="text-[10.5px] text-slate-500 mt-0.5">Tipo: {q.type}</p>
+                      <p className="text-2xs text-slate-500 mt-0.5">Tipo: {q.type}</p>
                     </div>
                   ))}
                 </div>
@@ -288,7 +288,7 @@ function KpiCard({ label, value, tone }) {
   };
   return (
     <div className={`rounded-xl border p-3.5 ${tones[tone]}`}>
-      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</p>
+      <p className="text-2xs font-bold text-slate-500 uppercase tracking-wider">{label}</p>
       <p className="text-[20px] font-extrabold text-slate-900 tabular-nums mt-0.5">{value}</p>
     </div>
   );
@@ -309,8 +309,8 @@ function VacancyCard({ vacancy, onClick }) {
         {' · '}{vacancy.role}
       </p>
       <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
-        <span className="text-[10.5px] text-slate-500">{vacancy.applicationCount || 0} postulantes</span>
-        <span className="text-[10.5px] text-slate-400">{formatRelative(vacancy.publishedAt)}</span>
+        <span className="text-2xs text-slate-500">{vacancy.applicationCount || 0} postulantes</span>
+        <span className="text-2xs text-slate-400">{formatRelative(vacancy.publishedAt)}</span>
       </div>
     </button>
   );
@@ -328,7 +328,7 @@ function StatusBadge({ status }) {
 function DetailStat({ label, value, children }) {
   return (
     <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</p>
+      <p className="text-2xs font-bold text-slate-500 uppercase tracking-wider">{label}</p>
       <div className="text-sm font-semibold text-slate-900 mt-0.5">{children || value}</div>
     </div>
   );

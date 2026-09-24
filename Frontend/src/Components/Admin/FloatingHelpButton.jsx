@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaQuestionCircle, FaTimes, FaWhatsapp, FaBookOpen, FaRocket, FaCheck } from 'react-icons/fa';
 import AI from './AdminIcons';
+import { Capa } from '../ui';
 
 const WHATSAPP_NUMBER = '573138178003';
 const WHATSAPP_MESSAGE = encodeURIComponent('Hola, necesito ayuda con mi menú digital en Menuby 🍔');
@@ -88,7 +89,7 @@ export default function FloatingHelpButton({ onShowWizard }) {
                 ))}
               </div>
               <div className="px-4 pb-3 pt-1">
-                <p className="text-[10px] text-center text-slate-300">
+                <p className="text-2xs text-center text-slate-300">
                   WhatsApp: 313 817 8003
                 </p>
               </div>
@@ -146,6 +147,7 @@ export default function FloatingHelpButton({ onShowWizard }) {
             className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
             onClick={(e) => e.target === e.currentTarget && setShowQuickGuide(false)}
           >
+            <Capa onCerrar={() => setShowQuickGuide(false)} />
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}

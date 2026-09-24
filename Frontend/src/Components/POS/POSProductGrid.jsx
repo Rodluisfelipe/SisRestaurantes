@@ -126,7 +126,7 @@ export default function POSProductGrid({ products, categories, onProductClick, t
                       </div>
                     )}
                     {hasExtras && (
-                      <span className="absolute top-2 left-2 text-[10px] font-black px-1.5 py-0.5 rounded-md bg-black/55 text-white backdrop-blur-sm tracking-wide">
+                      <span className="absolute top-2 left-2 text-2xs font-black px-1.5 py-0.5 rounded-md bg-black/55 text-white backdrop-blur-sm tracking-wide">
                         EXTRAS
                       </span>
                     )}

@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '../../config';
+import { Capa } from '../ui';
 
 function formatCOP(n) {
   return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0);
@@ -77,6 +78,7 @@ export default function CrewWorkerProfileModal({ workerId, businessId, matchScor
         className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center sm:p-4 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       >
+        <Capa onCerrar={onClose} bloquearScroll={false} />
         <motion.div
           initial={{ y: 40, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -123,15 +125,15 @@ export default function CrewWorkerProfileModal({ workerId, businessId, matchScor
                       <p className="text-[12px] text-slate-600 mt-0.5">{worker.university}</p>
                     )}
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      <span className="px-2 py-0.5 text-[10px] font-extrabold bg-red-600 text-white rounded-full">
+                      <span className="px-2 py-0.5 text-2xs font-extrabold bg-red-600 text-white rounded-full">
                         Nivel {worker.level || 1}
                       </span>
-                      <span className="px-2 py-0.5 text-[10px] font-bold bg-white border border-slate-200 text-slate-700 rounded-full">
+                      <span className="px-2 py-0.5 text-2xs font-bold bg-white border border-slate-200 text-slate-700 rounded-full">
                         {(worker.rating?.avg || 0).toFixed(1)}★ · {worker.rating?.count || 0} reseñas
                       </span>
                       <KycPill status={worker.kyc?.status} />
                       {matchScore != null && (
-                        <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded-full ${
+                        <span className={`px-2 py-0.5 text-2xs font-extrabold rounded-full ${
                           matchScore >= 75 ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' :
                           matchScore >= 50 ? 'bg-amber-100 text-amber-700 border border-amber-300' :
                           'bg-slate-100 text-slate-600 border border-slate-200'
@@ -168,8 +170,8 @@ export default function CrewWorkerProfileModal({ workerId, businessId, matchScor
                       {worker.skills.map((s) => (
                         <span key={s.key} className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 rounded-full">
                           {SKILL_LABEL[s.key] || s.key}
-                          <span className="text-[9px] text-slate-500 uppercase">· {s.level}</span>
-                          {s.yearsExp > 0 && <span className="text-[9px] text-slate-500">· {s.yearsExp}{s.yearsExp === 1 ? 'a' : 'a'}</span>}
+                          <span className="text-2xs text-slate-500 uppercase">· {s.level}</span>
+                          {s.yearsExp > 0 && <span className="text-2xs text-slate-500">· {s.yearsExp}{s.yearsExp === 1 ? 'a' : 'a'}</span>}
                         </span>
                       ))}
                     </div>
@@ -220,7 +222,7 @@ export default function CrewWorkerProfileModal({ workerId, businessId, matchScor
                             <p className="text-[11px] text-slate-500">{r.relation}</p>
                           </div>
                           {r.hasContact && (
-                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            <span className="text-2xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                               Contacto disponible al contratar
                             </span>
                           )}
@@ -255,7 +257,7 @@ export default function CrewWorkerProfileModal({ workerId, businessId, matchScor
                               {new Date(b.completedAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}
                             </p>
                             {b.reviewByBusiness?.rating && (
-                              <p className="text-[10px] text-emerald-700">Calificación que le diste: {b.reviewByBusiness.rating}★</p>
+                              <p className="text-2xs text-emerald-700">Calificación que le diste: {b.reviewByBusiness.rating}★</p>
                             )}
                           </div>
                           <p className="text-[13px] font-extrabold text-emerald-700 tabular-nums">{formatCOP(b.agreedTotal)}</p>
@@ -276,7 +278,7 @@ export default function CrewWorkerProfileModal({ workerId, businessId, matchScor
                   </Section>
                 )}
 
-                <p className="text-[10px] text-slate-400 text-center pt-2">
+                <p className="text-2xs text-slate-400 text-center pt-2">
                   Datos privados del trabajador. No compartir con terceros.
                 </p>
               </div>
@@ -320,13 +322,13 @@ export default function CrewWorkerProfileModal({ workerId, businessId, matchScor
 }
 
 function KycPill({ status }) {
-  if (status === 'approved') return <span className="px-2 py-0.5 text-[10px] font-extrabold bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-full flex items-center gap-1">
+  if (status === 'approved') return <span className="px-2 py-0.5 text-2xs font-extrabold bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-full flex items-center gap-1">
     <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
     Verificado
   </span>;
-  if (status === 'pending') return <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-300 rounded-full">Verificación en revisión</span>;
-  if (status === 'rejected') return <span className="px-2 py-0.5 text-[10px] font-bold bg-red-100 text-red-700 border border-red-300 rounded-full">No verificado</span>;
-  return <span className="px-2 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 rounded-full">Sin verificar</span>;
+  if (status === 'pending') return <span className="px-2 py-0.5 text-2xs font-bold bg-amber-100 text-amber-700 border border-amber-300 rounded-full">Verificación en revisión</span>;
+  if (status === 'rejected') return <span className="px-2 py-0.5 text-2xs font-bold bg-red-100 text-red-700 border border-red-300 rounded-full">No verificado</span>;
+  return <span className="px-2 py-0.5 text-2xs font-bold bg-slate-100 text-slate-600 border border-slate-200 rounded-full">Sin verificar</span>;
 }
 
 function HeroStat({ label, value, accent = 'slate' }) {
@@ -337,7 +339,7 @@ function HeroStat({ label, value, accent = 'slate' }) {
   return (
     <div className="bg-white/80 border border-slate-200 rounded-xl p-2 text-center">
       <p className={`text-[15px] font-extrabold tabular-nums ${colors[accent] || colors.slate}`}>{value}</p>
-      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">{label}</p>
+      <p className="text-2xs font-bold text-slate-500 uppercase tracking-wider mt-0.5">{label}</p>
     </div>
   );
 }

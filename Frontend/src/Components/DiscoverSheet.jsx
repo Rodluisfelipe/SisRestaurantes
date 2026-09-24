@@ -4,6 +4,7 @@ import { Plus, Sparkles, Flame, Star, X } from 'lucide-react';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { isPromoActive, getEffectivePrice } from '../utils/promo';
+import { Capa } from './ui';
 
 const money = (n) => `$${Number(n || 0).toLocaleString('es-CO', { maximumFractionDigits: 0 })}`;
 
@@ -84,6 +85,7 @@ export default function DiscoverSheet({ open, onClose, products = [], categories
                de ancho se ve descomunal. */
             className="fixed inset-0 z-[110] bg-black md:inset-y-4 md:left-[calc(50%-215px)] md:w-[430px] md:rounded-3xl md:overflow-hidden md:shadow-2xl"
           >
+            <Capa onCerrar={onClose} bloquearScroll={false} />
             {/* Cerrar */}
             <button
               onClick={onClose}

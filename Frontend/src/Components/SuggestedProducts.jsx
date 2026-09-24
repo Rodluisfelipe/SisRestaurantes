@@ -123,7 +123,7 @@ function SuggestedProducts({ allProducts, cart, onAddToCart, themeColor, busines
                 <div className="flex items-center justify-between mt-1">
                   <span className="text-[11px] font-bold text-slate-800 flex items-baseline gap-1 min-w-0">
                     {isPromoActive(product) && (
-                      <span className="text-[9px] font-medium text-slate-400 line-through">
+                      <span className="text-2xs font-medium text-slate-400 line-through">
                         ${Number(product.price).toLocaleString('es-CO')}
                       </span>
                     )}

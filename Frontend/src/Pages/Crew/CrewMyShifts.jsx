@@ -58,8 +58,8 @@ export default function CrewMyShifts() {
   const historyBookings = bookings.filter((b) => ['completed', 'no_show', 'cancelled_by_worker', 'cancelled_by_business'].includes(b.status));
 
   return (
-    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(7rem+env(safe-area-inset-bottom,0px))]">
-      <header className="sticky top-0 z-30 bg-[#0a0a14]/80 backdrop-blur-2xl border-b border-white/[0.06]">
+    <div className="min-h-[100dvh] bg-crew-noche text-white font-geist pb-[calc(7rem+env(safe-area-inset-bottom,0px))]">
+      <header className="sticky top-0 z-30 bg-crew-noche/80 backdrop-blur-2xl border-b border-white/[0.06]">
         <div className="max-w-md mx-auto px-5 pt-[max(1.25rem,env(safe-area-inset-top,0px))] pb-3">
           <h1 className="text-[20px] font-extrabold text-white">Mis turnos</h1>
           <p className="text-[12px] text-white/40 mt-0.5">Revisa el estado de tus postulaciones y turnos asignados</p>
@@ -81,7 +81,7 @@ export default function CrewMyShifts() {
             >
               {t.label}
               {t.count > 0 && (
-                <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full tabular-nums ${
+                <span className={`px-1.5 py-0.5 text-2xs font-bold rounded-full tabular-nums ${
                   tab === t.id ? 'bg-white/25' : 'bg-white/[0.10] border border-white/[0.08]'
                 }`}>{t.count}</span>
               )}
@@ -265,7 +265,7 @@ function StatusPill({ info }) {
     muted: 'bg-white/[0.04] text-white/30 border-white/[0.06]',
   };
   return (
-    <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold ${tones[info.tone] || tones.muted}`}>
+    <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full border text-2xs font-bold ${tones[info.tone] || tones.muted}`}>
       {info.label}
     </span>
   );

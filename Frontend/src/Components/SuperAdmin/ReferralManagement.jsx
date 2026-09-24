@@ -2,6 +2,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { subscriptionApi as adminApi } from '../../services/superadminApi';
 import { SATable } from './ui';
+import { Capa } from '../ui';
 
 const STATUS_LABELS = {
   pending: 'Pendiente',
@@ -157,7 +158,7 @@ export default function ReferralManagement() {
         ].map(kpi => (
           <div key={kpi.label} className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
             <p className={`text-xl font-bold ${kpi.color}`}>{kpi.value}</p>
-            <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">{kpi.label}</p>
+            <p className="text-2xs text-slate-500 uppercase tracking-wider mt-0.5">{kpi.label}</p>
           </div>
         ))}
       </div>
@@ -429,6 +430,7 @@ export default function ReferralManagement() {
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
             onClick={() => setRejectModal(null)}
           >
+            <Capa onCerrar={() => setRejectModal(null)} />
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

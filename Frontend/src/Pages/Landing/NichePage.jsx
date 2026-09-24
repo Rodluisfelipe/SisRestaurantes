@@ -109,7 +109,7 @@ function RelatedNiches({ currentSlug }) {
           <span className="text-2xl">{p.emoji}</span>
           <div className="min-w-0">
             <p className="text-xs sm:text-sm font-bold text-gray-800 group-hover:text-red-600 transition-colors truncate">{p.h1.replace('Menú Digital para ', '')}</p>
-            <p className="text-[10px] text-gray-400">Ver más</p>
+            <p className="text-2xs text-gray-400">Ver más</p>
           </div>
         </Link>
       ))}
@@ -214,7 +214,7 @@ export default function NichePage() {
                   <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-sm">✅</div>
                   <div>
                     <p className="text-[11px] font-bold text-gray-800">Nuevo pedido</p>
-                    <p className="text-[10px] text-gray-500">hace 1 min</p>
+                    <p className="text-2xs text-gray-500">hace 1 min</p>
                   </div>
                 </motion.div>
                 <motion.div
@@ -225,7 +225,7 @@ export default function NichePage() {
                   <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center text-sm">⭐</div>
                   <div>
                     <p className="text-[11px] font-bold text-gray-800">5 estrellas</p>
-                    <p className="text-[10px] text-gray-500">reseña nueva</p>
+                    <p className="text-2xs text-gray-500">reseña nueva</p>
                   </div>
                 </motion.div>
               </div>
@@ -245,7 +245,7 @@ export default function NichePage() {
       <Section className="py-16 sm:py-20 lg:py-28 bg-white" id="features">
         <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-16">
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-red-500">Funcionalidades</span>
+            <span className="text-2xs sm:text-xs font-bold uppercase tracking-widest text-red-500">Funcionalidades</span>
             <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900">
               Todo lo que Necesitas para tu {page.h1.split('para ')[1]}
             </h2>
@@ -279,7 +279,7 @@ export default function NichePage() {
       <Section className="py-16 sm:py-20 lg:py-28 bg-gray-50" id="use-cases">
         <div className="max-w-4xl mx-auto px-5 sm:px-6 lg:px-8">
           <div className="text-center mb-10 sm:mb-12">
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-red-500">Casos de uso</span>
+            <span className="text-2xs sm:text-xs font-bold uppercase tracking-widest text-red-500">Casos de uso</span>
             <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900">
               ¿Para Quién es Menuby?
             </h2>
@@ -305,7 +305,7 @@ export default function NichePage() {
       {/* ═══ PRICING MINI ═══ */}
       <Section className="py-16 sm:py-20 lg:py-28 bg-white" id="pricing">
         <div className="max-w-5xl mx-auto px-5 sm:px-6 text-center">
-          <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-red-500">Precio</span>
+          <span className="text-2xs sm:text-xs font-bold uppercase tracking-widest text-red-500">Precio</span>
           <h2 className="mt-3 text-2xl sm:text-3xl font-extrabold text-gray-900 mb-2">
             {page.keyword.charAt(0).toUpperCase() + page.keyword.slice(1)} con planes desde Gratis
           </h2>
@@ -358,7 +358,7 @@ export default function NichePage() {
       <Section className="py-16 sm:py-20 lg:py-28 bg-gray-50" id="faq">
         <div className="max-w-3xl mx-auto px-5 sm:px-6 lg:px-8">
           <div className="text-center mb-10 sm:mb-12">
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-red-500">FAQ</span>
+            <span className="text-2xs sm:text-xs font-bold uppercase tracking-widest text-red-500">FAQ</span>
             <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900">
               Preguntas Frecuentes — {page.h1}
             </h2>
@@ -391,7 +391,7 @@ export default function NichePage() {
       <Section className="py-16 sm:py-20 bg-gray-50">
         <div className="max-w-5xl mx-auto px-5 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-red-500">Soluciones</span>
+            <span className="text-2xs sm:text-xs font-bold uppercase tracking-widest text-red-500">Soluciones</span>
             <h2 className="mt-3 text-2xl sm:text-3xl font-extrabold text-gray-900">
               Menú Digital para Otros Tipos de Negocio
             </h2>

@@ -415,7 +415,7 @@ export default function DomiStats() {
               <div className="flex items-center gap-2">
                 <span className="text-[13px] font-bold text-slate-800">Cola de pedidos</span>
                 {pending.length > 0 && (
-                  <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  <span className="bg-red-500 text-white text-2xs font-bold px-2 py-0.5 rounded-full">
                     {pending.length}
                   </span>
                 )}
@@ -452,7 +452,7 @@ export default function DomiStats() {
                             >
                               #{order.orderNumber}
                             </button>
-                            <span className="text-[10px] text-slate-300">•</span>
+                            <span className="text-2xs text-slate-300">•</span>
                             <span className="text-[11px] text-slate-400 flex items-center gap-1">
                               {IC.clock('w-3 h-3')}{fmtTime(order.createdAt)}
                             </span>
@@ -584,11 +584,11 @@ export default function DomiStats() {
                       onChange={e => setNewCode(e.target.value.replace(/\D/g, ''))}
                       required
                     />
-                    <p className="text-[10px] text-slate-400 -mt-1">Este PIN es el que el domi usará para entrar. Compártelo con él.</p>
+                    <p className="text-2xs text-slate-400 -mt-1">Este PIN es el que el domi usará para entrar. Compártelo con él.</p>
 
                     {/* Celular para ingreso Celular + PIN (opcional) */}
                     <div className="pt-1 border-t border-dashed border-slate-200">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 mb-2">Celular para ingreso · opcional</p>
+                      <p className="text-2xs font-bold text-slate-400 uppercase tracking-widest mt-2 mb-2">Celular para ingreso · opcional</p>
                       <input
                         type="tel"
                         inputMode="numeric"
@@ -604,7 +604,7 @@ export default function DomiStats() {
                         value={newPassword}
                         onChange={e => setNewPassword(e.target.value)}
                       />
-                      <p className="text-[10px] text-slate-400 mt-1.5">Con el celular, el domi entra con <b>Celular + PIN</b>. La contraseña es opcional (método alterno). Sin celular, usa el PIN con el link del negocio.</p>
+                      <p className="text-2xs text-slate-400 mt-1.5">Con el celular, el domi entra con <b>Celular + PIN</b>. La contraseña es opcional (método alterno). Sin celular, usa el PIN con el link del negocio.</p>
                     </div>
 
                     <button
@@ -644,10 +644,10 @@ export default function DomiStats() {
                             )}
                           </div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cls}`}>{label}</span>
-                            <span className="text-[10px] text-slate-400">{d.totalDeliveries || 0} entregas</span>
+                            <span className={`text-2xs font-bold px-2 py-0.5 rounded-full ${cls}`}>{label}</span>
+                            <span className="text-2xs text-slate-400">{d.totalDeliveries || 0} entregas</span>
                             {d.hasAccount && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 inline-flex items-center gap-1">
+                              <span className="text-2xs font-bold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 inline-flex items-center gap-1">
                                 {IC.key('w-2.5 h-2.5')} cuenta
                               </span>
                             )}
@@ -743,7 +743,7 @@ export default function DomiStats() {
           <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <div className="flex items-center justify-between mb-2">
               <p className="text-[12px] font-bold text-slate-500 uppercase tracking-widest">Código de recogida · hoy</p>
-              <span className="text-[10px] text-slate-400">cambia cada día</span>
+              <span className="text-2xs text-slate-400">cambia cada día</span>
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="text-3xl font-black tracking-[0.35em] text-slate-800 tabular-nums">{pickupCode || '····'}</span>
@@ -760,9 +760,9 @@ export default function DomiStats() {
           </div>
 
           {/* Daily mode */}
-          <div className="bg-slate-900 rounded-2xl p-4 text-white">
-            <p className="text-[12px] font-bold text-slate-300 uppercase tracking-widest mb-1">Modo diario</p>
-            <p className="text-[11px] text-slate-400 mb-3 leading-relaxed">
+          <div className="bg-slate-50 border border-slate-200 text-slate-900 rounded-2xl p-4">
+            <p className="text-[12px] font-bold text-slate-600 uppercase tracking-widest mb-1">Modo diario</p>
+            <p className="text-[11px] text-slate-500 mb-3 leading-relaxed">
               Para un solo domi hoy: activa un pase temporal y comparte el código.
             </p>
             <div className="flex items-center gap-2 mb-3">
@@ -773,30 +773,30 @@ export default function DomiStats() {
                 onChange={e => setDailyCode(e.target.value.toUpperCase())}
                 placeholder="DOMI24"
                 disabled={!!dailySession}
-                className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-[13px] font-bold font-mono tracking-widest text-center outline-none focus:border-slate-500 disabled:opacity-50 transition-colors"
+                className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 text-[13px] font-bold font-mono tracking-widest text-center outline-none focus:border-slate-400 disabled:opacity-50 transition-colors"
               />
               {!dailySession ? (
                 <button onClick={handleGenerateDaily} className="bg-red-500 hover:bg-red-600 text-white text-[12px] font-bold px-3.5 py-2.5 rounded-xl transition-colors whitespace-nowrap">
                   Activar
                 </button>
               ) : (
-                <div className="bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold px-3 py-2.5 rounded-xl flex items-center gap-1.5 whitespace-nowrap">
+                <div className="bg-emerald-500/20 border border-emerald-500/30 text-emerald-700 text-[11px] font-bold px-3 py-2.5 rounded-xl flex items-center gap-1.5 whitespace-nowrap">
                   {IC.check('w-3 h-3')} Activo
                 </div>
               )}
             </div>
-            <div className="flex items-center justify-between gap-2 bg-slate-800/60 rounded-xl px-3 py-2.5">
-              <span className="text-[10px] text-slate-400 flex items-center gap-1">
+            <div className="flex items-center justify-between gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2.5">
+              <span className="text-2xs text-slate-500 flex items-center gap-1">
                 {IC.link('w-3 h-3')} Link de acceso
               </span>
               <button
                 onClick={() => { navigator.clipboard.writeText(domiLink); toast.success('Link copiado'); }}
-                className="text-[10px] font-bold text-slate-300 hover:text-white transition-colors truncate"
+                className="text-2xs font-bold text-slate-600 hover:text-slate-900 transition-colors truncate"
               >
                 {domiLink}
               </button>
             </div>
-            {dailySession && <p className="text-[10px] text-slate-500 mt-2 text-center">Expira a medianoche</p>}
+            {dailySession && <p className="text-2xs text-slate-500 mt-2 text-center">Expira a medianoche</p>}
           </div>
         </div>
       </div>

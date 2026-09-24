@@ -17,8 +17,8 @@ export default function CrewProfileEditor({ onBack }) {
   if (!worker) return null;
 
   return (
-    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(4rem+env(safe-area-inset-bottom,0px))]">
-      <header className="sticky top-0 z-20 bg-[#0a0a14]/80 backdrop-blur-2xl border-b border-white/[0.06]">
+    <div className="min-h-[100dvh] bg-crew-noche text-white font-geist pb-[calc(4rem+env(safe-area-inset-bottom,0px))]">
+      <header className="sticky top-0 z-20 bg-crew-noche/80 backdrop-blur-2xl border-b border-white/[0.06]">
         <div className="max-w-md mx-auto px-5 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-3 flex items-center gap-2">
           <button onClick={onBack} className="text-white/50 hover:text-white transition" aria-label="Atrás">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
@@ -135,7 +135,7 @@ function BasicEditor({ worker, refreshMe }) {
       <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-5">
         <label className="block text-[11px] font-bold text-white/50 uppercase tracking-wider mb-1.5">
           Sobre ti
-          <span className="text-[10px] text-white/30 normal-case font-normal ml-2">{bio.length}/400</span>
+          <span className="text-2xs text-white/30 normal-case font-normal ml-2">{bio.length}/400</span>
         </label>
         <textarea
           value={bio}
@@ -503,7 +503,7 @@ function KycSection({ worker, refreshMe }) {
           {submitting ? 'Enviando…' : 'Enviar para verificación'}
         </button>
 
-        <p className="text-[10px] text-white/30 mt-3 leading-relaxed text-center">
+        <p className="text-2xs text-white/30 mt-3 leading-relaxed text-center">
           Tus imágenes se almacenan cifradas y solo el equipo de revisión de MenuBy las verá. Nunca se comparten con negocios.
         </p>
       </div>
@@ -523,7 +523,7 @@ function FilePicker({ label, file, onChange, subtitle }) {
   return (
     <div>
       <p className="text-[11px] font-bold text-white/50 uppercase tracking-wider mb-1.5">{label}</p>
-      {subtitle && <p className="text-[10px] text-white/40 mb-2">{subtitle}</p>}
+      {subtitle && <p className="text-2xs text-white/40 mb-2">{subtitle}</p>}
       {/* Sin `capture` → el navegador muestra galería + cámara */}
       <input ref={ref} type="file" accept="image/*" onChange={onFile} className="hidden" />
       <button
@@ -544,7 +544,7 @@ function FilePicker({ label, file, onChange, subtitle }) {
           <p className={`text-[12px] font-bold ${file ? 'text-red-400' : 'text-white/70'}`}>
             {file ? '✓ Imagen seleccionada' : 'Tocar para subir'}
           </p>
-          <p className="text-[10px] text-white/40">{file ? file.name : 'Desde galería o cámara · JPG, PNG o WebP · máx 8MB'}</p>
+          <p className="text-2xs text-white/40">{file ? file.name : 'Desde galería o cámara · JPG, PNG o WebP · máx 8MB'}</p>
         </div>
       </button>
     </div>

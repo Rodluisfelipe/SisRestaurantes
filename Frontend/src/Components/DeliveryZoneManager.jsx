@@ -8,6 +8,7 @@ import { MAP_TILE_URL, MAP_ATTRIBUTION } from '../utils/mapTiles';
 import api from '../services/api';
 import { useAuth } from '../Context/AuthContext';
 import { AlertTriangle, MapPin, X, RotateCw, Check, Store, CheckCircle2, XCircle, Map, Circle as CircleIcon, FileText } from 'lucide-react';
+import { Capa } from './ui';
 
 // Fix para los iconos de Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -114,6 +115,7 @@ const DeliveryZoneManager = () => {
   const [mapCenter, setMapCenter] = useState([4.7110, -74.0721]); // Bogotá por defecto
   const [businessLocation, setBusinessLocation] = useState(null);
   const [showLocationModal, setShowLocationModal] = useState(false);
+  const [gettingLocation, setGettingLocation] = useState(false);
   const [tempLocation, setTempLocation] = useState(null); // Ubicación temporal antes de guardar
   const locationCheckedRef = useRef(false); // Para evitar múltiples aperturas del modal
   
@@ -533,8 +535,10 @@ const DeliveryZoneManager = () => {
   }
 
   // Modal para configurar ubicación del negocio
+  /* Se llama como función ({LocationSetupModal()}), no como <Componente />:
+     definido dentro del render, React lo volvía a montar en cada render y el
+     "obteniendo ubicación…" se reiniciaba solo. Por eso su estado vive arriba. */
   const LocationSetupModal = () => {
-    const [gettingLocation, setGettingLocation] = useState(false);
 
     const handleUseCurrentLocation = () => {
       if (!navigator.geolocation) {
@@ -641,6 +645,7 @@ const DeliveryZoneManager = () => {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+        <Capa onCerrar={() => setShowLocationModal(false)} />
         <div className="bg-white rounded-t-2xl lg:rounded-lg p-6 max-w-2xl w-full mx-0 lg:mx-4 max-h-[92vh] lg:max-h-[90vh] overflow-y-auto relative z-[10000]">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg lg:text-xl font-bold inline-flex items-center gap-2"><MapPin className="w-5 h-5" /> Configurar Ubicación</h3>
@@ -742,7 +747,7 @@ const DeliveryZoneManager = () => {
 
   return (
     <div className="p-6">
-      <LocationSetupModal />
+      {LocationSetupModal()}
       
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
@@ -989,6 +994,7 @@ const DeliveryZoneManager = () => {
       {/* Modal de creación/edición */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
+          <Capa onCerrar={() => setShowModal(false)} />
           <div className="bg-white rounded-t-2xl lg:rounded-lg max-w-4xl w-full max-h-[92vh] lg:max-h-[90vh] overflow-y-auto relative z-[10000]">
             <div className="p-6 border-b">
               <h2 className="text-2xl font-bold">

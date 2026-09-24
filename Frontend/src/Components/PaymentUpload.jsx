@@ -4,6 +4,7 @@ import api from '../services/api';
 import { API_URL } from '../config';
 import logger from '../utils/logger';
 import { Check, CheckCircle2, Wallet, Lightbulb, AlertTriangle, Upload, Copy } from 'lucide-react';
+import { Capa } from './ui';
 
 const PaymentUpload = ({ 
   orderId, 
@@ -98,6 +99,7 @@ const PaymentUpload = ({
   if (success) {
     return (
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end sm:items-center justify-center z-[60]">
+        <Capa onCerrar={onClose} />
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -122,6 +124,7 @@ const PaymentUpload = ({
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end sm:items-center justify-center z-[60]">
+      <Capa onCerrar={onClose} />
       <motion.div
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}

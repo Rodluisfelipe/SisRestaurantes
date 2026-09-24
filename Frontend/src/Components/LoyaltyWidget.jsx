@@ -100,10 +100,10 @@ const LoyaltyWidget = ({ phone, businessId, theme, onRewardSelected, orderMode }
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-bold text-amber-800">{data.points} puntos</span>
             {currentTier && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-200/60 text-amber-700 font-semibold">{currentTier}</span>
+              <span className="text-2xs px-1.5 py-0.5 rounded-full bg-amber-200/60 text-amber-700 font-semibold">{currentTier}</span>
             )}
           </div>
-          <p className="text-[10px] text-amber-600/80 leading-tight">
+          <p className="text-2xs text-amber-600/80 leading-tight">
             Ganas {data.pointsPerAmount} pto{data.pointsPerAmount > 1 ? 's' : ''} por ${Number(data.amountPerPoints).toLocaleString('es-CO')}
           </p>
         </div>
@@ -124,7 +124,7 @@ const LoyaltyWidget = ({ phone, businessId, theme, onRewardSelected, orderMode }
               {/* Tier progress */}
               {nextTier && (
                 <div>
-                  <div className="flex items-center justify-between text-[10px] text-amber-600 mb-1">
+                  <div className="flex items-center justify-between text-2xs text-amber-600 mb-1">
                     <span>{currentTier || 'Inicio'}</span>
                     <span>{nextTier.name} ({nextTier.minPoints} pts)</span>
                   </div>
@@ -137,7 +137,7 @@ const LoyaltyWidget = ({ phone, businessId, theme, onRewardSelected, orderMode }
               {/* Available rewards */}
               {availableRewards.length > 0 && (
                 <div>
-                  <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide mb-1.5">Canjear puntos</p>
+                  <p className="text-2xs font-semibold text-amber-700 uppercase tracking-wide mb-1.5">Canjear puntos</p>
                   <div className="space-y-1.5">
                     {availableRewards.map(reward => {
                       const canRedeem = data.points >= reward.pointsCost;
@@ -149,12 +149,12 @@ const LoyaltyWidget = ({ phone, businessId, theme, onRewardSelected, orderMode }
                           {isSelected ? <CheckIcon className="w-4 h-4 text-green-600 flex-shrink-0" /> : <GiftIcon className="w-4 h-4 text-amber-500 flex-shrink-0" />}
                           <div className="flex-1 min-w-0">
                             <p className="text-[11px] font-medium text-slate-700 truncate">{reward.name}</p>
-                            <p className="text-[10px] text-slate-400">{reward.pointsCost} puntos</p>
+                            <p className="text-2xs text-slate-400">{reward.pointsCost} puntos</p>
                           </div>
                           <button
                             onClick={() => handleToggleReward(reward)}
                             disabled={!canRedeem && !isSelected}
-                            className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all ${
+                            className={`px-2.5 py-1 rounded-lg text-2xs font-semibold transition-all ${
                               isSelected
                                 ? 'bg-green-500 text-white active:scale-95'
                                 : canRedeem
@@ -175,10 +175,10 @@ const LoyaltyWidget = ({ phone, businessId, theme, onRewardSelected, orderMode }
               {/* Recent transactions */}
               {data.recentTransactions?.length > 0 && (
                 <details className="group">
-                  <summary className="text-[10px] font-semibold text-amber-600 cursor-pointer select-none">Historial reciente</summary>
+                  <summary className="text-2xs font-semibold text-amber-600 cursor-pointer select-none">Historial reciente</summary>
                   <div className="mt-1.5 space-y-1">
                     {data.recentTransactions.slice(0, 5).map((tx, i) => (
-                      <div key={i} className="flex items-center justify-between text-[10px] text-slate-500 px-1">
+                      <div key={i} className="flex items-center justify-between text-2xs text-slate-500 px-1">
                         <span className="truncate">{tx.description}</span>
                         <span className={`font-bold ${tx.points > 0 ? 'text-green-600' : 'text-red-500'}`}>
                           {tx.points > 0 ? '+' : ''}{tx.points}

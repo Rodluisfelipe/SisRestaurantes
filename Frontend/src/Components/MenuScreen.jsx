@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { Capa } from './ui';
 
 /**
  * MenuScreen — contenedor de "pantalla completa" del menú V2.
@@ -68,6 +69,7 @@ export default function MenuScreen({
           aria-modal="true"
           aria-label={title}
         >
+          <Capa onCerrar={onClose} bloquearScroll={false} />
           {/* Barra superior */}
           <div
             className="flex items-center gap-3 px-3 py-2.5 shrink-0 border-b"

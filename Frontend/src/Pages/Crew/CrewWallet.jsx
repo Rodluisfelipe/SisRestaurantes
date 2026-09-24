@@ -46,9 +46,9 @@ export default function CrewWallet({ onBack }) {
   const pendingWithdrawals = withdrawals.filter((w) => w.status === 'pending');
 
   return (
-    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(4rem+env(safe-area-inset-bottom,0px))]">
+    <div className="min-h-[100dvh] bg-crew-noche text-white font-geist pb-[calc(4rem+env(safe-area-inset-bottom,0px))]">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-[#0a0a14]/80 backdrop-blur-2xl border-b border-white/[0.06]">
+      <header className="sticky top-0 z-30 bg-crew-noche/80 backdrop-blur-2xl border-b border-white/[0.06]">
         <div className="max-w-md mx-auto px-5 pt-[max(1.25rem,env(safe-area-inset-top,0px))] pb-4 flex items-center gap-3">
           <button onClick={onBack} className="text-white/50 hover:text-white transition" aria-label="Atrás">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
@@ -69,7 +69,7 @@ export default function CrewWallet({ onBack }) {
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br from-red-500/10 via-[#0f0f1a] to-[#0a0a14] p-6"
+              className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br from-red-500/10 via-[#0f0f1a] to-crew-noche p-6"
             >
               <div className="absolute -top-10 -right-10 w-32 h-32 bg-red-500/20 rounded-full blur-[60px]" />
               <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-white/40 mb-1">Saldo disponible</p>
@@ -105,7 +105,7 @@ export default function CrewWallet({ onBack }) {
                   <div key={w._id} className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-[12px] font-bold text-white capitalize">{w.payoutMethod?.type} · {w.payoutMethod?.accountInfo}</p>
-                      <p className="text-[10px] text-white/40">Solicitado {new Date(w.createdAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                      <p className="text-2xs text-white/40">Solicitado {new Date(w.createdAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
                     </div>
                     <span className="text-[14px] font-extrabold tabular-nums text-amber-200">{formatCOP(w.amount)}</span>
                   </div>

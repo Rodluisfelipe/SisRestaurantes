@@ -446,7 +446,7 @@ const BusinessSettings = () => {
         <div id="cfg-general" className={`${activeTab === 'cfg-general' ? '' : 'hidden'} bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden`}>
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
-              <FaStore className="text-[10px] text-slate-500" />
+              <FaStore className="text-2xs text-slate-500" />
             </div>
             <h3 className="text-sm font-bold text-slate-800">Información Básica</h3>
           </div>
@@ -532,7 +532,7 @@ const BusinessSettings = () => {
         <div id="cfg-contacto" className={`${activeTab === 'cfg-contacto' ? '' : 'hidden'} bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden`}>
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <div className="w-6 h-6 bg-emerald-50 rounded-lg flex items-center justify-center">
-              <FaMapMarkerAlt className="text-[10px] text-emerald-500" />
+              <FaMapMarkerAlt className="text-2xs text-emerald-500" />
             </div>
             <h3 className="text-sm font-bold text-slate-800">Contacto y ubicación</h3>
           </div>
@@ -598,7 +598,7 @@ const BusinessSettings = () => {
                         </option>
                       ))}
                     </select>
-                    <FaChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 pointer-events-none" />
+                    <FaChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 text-2xs text-slate-400 pointer-events-none" />
                   </div>
                   <input
                     type="text"
@@ -632,7 +632,7 @@ const BusinessSettings = () => {
                       </option>
                     ))}
                   </select>
-                  <FaChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 pointer-events-none" />
+                  <FaChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-2xs text-slate-400 pointer-events-none" />
                 </div>
                 <p className="mt-1 text-xs text-slate-400">
                   Los precios se mostrarán como: {formatCurrency(1000, settings.currency || 'COP')}
@@ -664,7 +664,7 @@ const BusinessSettings = () => {
                       <p className="text-[11px] font-bold text-slate-700 truncate">{placePreview.name || 'Negocio'}</p>
                       <button type="button" onClick={() => setPlacePreview(null)} className="text-[11px] text-slate-400 hover:text-slate-600">cambiar</button>
                     </div>
-                    <p className="text-[10px] text-slate-400 mb-2">Elige qué datos traer:</p>
+                    <p className="text-2xs text-slate-400 mb-2">Elige qué datos traer:</p>
                     <div className="space-y-1.5">
                       {/* Dirección */}
                       <label className={`flex items-center gap-2 text-[11px] ${placePreview.address ? 'text-slate-600' : 'text-slate-300'}`}>
@@ -719,7 +719,7 @@ const BusinessSettings = () => {
                 )}
 
                 {!placePreview && !googleResult && (
-                  <p className="mt-1.5 text-[10px] text-slate-400">Trae dirección, horarios, ubicación y tu rating/enlace de reseñas de Google — tú eliges qué importar.</p>
+                  <p className="mt-1.5 text-2xs text-slate-400">Trae dirección, horarios, ubicación y tu rating/enlace de reseñas de Google — tú eliges qué importar.</p>
                 )}
               </div>
 
@@ -750,7 +750,7 @@ const BusinessSettings = () => {
                   placeholder="Ej: 900.123.456-7"
                 />
                 <p className="mt-1 text-xs text-slate-400 flex items-center gap-1">
-                  <FaInfoCircle className="text-[8px]" />
+                  <FaInfoCircle className="text-2xs" />
                   Se mostrará en las comandas impresas
                 </p>
               </div>
@@ -768,7 +768,7 @@ const BusinessSettings = () => {
                   placeholder="https://maps.google.com/?q=..."
                 />
                 <p className="mt-1 text-xs text-slate-400 flex items-center gap-1">
-                  <FaInfoCircle className="text-[8px]" />
+                  <FaInfoCircle className="text-2xs" />
                   Enlace de ubicación en Google Maps
                 </p>
               </div>
@@ -785,7 +785,7 @@ const BusinessSettings = () => {
           <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 bg-indigo-50 rounded-lg flex items-center justify-center">
-                <FaCalendarAlt className="text-[10px] text-indigo-500" />
+                <FaCalendarAlt className="text-2xs text-indigo-500" />
               </div>
               <h3 className="text-sm font-bold text-slate-800">Agenda y Reservas</h3>
             </div>
@@ -989,7 +989,7 @@ const BusinessSettings = () => {
         {false && <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <div className="w-6 h-6 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <FaEnvelope className="text-[10px] text-indigo-500" />
+              <FaEnvelope className="text-2xs text-indigo-500" />
             </div>
             <h3 className="text-sm font-bold text-slate-800">Correos Automáticos</h3>
             <div className="ml-auto">
@@ -1070,7 +1070,7 @@ const BusinessSettings = () => {
         <div id="cfg-redes" className={`${activeTab === 'cfg-redes' ? '' : 'hidden'} bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden`}>
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
-              <FaShareAlt className="text-[10px] text-slate-500" />
+              <FaShareAlt className="text-2xs text-slate-500" />
             </div>
             <h3 className="text-sm font-bold text-slate-800">Redes Sociales</h3>
           </div>
@@ -1098,7 +1098,7 @@ const BusinessSettings = () => {
                       : 'bg-slate-50 text-slate-500 border border-slate-200'
                   }`}
                 >
-                  {settings.socialMedia.facebook.isVisible ? <><FaEye className="text-[9px]" /> Visible</> : <><FaEyeSlash className="text-[9px]" /> Oculto</>}
+                  {settings.socialMedia.facebook.isVisible ? <><FaEye className="text-2xs" /> Visible</> : <><FaEyeSlash className="text-2xs" /> Oculto</>}
                 </button>
               </div>
             </div>
@@ -1125,7 +1125,7 @@ const BusinessSettings = () => {
                       : 'bg-slate-50 text-slate-500 border border-slate-200'
                   }`}
                 >
-                  {settings.socialMedia.instagram.isVisible ? <><FaEye className="text-[9px]" /> Visible</> : <><FaEyeSlash className="text-[9px]" /> Oculto</>}
+                  {settings.socialMedia.instagram.isVisible ? <><FaEye className="text-2xs" /> Visible</> : <><FaEyeSlash className="text-2xs" /> Oculto</>}
                 </button>
               </div>
             </div>
@@ -1152,7 +1152,7 @@ const BusinessSettings = () => {
                       : 'bg-slate-50 text-slate-500 border border-slate-200'
                   }`}
                 >
-                  {settings.socialMedia.tiktok.isVisible ? <><FaEye className="text-[9px]" /> Visible</> : <><FaEyeSlash className="text-[9px]" /> Oculto</>}
+                  {settings.socialMedia.tiktok.isVisible ? <><FaEye className="text-2xs" /> Visible</> : <><FaEyeSlash className="text-2xs" /> Oculto</>}
                 </button>
               </div>
             </div>
@@ -1185,7 +1185,7 @@ const BusinessSettings = () => {
                       : 'bg-slate-50 text-slate-500 border border-slate-200'
                   }`}
                 >
-                  {settings.extraLink.isVisible ? <><FaEye className="text-[9px]" /> Visible</> : <><FaEyeSlash className="text-[9px]" /> Oculto</>}
+                  {settings.extraLink.isVisible ? <><FaEye className="text-2xs" /> Visible</> : <><FaEyeSlash className="text-2xs" /> Oculto</>}
                 </button>
               </div>
             </div>
@@ -1199,7 +1199,7 @@ const BusinessSettings = () => {
             onClick={handleFixSchema}
             className="px-4 py-2 text-xs font-medium text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-1.5"
           >
-            <FaWrench className="text-[10px]" />
+            <FaWrench className="text-2xs" />
             Reparar Configuración
           </button>
         </div>
@@ -1210,7 +1210,7 @@ const BusinessSettings = () => {
         <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
-              <FaImage className="text-[10px] text-slate-500" />
+              <FaImage className="text-2xs text-slate-500" />
             </div>
             <h3 className="text-sm font-bold text-slate-800">Vista Previa del Logo</h3>
           </div>
@@ -1249,9 +1249,9 @@ const BusinessSettings = () => {
               }`}
             >
               {isSaving ? (
-                <><FaSyncAlt className="animate-spin text-[10px]" /> Guardando...</>
+                <><FaSyncAlt className="animate-spin text-2xs" /> Guardando...</>
               ) : (
-                <><FaSave className="text-[10px]" /> Guardar Cambios</>
+                <><FaSave className="text-2xs" /> Guardar Cambios</>
               )}
             </button>
           </motion.div>

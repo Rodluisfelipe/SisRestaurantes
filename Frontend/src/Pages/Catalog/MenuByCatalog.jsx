@@ -383,7 +383,7 @@ const MenuByCatalog = () => {
                 </svg>
                 <div className="flex flex-col items-start min-w-0">
                   {location.city && !locationLoading && (
-                    <span className={`text-[10px] font-semibold uppercase tracking-wide leading-none mb-0.5 transition-colors ${headerCompact ? 'text-gray-400' : 'text-white/60'}`}>
+                    <span className={`text-2xs font-semibold uppercase tracking-wide leading-none mb-0.5 transition-colors ${headerCompact ? 'text-gray-400' : 'text-white/60'}`}>
                       Cerca de
                     </span>
                   )}

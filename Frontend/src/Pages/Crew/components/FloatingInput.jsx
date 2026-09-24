@@ -62,7 +62,7 @@ export default function FloatingInput({
             absolute pointer-events-none transition-all duration-200 origin-left
             ${prefix ? 'left-[3.4rem]' : 'left-4'}
             ${floats
-              ? 'top-2 text-[10px] font-extrabold uppercase tracking-[0.12em] text-white/50'
+              ? 'top-2 text-2xs font-extrabold uppercase tracking-[0.12em] text-white/50'
               : 'top-1/2 -translate-y-1/2 text-[15px] font-medium text-white/40'}
           `}
         >

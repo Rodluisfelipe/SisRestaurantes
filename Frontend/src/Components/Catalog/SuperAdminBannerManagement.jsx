@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '../../config';
+import { Capa } from '../ui';
 
 // Helper: build auth headers for SuperAdmin requests
 const saAuthHeaders = (extra = {}) => {
@@ -420,6 +421,7 @@ const SuperAdminBannerManagement = () => {
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
             onClick={() => setShowRejectModal(false)}
           >
+            <Capa onCerrar={() => setShowRejectModal(false)} />
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

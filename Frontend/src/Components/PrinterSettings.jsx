@@ -73,7 +73,7 @@ export default function PrinterSettings() {
       <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
           <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
-            <FaPrint className="text-[10px] text-slate-500" />
+            <FaPrint className="text-2xs text-slate-500" />
           </div>
           <h3 className="text-sm font-bold text-slate-800">Configuración de Impresora</h3>
         </div>
@@ -81,8 +81,8 @@ export default function PrinterSettings() {
         <div className="p-4 space-y-5">
           {/* Paper Size */}
           <div>
-            <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
-              <FaRuler className="inline text-[9px] mr-1" />
+            <label className="block text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+              <FaRuler className="inline text-2xs mr-1" />
               Tamaño del papel
             </label>
             <div className="grid grid-cols-4 gap-2">
@@ -98,8 +98,8 @@ export default function PrinterSettings() {
                   }`}
                 >
                   <span className="text-base font-black block">{opt.label}</span>
-                  <span className="block text-[9px] mt-0.5 opacity-70">{opt.desc}</span>
-                  <span className="block text-[8px] mt-0.5 opacity-50">{opt.chars} chars</span>
+                  <span className="block text-2xs mt-0.5 opacity-70">{opt.desc}</span>
+                  <span className="block text-2xs mt-0.5 opacity-50">{opt.chars} chars</span>
                 </button>
               ))}
             </div>
@@ -107,8 +107,8 @@ export default function PrinterSettings() {
 
           {/* QR Toggle */}
           <div>
-            <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
-              <FaQrcode className="inline text-[9px] mr-1" />
+            <label className="block text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+              <FaQrcode className="inline text-2xs mr-1" />
               Código QR del menú
             </label>
             <button
@@ -138,7 +138,7 @@ export default function PrinterSettings() {
               saving ? 'bg-slate-300 text-slate-500' : 'bg-slate-800 hover:bg-slate-900 text-white'
             }`}
           >
-            {saving ? <><FaSyncAlt className="animate-spin text-[10px]" /> Guardando...</> : <><FaSave className="text-[10px]" /> Guardar Configuración</>}
+            {saving ? <><FaSyncAlt className="animate-spin text-2xs" /> Guardando...</> : <><FaSave className="text-2xs" /> Guardar Configuración</>}
           </button>
         </div>
       </div>
@@ -147,10 +147,10 @@ export default function PrinterSettings() {
       <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
           <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
-            <FaEye className="text-[10px] text-slate-500" />
+            <FaEye className="text-2xs text-slate-500" />
           </div>
           <h3 className="text-sm font-bold text-slate-800">Vista Previa de Comanda</h3>
-          <span className="text-[10px] text-slate-400 ml-auto">{paperSize}mm</span>
+          <span className="text-2xs text-slate-400 ml-auto">{paperSize}mm</span>
         </div>
 
         <div className="p-4 flex justify-center">

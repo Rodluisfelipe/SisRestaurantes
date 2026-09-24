@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Capa } from '../ui';
 
 const NAV_LINKS = [
   { label: 'Funciones', href: '#funciones' },
@@ -129,6 +130,7 @@ const Navbar = () => {
             className="fixed inset-0 z-40 md:hidden flex flex-col"
             style={{ background: '#FBFAF8' }}
           >
+            <Capa onCerrar={() => setIsOpen(false)} bloquearScroll={false} />
             <div className="flex-1 flex flex-col justify-center px-7 gap-1">
               {NAV_LINKS.map((l, i) => (
                 <motion.a

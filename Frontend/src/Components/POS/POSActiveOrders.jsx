@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../../services/api';
 import { socket } from '../../services/socket';
 import { toast } from 'sonner';
+import { Capa } from '../ui';
 
 const STATUS_CONFIG = {
   pending: { label: 'Pendiente', bg: 'bg-yellow-100', text: 'text-yellow-800', dot: 'bg-yellow-400', next: 'inProgress', nextLabel: 'Iniciar' },
@@ -238,7 +239,7 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
             style={filter === f.key ? { backgroundColor: themeColor } : {}}
           >
             {f.label}
-            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+            <span className={`px-1.5 py-0.5 rounded-full text-2xs font-black ${
               filter === f.key ? 'bg-white/25' : 'bg-slate-100'
             }`}>{f.count}</span>
           </button>
@@ -277,7 +278,7 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
                   <div className="px-4 pt-3 pb-2.5 flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-lg font-black text-slate-900 leading-none">#{order.orderNumber}</span>
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-black tracking-wide ${isPOS ? 'bg-indigo-50 text-indigo-600' : 'bg-violet-50 text-violet-600'}`}>
+                      <span className={`px-2 py-0.5 rounded-md text-2xs font-black tracking-wide ${isPOS ? 'bg-indigo-50 text-indigo-600' : 'bg-violet-50 text-violet-600'}`}>
                         {isPOS ? 'POS' : 'MENUBY'}
                       </span>
                     </div>
@@ -316,7 +317,7 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
                         <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7" /></svg>
                       </span>
                     ) : items.length > 0 ? (
-                      <span className="text-[10px] text-slate-300">Toca para ver el detalle</span>
+                      <span className="text-2xs text-slate-300">Toca para ver el detalle</span>
                     ) : null}
                   </div>
 
@@ -373,6 +374,7 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
         const dUpdating = updatingId === d._id;
         return (
           <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/55 backdrop-blur-sm sm:p-4" onClick={() => setDetailOrder(null)}>
+            <Capa onCerrar={() => setDetailOrder(null)} />
             <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
               <div className={`h-1.5 ${dc.dot} flex-shrink-0`} />
               {/* Header */}
@@ -380,7 +382,7 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xl font-black text-slate-900">#{d.orderNumber}</span>
-                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${dIsPOS ? 'bg-indigo-50 text-indigo-600' : 'bg-violet-50 text-violet-600'}`}>{dIsPOS ? 'POS' : 'MENUBY'}</span>
+                    <span className={`px-2 py-0.5 rounded-md text-2xs font-black ${dIsPOS ? 'bg-indigo-50 text-indigo-600' : 'bg-violet-50 text-violet-600'}`}>{dIsPOS ? 'POS' : 'MENUBY'}</span>
                   </div>
                   <span className={`inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold ${dc.bg} ${dc.text}`}><span className={`w-1.5 h-1.5 rounded-full ${dc.dot}`} />{dc.label}</span>
                 </div>

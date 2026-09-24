@@ -168,7 +168,7 @@ export default function DeliveryPartnersAdmin() {
                 <div className="flex-1 min-w-[200px]">
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-slate-800">{p.name}</h3>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${p.active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                    <span className={`text-2xs font-bold px-2 py-0.5 rounded-full ${p.active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
                       {p.active ? 'Activa' : 'Inactiva'}
                     </span>
                   </div>

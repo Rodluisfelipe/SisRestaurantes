@@ -207,7 +207,7 @@ function RealMenuMockup() {
                     <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill={C.accent}><path d="M8 5v14l11-7z" /></svg>
                   </div>
                 </div>
-                <span className="text-[10px] font-semibold absolute bottom-3 left-0 right-0 text-center px-2 py-1" style={{ color: C.text }}>
+                <span className="text-2xs font-semibold absolute bottom-3 left-0 right-0 text-center px-2 py-1" style={{ color: C.text }}>
                   <span className="px-2.5 py-1 rounded-full" style={{ background: 'rgba(255,255,255,0.9)', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>Toca para probar el menú real →</span>
                 </span>
               </button>
@@ -276,7 +276,7 @@ function KDSMockup() {
               <div className="w-2 h-2 rounded-full bg-emerald-400" />
               <span className="text-[11px] font-bold text-white/90">KDS — Cocina</span>
             </div>
-            <span className="text-[10px] text-white/70" style={{ fontFamily: "'Geist Mono', monospace" }}>{time}</span>
+            <span className="text-2xs text-white/70" style={{ fontFamily: "'Geist Mono', monospace" }}>{time}</span>
           </div>
           <div className="p-3 space-y-2.5" style={{ minHeight: '320px' }}>
             <AnimatePresence>
@@ -295,7 +295,7 @@ function KDSMockup() {
                     <div className="space-y-1 mb-2.5">
                       {order.items.map((item, idx) => <p key={idx} className="text-[11px] font-medium" style={{ color: ps.text + 'CC' }}>{item}</p>)}
                     </div>
-                    <button onClick={() => handleDone(order.id)} className="w-full py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:brightness-110 active:scale-[0.97]" style={{ background: '#10B981' }}>Marcar como listo</button>
+                    <button onClick={() => handleDone(order.id)} className="w-full py-1.5 rounded-lg text-2xs font-bold text-white transition-all hover:brightness-110 active:scale-[0.97]" style={{ background: '#10B981' }}>Marcar como listo</button>
                   </motion.div>
                 );
               })}
@@ -330,7 +330,7 @@ function DashboardMockup() {
           <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid ' + C.borderLight }}>
             <div>
               <p className="text-[13px] font-extrabold" style={{ color: C.text }}>Dashboard</p>
-              <p className="text-[10px]" style={{ color: C.muted }}>Hoy · Abril 2026</p>
+              <p className="text-2xs" style={{ color: C.muted }}>Hoy · Abril 2026</p>
             </div>
             <div className="w-2 h-2 rounded-full bg-emerald-400" />
           </div>
@@ -338,33 +338,33 @@ function DashboardMockup() {
             <div className="grid grid-cols-2 gap-2.5">
               {kpis.map((k) => (
                 <div key={k.label} className="rounded-xl p-3" style={{ background: C.bg, border: '1px solid ' + C.borderLight }}>
-                  <p className="text-[9px] font-medium mb-1" style={{ color: C.muted }}>{k.label}</p>
+                  <p className="text-2xs font-medium mb-1" style={{ color: C.muted }}>{k.label}</p>
                   <p className="text-[16px] font-extrabold" style={{ color: C.text, fontFamily: "'Geist Mono', monospace" }}>{k.value}</p>
-                  <span className={`text-[9px] font-bold ${k.up ? 'text-emerald-600' : 'text-red-500'}`}>{k.change}</span>
+                  <span className={`text-2xs font-bold ${k.up ? 'text-emerald-600' : 'text-red-500'}`}>{k.change}</span>
                 </div>
               ))}
             </div>
             <div className="rounded-xl p-3" style={{ background: C.bg, border: '1px solid ' + C.borderLight }}>
-              <p className="text-[10px] font-bold mb-3" style={{ color: C.text }}>Ventas esta semana</p>
+              <p className="text-2xs font-bold mb-3" style={{ color: C.text }}>Ventas esta semana</p>
               <div className="flex items-end justify-between gap-1.5" style={{ height: '80px' }}>
                 {barData.map((b, i) => (
                   <div key={b.day} className="flex flex-col items-center gap-1 flex-1">
                     <motion.div initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ duration: 0.8, delay: i * 0.08, ease: 'easeOut' }} className="w-full rounded-t-md" style={{ background: i === 5 ? C.accent : C.accent + '2E', minHeight: '4px', height: b.h + '%', transformOrigin: 'bottom' }} />
-                    <span className="text-[8px] font-medium" style={{ color: C.muted }}>{b.day}</span>
+                    <span className="text-2xs font-medium" style={{ color: C.muted }}>{b.day}</span>
                   </div>
                 ))}
               </div>
             </div>
             <div className="rounded-xl p-3" style={{ background: C.bg, border: '1px solid ' + C.borderLight }}>
-              <p className="text-[10px] font-bold mb-2" style={{ color: C.text }}>Productos top</p>
+              <p className="text-2xs font-bold mb-2" style={{ color: C.text }}>Productos top</p>
               <div className="space-y-2">
                 {topProducts.map((p, i) => (
                   <div key={p.name} className="flex items-center gap-2">
-                    <span className="text-[9px] font-bold w-4 text-center" style={{ color: C.muted }}>{i + 1}</span>
+                    <span className="text-2xs font-bold w-5 text-center" style={{ color: C.muted }}>{i + 1}</span>
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-[10px] font-semibold" style={{ color: C.text }}>{p.name}</span>
-                        <span className="text-[9px] font-medium" style={{ color: C.muted }}>{p.sold}</span>
+                        <span className="text-2xs font-semibold" style={{ color: C.text }}>{p.name}</span>
+                        <span className="text-2xs font-medium" style={{ color: C.muted }}>{p.sold}</span>
                       </div>
                       <div className="h-1.5 rounded-full overflow-hidden" style={{ background: C.elevated }}>
                         <motion.div initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 1, delay: 0.3 + i * 0.1 }} className="h-full rounded-full" style={{ background: i === 0 ? C.accent : C.accent + '60', width: p.pct + '%', transformOrigin: 'left' }} />
@@ -471,7 +471,7 @@ function ComparisonCards() {
                 <span className="w-6 h-6 rounded-full flex items-center justify-center text-white" style={{ background: C.accent, boxShadow: '0 0 0 4px rgba(232,0,45,0.14)' }}><Check size={13} strokeWidth={3} /></span>
                 Con Menuby
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full text-white" style={{ background: C.accent, boxShadow: '0 4px 12px rgba(232,0,45,0.28)' }}>Recomendado</span>
+              <span className="text-2xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full text-white" style={{ background: C.accent, boxShadow: '0 4px 12px rgba(232,0,45,0.28)' }}>Recomendado</span>
             </div>
             <ul className="space-y-3.5">
               {CON_ITEMS.map((t) => (
@@ -645,7 +645,7 @@ function SavingsCalculator() {
             value={sales}
             onChange={(e) => setSales(Number(e.target.value))}
             aria-label="Ventas mensuales"
-            className="w-full mb-1 accent-[#E8002D] cursor-pointer"
+            className="w-full mb-1 accent-menuby cursor-pointer"
             style={{ accentColor: C.accent }}
           />
           <div className="flex justify-between text-[11px] font-semibold mb-7" style={{ color: C.muted }}>
@@ -829,7 +829,7 @@ export default function Home() {
                 </span>
                 <div>
                   <p className="text-[12px] font-extrabold leading-tight" style={{ color: C.text }}>Nuevo pedido · Mesa 4</p>
-                  <p className="text-[10.5px] leading-tight" style={{ color: C.muted }}>$28.900 · hace 3s</p>
+                  <p className="text-2xs leading-tight" style={{ color: C.muted }}>$28.900 · hace 3s</p>
                 </div>
               </motion.div>
 
@@ -839,9 +839,9 @@ export default function Home() {
                 className="hidden sm:block absolute bottom-20 -right-3 lg:-right-7 rounded-2xl px-4 py-3 z-10"
                 style={{ background: '#fff', border: '1px solid ' + C.borderLight, boxShadow: '0 16px 40px rgba(23,18,15,0.14)' }}
               >
-                <p className="text-[9.5px] font-bold uppercase tracking-wider mb-0.5" style={{ color: C.muted }}>Ventas hoy</p>
+                <p className="text-2xs font-bold uppercase tracking-wider mb-0.5" style={{ color: C.muted }}>Ventas hoy</p>
                 <p className="hd text-[1.35rem] leading-none mb-1" style={{ color: C.text }}>$1.240.000</p>
-                <p className="text-[10px] font-bold inline-flex items-center gap-1" style={{ color: C.green }}><TrendingUp size={11} /> 12% vs. ayer</p>
+                <p className="text-2xs font-bold inline-flex items-center gap-1" style={{ color: C.green }}><TrendingUp size={11} /> 12% vs. ayer</p>
               </motion.div>
             </motion.div>
           </div>
@@ -1015,7 +1015,7 @@ export default function Home() {
               <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3" style={{ background: feat.color + '14' }}>
                 <feat.icon size={21} style={{ color: feat.color }} />
               </div>
-              <p className="text-[10.5px] font-bold tracking-[0.12em] uppercase mb-1.5" style={{ color: feat.color }}>{feat.label}</p>
+              <p className="text-2xs font-bold tracking-[0.12em] uppercase mb-1.5" style={{ color: feat.color }}>{feat.label}</p>
               <h3 className="text-[15px] font-extrabold mb-1.5" style={{ color: C.text, fontFamily: DISPLAY, letterSpacing: '-0.02em' }}>{feat.title}</h3>
               <p className="text-[13px] leading-relaxed" style={{ color: C.muted }}>{feat.desc}</p>
             </motion.div>
@@ -1029,7 +1029,7 @@ export default function Home() {
               <Palette size={21} style={{ color: '#2563EB' }} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[10.5px] font-bold tracking-[0.12em] uppercase mb-1" style={{ color: '#2563EB' }}>Tu marca</p>
+              <p className="text-2xs font-bold tracking-[0.12em] uppercase mb-1" style={{ color: '#2563EB' }}>Tu marca</p>
               <h3 className="text-[15.5px] font-extrabold mb-1" style={{ color: C.text, fontFamily: DISPLAY, letterSpacing: '-0.02em' }}>Y todo, con la identidad de tu negocio</h3>
               <p className="text-[13px] leading-relaxed" style={{ color: C.muted }}>Colores, logo, portada, banners y splash — tu marca atraviesa los diez módulos, no un template genérico.</p>
             </div>
@@ -1044,7 +1044,7 @@ export default function Home() {
             <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
               {/* Text */}
               <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-[0.12em] uppercase mb-5" style={{ background: C.accent + '10', color: C.accent, border: '1px solid ' + C.accent + '20' }}>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-2xs font-bold tracking-[0.12em] uppercase mb-5" style={{ background: C.accent + '10', color: C.accent, border: '1px solid ' + C.accent + '20' }}>
                   <Printer size={13} /> Autoprint
                 </div>
                 <h2 className="hd-sub text-[1.9rem] sm:text-[2.4rem] mb-4" style={{ color: C.text }}>Tus comandas se imprimen solas</h2>
@@ -1090,7 +1090,7 @@ export default function Home() {
                   <div>
                     <p className="text-[14px] font-extrabold leading-tight" style={{ color: C.text, fontFamily: DISPLAY }}>MenuBy Print</p>
                     <p className="text-[11px] leading-tight mb-1" style={{ color: C.muted }}>Impresión automática</p>
-                    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-bold" style={{ color: C.green }}>
+                    <span className="inline-flex items-center gap-1.5 text-2xs font-bold" style={{ color: C.green }}>
                       <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.green }} /> Conectado
                     </span>
                   </div>
@@ -1108,7 +1108,7 @@ export default function Home() {
             <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
               {/* Text */}
               <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-[0.12em] uppercase mb-5" style={{ background: '#fff', color: C.textSecondary, border: '1px solid ' + C.border }}>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-2xs font-bold tracking-[0.12em] uppercase mb-5" style={{ background: '#fff', color: C.textSecondary, border: '1px solid ' + C.border }}>
                   <GoogleGLogo size={14} /> Google Reseñas
                 </div>
                 <h2 className="hd-sub text-[1.9rem] sm:text-[2.4rem] mb-4" style={{ color: C.text }}>Conecta con Google y crece con reseñas</h2>
@@ -1169,7 +1169,7 @@ export default function Home() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-[13px] font-bold" style={{ color: C.text }}>Nicolás B.</span>
-                        <span className="text-[10px]" style={{ color: C.muted }}>Hace 2 días</span>
+                        <span className="text-2xs" style={{ color: C.muted }}>Hace 2 días</span>
                       </div>
                       <div className="flex gap-0.5 my-0.5">
                         {[0, 1, 2, 3, 4].map(i => <Star key={i} size={10} fill="#FBBC05" style={{ color: '#FBBC05' }} />)}
@@ -1481,7 +1481,7 @@ export default function Home() {
                   }}
                 >
                   {isPop && (
-                    <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[10.5px] font-bold text-white whitespace-nowrap" style={{ background: `linear-gradient(135deg, ${C.accent}, ${C.ember})`, boxShadow: '0 6px 18px rgba(232,0,45,0.35)' }}>
+                    <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-2xs font-bold text-white whitespace-nowrap" style={{ background: `linear-gradient(135deg, ${C.accent}, ${C.ember})`, boxShadow: '0 6px 18px rgba(232,0,45,0.35)' }}>
                       <Sparkles size={11} /> Más popular
                     </span>
                   )}
@@ -1491,7 +1491,7 @@ export default function Home() {
                     <span className="hd text-[2.1rem]" style={{ color: C.text }}>{plan.id === 'free' ? '$0' : fmtCOP(price)}</span>
                     <span className="text-[11px] ml-1" style={{ color: C.muted }}>{plan.id === 'free' ? ' siempre' : '/mes'}</span>
                     {plan.id !== 'free' && cyc.months > 1 && (
-                      <p className="text-[10.5px] mt-1" style={{ color: C.muted }}>Facturado {fmtCOP(price * cyc.months)} cada {cyc.months} meses</p>
+                      <p className="text-2xs mt-1" style={{ color: C.muted }}>Facturado {fmtCOP(price * cyc.months)} cada {cyc.months} meses</p>
                     )}
                   </div>
                   <ul className="space-y-2.5 mb-6 flex-1">

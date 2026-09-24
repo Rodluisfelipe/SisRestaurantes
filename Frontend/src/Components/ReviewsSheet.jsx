@@ -4,6 +4,7 @@ import api from '../services/api';
 import { API_ENDPOINTS } from '../config';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { X, NotebookPen, Bike, ShoppingBag, Calendar, UtensilsCrossed } from 'lucide-react';
+import { Capa } from './ui';
 
 /**
  * Bottom sheet que muestra las reseñas de un restaurante
@@ -102,7 +103,9 @@ const ReviewsSheet = ({ show, onClose, businessId, reviewStats, theme, initialSo
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/40 z-[180]"
             onClick={onClose}
-          />
+          >
+            <Capa onCerrar={onClose} />
+          </motion.div>
           {/* Sheet */}
           <motion.div
             initial={{ y: '100%' }}
@@ -252,7 +255,7 @@ const ReviewsSheet = ({ show, onClose, businessId, reviewStats, theme, initialSo
                               </svg>
                             ))}
                             {review.orderType && (
-                              <span className="ml-1.5 inline-flex items-center gap-1 text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-full">
+                              <span className="ml-1.5 inline-flex items-center gap-1 text-2xs text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-full">
                                 {review.orderType === 'delivery' ? <><Bike className="w-2.5 h-2.5" /> Delivery</> : review.orderType === 'takeaway' ? <><ShoppingBag className="w-2.5 h-2.5" /> Para llevar</> : isService ? <><Calendar className="w-2.5 h-2.5" /> Cita</> : <><UtensilsCrossed className="w-2.5 h-2.5" /> En mesa</>}
                               </span>
                             )}
@@ -373,7 +376,7 @@ const ReviewsSheet = ({ show, onClose, businessId, reviewStats, theme, initialSo
                       </div>
                     ))
                   )}
-                  <p className="text-[10px] text-gray-300 text-center pt-1">Reseñas provistas por Google</p>
+                  <p className="text-2xs text-gray-300 text-center pt-1">Reseñas provistas por Google</p>
                 </div>
               </>
             )}

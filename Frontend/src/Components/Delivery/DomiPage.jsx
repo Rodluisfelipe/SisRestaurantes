@@ -342,13 +342,13 @@ const DomiPage = () => {
           </div>
           <div className="flex items-center gap-2">
             {/* Connection status */}
-            <div className={`flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full ${connected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+            <div className={`flex items-center gap-1.5 text-2xs font-medium px-2 py-1 rounded-full ${connected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
               <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-400' : 'bg-red-400'} animate-pulse`} />
               {connected ? 'En línea' : 'Sin conexión'}
             </div>
             {/* Active count badge */}
             {orders.length > 0 && (
-              <span className="bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">
+              <span className="bg-red-500 text-white text-2xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
                 {orders.length}
               </span>
             )}
@@ -411,12 +411,12 @@ const DomiPage = () => {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-lg text-slate-800">#{order.orderNumber}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${status.color} ${status.textColor}`}>
+                      <span className={`text-2xs font-bold px-2 py-0.5 rounded-full ${status.color} ${status.textColor}`}>
                         {status.label}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 text-slate-400">
-                      <FaClock className="text-[10px]" />
+                      <FaClock className="text-2xs" />
                       <span className="text-xs font-medium">{elapsed > 0 ? `${elapsed} min` : 'Ahora'}</span>
                     </div>
                   </div>
@@ -484,7 +484,7 @@ const DomiPage = () => {
                         onClick={() => openWhatsApp(order, 'cantFind')}
                         className="flex items-center gap-1.5 text-[11px] font-semibold bg-amber-50 text-amber-700 pl-2.5 pr-3 py-1.5 rounded-full whitespace-nowrap active:scale-95 transition-transform border border-amber-100"
                       >
-                        <FaExclamationTriangle className="text-[10px]" /> No encuentro
+                        <FaExclamationTriangle className="text-2xs" /> No encuentro
                       </button>
                     </div>
                   )}
@@ -522,7 +522,7 @@ const DomiPage = () => {
                     className="w-full flex items-center justify-between text-xs text-slate-500 font-medium px-1 py-1.5"
                   >
                     <span>{order.items?.length || 0} producto{(order.items?.length || 0) !== 1 ? 's' : ''}</span>
-                    {isExpanded ? <FaChevronUp className="text-[10px]" /> : <FaChevronDown className="text-[10px]" />}
+                    {isExpanded ? <FaChevronUp className="text-2xs" /> : <FaChevronDown className="text-2xs" />}
                   </button>
                   <AnimatePresence>
                     {isExpanded && (

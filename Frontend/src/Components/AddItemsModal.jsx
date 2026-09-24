@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaSearch, FaPlus, FaMinus, FaShoppingCart } from 'react-icons/fa';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import { Capa } from './ui';
 
 function AddItemsModal({ isOpen, onClose, order, onItemsAdded }) {
   const { businessId } = useBusinessConfig();
@@ -108,6 +109,7 @@ function AddItemsModal({ isOpen, onClose, order, onItemsAdded }) {
         className="fixed inset-0 bg-black/50 flex items-end lg:items-center justify-center z-[70]"
         onClick={onClose}
       >
+        <Capa onCerrar={onClose} />
         <motion.div
           initial={{ opacity: 0, y: 100 }}
           animate={{ opacity: 1, y: 0 }}
@@ -186,14 +188,14 @@ function AddItemsModal({ isOpen, onClose, order, onItemsAdded }) {
                               onClick={() => updateCartQty(cart.indexOf(inCart), -1)}
                               className="w-7 h-7 bg-slate-200 hover:bg-slate-300 rounded-md flex items-center justify-center"
                             >
-                              <FaMinus className="text-[8px] text-slate-600" />
+                              <FaMinus className="text-2xs text-slate-600" />
                             </button>
                             <span className="text-xs font-bold text-slate-800 w-5 text-center">{inCart.quantity}</span>
                             <button
                               onClick={() => updateCartQty(cart.indexOf(inCart), 1)}
                               className="w-7 h-7 bg-slate-800 hover:bg-slate-700 rounded-md flex items-center justify-center"
                             >
-                              <FaPlus className="text-[8px] text-white" />
+                              <FaPlus className="text-2xs text-white" />
                             </button>
                           </>
                         ) : (

@@ -151,7 +151,7 @@ export default function TeamManagement() {
 
       {/* Role legend */}
       <div className="bg-white border border-slate-200 rounded-xl p-4">
-        <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 mb-2.5">Roles disponibles</p>
+        <p className="text-2xs font-bold uppercase tracking-[0.08em] text-slate-500 mb-2.5">Roles disponibles</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {Object.entries(ROLE_INFO).map(([k, v]) => (
             <div key={k} className="flex items-start gap-2">
@@ -276,7 +276,7 @@ function TeamRow({ member, isLast, isMe, canManage, onEdit, onToggleActive, onRe
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-sm font-semibold text-slate-900 truncate">
             {member.name || member.email.split('@')[0]}
-            {isMe && <span className="ml-2 text-[10px] font-bold text-cyan-700">(tú)</span>}
+            {isMe && <span className="ml-2 text-2xs font-bold text-cyan-700">(tú)</span>}
           </p>
           <SABadge variant={info.badge}>{info.label}</SABadge>
           {!member.active && <SABadge variant="danger">Desactivado</SABadge>}

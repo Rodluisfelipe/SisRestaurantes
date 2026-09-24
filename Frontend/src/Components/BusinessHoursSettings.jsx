@@ -214,23 +214,23 @@ const BusinessHoursSettings = () => {
       <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
           <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
-            <FaClock className="text-[10px] text-slate-500" />
+            <FaClock className="text-2xs text-slate-500" />
           </div>
           <h3 className="text-sm font-bold text-slate-800">Horarios y Estado del Negocio</h3>
         </div>
         
         <div className="p-4">
-          <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-2">Estado Actual</p>
+          <p className="text-2xs text-slate-400 uppercase tracking-wider font-semibold mb-2">Estado Actual</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-              <p className="text-[10px] text-slate-400 mb-1">General</p>
+              <p className="text-2xs text-slate-400 mb-1">General</p>
               <div className="flex items-center gap-1.5">
                 <div className={`w-2 h-2 rounded-full ${businessStatus.isOpen ? 'bg-emerald-500' : 'bg-red-500'}`} />
                 <span className={`text-xs font-semibold ${getStatusColor()}`}>{getStatusText()}</span>
               </div>
             </div>
             <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-              <p className="text-[10px] text-slate-400 mb-1">Horarios</p>
+              <p className="text-2xs text-slate-400 mb-1">Horarios</p>
               <div className="flex items-center gap-1.5">
                 <div className={`w-2 h-2 rounded-full ${businessStatus.isOpenByHours ? 'bg-emerald-500' : 'bg-red-500'}`} />
                 <span className={`text-xs font-semibold ${businessStatus.isOpenByHours ? 'text-emerald-600' : 'text-red-600'}`}>
@@ -239,7 +239,7 @@ const BusinessHoursSettings = () => {
               </div>
             </div>
             <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-              <p className="text-[10px] text-slate-400 mb-1">Menú</p>
+              <p className="text-2xs text-slate-400 mb-1">Menú</p>
               <div className="flex items-center gap-1.5">
                 <div className={`w-2 h-2 rounded-full ${businessStatus.isMenuActive ? 'bg-emerald-500' : 'bg-red-500'}`} />
                 <span className={`text-xs font-semibold ${businessStatus.isMenuActive ? 'text-emerald-600' : 'text-red-600'}`}>
@@ -248,7 +248,7 @@ const BusinessHoursSettings = () => {
               </div>
             </div>
             <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-              <p className="text-[10px] text-slate-400 mb-1">Control</p>
+              <p className="text-2xs text-slate-400 mb-1">Control</p>
               <button
                 onClick={handleMenuStatusToggle}
                 disabled={saving}
@@ -258,8 +258,8 @@ const BusinessHoursSettings = () => {
                     : 'bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100'
                 } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                {saving ? <FaSyncAlt className="animate-spin text-[9px]" /> : 
-                 menuStatus === 'active' ? <><FaPause className="text-[9px]" /> Pausar</> : <><FaPlay className="text-[9px]" /> Activar</>}
+                {saving ? <FaSyncAlt className="animate-spin text-2xs" /> : 
+                 menuStatus === 'active' ? <><FaPause className="text-2xs" /> Pausar</> : <><FaPlay className="text-2xs" /> Activar</>}
               </button>
             </div>
           </div>
@@ -283,7 +283,7 @@ const BusinessHoursSettings = () => {
             exit={{ opacity: 0, scale: 0.95 }}
             className="bg-white border border-red-200 text-red-600 px-4 py-2.5 rounded-xl flex items-center gap-2 text-xs"
           >
-            <FaExclamationCircle className="text-[10px] flex-shrink-0" />
+            <FaExclamationCircle className="text-2xs flex-shrink-0" />
             <span className="font-medium">{error}</span>
           </motion.div>
         )}
@@ -295,7 +295,7 @@ const BusinessHoursSettings = () => {
             exit={{ opacity: 0, scale: 0.95 }}
             className="bg-white border border-emerald-200 text-emerald-600 px-4 py-2.5 rounded-xl flex items-center gap-2 text-xs"
           >
-            <FaCheckCircle className="text-[10px] flex-shrink-0" />
+            <FaCheckCircle className="text-2xs flex-shrink-0" />
             <span className="font-medium">{successMessage}</span>
           </motion.div>
         )}
@@ -304,7 +304,7 @@ const BusinessHoursSettings = () => {
       {/* Horarios de Atención */}
       <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-          <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Horarios de Atención</p>
+          <p className="text-2xs text-slate-500 uppercase tracking-wider font-semibold">Horarios de Atención</p>
         </div>
         
         <div className="divide-y divide-slate-100">
@@ -323,7 +323,7 @@ const BusinessHoursSettings = () => {
                       newHours[dayKey] = { ...newHours[dayKey], isOpen: !newHours[dayKey]?.isOpen };
                       setBusinessHours(newHours);
                     }}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-medium transition-colors ${
+                    className={`px-2.5 py-1 rounded-lg text-2xs font-medium transition-colors ${
                       businessHours[dayKey]?.isOpen
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         : 'bg-red-50 text-red-600 border border-red-200'
@@ -340,10 +340,10 @@ const BusinessHoursSettings = () => {
                         if (weekdays.includes(dayKey)) copyDayHours(dayKey, weekdays);
                         else if (weekends.includes(dayKey)) copyDayHours(dayKey, weekends);
                       }}
-                      className="px-2 py-1 bg-slate-50 text-slate-500 border border-slate-200 rounded-lg text-[10px] font-medium hover:bg-slate-100 transition-colors flex items-center gap-1"
+                      className="px-2 py-1 bg-slate-50 text-slate-500 border border-slate-200 rounded-lg text-2xs font-medium hover:bg-slate-100 transition-colors flex items-center gap-1"
                       title="Copiar horarios"
                     >
-                      <FaCopy className="text-[8px]" /> Copiar
+                      <FaCopy className="text-2xs" /> Copiar
                     </button>
                   )}
                 </div>
@@ -352,7 +352,7 @@ const BusinessHoursSettings = () => {
               {businessHours[dayKey]?.isOpen && (
                 <div className="flex items-center gap-3 pl-4">
                   <div className="flex-1">
-                    <label className="block text-[10px] text-slate-400 mb-0.5">Apertura</label>
+                    <label className="block text-2xs text-slate-400 mb-0.5">Apertura</label>
                     <input
                       type="time"
                       value={businessHours[dayKey]?.openTime || '08:00'}
@@ -365,7 +365,7 @@ const BusinessHoursSettings = () => {
                     />
                   </div>
                   <div className="flex-1">
-                    <label className="block text-[10px] text-slate-400 mb-0.5">Cierre</label>
+                    <label className="block text-2xs text-slate-400 mb-0.5">Cierre</label>
                     <input
                       type="time"
                       value={businessHours[dayKey]?.closeTime || '22:00'}
@@ -393,7 +393,7 @@ const BusinessHoursSettings = () => {
                 : 'bg-slate-800 hover:bg-slate-900 text-white'
             }`}
           >
-            {saving ? <><FaSyncAlt className="animate-spin text-[10px]" /> Guardando...</> : <><FaSave className="text-[10px]" /> Guardar Horarios</>}
+            {saving ? <><FaSyncAlt className="animate-spin text-2xs" /> Guardando...</> : <><FaSave className="text-2xs" /> Guardar Horarios</>}
           </button>
         </div>
       </div>

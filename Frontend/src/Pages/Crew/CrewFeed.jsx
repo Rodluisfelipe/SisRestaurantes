@@ -94,10 +94,10 @@ export default function CrewFeed({ onDetailOpen }) {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(7rem+env(safe-area-inset-bottom,0px))]">
+    <div className="min-h-[100dvh] bg-crew-noche text-white font-geist pb-[calc(7rem+env(safe-area-inset-bottom,0px))]">
       {/* Header — cosmic with aurora blobs */}
       <header className="sticky top-0 z-30 overflow-hidden">
-        <div className="absolute inset-0 bg-[#0a0a14]/80 backdrop-blur-2xl" />
+        <div className="absolute inset-0 bg-crew-noche/80 backdrop-blur-2xl" />
         <div className="absolute -top-20 -right-12 w-56 h-56 bg-red-500/20 rounded-full blur-[80px] pointer-events-none" />
         <div className="absolute -bottom-16 -left-12 w-48 h-48 bg-red-400/15 rounded-full blur-[80px] pointer-events-none" />
         <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
@@ -106,7 +106,7 @@ export default function CrewFeed({ onDetailOpen }) {
           <div className="flex items-center justify-between mb-4 gap-2">
             <div className="flex items-center gap-3">
               <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-white/40">Hola</p>
+                <p className="text-2xs font-extrabold uppercase tracking-[0.2em] text-white/40">Hola</p>
                 <p className="text-[20px] font-black leading-tight tracking-tight">
                   {worker?.name?.split(' ')[0] || 'Crew'}
                 </p>
@@ -130,8 +130,8 @@ export default function CrewFeed({ onDetailOpen }) {
           </div>
 
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-white/40">Progreso</span>
-            <span className="text-[10px] font-bold text-white/60 tabular-nums">
+            <span className="text-2xs font-bold text-white/40">Progreso</span>
+            <span className="text-2xs font-bold text-white/60 tabular-nums">
               <AnimatedCounter value={worker?.xp || 0} /> / {next} XP
             </span>
           </div>
@@ -241,16 +241,16 @@ function ShiftCard({ shift, index, onApply, applying, onOpen }) {
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a2e] to-[#16162a]" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a14] via-[#0a0a14]/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-crew-noche via-crew-noche/40 to-transparent" />
 
         {shift.isSOS && (
-          <span className="absolute top-3 right-3 px-2.5 py-1 text-[10px] font-extrabold bg-red-500 text-white rounded-full shadow-[0_4px_16px_-2px_rgba(239,68,68,0.6)] animate-pulse">
+          <span className="absolute top-3 right-3 px-2.5 py-1 text-2xs font-extrabold bg-red-500 text-white rounded-full shadow-[0_4px_16px_-2px_rgba(239,68,68,0.6)] animate-pulse">
             ⚡ Urgente
           </span>
         )}
 
         <div className="absolute bottom-3 left-3.5 right-3.5 flex items-end gap-2.5">
-          <div className="w-11 h-11 rounded-xl border-2 border-white/20 shadow-lg overflow-hidden shrink-0 bg-[#0a0a14]">
+          <div className="w-11 h-11 rounded-xl border-2 border-white/20 shadow-lg overflow-hidden shrink-0 bg-crew-noche">
             {logo ? (
               <img src={logo} alt="" className="w-full h-full object-cover" />
             ) : (
@@ -261,7 +261,7 @@ function ShiftCard({ shift, index, onApply, applying, onOpen }) {
           </div>
           <div className="flex-1 min-w-0 pb-0.5">
             <p className="text-[13px] font-extrabold text-white truncate drop-shadow-lg">{biz.businessName || 'Negocio'}</p>
-            <p className="text-[10px] text-white/60 font-bold uppercase tracking-wider">{biz.businessType || 'Restaurante'}</p>
+            <p className="text-2xs text-white/60 font-bold uppercase tracking-wider">{biz.businessType || 'Restaurante'}</p>
           </div>
         </div>
       </button>
@@ -282,12 +282,12 @@ function ShiftCard({ shift, index, onApply, applying, onOpen }) {
         {(shift.perks || []).length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 mt-3">
             {(shift.perks || []).slice(0, 3).map((p) => (
-              <span key={p} className="px-2 py-0.5 text-[10px] font-bold bg-white/[0.06] text-white/70 border border-white/[0.10] rounded-full capitalize">
+              <span key={p} className="px-2 py-0.5 text-2xs font-bold bg-white/[0.06] text-white/70 border border-white/[0.10] rounded-full capitalize">
                 {p.replace(/_/g, ' ')}
               </span>
             ))}
             {(shift.perks || []).length > 3 && (
-              <span className="text-[10px] font-bold text-white/25">+{(shift.perks || []).length - 3}</span>
+              <span className="text-2xs font-bold text-white/25">+{(shift.perks || []).length - 3}</span>
             )}
           </div>
         )}
@@ -304,7 +304,7 @@ function ShiftCard({ shift, index, onApply, applying, onOpen }) {
                 style={{ boxShadow: shift.matchScore >= 70 ? '0 0 8px rgba(239,68,68,0.5)' : 'none' }}
               />
             </div>
-            <span className={`text-[10px] font-bold tabular-nums ${shift.matchScore >= 70 ? 'text-red-400' : 'text-white/40'}`}>
+            <span className={`text-2xs font-bold tabular-nums ${shift.matchScore >= 70 ? 'text-red-400' : 'text-white/40'}`}>
               {shift.matchScore}%
             </span>
           </div>
@@ -338,7 +338,7 @@ function ShiftCard({ shift, index, onApply, applying, onOpen }) {
 function Stat({ label, value, accent }) {
   return (
     <div className="px-2.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06]">
-      <p className="text-[9px] font-extrabold text-white/30 uppercase tracking-wider">{label}</p>
+      <p className="text-2xs font-extrabold text-white/30 uppercase tracking-wider">{label}</p>
       <p className={`text-[12px] font-extrabold tabular-nums leading-tight mt-0.5 ${accent ? 'text-red-400' : 'text-white/90'}`}>{value}</p>
     </div>
   );

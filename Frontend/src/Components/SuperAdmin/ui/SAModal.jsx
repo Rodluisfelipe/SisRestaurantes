@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect } from 'react';
+import { Capa } from '../../ui';
 
 export default function SAModal({ isOpen, onClose, title, subtitle, children, width = 'max-w-lg', footer }) {
   useEffect(() => {
@@ -13,6 +14,7 @@ export default function SAModal({ isOpen, onClose, title, subtitle, children, wi
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <Capa onCerrar={onClose} bloquearScroll={false} />
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}

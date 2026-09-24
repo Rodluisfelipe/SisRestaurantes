@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
 import { ShoppingCart, Store, Factory, X } from 'lucide-react';
+import { Capa } from '../ui';
 
 const CATEGORIES = [
   { value: '', label: 'Todos' },
@@ -234,6 +235,7 @@ export default function Marketplace({ businessId, businessName }) {
       {/* Modal Carrito */}
       {showCart && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+          <Capa onCerrar={() => setShowCart(false)} />
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between p-5 border-b">
               <h3 className="font-bold text-slate-900 inline-flex items-center gap-2"><ShoppingCart className="w-4 h-4" /> Confirmar pedido</h3>

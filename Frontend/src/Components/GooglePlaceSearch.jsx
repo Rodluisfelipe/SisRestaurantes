@@ -149,7 +149,7 @@ const GooglePlaceSearch = ({
                 </button>
               </li>
             ))}
-            <li className="px-3.5 py-1.5 text-[10px] text-slate-300 text-right border-t border-slate-50">powered by Google</li>
+            <li className="px-3.5 py-1.5 text-2xs text-slate-300 text-right border-t border-slate-50">powered by Google</li>
           </motion.ul>
         )}
       </AnimatePresence>

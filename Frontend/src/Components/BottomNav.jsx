@@ -54,7 +54,7 @@ export default function BottomNav({
           />
         )}
       </span>
-      <span className="text-[10px] font-medium leading-none" style={{ color: INACTIVE }}>{label}</span>
+      <span className="text-2xs font-medium leading-none" style={{ color: INACTIVE }}>{label}</span>
     </button>
   );
 

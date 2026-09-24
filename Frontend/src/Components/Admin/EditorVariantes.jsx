@@ -87,7 +87,7 @@ export default function EditorVariantes({ opciones = [], variantes = [], fotos =
       {/* ── Ejes ── */}
       <div className="rounded-lg border border-slate-200 p-3 space-y-3">
         <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-          <FaTags className="text-slate-400 text-[10px]" />
+          <FaTags className="text-slate-400 text-2xs" />
           Opciones del producto
         </p>
 
@@ -118,7 +118,7 @@ export default function EditorVariantes({ opciones = [], variantes = [], fotos =
                     className="text-slate-300 hover:text-red-500"
                     title={`Quitar ${valor}`}
                   >
-                    <FaTimes className="text-[9px]" />
+                    <FaTimes className="text-2xs" />
                   </button>
                 </span>
               ))}
@@ -160,7 +160,7 @@ export default function EditorVariantes({ opciones = [], variantes = [], fotos =
               onClick={agregarEje}
               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs font-medium hover:bg-blue-100"
             >
-              <FaPlus className="text-[9px]" /> Opción
+              <FaPlus className="text-2xs" /> Opción
             </button>
           </div>
         )}
@@ -267,7 +267,7 @@ export default function EditorVariantes({ opciones = [], variantes = [], fotos =
                   onClick={() => agregarFila(combo)}
                   className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white border border-slate-200 text-[11px] text-slate-600 hover:border-blue-300 hover:text-blue-600"
                 >
-                  <FaPlus className="text-[8px]" /> {combo.join(' · ')}
+                  <FaPlus className="text-2xs" /> {combo.join(' · ')}
                 </button>
               ))}
             </div>

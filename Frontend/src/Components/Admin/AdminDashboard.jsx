@@ -221,7 +221,7 @@ function MobileActionCard({ tab, gradient, icon, label, sublabel, badge, onClick
       className="relative flex flex-col items-center gap-2 py-4 px-1 bg-white rounded-2xl border border-slate-100 shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
     >
       {badge > 0 && (
-        <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-sm ring-2 ring-white z-10">
+        <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-red-500 text-white text-2xs font-black rounded-full flex items-center justify-center shadow-sm ring-2 ring-white z-10">
           {badge > 99 ? '99+' : badge}
         </span>
       )}
@@ -230,7 +230,7 @@ function MobileActionCard({ tab, gradient, icon, label, sublabel, badge, onClick
       </div>
       <div className="text-center px-0.5">
         <p className="text-[12.5px] font-bold text-slate-800 leading-tight">{label}</p>
-        <p className="text-[10px] text-slate-400 font-medium mt-0.5 leading-tight">{sublabel}</p>
+        <p className="text-2xs text-slate-400 font-medium mt-0.5 leading-tight">{sublabel}</p>
       </div>
     </motion.button>
   );
@@ -384,7 +384,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
           ].map(s => (
             <div key={s.label} className="bg-white rounded-2xl px-3 py-3 border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
               <p className={`text-[18px] font-black ${s.color} leading-none truncate`}>{s.value}</p>
-              <p className="text-[10px] text-slate-400 font-semibold mt-1 uppercase tracking-wide leading-tight">{s.label}</p>
+              <p className="text-2xs text-slate-400 font-semibold mt-1 uppercase tracking-wide leading-tight">{s.label}</p>
             </div>
           ))}
         </div>
@@ -476,7 +476,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
               </svg>
             </div>
             <div className="flex-1 min-w-0 text-left">
-              <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">{isService ? 'Tu página de servicios' : 'Tu menú digital'}</p>
+              <p className="text-2xs text-slate-400 font-semibold uppercase tracking-wider">{isService ? 'Tu página de servicios' : 'Tu menú digital'}</p>
               <p className="text-[13px] font-bold text-slate-800 truncate">menuby.tech/{slug}</p>
             </div>
             <span className={`text-[12px] font-bold px-3 py-1.5 rounded-xl shrink-0 transition-all ${
@@ -590,7 +590,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
                           ) : SvgIcon ? (
                             SvgIcon(`w-3 h-3 ${isNext ? 'text-white' : 'text-slate-400'}`)
                           ) : (
-                            <span className={`text-[10px] font-bold ${isNext ? 'text-white' : 'text-slate-400'}`}>{step.level}</span>
+                            <span className={`text-2xs font-bold ${isNext ? 'text-white' : 'text-slate-400'}`}>{step.level}</span>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { globalSearch } from '../../services/superadminApi';
+import { Capa } from '../ui';
 
 const money = (n) => `$${Number(n || 0).toLocaleString('es-CO', { maximumFractionDigits: 0 })}`;
 
@@ -62,12 +63,13 @@ export default function GlobalSearch({ onOpenBusiness }) {
           <circle cx="11" cy="11" r="7" /><path strokeLinecap="round" d="M21 21l-4.3-4.3" />
         </svg>
         <span className="flex-1 text-left">Buscar…</span>
-        <kbd className="hidden sm:inline text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-400">⌘K</kbd>
+        <kbd className="hidden sm:inline text-2xs font-semibold px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-400">⌘K</kbd>
       </button>
 
       <AnimatePresence>
         {open && (
           <div className="fixed inset-0 z-[200] flex items-start justify-center p-4 sm:pt-24">
+            <Capa onCerrar={() => setOpen(false)} />
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
@@ -108,7 +110,7 @@ export default function GlobalSearch({ onOpenBusiness }) {
                   <>
                     {res?.businesses?.length > 0 && (
                       <div className="py-2">
-                        <p className="px-4 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Negocios</p>
+                        <p className="px-4 py-1 text-2xs font-bold uppercase tracking-wider text-slate-400">Negocios</p>
                         {res.businesses.map((b) => (
                           <div key={b._id} className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50">
                             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${b.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`} />
@@ -141,7 +143,7 @@ export default function GlobalSearch({ onOpenBusiness }) {
 
                     {res?.orders?.length > 0 && (
                       <div className="py-2 border-t border-slate-100">
-                        <p className="px-4 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Pedidos</p>
+                        <p className="px-4 py-1 text-2xs font-bold uppercase tracking-wider text-slate-400">Pedidos</p>
                         {res.orders.map((o) => (
                           <div key={o._id} className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50">
                             <div className="min-w-0 flex-1">
@@ -155,7 +157,7 @@ export default function GlobalSearch({ onOpenBusiness }) {
                               </p>
                             </div>
                             <span className="shrink-0 text-[12.5px] font-bold text-slate-700 tabular-nums">{money(o.amount)}</span>
-                            <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-500">{o.status}</span>
+                            <span className="shrink-0 px-1.5 py-0.5 rounded text-2xs font-semibold bg-slate-100 text-slate-500">{o.status}</span>
                           </div>
                         ))}
                       </div>

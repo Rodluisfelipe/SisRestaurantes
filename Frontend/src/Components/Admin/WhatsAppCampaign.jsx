@@ -274,7 +274,7 @@ export default function WhatsAppCampaign({ businessId }) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-slate-900 truncate">{c.name}</span>
-                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${STATUS_COLOR[c.status] || STATUS_COLOR.active}`}>
+                        <span className={`text-2xs font-semibold px-1.5 py-0.5 rounded-full ${STATUS_COLOR[c.status] || STATUS_COLOR.active}`}>
                           {STATUS_LABEL[c.status] || 'Activo'}
                         </span>
                       </div>
@@ -283,7 +283,7 @@ export default function WhatsAppCampaign({ businessId }) {
                     <div className="text-right shrink-0">
                       <p className="text-xs text-slate-500">{c.totalOrders} ped.</p>
                       {c.lastOrderDate && (
-                        <p className="text-[10px] text-slate-400">
+                        <p className="text-2xs text-slate-400">
                           {Math.round(daysAgo(c.lastOrderDate))}d atrás
                         </p>
                       )}

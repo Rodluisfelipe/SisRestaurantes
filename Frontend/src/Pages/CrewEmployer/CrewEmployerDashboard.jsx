@@ -101,7 +101,7 @@ export default function CrewEmployerDashboard() {
             </div>
           )}
           <div className="min-w-0">
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
+            <p className="text-2xs font-extrabold uppercase tracking-[0.18em] text-slate-400">
               {employer?.kind === 'individual' ? 'Persona' : 'Negocio'}
             </p>
             <p className="text-[13px] font-black text-slate-800 truncate">{employer?.name}</p>
@@ -235,7 +235,7 @@ function MiniStat({ label, value, tone }) {
   return (
     <div className={`rounded-2xl border p-3 ${tones[tone]}`}>
       <p className="text-[20px] font-black leading-none tabular-nums">{value}</p>
-      <p className="text-[9px] font-extrabold uppercase tracking-wider opacity-75 mt-1">{label}</p>
+      <p className="text-2xs font-extrabold uppercase tracking-wider opacity-75 mt-1">{label}</p>
     </div>
   );
 }
@@ -282,12 +282,12 @@ function ShiftCard({ shift, index, onClick }) {
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-black text-slate-800 truncate">{shift.title}</p>
-          <p className="text-[10px] text-slate-500 mt-0.5">
+          <p className="text-2xs text-slate-500 mt-0.5">
             {new Date(shift.date).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'short' })}
             {' · '}{shift.startTime}–{shift.endTime}
           </p>
         </div>
-        <span className={`shrink-0 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider rounded-full border ${s.color}`}>
+        <span className={`shrink-0 px-2 py-0.5 text-2xs font-extrabold uppercase tracking-wider rounded-full border ${s.color}`}>
           {s.label}
         </span>
       </div>
@@ -303,7 +303,7 @@ function ShiftCard({ shift, index, onClick }) {
 function MiniBox({ label, value, accent }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5">
-      <p className="text-[8px] font-extrabold uppercase tracking-wider text-slate-400">{label}</p>
+      <p className="text-2xs font-extrabold uppercase tracking-wider text-slate-400">{label}</p>
       <p className={`text-[11px] font-black tabular-nums truncate ${accent ? 'text-emerald-600' : 'text-slate-700'}`}>{value}</p>
     </div>
   );
@@ -382,7 +382,7 @@ function ApplicantsView({ shift, onBack }) {
         </div>
         {!['cancelled', 'completed'].includes(shift.status) && (
           <button onClick={cancelShift}
-            className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition">
+            className="text-2xs font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition">
             Cancelar turno
           </button>
         )}
@@ -432,18 +432,18 @@ function ApplicantCard({ app, booking, onAccept, onReject, onComplete }) {
         )}
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-black text-slate-800 truncate">{w.name}</p>
-          <p className="text-[10.5px] text-slate-500">Nivel {w.level || 1} · {(w.rating?.avg || 0).toFixed(1)}★ · {w.stats?.shiftsCompleted || 0} turnos</p>
+          <p className="text-2xs text-slate-500">Nivel {w.level || 1} · {(w.rating?.avg || 0).toFixed(1)}★ · {w.stats?.shiftsCompleted || 0} turnos</p>
         </div>
-        <span className={`shrink-0 px-2 py-0.5 text-[10px] font-extrabold border rounded-full ${matchTone}`}>
+        <span className={`shrink-0 px-2 py-0.5 text-2xs font-extrabold border rounded-full ${matchTone}`}>
           {app.matchScore}%
         </span>
       </div>
 
       {booking?.checkInCode && booking.status === 'confirmed' && (
         <div className="px-3 py-2 mb-2 rounded-xl bg-amber-50 border border-amber-200">
-          <p className="text-[9px] font-extrabold uppercase tracking-wider text-amber-700">Código de llegada</p>
+          <p className="text-2xs font-extrabold uppercase tracking-wider text-amber-700">Código de llegada</p>
           <p className="text-[18px] font-black text-slate-800 tabular-nums tracking-widest">{booking.checkInCode}</p>
-          <p className="text-[10px] text-amber-600/70 mt-0.5">Muéstraselo cuando llegue al sitio.</p>
+          <p className="text-2xs text-amber-600/70 mt-0.5">Muéstraselo cuando llegue al sitio.</p>
         </div>
       )}
 
@@ -556,7 +556,7 @@ function NewShiftForm({ wallet, employerKind, onCreated, onCancel, onNeedRecharg
               key={s.key}
               type="button"
               onClick={() => setForm({ ...form, role: s.key })}
-              className={`py-2 rounded-xl text-[10.5px] font-extrabold transition flex items-center justify-center gap-1 ${
+              className={`py-2 rounded-xl text-2xs font-extrabold transition flex items-center justify-center gap-1 ${
                 form.role === s.key
                   ? 'bg-red-50 text-red-700 border border-red-200'
                   : 'bg-slate-50 text-slate-600 border border-slate-200 hover:border-slate-300'
@@ -607,7 +607,7 @@ function NewShiftForm({ wallet, employerKind, onCreated, onCancel, onNeedRecharg
               key={p.key}
               type="button"
               onClick={() => togglePerk(p.key)}
-              className={`px-3 py-1.5 rounded-full text-[10.5px] font-bold transition flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-full text-2xs font-bold transition flex items-center gap-1 ${
                 form.perks.includes(p.key)
                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                   : 'bg-slate-50 text-slate-600 border border-slate-200 hover:border-slate-300'
@@ -623,7 +623,7 @@ function NewShiftForm({ wallet, employerKind, onCreated, onCancel, onNeedRecharg
         <input type="checkbox" checked={form.isSOS} onChange={(e) => setForm({ ...form, isSOS: e.target.checked })} className="mt-1 w-4 h-4 accent-amber-500" />
         <div>
           <p className="text-[12px] font-extrabold text-amber-800">Marcar como urgente (SOS)</p>
-          <p className="text-[10.5px] text-amber-700/70 mt-0.5 leading-snug">
+          <p className="text-2xs text-amber-700/70 mt-0.5 leading-snug">
             Aparece destacado y se notifica con prioridad. Comisión sube a <strong>15%</strong>.
           </p>
         </div>
@@ -631,7 +631,7 @@ function NewShiftForm({ wallet, employerKind, onCreated, onCancel, onNeedRecharg
 
       {quote && (
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5">
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400 mb-2">Reserva de tu wallet</p>
+          <p className="text-2xs font-extrabold uppercase tracking-[0.18em] text-slate-400 mb-2">Reserva de tu wallet</p>
           <div className="grid grid-cols-3 gap-2">
             <ResumeBox label="Pago / trabajador" value={formatCOP(quote.payoutPerWorker)} />
             <ResumeBox label={`Comisión Crew (${Math.round(quote.commissionRate * 100)}%)`} value={formatCOP(quote.commissionPerWorker)} />
@@ -647,7 +647,7 @@ function NewShiftForm({ wallet, employerKind, onCreated, onCancel, onNeedRecharg
                 Faltan <strong className="tabular-nums">{formatCOP(needed - available)}</strong>.
               </span>
               <button onClick={onNeedRecharge}
-                className="shrink-0 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-red-500 hover:bg-red-600 text-white transition">
+                className="shrink-0 text-2xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-red-500 hover:bg-red-600 text-white transition">
                 Recargar
               </button>
             </div>
@@ -670,7 +670,7 @@ function NewShiftForm({ wallet, employerKind, onCreated, onCancel, onNeedRecharg
 }
 
 function Label({ children }) {
-  return <label className="block text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400 mb-2">{children}</label>;
+  return <label className="block text-2xs font-extrabold uppercase tracking-[0.18em] text-slate-400 mb-2">{children}</label>;
 }
 
 function Field({ label, children }) {
@@ -680,7 +680,7 @@ function Field({ label, children }) {
 function ResumeBox({ label, value, accent }) {
   return (
     <div className="px-2 py-2 rounded-xl bg-white border border-slate-200">
-      <p className="text-[8.5px] font-extrabold uppercase tracking-wider text-slate-400">{label}</p>
+      <p className="text-2xs font-extrabold uppercase tracking-wider text-slate-400">{label}</p>
       <p className={`text-[12px] font-black tabular-nums truncate mt-0.5 ${accent ? 'text-emerald-600' : 'text-slate-700'}`}>{value}</p>
     </div>
   );
@@ -714,7 +714,7 @@ function RechargesHistory({ onRecharge }) {
         <div className="flex items-center justify-between gap-3 mb-3">
           <h3 className="text-[14px] font-black text-slate-800">Mis recargas</h3>
           <button onClick={onRecharge}
-            className="text-[10px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/25 transition">
+            className="text-2xs font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/25 transition">
             + Nueva
           </button>
         </div>
@@ -731,7 +731,7 @@ function RechargesHistory({ onRecharge }) {
                 </a>
                 <div className="min-w-0">
                   <p className="text-[12px] font-extrabold text-slate-800 tabular-nums">{formatCOP(r.amount)}</p>
-                  <p className="text-[10px] text-slate-500">{r.paymentMethod} · {new Date(r.createdAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}</p>
+                  <p className="text-2xs text-slate-500">{r.paymentMethod} · {new Date(r.createdAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}</p>
                 </div>
               </div>
               <StatusChip status={r.status} />
@@ -760,7 +760,7 @@ function StatusChip({ status }) {
     approved: { label: 'Aprobada', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
     rejected: { label: 'Rechazada', cls: 'bg-red-50 text-red-600 border-red-200' },
   }[status] || { label: status, cls: 'bg-slate-50 text-slate-500 border-slate-200' };
-  return <span className={`px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wider rounded-full border ${info.cls}`}>{info.label}</span>;
+  return <span className={`px-2 py-0.5 text-2xs font-extrabold uppercase tracking-wider rounded-full border ${info.cls}`}>{info.label}</span>;
 }
 
 function TxnRow({ txn }) {
@@ -780,7 +780,7 @@ function TxnRow({ txn }) {
         <span className="text-base">{info.emoji}</span>
         <div className="min-w-0">
           <p className="text-[12px] font-bold text-slate-700 truncate">{info.label}</p>
-          <p className="text-[10px] text-slate-400 truncate">{txn.note || new Date(txn.createdAt).toLocaleDateString('es-CO')}</p>
+          <p className="text-2xs text-slate-400 truncate">{txn.note || new Date(txn.createdAt).toLocaleDateString('es-CO')}</p>
         </div>
       </div>
       <span className={`text-[12px] font-black tabular-nums ${info.tone}`}>{sign}{formatCOP(txn.amount)}</span>

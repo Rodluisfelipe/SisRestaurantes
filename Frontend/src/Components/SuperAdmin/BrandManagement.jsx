@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import superadminApi from '../../services/superadminApi';
+import { Capa } from '../ui';
 
 const EMPTY_BRAND = { name: '', slug: '' };
 const EMPTY_ADMIN = { username: '', password: '', name: '' };
@@ -208,6 +209,7 @@ export default function BrandManagement() {
       {/* Create Brand Modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <Capa onCerrar={() => setShowCreate(false)} />
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
             <h3 className="text-base font-bold text-slate-800 mb-4">Nueva Marca</h3>
             <div className="space-y-3">
@@ -243,6 +245,7 @@ export default function BrandManagement() {
       {/* Assign Modal */}
       {showAssign && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <Capa onCerrar={() => setShowAssign(false)} />
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
             <h3 className="text-base font-bold text-slate-800 mb-1">Asignar sucursales</h3>
             <p className="text-sm text-slate-500 mb-5">Marca: <strong>{showAssign.name}</strong></p>
@@ -266,14 +269,14 @@ export default function BrandManagement() {
                         <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                           <button
                             onClick={() => setAssignForm(f => ({ ...f, mainBranchId: isMain ? '' : id, sharedMenuBranchIds: f.sharedMenuBranchIds.filter(x => x !== id) }))}
-                            className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${isMain ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-indigo-100'}`}
+                            className={`text-2xs px-2 py-0.5 rounded-full font-semibold ${isMain ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-indigo-100'}`}
                           >
                             Principal
                           </button>
                           {!isMain && (
                             <button
                               onClick={() => setAssignForm(f => ({ ...f, sharedMenuBranchIds: isShared ? f.sharedMenuBranchIds.filter(x => x !== id) : [...f.sharedMenuBranchIds, id] }))}
-                              className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${isShared ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500 hover:bg-amber-100'}`}
+                              className={`text-2xs px-2 py-0.5 rounded-full font-semibold ${isShared ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500 hover:bg-amber-100'}`}
                             >
                               Menú compartido
                             </button>

@@ -113,7 +113,7 @@ const PullToRefresh = ({ children, onRefresh, themeColor = '#f97316', isLoading 
             <motion.span
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-[10px] font-medium text-gray-400"
+              className="text-2xs font-medium text-gray-400"
             >
               Soltar para actualizar
             </motion.span>
@@ -122,7 +122,7 @@ const PullToRefresh = ({ children, onRefresh, themeColor = '#f97316', isLoading 
             <motion.span
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-[10px] font-medium text-gray-400"
+              className="text-2xs font-medium text-gray-400"
             >
               Actualizando...
             </motion.span>

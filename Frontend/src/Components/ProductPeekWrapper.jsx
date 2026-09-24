@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaSlidersH } from 'react-icons/fa';
 import { UtensilsCrossed } from 'lucide-react';
+import { Capa } from './ui';
 
 /**
  * ProductPeek — iOS-style long-press "peek" overlay.
@@ -89,6 +90,7 @@ const ProductPeekWrapper = ({ children, product, buttonColor, buttonTextColor })
             style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
             onClick={() => setPeeking(false)}
           >
+            <Capa onCerrar={() => setPeeking(false)} />
             <motion.div
               initial={{ scale: 0.85, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -129,7 +131,7 @@ const ProductPeekWrapper = ({ children, product, buttonColor, buttonTextColor })
                       className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md shadow-sm"
                       style={{ backgroundColor: `${buttonColor}e6`, color: buttonTextColor }}
                     >
-                      <FaSlidersH className="text-[10px]" />
+                      <FaSlidersH className="text-2xs" />
                       Personalizable
                     </span>
                   </div>

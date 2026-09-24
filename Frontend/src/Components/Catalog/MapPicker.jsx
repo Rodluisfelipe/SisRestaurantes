@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../services/api';
 import { MAP_TILE_URL, MAP_ATTRIBUTION } from '../../utils/mapTiles';
+import { Capa } from '../ui';
 
 const BOGOTA = { lat: 4.711, lng: -74.0721 };
 const LABEL_OPTIONS = [
@@ -161,6 +162,7 @@ export default function MapPicker({ open, onClose, onConfirm, initialCoords, ini
           transition={{ type: 'spring', damping: 32, stiffness: 320 }}
           className="fixed inset-0 z-[60] flex flex-col bg-white"
         >
+          <Capa onCerrar={onClose} />
           {/* Header */}
           <div
             className="flex items-center gap-3 px-4 bg-white border-b border-gray-100 flex-shrink-0"

@@ -7,6 +7,7 @@ import {
 import useOrdersDashboard from '../../hooks/useOrdersDashboard';
 import { ORDER_STATUS } from '../../utils/constants';
 import { formatCurrency } from '../../utils/currency';
+import { Capa } from '../ui';
 
 /**
  * Modo Operación v2 — Mobile-first full-screen service overlay.
@@ -110,14 +111,14 @@ function OrderCard({ order, onAction, onPayment, isHotel, currency = 'COP' }) {
           <div className="flex items-center gap-2">
             <span className="text-[22px] font-black text-slate-900 leading-none">#{order.orderNumber}</span>
             {badge && (
-              <span className={`${badge.color} text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide`}>
+              <span className={`${badge.color} text-white text-2xs font-black px-2 py-0.5 rounded-full uppercase tracking-wide`}>
                 {badge.text}
               </span>
             )}
           </div>
           <span className={`flex items-center gap-1.5 text-[12px] font-bold ${isUrgent ? 'text-red-400' : 'text-slate-400'}`}>
             {isUrgent && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />}
-            <FaClock className="text-[9px]" />
+            <FaClock className="text-2xs" />
             {elapsed}
           </span>
         </div>
@@ -267,6 +268,7 @@ export default function ModoOperacion({ isOpen, onClose }) {
             className="fixed inset-0 z-[60] bg-slate-900 flex flex-col"
             style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
           >
+            <Capa onCerrar={onClose} bloquearScroll={false} />
             {/* ─── Header ─── */}
             <div className="flex items-center justify-between px-4 py-3 bg-slate-800 shrink-0 border-b border-slate-700">
               <button

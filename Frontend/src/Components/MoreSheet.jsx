@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
-import { Star, Gift, MessageCircle, CalendarCheck, ChevronRight, Wifi, Check } from 'lucide-react';
+import { Star, Gift, MessageCircle, CalendarCheck, ChevronRight, Wifi, Check, UserRound } from 'lucide-react';
 
 /* Íconos de marca: los genéricos hacen que todo parezca el mismo enlace.
    Cada tile lleva además el color real de su marca. */
@@ -97,6 +97,15 @@ export default function MoreSheet({ open, onClose, onRate, onShowLoyalty, loyalt
     .map((k) => ({ key: k, url: social[k].url, ...SOCIAL_META[k] }));
 
   const tiles = [];
+
+  // Mi cuenta primero: ahí están pedir de nuevo, favoritos, puntos y direcciones.
+  tiles.push({
+    key: 'cuenta',
+    icon: UserRound,
+    title: 'Mi cuenta',
+    subtitle: 'Pedir de nuevo, favoritos y direcciones',
+    onClick: () => { onClose(); window.dispatchEvent(new Event('mb:abrir-cuenta')); },
+  });
 
   // Calificar SIEMPRE pasa por el embudo interno: nunca link directo a Google.
   if (onRate) {

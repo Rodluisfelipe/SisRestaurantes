@@ -285,12 +285,12 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
               key={pendingOrdersCount}
               initial={{ scale: 0.5 }}
               animate={{ scale: 1 }}
-              className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-red-500 text-white"
+              className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-2xs font-bold bg-red-500 text-white"
             >
               {pendingOrdersCount > 99 ? '99+' : pendingOrdersCount}
             </motion.span>
           ) : (
-            <span className="text-[10px] font-medium text-slate-400">0</span>
+            <span className="text-2xs font-medium text-slate-400">0</span>
           )}
         </button>
       </div>
@@ -325,7 +325,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
             <span className="text-[11px] font-semibold text-emerald-700 flex-1 text-left">
               {isService ? 'Ver Servicios' : isHotel ? 'Ver Room Service' : 'Ver Menú'}
             </span>
-            <span className="text-[9px] text-emerald-400 font-medium truncate max-w-[80px]">
+            <span className="text-2xs text-emerald-400 font-medium truncate max-w-[80px]">
               /{businessConfig.slug}
             </span>
           </a>
@@ -343,7 +343,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
             <span className="text-[11px] font-semibold text-purple-700 flex-1 text-left">
               Punto de Venta
             </span>
-            <FaExternalLinkAlt className="text-[9px] text-purple-300" />
+            <FaExternalLinkAlt className="text-2xs text-purple-300" />
           </a>
         </div>
       )}
@@ -379,7 +379,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
                   animate={{ rotate: isCollapsed ? -90 : 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <FaChevronDown className="text-[9px] text-slate-300 group-hover:text-slate-500 transition-colors" />
+                  <FaChevronDown className="text-2xs text-slate-300 group-hover:text-slate-500 transition-colors" />
                 </motion.div>
               </button>
 
@@ -438,7 +438,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
                               </span>
                               {item.beta && (
                                 <span
-                                  className="ml-1 px-1.5 py-0.5 text-[9px] font-bold uppercase rounded-full bg-amber-100 text-amber-600 border border-amber-200/80 cursor-default"
+                                  className="ml-1 px-1.5 py-0.5 text-2xs font-bold uppercase rounded-full bg-amber-100 text-amber-600 border border-amber-200/80 cursor-default"
                                   title="Función en fase experimental. Puede presentar errores menores."
                                 >
                                   Beta
@@ -451,7 +451,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
                               <motion.span
                                 initial={{ scale: 0 }}
                                 animate={{ scale: 1 }}
-                                className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-red-500 text-white shadow-sm"
+                                className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-2xs font-bold bg-red-500 text-white shadow-sm"
                               >
                                 {item.badge > 99 ? '99+' : item.badge}
                               </motion.span>

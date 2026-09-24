@@ -118,7 +118,7 @@ export default function CrewEmployersManagement() {
             >
               {t.label}
               {c?.total > 0 && (
-                <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
+                <span className={`px-1.5 py-0.5 text-2xs font-bold rounded-full ${
  t.key === 'pending_approval' ? 'bg-amber-100 text-amber-700'
  : t.key === 'approved' ? 'bg-emerald-100 text-emerald-700'
  : t.key === 'rejected' ? 'bg-rose-100 text-rose-700'
@@ -188,7 +188,7 @@ export default function CrewEmployersManagement() {
                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                   <KindPill kind={e.kind} />
                   <StatusPill status={e.status} />
-                  <span className="text-[10px] text-slate-400">{formatRelative(e.createdAt)}</span>
+                  <span className="text-2xs text-slate-400">{formatRelative(e.createdAt)}</span>
                 </div>
               </div>
             </button>
@@ -232,7 +232,7 @@ export default function CrewEmployersManagement() {
 
             {/* Wallet snapshot */}
             <div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Billetera Crew</p>
+              <p className="text-2xs font-bold text-slate-500 uppercase tracking-wider mb-2">Billetera Crew</p>
               <div className="grid grid-cols-3 gap-2">
                 <DetailStat label="Saldo" value={formatCOP(target.crewWallet?.balance)} />
                 <DetailStat label="En escrow" value={formatCOP(target.crewWallet?.pendingBalance)} />
@@ -243,7 +243,7 @@ export default function CrewEmployersManagement() {
             {/* Stats */}
             {target.stats && (target.stats.shiftsPublished > 0 || target.stats.shiftsCompleted > 0) && (
               <div>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Actividad</p>
+                <p className="text-2xs font-bold text-slate-500 uppercase tracking-wider mb-2">Actividad</p>
                 <div className="grid grid-cols-3 gap-2">
                   <DetailStat label="Publicados" value={target.stats.shiftsPublished} />
                   <DetailStat label="Completados" value={target.stats.shiftsCompleted} />
@@ -355,7 +355,7 @@ function StatusPill({ status }) {
 function DetailStat({ label, value, children }) {
   return (
     <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</p>
+      <p className="text-2xs font-bold text-slate-500 uppercase tracking-wider">{label}</p>
       <div className="text-sm font-semibold text-slate-900 mt-0.5">{children || value}</div>
     </div>
   );

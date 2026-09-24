@@ -3,6 +3,7 @@ import { useBusinessConfig } from '../../Context/BusinessContext';
 import api from '../../services/api';
 import SuppliesPanel from './SuppliesPanel';
 import RecipeEditor from './RecipeEditor';
+import { Capa } from '../ui';
 
 /**
  * Inventario.
@@ -328,9 +329,9 @@ export default function InventoryManager() {
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-bold text-slate-800 truncate">{p.name}</p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${COLOR[e]}`}>{ETIQUETA[e]}</span>
+                    <span className={`text-2xs font-bold px-1.5 py-0.5 rounded-md border ${COLOR[e]}`}>{ETIQUETA[e]}</span>
                     <span className="text-[11px] text-slate-400">{money(p.price)}</span>
-                    {p.active === false && <span className="text-[10px] text-slate-400">· oculto</span>}
+                    {p.active === false && <span className="text-2xs text-slate-400">· oculto</span>}
                   </div>
                 </div>
 
@@ -448,9 +449,9 @@ export default function InventoryManager() {
                         <div className="flex-1 min-w-0">
                           <p className="text-[12px] font-semibold text-slate-700 truncate">
                             {v.valores.join(' · ')}
-                            {v.activo === false && <span className="ml-1.5 text-[10px] font-normal text-slate-400">· no está a la venta</span>}
+                            {v.activo === false && <span className="ml-1.5 text-2xs font-normal text-slate-400">· no está a la venta</span>}
                           </p>
-                          {v.sku && <p className="text-[10px] text-slate-400 truncate">{v.sku}</p>}
+                          {v.sku && <p className="text-2xs text-slate-400 truncate">{v.sku}</p>}
                         </div>
 
                         <button
@@ -507,7 +508,7 @@ export default function InventoryManager() {
                   {abierto === p._id ? (
                     <div className="rounded-xl bg-slate-50 border border-slate-200 p-2.5 flex flex-wrap items-end gap-2">
                       <div className="flex-1 min-w-[120px]">
-                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+                        <label className="text-2xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">
                           Costo por unidad
                         </label>
                         <input
@@ -519,7 +520,7 @@ export default function InventoryManager() {
                         />
                       </div>
                       <div className="flex-1 min-w-[120px]">
-                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+                        <label className="text-2xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">
                           Avisar cuando queden
                         </label>
                         <input
@@ -602,6 +603,7 @@ export default function InventoryManager() {
       {/* Historial de un producto */}
       {historial && (
         <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40" onClick={() => setHistorial(null)}>
+          <Capa onCerrar={() => setHistorial(null)} />
           <div
             className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[85vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
@@ -647,7 +649,7 @@ export default function InventoryManager() {
                         <p className="text-[11px] font-semibold text-slate-500 tabular-nums">
                           {m.stockBefore} → {m.stockAfter}
                         </p>
-                        <p className="text-[10px] text-slate-400">
+                        <p className="text-2xs text-slate-400">
                           {new Date(m.createdAt).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>

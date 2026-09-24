@@ -161,17 +161,17 @@ export default function SpotifyConfig({ businessId }) {
                   Entra a{' '}
                   <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noreferrer"
                      className="text-blue-600 font-medium inline-flex items-center gap-1">
-                    developer.spotify.com <FaExternalLinkAlt className="text-[8px]" />
+                    developer.spotify.com <FaExternalLinkAlt className="text-2xs" />
                   </a>{' '}
                   con la cuenta de Spotify del local y crea una app.
                 </li>
                 <li>
                   En <strong>Redirect URI</strong> pega exactamente esto:
                   <div className="flex items-center gap-1 mt-1">
-                    <code className="flex-1 text-[10px] bg-slate-100 rounded px-2 py-1.5 break-all">{urlRedireccion}</code>
+                    <code className="flex-1 text-2xs bg-slate-100 rounded px-2 py-1.5 break-all">{urlRedireccion}</code>
                     <button onClick={() => copiar(urlRedireccion)}
                       className="p-1.5 text-slate-400 hover:text-slate-600 flex-shrink-0">
-                      <FaCopy className="text-[10px]" />
+                      <FaCopy className="text-2xs" />
                     </button>
                   </div>
                 </li>
@@ -198,7 +198,7 @@ export default function SpotifyConfig({ businessId }) {
                 disabled={guardando}
                 className="w-full py-2 rounded-lg bg-slate-800 hover:bg-slate-900 disabled:bg-slate-300 text-white text-xs font-semibold flex items-center justify-center gap-2"
               >
-                {guardando && <FaSpinner className="animate-spin text-[10px]" />}
+                {guardando && <FaSpinner className="animate-spin text-2xs" />}
                 Guardar credenciales
               </button>
 
@@ -211,7 +211,7 @@ export default function SpotifyConfig({ businessId }) {
                 </button>
               )}
 
-              <p className="text-[10px] text-slate-400 leading-relaxed">
+              <p className="text-2xs text-slate-400 leading-relaxed">
                 El banner muestra lo que suene en <strong>esa</strong> cuenta de Spotify. Si en el local
                 ponen música desde otra cuenta o desde otro servicio, no aparecerá nada.
               </p>

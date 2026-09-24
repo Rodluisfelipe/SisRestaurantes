@@ -104,6 +104,14 @@ const customerSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  /* Las direcciones que el cliente guarda en "Mi cuenta" ("Casa",
+     "Oficina"). `address` sigue siendo la última usada, para lo que ya la lee. */
+  direcciones: [{
+    etiqueta: { type: String, trim: true, maxlength: 30, default: 'Dirección' },
+    texto: { type: String, trim: true, maxlength: 200, required: true },
+    referencia: { type: String, trim: true, maxlength: 200, default: '' },
+    principal: { type: Boolean, default: false },
+  }],
   notes: [{
     text: { type: String, required: true, maxlength: 1000 },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },

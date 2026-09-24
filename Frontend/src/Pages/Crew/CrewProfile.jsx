@@ -64,7 +64,7 @@ export default function CrewProfile({ onEdit, onWallet, onFavorites, onHistory }
   const pct = Math.min(100, ((worker.xp - curr) / (next - curr)) * 100);
 
   return (
-    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(7rem+env(safe-area-inset-bottom,0px))]">
+    <div className="min-h-[100dvh] bg-crew-noche text-white font-geist pb-[calc(7rem+env(safe-area-inset-bottom,0px))]">
       {/* Hero — cosmic with animated ring */}
       <div className="relative overflow-hidden">
         {/* Aurora blobs */}
@@ -111,9 +111,9 @@ export default function CrewProfile({ onEdit, onWallet, onFavorites, onHistory }
                 style={{ boxShadow: `0 0 ${20 + pct * 0.3}px -4px rgba(239,68,68,${0.15 + pct * 0.003})` }}
               />
               {worker.photo ? (
-                <img src={worker.photo} alt="" className="absolute inset-[4px] w-[88px] h-[88px] rounded-full object-cover border-2 border-[#0a0a14]" />
+                <img src={worker.photo} alt="" className="absolute inset-[4px] w-[88px] h-[88px] rounded-full object-cover border-2 border-crew-noche" />
               ) : (
-                <div className="absolute inset-[4px] w-[88px] h-[88px] rounded-full bg-[#14142a] border-2 border-[#0a0a14] flex items-center justify-center text-[28px] font-black text-white/70">
+                <div className="absolute inset-[4px] w-[88px] h-[88px] rounded-full bg-[#14142a] border-2 border-crew-noche flex items-center justify-center text-[28px] font-black text-white/70">
                   {(worker.name || '?').slice(0, 1).toUpperCase()}
                 </div>
               )}
@@ -122,7 +122,7 @@ export default function CrewProfile({ onEdit, onWallet, onFavorites, onHistory }
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 20, delay: 0.3 }}
-                className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-[10px] font-black text-white shadow-[0_4px_12px_-2px_rgba(239,68,68,0.5)] border-2 border-[#0a0a14]"
+                className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-2xs font-black text-white shadow-[0_4px_12px_-2px_rgba(239,68,68,0.5)] border-2 border-crew-noche"
               >
                 {worker.level}
               </motion.div>
@@ -132,7 +132,7 @@ export default function CrewProfile({ onEdit, onWallet, onFavorites, onHistory }
             <p className="text-[12px] text-white/40 mt-0.5">{worker.phone}</p>
 
             <div className="mt-3 flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full bg-gradient-to-r from-red-500/15 to-red-600/10 border border-red-500/30 text-[10px] font-extrabold text-white/80 uppercase tracking-wider">
+              <span className="px-3 py-1 rounded-full bg-gradient-to-r from-red-500/15 to-red-600/10 border border-red-500/30 text-2xs font-extrabold text-white/80 uppercase tracking-wider">
                 {levelTier(worker.level)}
               </span>
               {worker.streakDays > 0 && <StreakFlame days={worker.streakDays} size="sm" />}
@@ -142,7 +142,7 @@ export default function CrewProfile({ onEdit, onWallet, onFavorites, onHistory }
           {/* XP bar */}
           <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3.5 backdrop-blur-sm">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] font-extrabold text-white/35 uppercase tracking-[0.12em]">Próximo nivel</p>
+              <p className="text-2xs font-extrabold text-white/35 uppercase tracking-[0.12em]">Próximo nivel</p>
               <p className="text-[11px] font-bold text-white/60 tabular-nums">
                 <AnimatedCounter value={worker.xp} /> / {next} XP
               </p>
@@ -168,7 +168,7 @@ export default function CrewProfile({ onEdit, onWallet, onFavorites, onHistory }
       <div className="max-w-md mx-auto px-5 mt-5 space-y-5">
         {/* Stats */}
         <section>
-          <h2 className="text-[10px] font-extrabold text-white/30 uppercase tracking-[0.15em] mb-2.5">Estadísticas</h2>
+          <h2 className="text-2xs font-extrabold text-white/30 uppercase tracking-[0.15em] mb-2.5">Estadísticas</h2>
           <div className="grid grid-cols-3 gap-2">
             <StatBox
               label="Turnos"
@@ -207,7 +207,7 @@ export default function CrewProfile({ onEdit, onWallet, onFavorites, onHistory }
         {/* Reconocimientos */}
         <section>
           <div className="flex items-center justify-between mb-2.5">
-            <h2 className="text-[10px] font-extrabold text-white/30 uppercase tracking-[0.15em]">Reconocimientos</h2>
+            <h2 className="text-2xs font-extrabold text-white/30 uppercase tracking-[0.15em]">Reconocimientos</h2>
             <span className="text-[11px] text-white/25 tabular-nums font-bold">{(worker.badgesEarned || []).length} obtenidos</span>
           </div>
           {(worker.badgesEarned || []).length === 0 ? (
@@ -237,7 +237,7 @@ export default function CrewProfile({ onEdit, onWallet, onFavorites, onHistory }
                   </motion.div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-bold text-white/90">{BADGE_LABEL[b.key] || b.key}</p>
-                    <p className="text-[10px] text-white/30">
+                    <p className="text-2xs text-white/30">
                       {new Date(b.earnedAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </p>
                   </div>
@@ -251,7 +251,7 @@ export default function CrewProfile({ onEdit, onWallet, onFavorites, onHistory }
         {/* Skills */}
         {worker.skills?.length > 0 && (
           <section>
-            <h2 className="text-[10px] font-extrabold text-white/30 uppercase tracking-[0.15em] mb-2.5">Experiencia</h2>
+            <h2 className="text-2xs font-extrabold text-white/30 uppercase tracking-[0.15em] mb-2.5">Experiencia</h2>
             <div className="rounded-[22px] border border-white/[0.08] bg-white/[0.03] p-3.5 flex flex-wrap gap-1.5 backdrop-blur-sm">
               {worker.skills.map((s) => (
                 <span key={s.key} className="px-2.5 py-1 text-[11px] font-bold bg-white/[0.06] text-white/70 border border-white/[0.08] rounded-full">
@@ -264,7 +264,7 @@ export default function CrewProfile({ onEdit, onWallet, onFavorites, onHistory }
 
         {/* Wallet — saldo, escrow, retiro y movimientos */}
         <section>
-          <h2 className="text-[10px] font-extrabold text-white/30 uppercase tracking-[0.15em] mb-2.5">Billetera Crew</h2>
+          <h2 className="text-2xs font-extrabold text-white/30 uppercase tracking-[0.15em] mb-2.5">Billetera Crew</h2>
 
           <div className="relative overflow-hidden rounded-[24px] border border-white/[0.08] p-5"
             style={{ background: 'radial-gradient(140% 100% at 0% 0%, rgba(16,185,129,0.18) 0%, rgba(10,10,20,0.6) 60%)' }}
@@ -275,7 +275,7 @@ export default function CrewProfile({ onEdit, onWallet, onFavorites, onHistory }
               className="absolute -top-20 -right-10 w-72 h-72 bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none"
             />
             <div className="relative">
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40">Disponible para retirar</p>
+              <p className="text-2xs font-extrabold uppercase tracking-[0.18em] text-white/40">Disponible para retirar</p>
               <p className="text-[34px] font-black tabular-nums leading-none mt-1">
                 <GradientText variant="sunrise">{formatCOP(worker.wallet?.balance || 0)}</GradientText>
               </p>
@@ -308,7 +308,7 @@ export default function CrewProfile({ onEdit, onWallet, onFavorites, onHistory }
                   </button>
                 )}
               </div>
-              <p className="text-[10px] text-white/30 mt-3 leading-relaxed">
+              <p className="text-2xs text-white/30 mt-3 leading-relaxed">
                 Retiro mínimo $20.000. Llega a Nequi, Daviplata o tu cuenta bancaria en menos de 24h.
               </p>
             </div>
@@ -318,8 +318,8 @@ export default function CrewProfile({ onEdit, onWallet, onFavorites, onHistory }
           {(txns.length > 0 || withdrawals.length > 0) && (
             <div className="mt-3 rounded-[22px] border border-white/[0.08] bg-white/[0.02] backdrop-blur-sm">
               <div className="px-4 pt-3.5 pb-2 flex items-center justify-between">
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-white/40">Movimientos recientes</p>
-                {loadingFin && <span className="text-[10px] text-white/30">Cargando…</span>}
+                <p className="text-2xs font-extrabold uppercase tracking-[0.15em] text-white/40">Movimientos recientes</p>
+                {loadingFin && <span className="text-2xs text-white/30">Cargando…</span>}
               </div>
               <div className="px-3 pb-2">
                 {withdrawals.filter(w => w.status === 'pending').slice(0, 2).map((w) => (
@@ -333,7 +333,7 @@ export default function CrewProfile({ onEdit, onWallet, onFavorites, onHistory }
 
         {/* Quick access menu */}
         <section>
-          <h2 className="text-[10px] font-extrabold text-white/30 uppercase tracking-[0.15em] mb-2.5">Accesos</h2>
+          <h2 className="text-2xs font-extrabold text-white/30 uppercase tracking-[0.15em] mb-2.5">Accesos</h2>
           <div className="rounded-[22px] border border-white/[0.08] bg-white/[0.03] divide-y divide-white/[0.05] overflow-hidden backdrop-blur-sm">
             {[
               { label: 'Mis Favoritos', desc: 'Restaurantes guardados', icon: '❤️', action: onFavorites },
@@ -348,7 +348,7 @@ export default function CrewProfile({ onEdit, onWallet, onFavorites, onHistory }
                 <span className="text-[18px]">{item.icon}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-bold text-white/90">{item.label}</p>
-                  <p className="text-[10px] text-white/30">{item.desc}</p>
+                  <p className="text-2xs text-white/30">{item.desc}</p>
                 </div>
                 <svg className="w-3.5 h-3.5 text-white/15" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
               </motion.button>
@@ -396,7 +396,7 @@ function WorkerTxnRow({ txn }) {
         <span className="text-base">{info.emoji}</span>
         <div className="min-w-0">
           <p className="text-[12px] font-bold text-white truncate">{info.label}</p>
-          <p className="text-[10px] text-white/40 truncate">
+          <p className="text-2xs text-white/40 truncate">
             {counterpart ? counterpart : date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
           </p>
         </div>
@@ -413,7 +413,7 @@ function WithdrawalRow({ req }) {
         <span className="text-base">⏳</span>
         <div className="min-w-0">
           <p className="text-[12px] font-bold text-white truncate">Retiro en revisión</p>
-          <p className="text-[10px] text-white/40 truncate capitalize">{req.payoutMethod?.type} · {req.payoutMethod?.accountInfo}</p>
+          <p className="text-2xs text-white/40 truncate capitalize">{req.payoutMethod?.type} · {req.payoutMethod?.accountInfo}</p>
         </div>
       </div>
       <span className="text-[12.5px] font-black tabular-nums text-amber-300">{formatCOP(req.amount)}</span>
@@ -427,7 +427,7 @@ function StatBox({ label, value, suffix, small }) {
       <p className={`font-black tabular-nums text-white ${small ? 'text-[13px]' : 'text-[20px]'}`}>
         {value}{suffix && <span className="text-[12px] text-white/40 ml-0.5">{suffix}</span>}
       </p>
-      <p className="text-[9px] font-extrabold text-white/25 uppercase tracking-wider mt-1">{label}</p>
+      <p className="text-2xs font-extrabold text-white/25 uppercase tracking-wider mt-1">{label}</p>
     </div>
   );
 }

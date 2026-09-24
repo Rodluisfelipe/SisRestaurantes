@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Capa } from '../ui';
 
 /**
  * MobileBottomSheet — Reusable iOS-style bottom sheet for mobile, modal on desktop.
@@ -38,6 +39,7 @@ export default function MobileBottomSheet({ isOpen, onClose, title, children, ma
           className="fixed inset-0 bg-black/40 flex lg:items-center items-end justify-center lg:p-4 z-[52]"
           onClick={onClose}
         >
+          <Capa onCerrar={onClose} bloquearScroll={false} />
           <motion.div
             initial={{ opacity: 0, y: 100 }}
             animate={{ opacity: 1, y: 0 }}

@@ -153,16 +153,6 @@ export const toggleMarketplace = async (id, enabled) => {
   }
 };
 
-// Menú V2 (perfil + historias) — beta por negocio
-export const toggleMenuV2 = async (id, enabled) => {
-  try {
-    const response = await superadminApi.patch(`/business/${id}/menu-v2`, { enabled });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-};
-
 /* Tipo de tienda: 'restaurante' (MenuBy de siempre) o 'ecommerce' (ropa,
    perfumería: variantes, stock por talla/color y envíos). */
 export const setTipoTienda = async (id, tipo) => {

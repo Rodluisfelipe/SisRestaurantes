@@ -214,7 +214,7 @@ const ThemeSettings = () => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <span className="text-sm font-semibold text-slate-800" style={{ fontFamily: font.family }}>{font.label}</span>
-                    <span className="block text-[10px] text-slate-400">{font.description}</span>
+                    <span className="block text-2xs text-slate-400">{font.description}</span>
                   </div>
                   <span className="text-lg text-slate-300 shrink-0" style={{ fontFamily: font.family }}>Abc</span>
                 </button>
@@ -260,7 +260,7 @@ const ThemeSettings = () => {
                   {[...Array(3)].map((_, i) => <div key={i} className="h-4 rounded bg-slate-200" />)}
                 </div>
               </div>
-              <p className="text-[10px] text-slate-400 mt-2 leading-snug">Todo visible en scroll continuo</p>
+              <p className="text-2xs text-slate-400 mt-2 leading-snug">Todo visible en scroll continuo</p>
             </button>
 
             {/* Colapsado */}
@@ -283,7 +283,7 @@ const ThemeSettings = () => {
                   </div>
                 ))}
               </div>
-              <p className="text-[10px] text-slate-400 mt-2 leading-snug">Índice de categorías; el cliente entra a cada una</p>
+              <p className="text-2xs text-slate-400 mt-2 leading-snug">Índice de categorías; el cliente entra a cada una</p>
             </button>
           </div>
           <p className="text-[11px] text-slate-400 mt-3">

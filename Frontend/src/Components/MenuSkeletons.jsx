@@ -138,38 +138,6 @@ export const FilterableMenuSkeleton = () => (
 );
 
 /* ------------------------------------------------------------------ */
-/*  BusinessHeaderSkeleton — matches immersive header                  */
-/* ------------------------------------------------------------------ */
-export const BusinessHeaderSkeleton = () => (
-  <div className="w-full relative animate-fadeIn">
-    {/* Immersive cover area */}
-    {/* Debe calcar la portada real (44vh) para que no salte al cargar */}
-    <div className={`relative bg-gray-200 ${shimmerClass}`} style={{ minHeight: '44vh' }}>
-      {/* Status badge skeleton — top left */}
-      <div className="absolute left-3 top-3 z-10">
-        <div className={`h-6 w-16 rounded-full bg-gray-300/50 ${shimmerClass}`} />
-      </div>
-      {/* Action pill skeleton — top right */}
-      <div className="absolute right-3 top-3 z-10">
-        <div className={`h-8 w-28 rounded-2xl bg-gray-300/50 ${shimmerClass}`} />
-      </div>
-      {/* Centered content over cover */}
-      <div className="absolute inset-0 flex flex-col items-center justify-end pb-4">
-        {/* Logo */}
-        <div className={`w-[68px] h-[68px] sm:w-[80px] sm:h-[80px] rounded-full bg-gray-300 border-2 border-white/50 shadow-lg ${shimmerClass}`} />
-        {/* Name */}
-        <div className={`mt-2 h-5 w-36 rounded-full bg-gray-300/60 ${shimmerClass}`} />
-        {/* Meta chips */}
-        <div className="flex items-center gap-2 mt-1.5">
-          <div className={`h-4 w-14 rounded-full bg-gray-300/40 ${shimmerClass}`} />
-          <div className={`h-3 w-28 rounded-full bg-gray-300/30 ${shimmerClass}`} />
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-/* ------------------------------------------------------------------ */
 /*  FeaturedProductsSkeleton — panoramic 16:9 snap cards               */
 /* ------------------------------------------------------------------ */
 export const FeaturedProductsSkeleton = () => (

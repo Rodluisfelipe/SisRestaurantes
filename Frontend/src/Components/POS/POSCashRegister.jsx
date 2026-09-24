@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import api from '../../services/api';
+import { Capa } from '../ui';
 
 // Ticket styles — matches POSTicket for consistency
 const S = {
@@ -202,6 +203,7 @@ export default function POSCashRegister({ mode, businessId, businessConfig, busi
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <Capa onCerrar={onClose} />
       <div className={`bg-white rounded-2xl shadow-2xl w-full ${mode === 'close' ? 'max-w-lg' : 'max-w-md'} mx-4 max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">

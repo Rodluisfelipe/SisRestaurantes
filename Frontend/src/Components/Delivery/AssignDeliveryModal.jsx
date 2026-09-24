@@ -5,6 +5,7 @@ import api from '../../services/api';
 import { useBusinessConfig } from '../../Context/BusinessContext';
 import { FaQrcode, FaUserAlt, FaMotorcycle, FaWhatsapp, FaCopy, FaTimes, FaCheck, FaMapMarkerAlt } from 'react-icons/fa';
 import { enlaceWhatsApp } from '../../utils/whatsapp';
+import { Capa } from '../ui';
 
 const AssignDeliveryModal = ({ isOpen, order, onClose, onAssigned }) => {
   const { businessId, businessConfig } = useBusinessConfig();
@@ -109,6 +110,7 @@ const AssignDeliveryModal = ({ isOpen, order, onClose, onAssigned }) => {
         className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
         onClick={onClose}
       >
+        <Capa onCerrar={onClose} />
         <motion.div
           initial={{ scale: 0.9, y: 20 }}
           animate={{ scale: 1, y: 0 }}

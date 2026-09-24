@@ -167,7 +167,7 @@ export default function FloatingHelpChat() {
                 </div>
                 <div className="min-w-0">
                   <h3 className="font-semibold text-white text-sm leading-tight truncate">Asistente MenuBy</h3>
-                  <p className="text-[10px] text-red-200 leading-tight">IA en línea</p>
+                  <p className="text-2xs text-red-200 leading-tight">IA en línea</p>
                 </div>
               </div>
               <button
@@ -242,7 +242,7 @@ export default function FloatingHelpChat() {
                         >
                           {msg.text}
                         </div>
-                        <p className={`text-[9px] mt-0.5 ${msg.role === 'user' ? 'text-right' : 'ml-0.5'} text-gray-400`}>
+                        <p className={`text-2xs mt-0.5 ${msg.role === 'user' ? 'text-right' : 'ml-0.5'} text-gray-400`}>
                           {formatTime(msg.time)}
                         </p>
                       </div>
@@ -261,7 +261,7 @@ export default function FloatingHelpChat() {
                       <button
                         key={i}
                         onClick={() => sendMessage(s.text)}
-                        className="text-[10px] bg-white text-red-600 px-2.5 py-1 rounded-full hover:bg-red-50 transition-colors font-medium border border-gray-100"
+                        className="text-2xs bg-white text-red-600 px-2.5 py-1 rounded-full hover:bg-red-50 transition-colors font-medium border border-gray-100"
                       >
                         {s.text}
                       </button>
@@ -304,7 +304,7 @@ export default function FloatingHelpChat() {
                   href={WHATSAPP_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-[10px] text-green-600 hover:text-green-700 font-medium transition-colors"
+                  className="flex items-center gap-1 text-2xs text-green-600 hover:text-green-700 font-medium transition-colors"
                 >
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
@@ -312,7 +312,7 @@ export default function FloatingHelpChat() {
                   </svg>
                   Soporte humano
                 </a>
-                <span className="text-[9px] text-gray-300">Powered by IA</span>
+                <span className="text-2xs text-gray-300">Powered by IA</span>
               </div>
             </div>
           </motion.div>

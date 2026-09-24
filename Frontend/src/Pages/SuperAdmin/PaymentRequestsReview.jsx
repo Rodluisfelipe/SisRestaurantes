@@ -221,7 +221,7 @@ const PaymentRequestsReview = () => {
  }`}
           >
             {tab.label}
-            <span className={`text-[10px] tabular-nums ${filter === tab.id ? 'text-slate-600' : 'text-slate-400'}`}>{tab.count}</span>
+            <span className={`text-2xs tabular-nums ${filter === tab.id ? 'text-slate-600' : 'text-slate-400'}`}>{tab.count}</span>
           </button>
         ))}
       </div>
@@ -294,7 +294,7 @@ const PaymentRequestsReview = () => {
                           </p>
                         </div>
                         {request.status === 'pending' && (
-                          <span className="text-[10px] text-amber-600 bg-amber-500/[0.08] px-2 py-0.5 rounded">Extenderá</span>
+                          <span className="text-2xs text-amber-600 bg-amber-500/[0.08] px-2 py-0.5 rounded">Extenderá</span>
                         )}
                       </div>
                     </div>

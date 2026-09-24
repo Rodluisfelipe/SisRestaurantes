@@ -18,6 +18,7 @@ import POSTableMap from '../Components/POS/POSTableMap';
 import POSActiveOrders from '../Components/POS/POSActiveOrders';
 import ProductToppingsSelector from '../Components/ProductToppingsSelector';
 import { CalculatorLauncher } from '../Components/Admin/Calculator';
+import { Capa } from '../Components/ui';
 
 export default function POS() {
   const { businessConfig } = useBusinessConfig();
@@ -487,7 +488,7 @@ export default function POS() {
                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
                 <span className="hidden sm:inline">Órdenes</span>
                 {activeOrders.length > 0 && (
-                  <span className="bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[10px] font-black min-w-[18px] text-center animate-pulse">{activeOrders.length}</span>
+                  <span className="bg-red-500 text-white px-1.5 py-0.5 rounded-full text-2xs font-black min-w-[18px] text-center animate-pulse">{activeOrders.length}</span>
                 )}
               </button>
               <button
@@ -499,7 +500,7 @@ export default function POS() {
                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
                 <span className="hidden sm:inline">Mesas</span>
                 {selectedTable && (
-                  <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold">M{selectedTable.tableNumber}</span>
+                  <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-2xs font-bold">M{selectedTable.tableNumber}</span>
                 )}
               </button>
             </div>
@@ -578,6 +579,7 @@ export default function POS() {
       <AnimatePresence>
         {showMobileCart && (
           <div className="lg:hidden fixed inset-0 z-50">
+            <Capa onCerrar={() => setShowMobileCart(false)} />
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

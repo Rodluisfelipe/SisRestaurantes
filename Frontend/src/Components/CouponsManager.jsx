@@ -6,6 +6,7 @@ import { useBusinessConfig } from '../Context/BusinessContext';
 import { getBusinessSlug } from '../utils/getBusinessId';
 import { formatCurrency as fmtCurrency } from '../utils/currency';
 import { toast } from 'sonner';
+import { Capa } from './ui';
 
 const CouponsManager = () => {
   const { businessConfig } = useBusinessConfig();
@@ -255,7 +256,7 @@ const CouponsManager = () => {
           }}
           className="flex items-center gap-2 px-4 lg:px-3 py-2.5 lg:py-1.5 bg-red-500 lg:bg-slate-800 text-white rounded-xl lg:rounded-lg text-[13px] lg:text-xs font-semibold lg:font-medium hover:bg-red-600 lg:hover:bg-slate-700 transition-colors shadow-sm lg:shadow-none active:scale-[0.97]"
         >
-          <FaPlus className="text-[10px] lg:text-[9px]" /> Crear Cupón
+          <FaPlus className="text-2xs lg:text-2xs" /> Crear Cupón
         </button>
       </div>
 
@@ -284,7 +285,7 @@ const CouponsManager = () => {
       <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 p-3.5 lg:p-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none">
         <div className="flex flex-col md:flex-row gap-2.5 lg:gap-2">
           <div className="flex-1 relative">
-            <FaSearch className="absolute left-3.5 lg:left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400" />
+            <FaSearch className="absolute left-3.5 lg:left-2.5 top-1/2 -translate-y-1/2 text-2xs text-slate-400" />
             <input
               type="text"
               placeholder="Buscar por código, nombre o descripción..."
@@ -367,12 +368,12 @@ const CouponsManager = () => {
                       <tr key={coupon._id} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-4 py-2.5">
                           <p className="text-xs font-bold text-slate-800 font-mono tracking-wider">{coupon.code}</p>
-                          <p className="text-[10px] text-slate-400">{coupon.name}</p>
+                          <p className="text-2xs text-slate-400">{coupon.name}</p>
                         </td>
                         <td className="px-4 py-2.5">
                           <div className="flex items-center gap-2">
                             <div className={`w-6 h-6 rounded flex items-center justify-center ${discountIconColors[coupon.discountType] || 'text-slate-500 bg-slate-50'}`}>
-                              <DiscIcon className="text-[9px]" />
+                              <DiscIcon className="text-2xs" />
                             </div>
                             <div>
                               <p className="text-xs font-semibold text-slate-800">
@@ -442,7 +443,7 @@ const CouponsManager = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${discountIconColors[coupon.discountType] || 'text-slate-500 bg-slate-50'}`}>
-                          <DiscIcon className="text-[10px]" />
+                          <DiscIcon className="text-2xs" />
                         </div>
                         <div>
                           <p className="text-xs font-bold text-slate-800 font-mono">{coupon.code}</p>
@@ -466,7 +467,7 @@ const CouponsManager = () => {
                     <div className="flex gap-1.5">
                       <button onClick={() => { setSelectedCoupon(coupon); setShowCouponModal(true); }} className="flex-1 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[11px] font-medium hover:bg-blue-100 transition-colors">Ver</button>
                       <button onClick={() => handleEdit(coupon)} className="flex-1 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-[11px] font-medium hover:bg-emerald-100 transition-colors">Editar</button>
-                      <button onClick={() => handleDelete(coupon._id)} className="py-1.5 px-3 bg-red-50 text-red-500 rounded-lg text-[11px] font-medium hover:bg-red-100 transition-colors"><FaTrash className="text-[10px]" /></button>
+                      <button onClick={() => handleDelete(coupon._id)} className="py-1.5 px-3 bg-red-50 text-red-500 rounded-lg text-[11px] font-medium hover:bg-red-100 transition-colors"><FaTrash className="text-2xs" /></button>
                     </div>
                   </div>
                 );
@@ -482,7 +483,7 @@ const CouponsManager = () => {
                     disabled={currentPage === 1}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg disabled:opacity-40 hover:bg-slate-200 transition-colors"
                   >
-                    <FaChevronLeft className="text-[9px]" /> Anterior
+                    <FaChevronLeft className="text-2xs" /> Anterior
                   </button>
                   <span className="text-xs text-slate-500">{currentPage} / {pagination.pages}</span>
                   <button
@@ -490,7 +491,7 @@ const CouponsManager = () => {
                     disabled={currentPage === pagination.pages}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg disabled:opacity-40 hover:bg-slate-200 transition-colors"
                   >
-                    Siguiente <FaChevronRight className="text-[9px]" />
+                    Siguiente <FaChevronRight className="text-2xs" />
                   </button>
                 </div>
                 <div className="hidden sm:flex items-center justify-between">
@@ -499,7 +500,7 @@ const CouponsManager = () => {
                   </p>
                   <div className="flex items-center gap-1">
                     <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-40 transition-colors">
-                      <FaChevronLeft className="text-[10px]" />
+                      <FaChevronLeft className="text-2xs" />
                     </button>
                     {Array.from({ length: Math.min(pagination.pages, 7) }, (_, i) => {
                       let pageNum;
@@ -514,7 +515,7 @@ const CouponsManager = () => {
                       );
                     })}
                     <button onClick={() => setCurrentPage(Math.min(pagination.pages, currentPage + 1))} disabled={currentPage === pagination.pages} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-40 transition-colors">
-                      <FaChevronRight className="text-[10px]" />
+                      <FaChevronRight className="text-2xs" />
                     </button>
                   </div>
                 </div>
@@ -534,6 +535,7 @@ const CouponsManager = () => {
             className="fixed inset-0 bg-black/40 flex lg:items-center items-end justify-center lg:p-4 z-50"
             onClick={() => setShowCreateModal(false)}
           >
+            <Capa onCerrar={() => setShowCreateModal(false)} />
             <motion.div
               initial={{ scale: 0.97, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -563,7 +565,7 @@ const CouponsManager = () => {
                 {/* Code + Name */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Código</label>
+                    <label className="block text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Código</label>
                     <div className="flex">
                       <input
                         type="text"
@@ -584,7 +586,7 @@ const CouponsManager = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Nombre</label>
+                    <label className="block text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Nombre</label>
                     <input
                       type="text"
                       value={formData.name}
@@ -598,7 +600,7 @@ const CouponsManager = () => {
 
                 {/* Description */}
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Descripción</label>
+                  <label className="block text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Descripción</label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
@@ -611,7 +613,7 @@ const CouponsManager = () => {
                 {/* Discount Type + Value + Max */}
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Tipo</label>
+                    <label className="block text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Tipo</label>
                     <select
                       value={formData.discountType}
                       onChange={(e) => setFormData(prev => ({ ...prev, discountType: e.target.value }))}
@@ -624,7 +626,7 @@ const CouponsManager = () => {
                   </div>
                   {formData.discountType !== 'free_delivery' && (
                     <div>
-                      <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Valor</label>
+                      <label className="block text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Valor</label>
                       <input
                         type="number"
                         value={formData.discountValue}
@@ -638,7 +640,7 @@ const CouponsManager = () => {
                   )}
                   {formData.discountType === 'percentage' && (
                     <div>
-                      <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Desc. Máximo</label>
+                      <label className="block text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Desc. Máximo</label>
                       <input
                         type="number"
                         value={formData.maxDiscountAmount || ''}
@@ -655,7 +657,7 @@ const CouponsManager = () => {
                 {/* Min Order + Usage Limit */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Monto Mínimo</label>
+                    <label className="block text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Monto Mínimo</label>
                     <input
                       type="number"
                       value={formData.minimumOrderAmount}
@@ -666,7 +668,7 @@ const CouponsManager = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Límite de Usos</label>
+                    <label className="block text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Límite de Usos</label>
                     <input
                       type="number"
                       value={formData.usageLimit || ''}
@@ -681,7 +683,7 @@ const CouponsManager = () => {
                 {/* Dates */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Válido Desde</label>
+                    <label className="block text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Válido Desde</label>
                     <input
                       type="date"
                       value={formData.validFrom}
@@ -691,7 +693,7 @@ const CouponsManager = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Válido Hasta</label>
+                    <label className="block text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Válido Hasta</label>
                     <input
                       type="date"
                       value={formData.validUntil}
@@ -745,6 +747,7 @@ const CouponsManager = () => {
             className="fixed inset-0 bg-black/40 flex lg:items-center items-end justify-center lg:p-4 z-50"
             onClick={() => setShowCouponModal(false)}
           >
+            <Capa onCerrar={() => setShowCouponModal(false)} />
             <motion.div
               initial={{ scale: 0.97, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -772,11 +775,11 @@ const CouponsManager = () => {
                 {/* Code + Name */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Código</p>
+                    <p className="text-2xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Código</p>
                     <p className="text-sm font-bold text-slate-800 font-mono">{selectedCoupon.code}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Nombre</p>
+                    <p className="text-2xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Nombre</p>
                     <p className="text-xs font-semibold text-slate-800">{selectedCoupon.name}</p>
                   </div>
                 </div>
@@ -784,7 +787,7 @@ const CouponsManager = () => {
                 {/* Discount + Status */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Descuento</p>
+                    <p className="text-2xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Descuento</p>
                     <p className="text-sm font-bold text-slate-800">
                       {selectedCoupon.discountType === 'percentage'
                         ? `${selectedCoupon.discountValue}%`
@@ -794,8 +797,8 @@ const CouponsManager = () => {
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Estado</p>
-                    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${getStatusBadge(selectedCoupon)}`}>
+                    <p className="text-2xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Estado</p>
+                    <span className={`inline-block px-1.5 py-0.5 rounded text-2xs font-semibold ${getStatusBadge(selectedCoupon)}`}>
                       {getStatusText(selectedCoupon)}
                     </span>
                   </div>
@@ -803,24 +806,24 @@ const CouponsManager = () => {
 
                 {/* Usage Stats */}
                 <div className="bg-slate-50 rounded-lg p-3 space-y-2">
-                  <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                    <FaChartBar className="text-[8px]" /> Estadísticas de Uso
+                  <h4 className="text-2xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                    <FaChartBar className="text-2xs" /> Estadísticas de Uso
                   </h4>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-white p-2.5 rounded-lg border border-slate-100">
-                      <p className="text-[10px] text-slate-400">Total de Usos</p>
+                      <p className="text-2xs text-slate-400">Total de Usos</p>
                       <p className="text-sm font-bold text-slate-800">{selectedCoupon.usageCount}</p>
                     </div>
                     <div className="bg-white p-2.5 rounded-lg border border-slate-100">
-                      <p className="text-[10px] text-slate-400">Descuento Dado</p>
+                      <p className="text-2xs text-slate-400">Descuento Dado</p>
                       <p className="text-xs font-bold text-emerald-600">{formatCurrency(selectedCoupon.totalDiscountGiven)}</p>
                     </div>
                     <div className="bg-white p-2.5 rounded-lg border border-slate-100">
-                      <p className="text-[10px] text-slate-400">Válido Desde</p>
+                      <p className="text-2xs text-slate-400">Válido Desde</p>
                       <p className="text-xs font-semibold text-slate-700">{formatDate(selectedCoupon.validFrom)}</p>
                     </div>
                     <div className="bg-white p-2.5 rounded-lg border border-slate-100">
-                      <p className="text-[10px] text-slate-400">Válido Hasta</p>
+                      <p className="text-2xs text-slate-400">Válido Hasta</p>
                       <p className="text-xs font-semibold text-slate-700">{formatDate(selectedCoupon.validUntil)}</p>
                     </div>
                   </div>
@@ -829,7 +832,7 @@ const CouponsManager = () => {
                 {/* Description */}
                 {selectedCoupon.description && (
                   <div>
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Descripción</p>
+                    <p className="text-2xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Descripción</p>
                     <p className="text-xs text-slate-600">{selectedCoupon.description}</p>
                   </div>
                 )}

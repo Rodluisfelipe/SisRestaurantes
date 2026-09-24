@@ -50,7 +50,7 @@ export default function GaleriaProducto({ valor = [], onChange, max = 5 }) {
               <img src={url} alt={`Foto ${i + 1}`} className="w-full h-24 object-cover" />
 
               {i === 0 && (
-                <span className="absolute top-1 left-1 flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-600 text-white text-[9px] font-bold">
+                <span className="absolute top-1 left-1 flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-600 text-white text-2xs font-bold">
                   <FaStar className="text-[7px]" /> PRINCIPAL
                 </span>
               )}
@@ -61,7 +61,7 @@ export default function GaleriaProducto({ valor = [], onChange, max = 5 }) {
                 title="Quitar esta foto"
                 className="absolute top-1 right-1 w-6 h-6 rounded-md bg-black/55 text-white flex items-center justify-center hover:bg-red-500 transition-colors"
               >
-                <FaTimes className="text-[10px]" />
+                <FaTimes className="text-2xs" />
               </button>
 
               <div className="absolute bottom-1 left-1 right-1 flex justify-between opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
@@ -72,7 +72,7 @@ export default function GaleriaProducto({ valor = [], onChange, max = 5 }) {
                   title="Mover antes"
                   className="w-6 h-6 rounded-md bg-black/55 text-white flex items-center justify-center disabled:opacity-30 hover:bg-black/75"
                 >
-                  <FaChevronLeft className="text-[10px]" />
+                  <FaChevronLeft className="text-2xs" />
                 </button>
                 <button
                   type="button"
@@ -81,7 +81,7 @@ export default function GaleriaProducto({ valor = [], onChange, max = 5 }) {
                   title="Mover después"
                   className="w-6 h-6 rounded-md bg-black/55 text-white flex items-center justify-center disabled:opacity-30 hover:bg-black/75"
                 >
-                  <FaChevronRight className="text-[10px]" />
+                  <FaChevronRight className="text-2xs" />
                 </button>
               </div>
             </div>
@@ -107,7 +107,7 @@ export default function GaleriaProducto({ valor = [], onChange, max = 5 }) {
             onClick={() => setAgregando(true)}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border border-dashed border-slate-300 text-sm text-slate-500 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50 transition-all"
           >
-            <FaPlus className="text-[10px]" />
+            <FaPlus className="text-2xs" />
             {fotos.length === 0 ? 'Agregar foto' : 'Agregar otra foto'}
           </button>
         )

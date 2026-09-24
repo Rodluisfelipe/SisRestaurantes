@@ -78,7 +78,7 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] bg-[#0a0a14] animate-pulse">
+      <div className="min-h-[100dvh] bg-crew-noche animate-pulse">
         <div className="h-56 bg-white/[0.04]" />
         <div className="max-w-md mx-auto px-5 mt-5 space-y-3">
           <div className="h-24 rounded-2xl border border-white/[0.06] bg-white/[0.02]" />
@@ -90,7 +90,7 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
 
   if (error || !data) {
     return (
-      <div className="min-h-[100dvh] bg-[#0a0a14] flex items-center justify-center px-5">
+      <div className="min-h-[100dvh] bg-crew-noche flex items-center justify-center px-5">
         <div className="rounded-2xl border border-red-500/30 bg-red-500/[0.08] p-6 text-center max-w-md">
           <p className="text-[14px] font-bold text-red-300">{error || 'Sin datos'}</p>
           <button onClick={onBack} className="mt-3 px-4 py-2 rounded-lg bg-white/[0.06] text-white/70 font-bold text-[13px]">Volver</button>
@@ -105,15 +105,15 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
   const logo = biz.logo;
 
   return (
-    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(5rem+env(safe-area-inset-bottom,0px))]">
+    <div className="min-h-[100dvh] bg-crew-noche text-white font-geist pb-[calc(5rem+env(safe-area-inset-bottom,0px))]">
       {/* Hero con cover + logo */}
       <div className="relative">
         {/* Cover image */}
-        <div className="relative h-56 bg-gradient-to-br from-[#1a1a2e] to-[#0a0a14] overflow-hidden">
+        <div className="relative h-56 bg-gradient-to-br from-[#1a1a2e] to-crew-noche overflow-hidden">
           {cover && (
             <img src={cover} alt={biz.businessName} className="absolute inset-0 w-full h-full object-cover" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a14]/40 via-transparent to-[#0a0a14]/80" />
+          <div className="absolute inset-0 bg-gradient-to-b from-crew-noche/40 via-transparent to-crew-noche/80" />
 
           {/* Back button */}
           <button
@@ -159,7 +159,7 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
           {/* Logo + name floating at bottom of cover */}
           <div className="absolute -bottom-8 left-0 right-0 px-5">
             <div className="max-w-md mx-auto flex items-end gap-3">
-              <div className="w-20 h-20 rounded-2xl bg-[#0a0a14] border-4 border-[#0a0a14] shadow-xl overflow-hidden shrink-0">
+              <div className="w-20 h-20 rounded-2xl bg-crew-noche border-4 border-crew-noche shadow-xl overflow-hidden shrink-0">
                 {logo ? (
                   <img src={logo} alt={biz.businessName} className="w-full h-full object-cover" />
                 ) : (
@@ -191,7 +191,7 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
             animate={{ opacity: 1, y: 0 }}
             className="rounded-[22px] border border-white/[0.08] bg-white/[0.03] p-5 backdrop-blur-sm"
           >
-            <p className="text-[10px] font-extrabold text-white/30 uppercase tracking-[0.15em] mb-1">Turno disponible</p>
+            <p className="text-2xs font-extrabold text-white/30 uppercase tracking-[0.15em] mb-1">Turno disponible</p>
             <h1 className="text-[20px] font-extrabold leading-tight text-white">{shift.title}</h1>
             <p className="text-[13px] text-white/50 mt-1">{ROLE_LABEL[shift.role] || shift.role}</p>
 
@@ -229,7 +229,7 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
 
             {(shift.perks || []).length > 0 && (
               <div className="mt-4 pt-4 border-t border-white/[0.06]">
-                <p className="text-[10px] font-extrabold text-white/30 uppercase tracking-[0.15em] mb-2">Beneficios</p>
+                <p className="text-2xs font-extrabold text-white/30 uppercase tracking-[0.15em] mb-2">Beneficios</p>
                 <div className="flex flex-wrap gap-1.5">
                   {shift.perks.map((p) => (
                     <span key={p} className="px-2.5 py-1 text-[11px] font-semibold bg-white/[0.06] text-white/70 border border-white/[0.10] rounded-full capitalize">
@@ -243,7 +243,7 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
             {matchScore != null && (
               <div className="mt-4 pt-4 border-t border-white/[0.06]">
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] font-extrabold text-white/30 uppercase tracking-[0.15em]">Tu afinidad</span>
+                  <span className="text-2xs font-extrabold text-white/30 uppercase tracking-[0.15em]">Tu afinidad</span>
                   <span className={`text-[13px] font-extrabold tabular-nums ${matchScore >= 70 ? 'text-red-400' : matchScore >= 50 ? 'text-white/60' : 'text-white/40'}`}>
                     {matchScore}%
                   </span>
@@ -306,7 +306,7 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
             >
               <div className="px-5 pt-5 pb-3 flex items-center justify-between">
                 <h2 className="text-[13px] font-extrabold text-white">Lo que sirven en este lugar</h2>
-                <span className="text-[10px] font-bold text-white/25 uppercase tracking-wider">Solo lectura</span>
+                <span className="text-2xs font-bold text-white/25 uppercase tracking-wider">Solo lectura</span>
               </div>
 
               {menu.map((cat) => {
@@ -350,7 +350,7 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
                                 )}
                                 <div className="flex-1 min-w-0">
                                   <p className="text-[12px] font-bold text-white/80 truncate">{p.name}</p>
-                                  {p.description && <p className="text-[10px] text-white/40 line-clamp-1">{p.description}</p>}
+                                  {p.description && <p className="text-2xs text-white/40 line-clamp-1">{p.description}</p>}
                                 </div>
                                 <p className="text-[12px] font-extrabold text-white tabular-nums shrink-0">{formatCOP(p.price)}</p>
                               </div>
@@ -392,7 +392,7 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
       </div>
 
       {/* Sticky apply CTA */}
-      <div className="sticky bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-[#0a0a14] via-[#0a0a14] to-transparent pt-10 px-5" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}>
+      <div className="sticky bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-crew-noche via-crew-noche to-transparent pt-10 px-5" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}>
         <div className="max-w-md mx-auto">
           <MagneticButton
             onClick={apply}
@@ -415,7 +415,7 @@ function InfoStat({ icon, label, value, accent }) {
     <div className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-xl">
       <div className="flex items-center gap-1.5 mb-1">
         <span className="text-white/30">{icon}</span>
-        <span className="text-[10px] font-bold text-white/30 uppercase tracking-wider">{label}</span>
+        <span className="text-2xs font-bold text-white/30 uppercase tracking-wider">{label}</span>
       </div>
       <p className={`text-[13px] font-extrabold tabular-nums leading-tight ${accent ? 'text-red-400' : 'text-white/90'}`}>
         {value}

@@ -59,7 +59,7 @@ export default function CrewEmployerPending() {
             <span className="text-base font-black text-white">C</span>
           </div>
           <div>
-            <p className="text-[9.5px] font-extrabold uppercase tracking-[0.2em] text-slate-400">Crew · Empleador</p>
+            <p className="text-2xs font-extrabold uppercase tracking-[0.2em] text-slate-400">Crew · Empleador</p>
             <p className="text-[13px] font-black text-slate-800 truncate max-w-[200px]">{employer?.name}</p>
           </div>
         </div>
@@ -87,7 +87,7 @@ export default function CrewEmployerPending() {
 
           {employer?.rejectionReason && (
             <div className="mt-3 mb-4 px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-left">
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">Motivo</p>
+              <p className="text-2xs font-extrabold uppercase tracking-wider text-slate-400 mb-1">Motivo</p>
               <p className="text-[12.5px] text-slate-700 leading-relaxed">{employer.rejectionReason}</p>
             </div>
           )}

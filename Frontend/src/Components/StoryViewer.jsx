@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { Capa } from './ui';
 
 const SLIDE_MS = 5000;
 
@@ -98,6 +99,7 @@ export default function StoryViewer({ story, onClose, onCta, onSlideSeen }) {
         className="fixed inset-0 z-[120] bg-black flex flex-col md:inset-y-4 md:left-[calc(50%-215px)] md:w-[430px] md:rounded-3xl md:overflow-hidden md:shadow-2xl"
         style={{ touchAction: 'pan-y' }}
       >
+        <Capa onCerrar={onClose} bloquearScroll={false} />
         {/* Barras de progreso */}
         <div className="absolute top-0 left-0 right-0 z-20 flex gap-1 px-3 pt-3" style={{ paddingTop: 'calc(12px + env(safe-area-inset-top, 0px))' }}>
           {slides.map((_, i) => (

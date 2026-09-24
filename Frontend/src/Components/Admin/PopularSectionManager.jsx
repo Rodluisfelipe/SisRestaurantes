@@ -114,7 +114,7 @@ export default function PopularSectionManager({ businessId, products = [] }) {
           <div>
             <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
               Los más pedidos
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-600">PREMIUM</span>
+              <span className="text-2xs font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-600">PREMIUM</span>
             </h3>
             <p className="text-xs text-slate-500">Sección dinámica de recomendados en tu menú</p>
           </div>
@@ -160,7 +160,7 @@ export default function PopularSectionManager({ businessId, products = [] }) {
                 className={`text-left p-2.5 rounded-xl border transition-all ${cfg.mode === m.value ? 'border-orange-400 bg-orange-50' : 'border-slate-200 hover:border-slate-300'}`}
               >
                 <p className={`text-[12px] font-bold ${cfg.mode === m.value ? 'text-orange-600' : 'text-slate-700'}`}>{m.label}</p>
-                <p className="text-[10px] text-slate-400 leading-tight mt-0.5">{m.desc}</p>
+                <p className="text-2xs text-slate-400 leading-tight mt-0.5">{m.desc}</p>
               </button>
             ))}
           </div>
@@ -229,7 +229,7 @@ export default function PopularSectionManager({ businessId, products = [] }) {
                       title="Fijar al inicio"
                       className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold border transition-colors ${isPinned ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-slate-500 border-slate-200 hover:border-orange-300'}`}
                     >
-                      <FaThumbtack className="text-[9px]" /> {isPinned ? 'Fijado' : 'Fijar'}
+                      <FaThumbtack className="text-2xs" /> {isPinned ? 'Fijado' : 'Fijar'}
                     </button>
                     <button
                       type="button"
@@ -237,7 +237,7 @@ export default function PopularSectionManager({ businessId, products = [] }) {
                       title="Ocultar de la sección"
                       className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold border transition-colors ${isHidden ? 'bg-slate-700 text-white border-slate-700' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'}`}
                     >
-                      <FaEyeSlash className="text-[9px]" /> {isHidden ? 'Oculto' : 'Ocultar'}
+                      <FaEyeSlash className="text-2xs" /> {isHidden ? 'Oculto' : 'Ocultar'}
                     </button>
                   </div>
                 </div>
@@ -248,7 +248,7 @@ export default function PopularSectionManager({ businessId, products = [] }) {
 
         {/* Guardar */}
         <div className="flex items-center justify-end gap-3 pt-1">
-          {saved && <span className="text-[12px] font-semibold text-emerald-600 flex items-center gap-1"><FaCheck className="text-[10px]" /> Guardado</span>}
+          {saved && <span className="text-[12px] font-semibold text-emerald-600 flex items-center gap-1"><FaCheck className="text-2xs" /> Guardado</span>}
           <button
             type="button"
             onClick={handleSave}

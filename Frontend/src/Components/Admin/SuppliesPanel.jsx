@@ -230,7 +230,7 @@ export default function SuppliesPanel({ businessId, themeColor, onCambio }) {
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-bold text-slate-800 truncate">{s.name}</p>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${COLOR[e]}`}>{ETIQUETA[e]}</span>
+                    <span className={`text-2xs font-bold px-1.5 py-0.5 rounded-md border ${COLOR[e]}`}>{ETIQUETA[e]}</span>
                     <span className="text-[11px] text-slate-400">
                       {s.cost != null ? `${money(s.cost)} / ${unidades[s.unit] || s.unit}` : 'sin costo'}
                     </span>

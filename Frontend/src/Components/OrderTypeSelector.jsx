@@ -441,7 +441,7 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.4 }}
             transition={{ delay: 0.8 }}
-            className="text-center text-[10px] text-gray-400 pb-3 pt-2"
+            className="text-center text-2xs text-gray-400 pb-3 pt-2"
           >
             Powered by <span className="font-medium">MenuBy</span>
           </motion.p>

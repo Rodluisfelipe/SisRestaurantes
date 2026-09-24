@@ -8,6 +8,7 @@ import {
   CheckCircle2, Sparkles, Map, ClipboardList, CalendarCheck,
   UtensilsCrossed, Wallet, Banknote, Bike,
 } from 'lucide-react';
+import { Capa } from './ui';
 
 const EMPTY_ARRAY = [];
 
@@ -53,7 +54,7 @@ const ProgressRing = ({ percent, size = 44, stroke = 3.5, color = '#f97316' }) =
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-[9px] font-black" style={{ color }}>{Math.round(percent)}%</span>
+        <span className="text-2xs font-black" style={{ color }}>{Math.round(percent)}%</span>
       </div>
     </div>
   );
@@ -203,6 +204,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
           transition={{ duration: 0.2 }}
           className="fixed inset-0 z-[9999] flex flex-col"
         >
+          <Capa onCerrar={onClose} />
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
@@ -279,7 +281,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                       {/* Top: Business name + Tier badge */}
                       <div className="flex items-center justify-between mb-5">
                         <div>
-                          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">
+                          <p className="text-2xs font-bold uppercase tracking-[0.2em] text-white/70">
                             {businessName || 'Programa de fidelidad'}
                           </p>
                           {currentTier && (
@@ -307,7 +309,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                           </span>
                           <span className="text-sm font-semibold text-white/60">puntos</span>
                         </div>
-                        <p className="text-[10px] text-white/40 mt-1 font-medium">
+                        <p className="text-2xs text-white/40 mt-1 font-medium">
                           Total histórico: {(data.totalEarned || 0).toLocaleString('es-CO')} pts acumulados
                         </p>
                       </div>
@@ -323,10 +325,10 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
 
                     {/* Bottom strip — card number feel */}
                     <div className="relative z-20 flex items-center justify-between px-5 py-2.5 border-t border-white/10 bg-black/10">
-                      <span className="text-[9px] font-mono text-white/30 tracking-widest">
+                      <span className="text-2xs font-mono text-white/30 tracking-widest">
                         •••• •••• {phone?.slice(-4) || '0000'}
                       </span>
-                      <span className="text-[9px] font-bold text-white/40 uppercase tracking-wider">MEMBER</span>
+                      <span className="text-2xs font-bold text-white/40 uppercase tracking-wider">MEMBER</span>
                     </div>
                   </motion.div>
 
@@ -364,7 +366,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                               transition={{ duration: 1, ease: 'easeOut', delay: 0.5 }}
                             />
                           </div>
-                          <p className="text-[9px] text-amber-500 mt-1 font-bold text-right">{smartNudge.percent}% completado</p>
+                          <p className="text-2xs text-amber-500 mt-1 font-bold text-right">{smartNudge.percent}% completado</p>
                         </div>
                       </div>
                     </motion.div>
@@ -380,7 +382,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                           <Gift className="w-4 h-4 text-slate-700" />
                           <h3 className="text-sm font-black text-slate-800">Recompensas</h3>
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                        <span className="text-2xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
                           {sortedRewards.filter(r => data.points >= r.pointsCost).length}/{sortedRewards.length} disponibles
                         </span>
                       </div>
@@ -427,7 +429,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                                         </div>
                                       )}
                                       {canAfford && (
-                                        <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500 text-white text-[9px] font-black shadow-md">
+                                        <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500 text-white text-2xs font-black shadow-md">
                                           <Check className="w-2.5 h-2.5" /> Disponible
                                         </div>
                                       )}
@@ -451,13 +453,13 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                                       <div className="flex-1 min-w-0">
                                         <p className="text-xs font-black text-slate-800 leading-tight">{reward.name}</p>
                                         {reward.description && (
-                                          <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-2">{reward.description}</p>
+                                          <p className="text-2xs text-slate-400 mt-0.5 line-clamp-2">{reward.description}</p>
                                         )}
                                       </div>
                                     </div>
 
                                     {/* Reward details */}
-                                    <p className="text-[10px] text-slate-500 mb-2">
+                                    <p className="text-2xs text-slate-500 mb-2">
                                       {reward.type === 'discount_percent' && `${reward.discountValue}% de descuento`}
                                       {reward.type === 'discount_fixed' && `$${Number(reward.discountValue).toLocaleString('es-CO')} de descuento`}
                                       {reward.type === 'free_product' && `${reward.productName || (isService ? 'Servicio gratis' : 'Producto gratis')}`}
@@ -472,7 +474,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                                         {reward.pointsCost.toLocaleString('es-CO')} pts
                                       </span>
                                       {!canAfford && (
-                                        <span className="text-[9px] text-slate-400 font-semibold">
+                                        <span className="text-2xs text-slate-400 font-semibold">
                                           Faltan {remaining.toLocaleString('es-CO')}
                                         </span>
                                       )}
@@ -514,10 +516,10 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
 
                       {/* Swipe hint */}
                       {sortedRewards.length > 1 && (
-                        <p className="text-[9px] text-slate-300 text-center mt-1 font-medium">← Desliza para ver más →</p>
+                        <p className="text-2xs text-slate-300 text-center mt-1 font-medium">← Desliza para ver más →</p>
                       )}
 
-                      <p className="text-[9px] text-center text-slate-400 mt-2">
+                      <p className="text-2xs text-center text-slate-400 mt-2">
                         {isService ? 'Los descuentos se aplican automáticamente al momento de tu cita' : 'Los descuentos se aplican automáticamente al momento de hacer tu pedido'}
                       </p>
                     </motion.div>
@@ -536,7 +538,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                         <h3 className="text-sm font-black text-slate-800">Tu camino</h3>
                         {nextTier && (
                           <span
-                            className="ml-auto text-[9px] font-bold px-2 py-0.5 rounded-full"
+                            className="ml-auto text-2xs font-bold px-2 py-0.5 rounded-full"
                             style={{ backgroundColor: btnColor + '15', color: btnColor }}
                           >
                             {pointsToNext.toLocaleString('es-CO')} pts para {nextTier.name}
@@ -575,23 +577,23 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                                       ? <CheckCircle2 className="w-6 h-6 text-green-600" />
                                       : (() => { const TierIcon = getTierIcon(tier.name); return <TierIcon className={`w-6 h-6 ${isCurrent ? 'text-amber-600' : 'text-slate-400'}`} />; })()}
                                   </motion.div>
-                                  <p className={`text-[10px] font-bold text-center leading-tight ${
+                                  <p className={`text-2xs font-bold text-center leading-tight ${
                                     isCurrent ? 'text-amber-700' : isCompleted ? 'text-green-600' : 'text-slate-400'
                                   }`}>
                                     {tier.name}
                                   </p>
                                   {isCurrent && (
-                                    <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-black uppercase">
+                                    <span className="text-2xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-black uppercase">
                                       Aquí estás
                                     </span>
                                   )}
                                   {isLocked && (
-                                    <span className="text-[8px] text-slate-400 font-medium">
+                                    <span className="text-2xs text-slate-400 font-medium">
                                       {tier.minPoints.toLocaleString('es-CO')} pts
                                     </span>
                                   )}
                                   {tier.multiplier > 1 && (
-                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${
+                                    <span className={`text-2xs font-black px-1.5 py-0.5 rounded-full ${
                                       isLocked ? 'bg-slate-100 text-slate-400' : 'bg-amber-100 text-amber-700'
                                     }`}>
                                       ×{tier.multiplier} puntos
@@ -624,7 +626,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                       {/* Progress bar to next tier */}
                       {nextTier && (
                         <div className="mt-3 pt-3 border-t border-slate-100">
-                          <div className="flex items-center justify-between text-[10px] mb-1">
+                          <div className="flex items-center justify-between text-2xs mb-1">
                             <span className="text-slate-500 font-semibold">
                               Progreso a <strong className="text-slate-700">{nextTier.name}</strong>
                             </span>
@@ -641,7 +643,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                               style={{ background: `linear-gradient(90deg, ${btnColor}, ${btnColor}aa)` }}
                             />
                           </div>
-                          <p className="text-[10px] text-slate-400 mt-1.5 text-center">
+                          <p className="text-2xs text-slate-400 mt-1.5 text-center">
                             Te faltan <strong className="text-slate-600">{pointsToNext.toLocaleString('es-CO')}</strong> puntos
                           </p>
                         </div>
@@ -685,7 +687,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                         <div className="flex items-center gap-2">
                           <ClipboardList className="w-4 h-4 text-slate-700" />
                           <h3 className="text-sm font-black text-slate-800">Historial</h3>
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-400 font-bold">
+                          <span className="text-2xs px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-400 font-bold">
                             {data.recentTransactions.length}
                           </span>
                         </div>
@@ -723,7 +725,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                                     <div>
                                       <p className="text-xs font-semibold text-slate-700">{tx.description}</p>
                                       {tx.createdAt && (
-                                        <p className="text-[9px] text-slate-300 font-medium">
+                                        <p className="text-2xs text-slate-300 font-medium">
                                           {new Date(tx.createdAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
                                         </p>
                                       )}

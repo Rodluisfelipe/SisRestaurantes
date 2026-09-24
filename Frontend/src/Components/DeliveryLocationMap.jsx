@@ -57,7 +57,7 @@ export default function DeliveryLocationMap({ lat, lon, address }) {
           {address && (
             <p className="text-[12px] text-slate-700 font-medium leading-snug line-clamp-1">{address}</p>
           )}
-          <p className="text-[10px] text-slate-400 font-mono tabular-nums mt-0.5">
+          <p className="text-2xs text-slate-400 font-mono tabular-nums mt-0.5">
             {lat.toFixed(5)}, {lon.toFixed(5)}
           </p>
         </div>

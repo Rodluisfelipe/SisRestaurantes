@@ -99,7 +99,7 @@ export default function Devoluciones() {
             { label: 'Motivo más común', valor: MOTIVOS[resumen.motivoMasComun] || '—', pequeno: true },
           ].map((c) => (
             <div key={c.label} className="bg-white rounded-2xl border border-slate-200 p-3">
-              <p className="text-[10.5px] font-semibold text-slate-400 uppercase tracking-wide">{c.label}</p>
+              <p className="text-2xs font-semibold text-slate-400 uppercase tracking-wide">{c.label}</p>
               <p className={`mt-0.5 font-black text-slate-900 ${c.pequeno ? 'text-[13px]' : 'text-lg'}`}
                  style={c.resaltar ? { color: themeColor } : undefined}>
                 {c.valor}
@@ -151,11 +151,11 @@ export default function Devoluciones() {
                       {d.tipo === 'cambio' ? 'Cambio' : 'Devolución'}
                       {d.orderNumber ? ` · #${d.orderNumber}` : ''}
                     </span>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${estado.color}`}>
+                    <span className={`text-2xs font-bold px-1.5 py-0.5 rounded-md border ${estado.color}`}>
                       {estado.label}
                     </span>
                     {!d.reingresaStock && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-red-200 bg-red-50 text-red-600">
+                      <span className="text-2xs font-bold px-1.5 py-0.5 rounded-md border border-red-200 bg-red-50 text-red-600">
                         No vuelve a bodega
                       </span>
                     )}

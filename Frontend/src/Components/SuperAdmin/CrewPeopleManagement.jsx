@@ -118,7 +118,7 @@ export default function CrewPeopleManagement() {
           >
             {t.label}
             {t.key !== 'all' && counts[t.key] != null && (
-              <span className="ml-1.5 text-[10px] font-bold opacity-60 tabular-nums">{counts[t.key]}</span>
+              <span className="ml-1.5 text-2xs font-bold opacity-60 tabular-nums">{counts[t.key]}</span>
             )}
           </button>
         ))}
@@ -127,7 +127,7 @@ export default function CrewPeopleManagement() {
       {/* Source filter + search */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500 mr-1">Origen:</span>
+          <span className="text-2xs font-bold uppercase tracking-wider text-slate-500 mr-1">Origen:</span>
           {SOURCE_CHIPS.map((s) => (
             <button
               key={s.key}
@@ -225,7 +225,7 @@ function KpiCard({ label, value, tone }) {
   };
   return (
     <div className={`rounded-xl border p-3.5 ${tones[tone] || tones.slate}`}>
-      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</p>
+      <p className="text-2xs font-bold text-slate-500 uppercase tracking-wider">{label}</p>
       <p className="text-[22px] font-extrabold text-slate-900 tabular-nums mt-0.5 leading-none">{value}</p>
     </div>
   );
@@ -255,7 +255,7 @@ function PersonCard({ person, onClick }) {
           <TypeBadge type={person.type} kind={person.kind} />
           <SourceBadge source={person.source} />
           <StatusBadge status={person.status} />
-          <span className="text-[10px] text-slate-400 ml-auto">{formatRelative(person.createdAt)}</span>
+          <span className="text-2xs text-slate-400 ml-auto">{formatRelative(person.createdAt)}</span>
         </div>
       </div>
     </motion.button>
@@ -292,7 +292,7 @@ function TypeBadge({ type, kind }) {
 function SourceBadge({ source }) {
   if (source === 'menuby') {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-extrabold rounded-md bg-cyan-50 text-cyan-700 border border-cyan-200 uppercase tracking-wider">
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-2xs font-extrabold rounded-md bg-cyan-50 text-cyan-700 border border-cyan-200 uppercase tracking-wider">
         <span className="w-1 h-1 rounded-full bg-cyan-500" />
         MenuBy
       </span>
@@ -300,7 +300,7 @@ function SourceBadge({ source }) {
   }
   if (source === 'external') {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-extrabold rounded-md bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wider">
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-2xs font-extrabold rounded-md bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wider">
         <span className="w-1 h-1 rounded-full bg-amber-500" />
         Crew externo
       </span>
@@ -308,7 +308,7 @@ function SourceBadge({ source }) {
   }
   if (source === 'mixed') {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-extrabold rounded-md bg-gradient-to-r from-cyan-50 to-amber-50 text-slate-700 border border-slate-300 uppercase tracking-wider">
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-2xs font-extrabold rounded-md bg-gradient-to-r from-cyan-50 to-amber-50 text-slate-700 border border-slate-300 uppercase tracking-wider">
         Mixto
       </span>
     );
@@ -362,7 +362,7 @@ function PersonDetail({ person }) {
       {/* Worker-specific */}
       {person.type === 'worker' && (
         <div>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Perfil de trabajador</p>
+          <p className="text-2xs font-bold text-slate-500 uppercase tracking-wider mb-2">Perfil de trabajador</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <DetailStat label="Nivel" value={person.level} />
             <DetailStat label="XP" value={person.xp?.toLocaleString('es-CO') || 0} />
@@ -377,7 +377,7 @@ function PersonDetail({ person }) {
       {/* Employer stats */}
       {(person.type === 'crew_employer' || person.type === 'menuby_business') && (
         <div>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Actividad en Crew</p>
+          <p className="text-2xs font-bold text-slate-500 uppercase tracking-wider mb-2">Actividad en Crew</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             <DetailStat label="Turnos publicados" value={person.stats?.shiftsPublished || 0} />
             {person.type === 'crew_employer' && (
@@ -413,7 +413,7 @@ function PersonDetail({ person }) {
 function DetailStat({ label, value }) {
   return (
     <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</p>
+      <p className="text-2xs font-bold text-slate-500 uppercase tracking-wider">{label}</p>
       <div className="text-sm font-semibold text-slate-900 mt-0.5 break-words">{value}</div>
     </div>
   );

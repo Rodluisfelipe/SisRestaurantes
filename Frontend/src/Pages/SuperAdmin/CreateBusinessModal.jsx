@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { createBusiness } from "../../services/superadminApi";
 import { motion, AnimatePresence } from "framer-motion";
+import { Capa } from '../../Components/ui';
 
 export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
   const [form, setForm] = useState({
@@ -76,6 +77,7 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
           className="fixed inset-0 z-[60] flex items-center justify-center p-4"
           onClick={onClose}
         >
+          <Capa onCerrar={onClose} />
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 

@@ -37,7 +37,7 @@ export default function CrewWalletCard({ wallet, onRecharge, loading }) {
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-5">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
+            <p className="text-2xs font-extrabold uppercase tracking-[0.18em] text-slate-400">
               Billetera Crew
             </p>
             <div className="flex items-center gap-2 mt-1">
@@ -46,7 +46,7 @@ export default function CrewWalletCard({ wallet, onRecharge, loading }) {
                 <motion.span
                   animate={{ scale: [1, 1.04, 1] }}
                   transition={{ duration: 2, repeat: Infinity }}
-                  className="px-2 py-0.5 text-[9px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200 rounded-full uppercase tracking-wider"
+                  className="px-2 py-0.5 text-2xs font-extrabold bg-amber-50 text-amber-700 border border-amber-200 rounded-full uppercase tracking-wider"
                 >
                   Saldo bajo
                 </motion.span>
@@ -149,7 +149,7 @@ function StatBlock({ label, value, hint, icon, tone }) {
   return (
     <div className={`rounded-2xl p-3 border ${t.border} ${t.bg}`}>
       <div className="flex items-center justify-between mb-1">
-        <span className={`flex items-center gap-1 text-[9.5px] font-extrabold uppercase tracking-wider ${t.text}`}>
+        <span className={`flex items-center gap-1 text-2xs font-extrabold uppercase tracking-wider ${t.text}`}>
           {icon}
           {label}
         </span>
@@ -157,7 +157,7 @@ function StatBlock({ label, value, hint, icon, tone }) {
       <p className="text-[15px] font-black text-slate-800 tabular-nums leading-tight">
         {formatCOP(value)}
       </p>
-      {hint && <p className="text-[9.5px] text-slate-400 mt-0.5">{hint}</p>}
+      {hint && <p className="text-2xs text-slate-400 mt-0.5">{hint}</p>}
     </div>
   );
 }

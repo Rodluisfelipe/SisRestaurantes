@@ -247,7 +247,7 @@ export default function CrewOnboarding({ onDone }) {
                       <div className="flex items-center justify-between mb-2.5">
                         <p className="text-[13px] font-bold text-white/90">{d.full}</p>
                         {slots.length > 0 && (
-                          <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-[10px] font-bold text-red-300 tabular-nums">
+                          <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-2xs font-bold text-red-300 tabular-nums">
                             {slots.length} {slots.length === 1 ? 'franja' : 'franjas'}
                           </span>
                         )}
@@ -269,7 +269,7 @@ export default function CrewOnboarding({ onDone }) {
                               title={p.range}
                             >
                               <span className="text-[12px] block">{p.icon}</span>
-                              <span className="text-[10px] font-bold block mt-0.5">{p.label}</span>
+                              <span className="text-2xs font-bold block mt-0.5">{p.label}</span>
                             </motion.button>
                           );
                         })}
@@ -306,7 +306,7 @@ export default function CrewOnboarding({ onDone }) {
             <motion.div key="s3" {...SLIDE}>
               <div className="space-y-5">
                 <div>
-                  <p className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.15em] mb-2.5">Ciudad</p>
+                  <p className="text-2xs font-extrabold text-white/40 uppercase tracking-[0.15em] mb-2.5">Ciudad</p>
                   <div className="grid grid-cols-2 gap-2">
                     {CITIES.map((c) => (
                       <motion.button
@@ -327,7 +327,7 @@ export default function CrewOnboarding({ onDone }) {
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-extrabold text-white/40 uppercase tracking-[0.15em] mb-2.5">Barrio (opcional)</p>
+                  <p className="text-2xs font-extrabold text-white/40 uppercase tracking-[0.15em] mb-2.5">Barrio (opcional)</p>
                   <input
                     value={neighborhood}
                     onChange={(e) => setNeighborhood(e.target.value)}
@@ -359,7 +359,7 @@ export default function CrewOnboarding({ onDone }) {
       </main>
 
       {/* Fixed bottom CTA */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 px-5 pt-12 bg-gradient-to-t from-[#0a0a14] via-[#0a0a14]/95 to-transparent" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px))' }}>
+      <div className="fixed bottom-0 left-0 right-0 z-20 px-5 pt-12 bg-gradient-to-t from-crew-noche via-crew-noche/95 to-transparent" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px))' }}>
         <div className="max-w-md mx-auto">
           {step < 2 ? (
             <GlowButton

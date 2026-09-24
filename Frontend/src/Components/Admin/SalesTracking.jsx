@@ -8,6 +8,7 @@ import {
 import api from '../../services/api';
 import { useBusinessConfig } from '../../Context/BusinessContext';
 import SpotifyConfig from './SpotifyConfig';
+import { Capa } from '../ui';
 
 /**
  * "Sigue tus ventas" — enlaces marcados, sus QR y de dónde viene cada venta.
@@ -199,7 +200,7 @@ export default function SalesTracking({ businessId }) {
                       <Icono className="text-slate-400 text-xs flex-shrink-0" />
                       <span className="text-sm font-semibold text-slate-800 truncate">{enlace.nombre}</span>
                       {enlace.predefinido && (
-                        <span className="text-[9px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded font-medium flex-shrink-0">base</span>
+                        <span className="text-2xs px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded font-medium flex-shrink-0">base</span>
                       )}
                     </div>
                     <p className="text-[11px] text-slate-400 font-mono truncate mt-0.5">{urlDe(enlace)}</p>
@@ -291,6 +292,7 @@ function ModalQR({ enlace, url, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <Capa onCerrar={onClose} />
       <div className="bg-white rounded-2xl max-w-xs w-full p-5 text-center" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-sm font-bold text-slate-800 mb-1">{enlace.nombre}</h3>
         <p className="text-[11px] text-slate-400 mb-4 break-all">{url}</p>

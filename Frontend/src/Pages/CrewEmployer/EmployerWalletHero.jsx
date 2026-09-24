@@ -31,13 +31,13 @@ export default function EmployerWalletHero({ wallet, loading, onRecharge }) {
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
+          <p className="text-2xs font-extrabold uppercase tracking-[0.18em] text-slate-400">
             Billetera Crew
           </p>
           <div className="flex items-center gap-2 mt-1">
             <h2 className="text-[14px] font-black text-slate-800">Saldo disponible</h2>
             {lowBalance && (
-              <span className="px-2 py-0.5 text-[9px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200 rounded-full uppercase tracking-wider">
+              <span className="px-2 py-0.5 text-2xs font-extrabold bg-amber-50 text-amber-700 border border-amber-200 rounded-full uppercase tracking-wider">
                 Saldo bajo
               </span>
             )}

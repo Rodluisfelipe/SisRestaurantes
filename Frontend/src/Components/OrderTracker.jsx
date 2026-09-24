@@ -7,6 +7,7 @@ import { API_URL } from '../config';
 import { socket } from '../services/socket';
 import logger from '../utils/logger';
 import { isPushSupported, subscribeToPush, isIOS, isInstalledPWA } from '../utils/pushNotifications';
+import { Capa } from './ui';
 
 // ─── SVG Icon system ────────────────────────────────────────────────
 const I = {
@@ -327,6 +328,7 @@ const OrderTracker = ({
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <Capa onCerrar={onClose} />
         <div className="bg-white rounded-2xl p-8 flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-3 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
           <p className="text-gray-600 text-sm">{isBooking ? 'Cargando cita...' : 'Cargando pedido...'}</p>
@@ -338,6 +340,7 @@ const OrderTracker = ({
   if (error) {
     return (
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <Capa onCerrar={onClose} />
         <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center">
           {I.exclamation('w-10 h-10 mx-auto text-gray-400 mb-3')}
           <h3 className="font-bold text-gray-900 mb-2">{error}</h3>
@@ -358,6 +361,7 @@ const OrderTracker = ({
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end sm:items-center justify-center z-50">
+      <Capa onCerrar={onClose} />
       <motion.div
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -413,7 +417,7 @@ const OrderTracker = ({
                 {tab.iconFn('w-4 h-4')}
                 <span>{tab.label}</span>
                 {tab.badge > 0 && (
-                  <span className="w-4 h-4 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center">{tab.badge}</span>
+                  <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-2xs font-bold text-white flex items-center justify-center">{tab.badge}</span>
                 )}
                 {activeTab === tab.id && (
                   <motion.div layoutId="activeTab" className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full" style={{ backgroundColor: themeColor }} />
@@ -446,7 +450,7 @@ const OrderTracker = ({
                         >
                           {isComplete ? I.check('w-4 h-4') : stepConfig.iconFn('w-4 h-4')}
                         </motion.div>
-                        <span className={`text-[10px] font-medium text-center leading-tight ${isCurrent ? 'text-gray-900' : 'text-gray-400'}`}>
+                        <span className={`text-2xs font-medium text-center leading-tight ${isCurrent ? 'text-gray-900' : 'text-gray-400'}`}>
                           {stepConfig.shortLabel}
                         </span>
                       </div>
@@ -464,7 +468,7 @@ const OrderTracker = ({
                   {I.bell('w-5 h-5 text-blue-500 flex-shrink-0')}
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-blue-800">Recibir notificaciones</p>
-                    <p className="text-[10px] text-blue-600 mt-0.5">Te avisamos cuando {isBooking ? 'tu cita' : 'tu pedido'} cambie</p>
+                    <p className="text-2xs text-blue-600 mt-0.5">Te avisamos cuando {isBooking ? 'tu cita' : 'tu pedido'} cambie</p>
                   </div>
                   <button onClick={handleEnableNotifications} className="flex-shrink-0 px-3 py-1.5 bg-blue-600 text-white text-[11px] font-semibold rounded-lg">Activar</button>
                   <button onClick={() => setPushState('dismissed')} className="flex-shrink-0 p-1 text-blue-400">{I.xMark('w-4 h-4')}</button>
@@ -476,7 +480,7 @@ const OrderTracker = ({
                   {I.phone('w-5 h-5 text-gray-500 flex-shrink-0')}
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-gray-700">Recibe notificaciones</p>
-                    <p className="text-[10px] text-gray-500 mt-0.5">Toca {I.upload('w-3 h-3 inline text-blue-500')} y luego <strong>"Añadir a inicio"</strong></p>
+                    <p className="text-2xs text-gray-500 mt-0.5">Toca {I.upload('w-3 h-3 inline text-blue-500')} y luego <strong>"Añadir a inicio"</strong></p>
                   </div>
                   <button onClick={() => setPushState('dismissed')} className="flex-shrink-0 p-1 text-gray-400">{I.xMark('w-4 h-4')}</button>
                 </div>
@@ -672,7 +676,7 @@ const OrderTracker = ({
                       >
                         {I.camera('w-6 h-6 text-gray-400')}
                         <span className="text-sm font-semibold text-gray-600">Toca para subir comprobante</span>
-                        <span className="text-[10px] text-gray-400">JPG, PNG, WEBP — Max 25MB</span>
+                        <span className="text-2xs text-gray-400">JPG, PNG, WEBP — Max 25MB</span>
                       </button>
                     ) : (
                       <div className="space-y-2">
@@ -779,7 +783,7 @@ const OrderTracker = ({
                         : 'bg-gray-100 text-gray-800 rounded-2xl rounded-bl-md'
                     }`}>
                       <p className="break-words">{m.text}</p>
-                      <p className={`text-[10px] mt-1 ${m.sender === 'customer' ? 'text-blue-200' : 'text-gray-400'}`}>{formatTime(m.timestamp)}</p>
+                      <p className={`text-2xs mt-1 ${m.sender === 'customer' ? 'text-blue-200' : 'text-gray-400'}`}>{formatTime(m.timestamp)}</p>
                     </div>
                   </div>
                 ))}

@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { enlaceWhatsApp } from '../utils/whatsapp';
+import { Capa } from './ui';
 
 const BusinessClosedModal = ({ isOpen, onClose, businessStatus }) => {
   const { businessConfig } = useBusinessConfig();
@@ -42,6 +43,7 @@ const BusinessClosedModal = ({ isOpen, onClose, businessStatus }) => {
         className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
         onClick={onClose}
       >
+        <Capa onCerrar={onClose} />
         <motion.div
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}

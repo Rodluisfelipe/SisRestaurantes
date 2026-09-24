@@ -46,8 +46,8 @@ export default function CrewChat({ onThreadOpen }) {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(7rem+env(safe-area-inset-bottom,0px))]">
-      <header className="sticky top-0 z-30 bg-[#0a0a14]/80 backdrop-blur-2xl border-b border-white/[0.06]">
+    <div className="min-h-[100dvh] bg-crew-noche text-white font-geist pb-[calc(7rem+env(safe-area-inset-bottom,0px))]">
+      <header className="sticky top-0 z-30 bg-crew-noche/80 backdrop-blur-2xl border-b border-white/[0.06]">
         <div className="max-w-md mx-auto px-5 pt-[max(1.25rem,env(safe-area-inset-top,0px))] pb-4">
           <h1 className="text-[20px] font-extrabold text-white">Mensajes</h1>
           <p className="text-[12px] text-white/40 mt-0.5">Conversa con los negocios que te han contratado</p>
@@ -81,12 +81,12 @@ export default function CrewChat({ onThreadOpen }) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-0.5">
                 <p className="text-[13px] font-extrabold text-white truncate">{c.businessId?.businessName || 'Negocio'}</p>
-                <span className="text-[10px] text-white/30 shrink-0 ml-2">{formatRelative(c.lastMessageAt)}</span>
+                <span className="text-2xs text-white/30 shrink-0 ml-2">{formatRelative(c.lastMessageAt)}</span>
               </div>
               <p className="text-[12px] text-white/40 truncate">{c.lastMessagePreview || 'Sin mensajes aún'}</p>
             </div>
             {c.workerUnread > 0 && (
-              <span className="shrink-0 min-w-[20px] h-5 px-1.5 bg-red-600 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center">
+              <span className="shrink-0 min-w-[20px] h-5 px-1.5 bg-red-600 text-white text-2xs font-extrabold rounded-full flex items-center justify-center">
                 {c.workerUnread}
               </span>
             )}
@@ -143,8 +143,8 @@ function ChatThread({ conversation, onBack }) {
   };
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-[#0a0a14] text-white font-geist">
-      <header className="bg-[#0a0a14]/80 backdrop-blur-2xl border-b border-white/[0.06] sticky top-0 z-20">
+    <div className="min-h-[100dvh] flex flex-col bg-crew-noche text-white font-geist">
+      <header className="bg-crew-noche/80 backdrop-blur-2xl border-b border-white/[0.06] sticky top-0 z-20">
         <div className="max-w-md mx-auto px-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-3 flex items-center gap-3">
           <button onClick={onBack} className="text-white/50 hover:text-white transition" aria-label="Volver">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
@@ -154,7 +154,7 @@ function ChatThread({ conversation, onBack }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[14px] font-extrabold text-white truncate">{conversation.businessId?.businessName || 'Negocio'}</p>
-            <p className="text-[10px] text-white/40">Conversación activa</p>
+            <p className="text-2xs text-white/40">Conversación activa</p>
           </div>
         </div>
       </header>
@@ -178,7 +178,7 @@ function ChatThread({ conversation, onBack }) {
               }`}
             >
               <p className="text-[14px] leading-relaxed whitespace-pre-line">{m.body}</p>
-              <p className={`text-[9px] mt-0.5 text-right ${mine ? 'text-white/70' : 'text-white/30'}`}>
+              <p className={`text-2xs mt-0.5 text-right ${mine ? 'text-white/70' : 'text-white/30'}`}>
                 {new Date(m.createdAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
               </p>
             </motion.div>
@@ -187,7 +187,7 @@ function ChatThread({ conversation, onBack }) {
         <div ref={endRef} />
       </main>
 
-      <footer className="bg-[#0a0a14]/90 backdrop-blur-2xl border-t border-white/[0.06] px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
+      <footer className="bg-crew-noche/90 backdrop-blur-2xl border-t border-white/[0.06] px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
         <div className="max-w-md mx-auto flex items-center gap-2">
           <input
             value={text}

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSavedAddresses } from '../../hooks/useSavedAddresses';
 import MapPicker from './MapPicker';
+import { Capa } from '../ui';
 
 export default function LocationPicker({ open, onClose, onSelect, currentAddress, currentCoords }) {
   const { addresses, addAddress, removeAddress } = useSavedAddresses();
@@ -47,7 +48,9 @@ export default function LocationPicker({ open, onClose, onSelect, currentAddress
               transition={{ duration: 0.2 }}
               className="fixed inset-0 bg-black/40 z-50 backdrop-blur-[2px]"
               onClick={onClose}
-            />
+            >
+              <Capa onCerrar={onClose} />
+            </motion.div>
 
             {/* Sheet */}
             <motion.div
@@ -79,7 +82,7 @@ export default function LocationPicker({ open, onClose, onSelect, currentAddress
                 {/* ── Dirección manual (sin autocomplete) ── */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-extrabold flex items-center justify-center flex-shrink-0">1</div>
+                    <div className="w-5 h-5 rounded-full bg-red-500 text-white text-2xs font-extrabold flex items-center justify-center flex-shrink-0">1</div>
                     <p className="text-[12px] font-bold text-gray-500 uppercase tracking-wide">Escribe tu dirección</p>
                   </div>
 
@@ -125,7 +128,7 @@ export default function LocationPicker({ open, onClose, onSelect, currentAddress
                       transition={{ type: 'spring', damping: 24, stiffness: 300 }}
                     >
                       <div className="flex items-center gap-2 mb-2.5">
-                        <div className="w-5 h-5 rounded-full bg-gray-300 text-white text-[10px] font-extrabold flex items-center justify-center flex-shrink-0">2</div>
+                        <div className="w-5 h-5 rounded-full bg-gray-300 text-white text-2xs font-extrabold flex items-center justify-center flex-shrink-0">2</div>
                         <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide">Ubica el pin en el mapa</p>
                       </div>
                       <button

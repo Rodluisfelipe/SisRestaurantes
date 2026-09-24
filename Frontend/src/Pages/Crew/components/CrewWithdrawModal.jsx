@@ -9,6 +9,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import crewApi from '../../../services/crewApi';
+import { Capa } from '../../../Components/ui';
 
 const PAYOUT_METHODS = [
   { id: 'nequi', label: 'Nequi', icon: '📱', placeholder: 'Tu # de Nequi', color: 'from-pink-500 to-rose-500' },
@@ -77,11 +78,12 @@ export default function CrewWithdrawModal({ open, wallet, defaultPayoutMethod, o
         onClick={onClose}
         className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center sm:p-4 bg-black/70 backdrop-blur-sm font-geist"
       >
+        <Capa onCerrar={onClose} bloquearScroll={false} />
         <motion.div
           initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
           transition={{ type: 'spring', damping: 28, stiffness: 280 }}
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full sm:max-w-[440px] max-h-[92vh] bg-[#0a0a14] border border-white/[0.08] sm:rounded-[28px] rounded-t-[28px] shadow-2xl text-white overflow-hidden flex flex-col"
+          className="relative w-full sm:max-w-[440px] max-h-[92vh] bg-crew-noche border border-white/[0.08] sm:rounded-[28px] rounded-t-[28px] shadow-2xl text-white overflow-hidden flex flex-col"
         >
           <div className="absolute -top-20 -right-10 w-72 h-72 bg-red-500/20 rounded-full blur-[100px] pointer-events-none" />
           <div className="absolute -bottom-24 -left-12 w-72 h-72 bg-emerald-500/15 rounded-full blur-[100px] pointer-events-none" />
@@ -95,7 +97,7 @@ export default function CrewWithdrawModal({ open, wallet, defaultPayoutMethod, o
                 </svg>
               </div>
               <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-white/40">Retirar saldo</p>
+                <p className="text-2xs font-extrabold uppercase tracking-[0.2em] text-white/40">Retirar saldo</p>
                 <p className="text-[14px] font-black">{step === 3 ? '¡Listo!' : `Paso ${step} de 2`}</p>
               </div>
             </div>
@@ -109,11 +111,11 @@ export default function CrewWithdrawModal({ open, wallet, defaultPayoutMethod, o
               {step === 1 && (
                 <motion.div key="s1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                   <div className="mb-4">
-                    <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40">Disponible</p>
+                    <p className="text-2xs font-extrabold uppercase tracking-[0.18em] text-white/40">Disponible</p>
                     <p className="text-[28px] font-black tabular-nums leading-tight">{formatCOP(available)}</p>
                   </div>
 
-                  <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40 mb-2">¿Cuánto retiras?</p>
+                  <p className="text-2xs font-extrabold uppercase tracking-[0.18em] text-white/40 mb-2">¿Cuánto retiras?</p>
                   <div className="grid grid-cols-4 gap-1.5 mb-3">
                     {PRESETS.filter(p => p <= available).map((p) => {
                       const active = Number(amount) === p;
@@ -147,14 +149,14 @@ export default function CrewWithdrawModal({ open, wallet, defaultPayoutMethod, o
                         className="flex-1 bg-transparent text-[18px] font-bold text-white placeholder-white/25 focus:outline-none tabular-nums"
                       />
                       {amount && (
-                        <button onClick={() => setAmount(String(available))} className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-1 rounded-full bg-white/10 text-white/70">
+                        <button onClick={() => setAmount(String(available))} className="text-2xs font-extrabold uppercase tracking-wider px-2 py-1 rounded-full bg-white/10 text-white/70">
                           Todo
                         </button>
                       )}
                     </div>
                   </div>
 
-                  <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40 mb-2">¿A dónde lo recibes?</p>
+                  <p className="text-2xs font-extrabold uppercase tracking-[0.18em] text-white/40 mb-2">¿A dónde lo recibes?</p>
                   <div className="grid grid-cols-2 gap-2">
                     {PAYOUT_METHODS.map((m) => {
                       const active = methodId === m.id;
@@ -205,14 +207,14 @@ export default function CrewWithdrawModal({ open, wallet, defaultPayoutMethod, o
               {step === 2 && (
                 <motion.div key="s2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                   <div className="mb-4">
-                    <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40">Retirarás</p>
+                    <p className="text-2xs font-extrabold uppercase tracking-[0.18em] text-white/40">Retirarás</p>
                     <p className="text-[28px] font-black tabular-nums leading-tight text-emerald-300">{formatCOP(finalAmount)}</p>
                     <p className="text-[11px] text-white/40 mt-0.5">a {method.label}</p>
                   </div>
 
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40 mb-1.5">
+                      <label className="block text-2xs font-extrabold uppercase tracking-[0.18em] text-white/40 mb-1.5">
                         {methodId === 'nequi' || methodId === 'daviplata' ? 'Número de celular' : 'Datos de la cuenta'}
                       </label>
                       <input
@@ -223,7 +225,7 @@ export default function CrewWithdrawModal({ open, wallet, defaultPayoutMethod, o
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40 mb-1.5">Nombre del titular</label>
+                      <label className="block text-2xs font-extrabold uppercase tracking-[0.18em] text-white/40 mb-1.5">Nombre del titular</label>
                       <input
                         value={holderName}
                         onChange={(e) => setHolderName(e.target.value)}

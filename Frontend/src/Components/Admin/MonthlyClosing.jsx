@@ -72,7 +72,7 @@ function Breakdown({ title, rows, labels, themeColor, empty }) {
                   <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
                     <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: themeColor }} />
                   </div>
-                  <span className="text-[10px] font-bold text-slate-400 tabular-nums w-14 text-right shrink-0">{pct}% · {r.orders}</span>
+                  <span className="text-2xs font-bold text-slate-400 tabular-nums w-14 text-right shrink-0">{pct}% · {r.orders}</span>
                 </div>
               </div>
             );
@@ -255,7 +255,7 @@ export default function MonthlyClosing() {
                           backgroundColor: themeColor,
                         }}
                       />
-                      <span className="text-[9px] font-bold text-slate-400 tabular-nums">{d.day}</span>
+                      <span className="text-2xs font-bold text-slate-400 tabular-nums">{d.day}</span>
                     </div>
                   ))}
                 </div>

@@ -91,16 +91,16 @@ export default function POSTableMap({ businessId, selectedTable, onSelectTable, 
 
       {/* Legend */}
       <div className="flex gap-3 px-3 pb-2 flex-shrink-0">
-        <span className="flex items-center gap-1 text-[10px] text-slate-500">
+        <span className="flex items-center gap-1 text-2xs text-slate-500">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" /> Libre
         </span>
-        <span className="flex items-center gap-1 text-[10px] text-slate-500">
+        <span className="flex items-center gap-1 text-2xs text-slate-500">
           <span className="w-2.5 h-2.5 rounded-full bg-orange-400" /> Ocupada
         </span>
-        <span className="flex items-center gap-1 text-[10px] text-slate-500">
+        <span className="flex items-center gap-1 text-2xs text-slate-500">
           <span className="w-2.5 h-2.5 rounded-full bg-amber-400" /> Congelada
         </span>
-        <span className="flex items-center gap-1 text-[10px] text-slate-500">
+        <span className="flex items-center gap-1 text-2xs text-slate-500">
           <span className="w-2.5 h-2.5 rounded-full bg-blue-400" /> Seleccionada
         </span>
       </div>
@@ -139,7 +139,7 @@ export default function POSTableMap({ businessId, selectedTable, onSelectTable, 
               title={`${tableLabel} ${table.tableNumber} — ${table.capacity}p — ${status === 'available' ? 'Libre' : status === 'occupied' ? 'Ocupada' : status === 'held' ? 'Congelada' : 'Seleccionada'}`}
             >
               <span className="font-bold text-xs sm:text-sm leading-tight">{table.tableNumber}</span>
-              <span className="text-[9px] sm:text-[10px] opacity-70">{table.capacity}p</span>
+              <span className="text-2xs sm:text-2xs opacity-70">{table.capacity}p</span>
             </button>
           );
         })}

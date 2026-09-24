@@ -17,6 +17,7 @@ import SuggestedProducts from './SuggestedProducts';
 import LoyaltyWidget from './LoyaltyWidget';
 import TimeSlotPicker from './TimeSlotPicker';
 import LocationPicker from './Catalog/LocationPicker';
+import { Capa } from './ui';
 
 /* ── Checkout SVG Icon System (admin-style, no emojis) ── */
 const CI = {
@@ -559,6 +560,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
       onTouchStart={(e) => { if (e.target === backdropRef.current) touchStartedOnBackdrop.current = true; else touchStartedOnBackdrop.current = false; }}
       onTouchEnd={(e) => { if (e.target === backdropRef.current && touchStartedOnBackdrop.current) onClose(); touchStartedOnBackdrop.current = false; }}
     >
+      <Capa onCerrar={onClose} bloquearScroll={false} />
       <motion.div
         initial={{ y: '100%', opacity: 0.5 }}
         animate={{ y: 0, opacity: 1 }}
@@ -628,7 +630,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-semibold text-slate-800 text-sm leading-tight truncate">{item.name}</h3>
                     {item.isLoyaltyReward && (
-                      <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold whitespace-nowrap shrink-0 inline-flex items-center gap-0.5"><Gift className="w-2.5 h-2.5" /> Gratis</span>
+                      <span className="text-2xs px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold whitespace-nowrap shrink-0 inline-flex items-center gap-0.5"><Gift className="w-2.5 h-2.5" /> Gratis</span>
                     )}
                     <button
                       onClick={() => removeFromCart(item.uniqueId || item._id)}
@@ -649,7 +651,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                         item.selectedToppings.forEach((topping, idx) => {
                           if (topping.optionName) {
                             tags.push(
-                              <span key={`${item.uniqueId || item._id}-t-${idx}`} className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded-md leading-tight">
+                              <span key={`${item.uniqueId || item._id}-t-${idx}`} className="text-2xs px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded-md leading-tight">
                                 {topping.optionName}{topping.price > 0 ? ` +${formatCurrency(Number(topping.price), businessConfig?.currency)}` : ''}
                               </span>
                             );
@@ -657,7 +659,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                           if (topping.subGroups) {
                             topping.subGroups.forEach((sub, subIdx) => {
                               tags.push(
-                                <span key={`${item.uniqueId || item._id}-s-${idx}-${subIdx}`} className="text-[10px] px-1.5 py-0.5 bg-orange-50 text-orange-700 rounded-md leading-tight">
+                                <span key={`${item.uniqueId || item._id}-s-${idx}-${subIdx}`} className="text-2xs px-1.5 py-0.5 bg-orange-50 text-orange-700 rounded-md leading-tight">
                                   {sub.optionName}{sub.price > 0 ? ` +${formatCurrency(Number(sub.price), businessConfig?.currency)}` : ''}
                                 </span>
                               );
@@ -816,7 +818,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                   {/* Staff/Professional picker */}
                   {businessConfig?.bookingSettings?.enableStaffAssignment && availableStaff.length > 0 && (
                     <div className="mt-2">
-                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
+                      <p className="text-2xs font-semibold text-slate-400 uppercase tracking-wide mb-1">
                         Profesional (opcional)
                       </p>
                       <div className="flex flex-wrap gap-2">
@@ -839,13 +841,13 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                             {s.profileImage ? (
                               <img src={s.profileImage} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
                             ) : (
-                              <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400 flex-shrink-0">
+                              <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-2xs font-bold text-slate-400 flex-shrink-0">
                                 {(s.name || '?').charAt(0).toUpperCase()}
                               </div>
                             )}
                             <div className="text-left">
                               <span className="block leading-tight">{s.name}</span>
-                              {s.specialty && <span className="block text-[9px] opacity-60 leading-tight">{s.specialty}</span>}
+                              {s.specialty && <span className="block text-2xs opacity-60 leading-tight">{s.specialty}</span>}
                             </div>
                           </button>
                         ))}
@@ -856,7 +858,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                   {/* Email for booking confirmation */}
                   {bookingSlot && (
                     <div className="mt-2">
-                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
+                      <p className="text-2xs font-semibold text-slate-400 uppercase tracking-wide mb-1">
                         Correo electrónico (opcional)
                       </p>
                       <input
@@ -866,7 +868,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                         placeholder="tu@correo.com"
                         className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-300 focus:border-indigo-300"
                       />
-                      <p className="text-[9px] text-slate-400 mt-0.5">Para recibir confirmación y recordatorios</p>
+                      <p className="text-2xs text-slate-400 mt-0.5">Para recibir confirmación y recordatorios</p>
                     </div>
                   )}
                 </div>
@@ -916,7 +918,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                     <div className="flex items-center justify-between p-2.5 bg-violet-50 border border-violet-200 rounded-xl">
                       <div className="min-w-0">
                         <p className="text-[11.5px] font-bold text-violet-800">Envío a todo el país</p>
-                        {envioN.demora && <p className="text-[10.5px] text-violet-500">{envioN.demora}</p>}
+                        {envioN.demora && <p className="text-2xs text-violet-500">{envioN.demora}</p>}
                       </div>
                       <span className="text-xs font-bold text-violet-800">
                         {envioGratis ? 'Gratis' : formatCurrency(Number(envioN.costo) || 0, businessConfig?.currency)}
@@ -1015,7 +1017,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                                   cliente lo sepa antes de elegirlo y no
                                   después, con la tarjeta en la mano. */}
                               {m.beta && (
-                                <span className="text-[9px] font-black px-1 py-0.5 rounded bg-amber-100 text-amber-700 leading-none">
+                                <span className="text-2xs font-black px-1 py-0.5 rounded bg-amber-100 text-amber-700 leading-none">
                                   BETA
                                 </span>
                               )}
@@ -1116,7 +1118,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                       <p className="text-[13px] font-bold text-slate-700">Comentarios del pedido</p>
                       <p className="text-[11px] text-slate-400">Sin cebolla, alergias, instrucciones especiales…</p>
                     </div>
-                    <span className="text-[10px] font-semibold text-slate-400 bg-slate-200 px-2 py-0.5 rounded-full">Opcional</span>
+                    <span className="text-2xs font-semibold text-slate-400 bg-slate-200 px-2 py-0.5 rounded-full">Opcional</span>
                   </div>
                   <div className="px-3.5 pb-3.5">
                     <textarea
@@ -1128,7 +1130,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                       className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-transparent resize-none transition-all"
                     />
                     {customerNotes.length > 0 && (
-                      <p className="text-[10px] text-slate-400 text-right mt-1">{customerNotes.length}/200</p>
+                      <p className="text-2xs text-slate-400 text-right mt-1">{customerNotes.length}/200</p>
                     )}
                   </div>
                 </div>

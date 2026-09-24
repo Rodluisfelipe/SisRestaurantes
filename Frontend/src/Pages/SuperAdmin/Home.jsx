@@ -60,7 +60,7 @@ function KPICard({ label, value, sub, accent = 'blue', delay = 0, icon }) {
       <div className="pl-2">
         <div className="flex items-center gap-1.5 mb-1.5">
           {icon && <span className={`${a.text} opacity-80`}>{icon}</span>}
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.08em]">{label}</span>
+          <span className="text-2xs font-bold text-slate-500 uppercase tracking-[0.08em]">{label}</span>
         </div>
         <p className={`text-[26px] sm:text-[28px] font-bold tabular-nums leading-none ${a.text}`}>{value}</p>
         {sub && <p className="text-[11px] text-slate-500 mt-2 tabular-nums leading-relaxed">{sub}</p>}

@@ -10,6 +10,7 @@ import {
 } from 'react-icons/fa';
 import api from '../../services/api';
 import { BACKEND_URL } from '../../config';
+import { Capa } from '../ui';
 
 const TOKEN_KEY = 'partner_token';
 
@@ -221,7 +222,9 @@ function PortalApp({ token, initialPartner, onLogout }) {
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setDrawerOpen(false)}
               className="fixed inset-0 bg-slate-900/40 z-40 lg:hidden"
-            />
+            >
+              <Capa onCerrar={() => setDrawerOpen(false)} />
+            </motion.div>
             <motion.div
               initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }}
               transition={{ type: 'spring', stiffness: 320, damping: 32 }}
@@ -250,7 +253,7 @@ function PortalApp({ token, initialPartner, onLogout }) {
           {offered.length > 0 && (
             <button onClick={() => setActiveTab('orders')}
               className="flex items-center gap-1.5 bg-red-50 border border-red-200/80 text-red-600 text-xs font-bold px-2.5 py-1.5 rounded-lg">
-              <FaClipboardList className="text-[10px]" /> {offered.length}
+              <FaClipboardList className="text-2xs" /> {offered.length}
             </button>
           )}
         </div>
@@ -301,11 +304,11 @@ function SidebarContent({ partner, activeTab, offeredCount, onNavigate, onLogout
           <span className="text-[11px] font-semibold text-slate-700 flex-1 text-left">Pedidos ofrecidos</span>
           {offeredCount > 0 ? (
             <motion.span key={offeredCount} initial={{ scale: 0.5 }} animate={{ scale: 1 }}
-              className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-red-500 text-white">
+              className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-2xs font-bold bg-red-500 text-white">
               {offeredCount}
             </motion.span>
           ) : (
-            <span className="text-[10px] font-medium text-slate-400">0</span>
+            <span className="text-2xs font-medium text-slate-400">0</span>
           )}
         </button>
       </div>
@@ -340,7 +343,7 @@ function SidebarContent({ partner, activeTab, offeredCount, onNavigate, onLogout
                       <span className={`text-[13px] truncate ${isActive ? 'font-semibold' : 'font-medium'}`}>{item.label}</span>
                     </div>
                     {badge > 0 && (
-                      <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-red-500 text-white shadow-sm">
+                      <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-2xs font-bold bg-red-500 text-white shadow-sm">
                         {badge}
                       </span>
                     )}
@@ -402,7 +405,7 @@ function SectionLabel({ children }) {
 
 function CountBadge({ value, tone = 'red' }) {
   const map = { red: 'bg-red-500', blue: 'bg-blue-500', slate: 'bg-slate-400' };
-  return <span className={`${map[tone]} text-white text-[10px] font-bold min-w-[18px] h-[18px] px-1.5 rounded-full inline-flex items-center justify-center`}>{value}</span>;
+  return <span className={`${map[tone]} text-white text-2xs font-bold min-w-[18px] h-[18px] px-1.5 rounded-full inline-flex items-center justify-center`}>{value}</span>;
 }
 
 /* ═══════════════════════════ DASHBOARD ═══════════════════════════ */
@@ -422,7 +425,7 @@ function DashboardView({ stats, offered, accepted, onGoOrders }) {
         action={offered.length > 0 && (
           <button onClick={onGoOrders}
             className="flex items-center gap-2 bg-red-50 border border-red-200/80 hover:bg-red-100 text-red-600 text-xs font-bold px-3 py-2 rounded-lg transition-colors">
-            {offered.length} pedido{offered.length > 1 ? 's' : ''} esperando <FaChevronRight className="text-[9px]" />
+            {offered.length} pedido{offered.length > 1 ? 's' : ''} esperando <FaChevronRight className="text-2xs" />
           </button>
         )}
       />
@@ -508,10 +511,10 @@ function OfferCountdown({ expiresAt }) {
   const m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
   const urgent = left < 2 * 60000;
   return (
-    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums ${
+    <span className={`inline-flex items-center gap-1 text-2xs font-bold px-2 py-0.5 rounded-full tabular-nums ${
       urgent ? 'bg-red-50 text-red-600 border border-red-200/80' : 'bg-amber-50 text-amber-600 border border-amber-200/80'
     }`}>
-      <FaClock className="text-[8px]" /> {m}:{String(s).padStart(2, '0')}
+      <FaClock className="text-2xs" /> {m}:{String(s).padStart(2, '0')}
     </span>
   );
 }
@@ -521,14 +524,14 @@ function PaymentChip({ order }) {
   const total = order.finalAmount || order.totalAmount;
   if (['cash', 'efectivo', 'contraentrega'].includes(pm)) {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-full">
-        <FaMoneyBillWave className="text-[9px]" /> Cobrar {fmtPrice(total)}
+      <span className="inline-flex items-center gap-1 text-2xs font-bold text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-full">
+        <FaMoneyBillWave className="text-2xs" /> Cobrar {fmtPrice(total)}
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
-      <FaCheckCircle className="text-[9px]" /> Pago registrado
+    <span className="inline-flex items-center gap-1 text-2xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
+      <FaCheckCircle className="text-2xs" /> Pago registrado
     </span>
   );
 }
@@ -553,7 +556,7 @@ function OrderRow({ order, stripe = 'bg-amber-400', children, footer }) {
             </div>
             <div className="text-right shrink-0">
               <p className="font-bold text-slate-800">{fmtPrice(order.finalAmount || order.totalAmount)}</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">{fmtTime(order.partnerOfferedAt || order.createdAt)}</p>
+              <p className="text-2xs text-slate-400 mt-0.5">{fmtTime(order.partnerOfferedAt || order.createdAt)}</p>
             </div>
           </div>
 
@@ -570,7 +573,7 @@ function OrderRow({ order, stripe = 'bg-amber-400', children, footer }) {
             {order.deliveryFee > 0 && <span className="text-[11px] text-slate-400">· Envío {fmtPrice(order.deliveryFee)}</span>}
             {order.phone && (
               <a href={`tel:${order.phone}`} className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700">
-                <FaPhoneAlt className="text-[9px]" /> Llamar cliente
+                <FaPhoneAlt className="text-2xs" /> Llamar cliente
               </a>
             )}
             {children}
@@ -637,7 +640,7 @@ function OrdersView({ offered, accepted, drivers, loading, authCfg, onChanged, h
                         <div className="flex gap-2">
                           <button onClick={() => doReject(o._id)} disabled={actingId === o._id}
                             className="flex-1 sm:flex-none sm:px-5 flex items-center justify-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold py-2 rounded-lg text-[13px] transition-colors disabled:opacity-50">
-                            <FaTimes className="text-[10px]" /> Rechazar
+                            <FaTimes className="text-2xs" /> Rechazar
                           </button>
                           <button onClick={() => doAccept(o._id)} disabled={actingId === o._id}
                             className="flex-1 sm:flex-none sm:px-6 flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg text-[13px] shadow-sm transition-colors disabled:opacity-50">
@@ -681,8 +684,8 @@ function OrdersView({ offered, accepted, drivers, loading, authCfg, onChanged, h
                     }
                   >
                     {o.deliveryPersonId && driverName(o.deliveryPersonId) && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-full">
-                        <FaMotorcycle className="text-[9px]" /> {driverName(o.deliveryPersonId)}
+                      <span className="inline-flex items-center gap-1 text-2xs font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-full">
+                        <FaMotorcycle className="text-2xs" /> {driverName(o.deliveryPersonId)}
                       </span>
                     )}
                   </OrderRow>
@@ -751,11 +754,11 @@ function HistoryView({ authCfg, handle401 }) {
                   <div className="min-w-0">
                     <p className="text-[11px] font-bold text-slate-400">#{o.orderNumber} · {o.business?.businessName || '—'}</p>
                     <p className="font-bold text-slate-800 text-sm mt-0.5 truncate">{o.customerName}</p>
-                    {o.driverName && <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1"><FaMotorcycle className="text-[9px]" /> {o.driverName}</p>}
+                    {o.driverName && <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1"><FaMotorcycle className="text-2xs" /> {o.driverName}</p>}
                   </div>
                   <div className="text-right shrink-0">
                     <p className="font-bold text-slate-800 text-sm">{fmtPrice(o.finalAmount || o.totalAmount)}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{fmtDate(o.deliveredAt || o.completedAt)}</p>
+                    <p className="text-2xs text-slate-400 mt-0.5">{fmtDate(o.deliveredAt || o.completedAt)}</p>
                   </div>
                 </div>
               </Card>
@@ -828,8 +831,8 @@ function DriversView({ drivers, authCfg, onChanged, handle401 }) {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {d.status === 'on_delivery' && (
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-full">
-                    <FaMotorcycle className="text-[9px]" /> En ruta
+                  <span className="hidden sm:inline-flex items-center gap-1 text-2xs font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-full">
+                    <FaMotorcycle className="text-2xs" /> En ruta
                   </span>
                 )}
                 <button onClick={() => toggleDriver(d)}

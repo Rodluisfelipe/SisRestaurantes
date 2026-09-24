@@ -267,7 +267,7 @@ const DeliveryQRPage = () => {
             {picked ? (
               <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }}
                 className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1.5">
-                <FaBoxOpen className="text-[10px]" /> Recogido
+                <FaBoxOpen className="text-2xs" /> Recogido
               </motion.div>
             ) : (
               <div className="bg-white/10 px-3 py-1 rounded-full text-xs font-medium opacity-70">
@@ -277,7 +277,7 @@ const DeliveryQRPage = () => {
             {tracking && (
               <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
                 className="bg-emerald-400/30 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1.5">
-                <FaLocationArrow className="text-[10px] animate-pulse" /> GPS activo
+                <FaLocationArrow className="text-2xs animate-pulse" /> GPS activo
               </motion.div>
             )}
           </div>
@@ -334,7 +334,7 @@ const DeliveryQRPage = () => {
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Cliente</p>
+              <p className="text-2xs uppercase tracking-wider text-slate-400 font-semibold mb-1">Cliente</p>
               <p className="text-slate-800 font-bold">{order?.customer?.name}</p>
             </div>
             {order?.customer?.phone && (
@@ -356,7 +356,7 @@ const DeliveryQRPage = () => {
         {/* Address + Map */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
           <div className="p-4">
-            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Dirección de entrega</p>
+            <p className="text-2xs uppercase tracking-wider text-slate-400 font-semibold mb-1">Dirección de entrega</p>
             <div className="flex items-start gap-2">
               <FaMapMarkerAlt className="text-red-400 mt-0.5 flex-shrink-0" />
               <p className="text-slate-700 text-sm font-medium">{order?.address || 'No especificada'}</p>
@@ -369,7 +369,7 @@ const DeliveryQRPage = () => {
 
         {/* Items */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-          <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-3">Detalle del pedido</p>
+          <p className="text-2xs uppercase tracking-wider text-slate-400 font-semibold mb-3">Detalle del pedido</p>
           <div className="space-y-2">
             {order?.items?.map((item, i) => (
               <div key={i} className="flex justify-between items-center">
@@ -476,7 +476,7 @@ const DeliveryQRPage = () => {
           </motion.div>
         )}
 
-        <p className="text-center text-[10px] text-slate-300 pt-2">
+        <p className="text-center text-2xs text-slate-300 pt-2">
           Powered by <span className="font-bold text-red-400">MenuBy</span>
         </p>
       </div>

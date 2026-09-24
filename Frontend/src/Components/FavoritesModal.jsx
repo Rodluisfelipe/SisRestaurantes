@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaHeart, FaTimes, FaShoppingCart, FaTrash, FaStar } from 'react-icons/fa';
 import api from '../services/api';
+import { esSinCuenta } from '../utils/cuentaCliente';
 import logger from '../utils/logger';
+import { Capa } from './ui';
 
 /**
  * Modal para mostrar y gestionar productos favoritos del cliente
@@ -37,7 +39,9 @@ const FavoritesModal = ({ show, onClose, businessId, customerPhone, onAddToCart,
       }
     } catch (err) {
       logger.error('Error loading favorites:', err);
-      setError('No se pudieron cargar los favoritos');
+      setError(esSinCuenta(err)
+        ? 'Tu cuenta se activa en este celular con tu primer pedido. Desde ahí verás aquí ' + 'tus favoritos.'
+        : 'No se pudieron cargar los favoritos');
     } finally {
       setLoading(false);
     }
@@ -128,6 +132,7 @@ const FavoritesModal = ({ show, onClose, businessId, customerPhone, onAddToCart,
         className={`fixed inset-0 z-50 ${fullScreen ? '' : 'bg-black bg-opacity-50 flex items-center justify-center p-4'}`}
         onClick={fullScreen ? undefined : onClose}
       >
+        <Capa onCerrar={onClose} />
         <motion.div
           initial={fullScreen ? { x: '100%' } : { scale: 0.9, opacity: 0 }}
           animate={fullScreen ? { x: 0 } : { scale: 1, opacity: 1 }}

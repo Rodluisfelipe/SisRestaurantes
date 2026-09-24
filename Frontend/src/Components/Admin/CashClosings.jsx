@@ -263,7 +263,7 @@ export default function CashClosings() {
                             <span className={`w-1.5 h-1.5 rounded-full bg-${group.color}-400 shrink-0`} />
                             <span className="text-slate-600 truncate text-xs">{m.description || m.type}</span>
                             {m.orderChannel && (
-                              <span className={`text-[9px] px-1 py-0.5 rounded font-bold ${m.orderChannel === 'pos' ? 'bg-indigo-100 text-indigo-600' : 'bg-violet-100 text-violet-600'}`}>
+                              <span className={`text-2xs px-1 py-0.5 rounded font-bold ${m.orderChannel === 'pos' ? 'bg-indigo-100 text-indigo-600' : 'bg-violet-100 text-violet-600'}`}>
                                 {m.orderChannel === 'pos' ? 'POS' : 'MenuBy'}
                               </span>
                             )}

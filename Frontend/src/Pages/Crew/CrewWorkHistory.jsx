@@ -32,8 +32,8 @@ export default function CrewWorkHistory({ onBack }) {
   useEffect(() => { load(); }, [load]);
 
   return (
-    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(4rem+env(safe-area-inset-bottom,0px))]">
-      <header className="sticky top-0 z-30 bg-[#0a0a14]/80 backdrop-blur-2xl border-b border-white/[0.06]">
+    <div className="min-h-[100dvh] bg-crew-noche text-white font-geist pb-[calc(4rem+env(safe-area-inset-bottom,0px))]">
+      <header className="sticky top-0 z-30 bg-crew-noche/80 backdrop-blur-2xl border-b border-white/[0.06]">
         <div className="max-w-md mx-auto px-5 pt-[max(1.25rem,env(safe-area-inset-top,0px))] pb-4 flex items-center gap-3">
           <button onClick={onBack} className="text-white/50 hover:text-white transition" aria-label="Atrás">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
@@ -70,7 +70,7 @@ export default function CrewWorkHistory({ onBack }) {
                 <div key={stat.label} className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] text-center">
                   <span className="text-[18px]">{stat.icon}</span>
                   <p className="text-[16px] font-black text-white mt-1">{stat.value}</p>
-                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider">{stat.label}</p>
+                  <p className="text-2xs font-bold text-white/40 uppercase tracking-wider">{stat.label}</p>
                 </div>
               ))}
             </motion.div>
@@ -121,7 +121,7 @@ export default function CrewWorkHistory({ onBack }) {
                       </div>
 
                       {entry.firstShift && (
-                        <p className="mt-2 text-[10px] text-white/30">
+                        <p className="mt-2 text-2xs text-white/30">
                           {new Date(entry.firstShift).toLocaleDateString('es-CO', { month: 'short', year: 'numeric' })}
                           {' — '}
                           {new Date(entry.lastShift).toLocaleDateString('es-CO', { month: 'short', year: 'numeric' })}

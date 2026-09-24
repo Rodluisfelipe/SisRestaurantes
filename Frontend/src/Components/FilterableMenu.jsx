@@ -648,7 +648,7 @@ const FilterableMenu = ({
             ? 'sticky bg-white/95 shadow-sm -mx-3 px-3 sm:-mx-4 sm:px-4 lg:-mx-6 lg:px-6'
             : ''
         }`}
-        /* Se pega justo debajo del header compacto del negocio. BusinessHeader
+        /* Se pega justo debajo del header compacto del negocio. ProfileHeader
            publica su altura en --mb-header-h (0px cuando no está colapsado). */
         style={isSticky ? { top: 'var(--mb-header-h, 0px)' } : undefined}
       >
@@ -669,7 +669,7 @@ const FilterableMenu = ({
                 }
               />
               <span className="relative z-10">Todos</span>
-              <span className={`relative z-10 min-w-[20px] h-5 inline-flex items-center justify-center rounded-full text-[10px] font-bold px-1.5 ${
+              <span className={`relative z-10 min-w-[20px] h-5 inline-flex items-center justify-center rounded-full text-2xs font-bold px-1.5 ${
                 visualActive === 'all' 
                   ? 'bg-white/20 text-white' 
                   : 'bg-slate-200 text-slate-500'
@@ -697,7 +697,7 @@ const FilterableMenu = ({
                     }
                   />
                   <span className="relative z-10">{category.name}</span>
-                  <span className={`relative z-10 min-w-[20px] h-5 inline-flex items-center justify-center rounded-full text-[10px] font-bold px-1.5 ${
+                  <span className={`relative z-10 min-w-[20px] h-5 inline-flex items-center justify-center rounded-full text-2xs font-bold px-1.5 ${
                     isActive 
                       ? 'bg-white/20 text-white' 
                       : 'bg-slate-200 text-slate-500'
@@ -956,7 +956,7 @@ const FilterableMenu = ({
                       </div>
                       <div className="flex flex-col">
                         <h2 className="text-[15px] sm:text-base font-bold text-slate-800 tracking-tight leading-tight">{category.name}</h2>
-                        <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium">{categoryProducts.length} {categoryProducts.length === 1 ? (isService ? 'servicio' : 'producto') : (isService ? 'servicios' : 'productos')}</span>
+                        <span className="text-2xs sm:text-[11px] text-slate-400 font-medium">{categoryProducts.length} {categoryProducts.length === 1 ? (isService ? 'servicio' : 'producto') : (isService ? 'servicios' : 'productos')}</span>
                       </div>
                       <div 
                         className="flex-1 h-px ml-1"
@@ -1043,7 +1043,7 @@ const FilterableMenu = ({
                     </div>
                     <div className="flex flex-col">
                       <h2 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight leading-tight">{category.name}</h2>
-                      <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium">{singleCatProducts.length} {singleCatProducts.length === 1 ? (isService ? 'servicio' : 'producto') : (isService ? 'servicios' : 'productos')}</span>
+                      <span className="text-2xs sm:text-[11px] text-slate-400 font-medium">{singleCatProducts.length} {singleCatProducts.length === 1 ? (isService ? 'servicio' : 'producto') : (isService ? 'servicios' : 'productos')}</span>
                     </div>
                     <div 
                       className="flex-1 h-px ml-1"

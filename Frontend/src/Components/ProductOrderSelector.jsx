@@ -187,7 +187,7 @@ const ProductOrderSelector = ({ products = EMPTY_ARRAY, categories = EMPTY_ARRAY
             exit={{ opacity: 0, height: 0 }}
             className="px-4 py-2 bg-blue-50 text-blue-700 text-xs font-medium flex items-center gap-2 border-b border-blue-100"
           >
-            <FaSyncAlt className="text-[10px] animate-spin" /> Guardando...
+            <FaSyncAlt className="text-2xs animate-spin" /> Guardando...
           </motion.div>
         )}
         {successMessage && (
@@ -197,7 +197,7 @@ const ProductOrderSelector = ({ products = EMPTY_ARRAY, categories = EMPTY_ARRAY
             exit={{ opacity: 0, height: 0 }}
             className="px-4 py-2 bg-emerald-50 text-emerald-700 text-xs font-medium flex items-center gap-2 border-b border-emerald-100"
           >
-            <FaCheck className="text-[10px]" /> {successMessage}
+            <FaCheck className="text-2xs" /> {successMessage}
           </motion.div>
         )}
         {error && (
@@ -207,7 +207,7 @@ const ProductOrderSelector = ({ products = EMPTY_ARRAY, categories = EMPTY_ARRAY
             exit={{ opacity: 0, height: 0 }}
             className="px-4 py-2 bg-red-50 text-red-700 text-xs font-medium flex items-center gap-2 border-b border-red-100"
           >
-            <FaExclamationTriangle className="text-[10px]" /> {error}
+            <FaExclamationTriangle className="text-2xs" /> {error}
           </motion.div>
         )}
       </AnimatePresence>
@@ -237,12 +237,12 @@ const ProductOrderSelector = ({ products = EMPTY_ARRAY, categories = EMPTY_ARRAY
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     {isExpanded
-                      ? <FaChevronDown className="text-[10px] text-slate-400 flex-shrink-0" />
-                      : <FaChevronRight className="text-[10px] text-slate-400 flex-shrink-0" />
+                      ? <FaChevronDown className="text-2xs text-slate-400 flex-shrink-0" />
+                      : <FaChevronRight className="text-2xs text-slate-400 flex-shrink-0" />
                     }
                     <span className="text-xs font-semibold text-slate-700 truncate">{getCategoryName(categoryId)}</span>
                   </div>
-                  <span className="bg-blue-50 text-blue-600 text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0">
+                  <span className="bg-blue-50 text-blue-600 text-2xs font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0">
                     {categoryProducts.length}
                   </span>
                 </button>
@@ -269,9 +269,9 @@ const ProductOrderSelector = ({ products = EMPTY_ARRAY, categories = EMPTY_ARRAY
                               draggedItem?.categoryId === categoryId && draggedItem?.productIndex === productIndex ? 'opacity-40 bg-blue-50' : ''
                             }`}
                           >
-                            <FaGripVertical className="text-slate-300 text-[10px] flex-shrink-0" />
+                            <FaGripVertical className="text-slate-300 text-2xs flex-shrink-0" />
 
-                            <span className="bg-slate-100 text-slate-500 font-semibold text-[10px] w-5 h-5 rounded flex items-center justify-center flex-shrink-0">
+                            <span className="bg-slate-100 text-slate-500 font-semibold text-2xs w-5 h-5 rounded flex items-center justify-center flex-shrink-0">
                               {productIndex + 1}
                             </span>
 

@@ -15,6 +15,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '../../config';
 import { subscribeCrewConversation } from '../../services/crewSocket';
+import { Capa } from '../ui';
 
 function authHeaders() {
   return {
@@ -117,6 +118,7 @@ export default function BusinessCrewChatModal({ workerId, businessId, workerName
         className="fixed inset-0 z-[85] flex items-end sm:items-center justify-center sm:p-4 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       >
+        <Capa onCerrar={onClose} bloquearScroll={false} />
         <motion.div
           initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
           transition={{ type: 'spring', damping: 28, stiffness: 280 }}
@@ -134,7 +136,7 @@ export default function BusinessCrewChatModal({ workerId, businessId, workerName
             )}
             <div className="flex-1 min-w-0">
               <p className="text-[14px] font-extrabold text-slate-900 truncate">{workerName || 'Trabajador'}</p>
-              <p className="text-[10px] text-slate-500">Conversación directa · Crew MenuBy</p>
+              <p className="text-2xs text-slate-500">Conversación directa · Crew MenuBy</p>
             </div>
             <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-900 transition" aria-label="Cerrar">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -168,7 +170,7 @@ export default function BusinessCrewChatModal({ workerId, businessId, workerName
                   }`}
                 >
                   <p className="text-[14px] leading-relaxed whitespace-pre-line">{m.body}</p>
-                  <p className={`text-[9px] mt-0.5 text-right ${mine ? 'text-white/60' : 'text-slate-400'}`}>
+                  <p className={`text-2xs mt-0.5 text-right ${mine ? 'text-white/60' : 'text-slate-400'}`}>
                     {new Date(m.createdAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </motion.div>

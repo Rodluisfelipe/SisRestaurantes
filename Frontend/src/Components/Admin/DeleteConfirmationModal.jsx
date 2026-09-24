@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Capa } from '../ui';
 
 /**
  * Modal de confirmación para eliminación de producto.
@@ -17,6 +18,7 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, product }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
+      <Capa onCerrar={onClose} />
       <motion.div
         role="dialog"
         aria-modal="true"

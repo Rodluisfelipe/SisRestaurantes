@@ -1,4 +1,5 @@
 import React, { useRef, useCallback } from 'react';
+import { Capa } from '../ui';
 
 // QR code via Google Charts API — generates inline QR image
 const qrUrl = (url, size = 200) =>
@@ -95,6 +96,7 @@ export default function POSTicket({ order, businessConfig, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <Capa onCerrar={onClose} />
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">

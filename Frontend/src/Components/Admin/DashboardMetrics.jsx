@@ -244,7 +244,7 @@ function LiveViewers({ viewers = EMPTY_ARRAY, count = 0, currency = 'COP' }) {
           <div className="w-5 h-5 rounded-md bg-blue-500 bg-opacity-10 flex items-center justify-center">
             {ViewerIcons.eye("w-2.5 h-2.5 text-blue-500")}
           </div>
-          <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide">En vivo</span>
+          <span className="text-2xs font-semibold text-slate-400 uppercase tracking-wide">En vivo</span>
           <span className="relative flex h-1.5 w-1.5">
             <span className="animate-ping absolute inset-0 rounded-full bg-green-400 opacity-60" />
             <span className="relative rounded-full h-1.5 w-1.5 bg-green-500" />
@@ -253,12 +253,12 @@ function LiveViewers({ viewers = EMPTY_ARRAY, count = 0, currency = 'COP' }) {
 
         <div className="flex items-center gap-2">
           {withCart.length > 0 && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+            <span className="inline-flex items-center gap-1 text-2xs font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
               {ViewerIcons.cart("w-2.5 h-2.5")}
               {withCart.length} · {COP(totalCartValue, currency)}
             </span>
           )}
-          <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full">
+          <span className="text-2xs font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full">
             {count}
           </span>
         </div>
@@ -269,7 +269,7 @@ function LiveViewers({ viewers = EMPTY_ARRAY, count = 0, currency = 'COP' }) {
         {viewers.slice(0, 6).map((v, i) => (
           <div key={i} className="flex items-center justify-between bg-slate-50/60 rounded-lg px-2 py-1.5">
             <div className="flex items-center gap-2 min-w-0">
-              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0 ${
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-2xs font-bold text-white shrink-0 ${
                 v.isReturning ? 'bg-blue-500' : 'bg-slate-400'
               }`}>
                 {v.customerName?.charAt(0)?.toUpperCase() || '?'}
@@ -278,23 +278,23 @@ function LiveViewers({ viewers = EMPTY_ARRAY, count = 0, currency = 'COP' }) {
                 <div className="flex items-center gap-1">
                   <p className="text-[11px] font-semibold text-slate-700 truncate">{v.customerName}</p>
                   {v.isReturning && (
-                    <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-blue-500 bg-blue-50 px-1 py-0.5 rounded shrink-0">
+                    <span className="inline-flex items-center gap-0.5 text-2xs font-bold text-blue-500 bg-blue-50 px-1 py-0.5 rounded shrink-0">
                       {ViewerIcons.repeat("w-2 h-2")}
                       {v.previousOrders}
                     </span>
                   )}
                   {!v.isReturning && (
-                    <span className="text-[8px] font-bold text-amber-600 bg-amber-50 px-1 py-0.5 rounded shrink-0">
+                    <span className="text-2xs font-bold text-amber-600 bg-amber-50 px-1 py-0.5 rounded shrink-0">
                       Nuevo
                     </span>
                   )}
                   {v.source && v.source !== 'direct' && (
-                    <span className={`text-[8px] font-bold px-1 py-0.5 rounded shrink-0 ${SOURCE_COLORS[v.source] || SOURCE_COLORS.other}`}>
+                    <span className={`text-2xs font-bold px-1 py-0.5 rounded shrink-0 ${SOURCE_COLORS[v.source] || SOURCE_COLORS.other}`}>
                       {SOURCE_LABELS[v.source] || v.source}
                     </span>
                   )}
                 </div>
-                <p className="text-[9px] text-slate-400">
+                <p className="text-2xs text-slate-400">
                   {v.phone || ''} · {v.device || ''} · {formatDuration(v.duration)}
                   {v.currentCategory ? ` · ${v.currentCategory}` : ''}
                 </p>
@@ -302,12 +302,12 @@ function LiveViewers({ viewers = EMPTY_ARRAY, count = 0, currency = 'COP' }) {
             </div>
             {v.cartItems > 0 && (
               <div className="flex flex-col items-end gap-0.5 shrink-0">
-                <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                <span className="inline-flex items-center gap-1 text-2xs font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
                   {ViewerIcons.cart("w-2.5 h-2.5")}
                   {v.cartItems} · {COP(v.cartTotal, currency)}
                 </span>
                 {v.cartProducts?.length > 0 && (
-                  <div className="text-[8px] text-slate-400 text-right leading-tight max-w-[140px]">
+                  <div className="text-2xs text-slate-400 text-right leading-tight max-w-[140px]">
                     {v.cartProducts.slice(0, 3).map((p, j) => (
                       <span key={j}>{p.qty > 1 ? `${p.qty}x ` : ''}{p.name}{j < Math.min(v.cartProducts.length, 3) - 1 ? ', ' : ''}</span>
                     ))}
@@ -319,7 +319,7 @@ function LiveViewers({ viewers = EMPTY_ARRAY, count = 0, currency = 'COP' }) {
           </div>
         ))}
         {viewers.length > 6 && (
-          <p className="text-[10px] text-center text-slate-400 font-medium pt-0.5">
+          <p className="text-2xs text-center text-slate-400 font-medium pt-0.5">
             +{viewers.length - 6} más
           </p>
         )}
@@ -362,10 +362,10 @@ function AbandonedCarts({ carts = EMPTY_ARRAY, totalLost = 0, currency = 'COP' }
           <div className="w-5 h-5 rounded-md bg-red-500 bg-opacity-10 flex items-center justify-center">
             {ViewerIcons.alert("w-2.5 h-2.5 text-red-500")}
           </div>
-          <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide">Carritos abandonados hoy</span>
+          <span className="text-2xs font-semibold text-slate-400 uppercase tracking-wide">Carritos abandonados hoy</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
+          <span className="text-2xs font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
             {carts.length} · {COP(totalLost, currency)}
           </span>
         </div>
@@ -376,12 +376,12 @@ function AbandonedCarts({ carts = EMPTY_ARRAY, totalLost = 0, currency = 'COP' }
         {carts.slice(0, 4).map((c, i) => (
           <div key={i} className="flex items-center justify-between bg-red-50/40 rounded-lg px-2 py-1.5">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-5 h-5 rounded-full bg-red-400 flex items-center justify-center text-[9px] font-bold text-white shrink-0">
+              <div className="w-5 h-5 rounded-full bg-red-400 flex items-center justify-center text-2xs font-bold text-white shrink-0">
                 {c.customerName?.charAt(0)?.toUpperCase() || '?'}
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold text-slate-700 truncate">{c.customerName}</p>
-                <p className="text-[9px] text-slate-400">
+                <p className="text-2xs text-slate-400">
                   {c.device || ''} · {c.duration ? `${Math.floor(c.duration / 60)} min` : ''}
                   {c.source && c.source !== 'direct' ? ` · ${SOURCE_LABELS[c.source] || c.source}` : ''}
                   {c.lastCategory ? ` · ${c.lastCategory}` : ''}
@@ -390,11 +390,11 @@ function AbandonedCarts({ carts = EMPTY_ARRAY, totalLost = 0, currency = 'COP' }
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <div className="flex flex-col items-end gap-0.5">
-                <span className="text-[9px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">
+                <span className="text-2xs font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">
                   {COP(c.cartTotal, currency)}
                 </span>
                 {c.cartProducts?.length > 0 && (
-                  <div className="text-[8px] text-slate-400 text-right leading-tight max-w-[120px]">
+                  <div className="text-2xs text-slate-400 text-right leading-tight max-w-[120px]">
                     {c.cartProducts.slice(0, 2).map((p, j) => (
                       <span key={j}>{p.qty > 1 ? `${p.qty}x ` : ''}{p.name}{j < Math.min(c.cartProducts.length, 2) - 1 ? ', ' : ''}</span>
                     ))}
@@ -419,7 +419,7 @@ function AbandonedCarts({ carts = EMPTY_ARRAY, totalLost = 0, currency = 'COP' }
           </div>
         ))}
         {carts.length > 4 && (
-          <p className="text-[10px] text-center text-slate-400 font-medium pt-0.5">
+          <p className="text-2xs text-center text-slate-400 font-medium pt-0.5">
             +{carts.length - 4} más
           </p>
         )}
@@ -467,7 +467,7 @@ function SkeletonChart() {
 function DeltaBadge({ current, previous, isRevenue = false }) {
   const delta = pct(current, previous);
   if (delta === 0 && current === 0 && previous === 0) {
-    return <span className="text-[10px] font-semibold text-slate-400">Sin datos ayer</span>;
+    return <span className="text-2xs font-semibold text-slate-400">Sin datos ayer</span>;
   }
   const isUp = delta > 0;
   const isDown = delta < 0;
@@ -475,7 +475,7 @@ function DeltaBadge({ current, previous, isRevenue = false }) {
   const Arrow = isUp ? Icons.up : isDown ? Icons.down : null;
 
   return (
-    <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${color}`}>
+    <span className={`inline-flex items-center gap-0.5 text-2xs font-bold px-1.5 py-0.5 rounded-full ${color}`}>
       {Arrow && Arrow("w-3 h-3")}
       {Math.abs(delta)}% vs ayer
     </span>
@@ -498,7 +498,7 @@ function KPICard({ icon, label, value, subtitle, delta, color, pulse }) {
         <div className={`w-7 h-7 rounded-lg ${color} bg-opacity-15 flex items-center justify-center shrink-0`}>
           {Icon && Icon(`w-3.5 h-3.5 ${color.replace("bg-", "text-")}`)}
         </div>
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide truncate">{label}</span>
+        <span className="text-2xs font-bold text-slate-400 uppercase tracking-wide truncate">{label}</span>
         {pulse && (
           <span className="relative flex h-1.5 w-1.5 ml-auto shrink-0">
             <span className="animate-ping absolute inset-0 rounded-full bg-amber-400 opacity-60" />
@@ -513,7 +513,7 @@ function KPICard({ icon, label, value, subtitle, delta, color, pulse }) {
 
       <div className="relative mt-1.5 flex items-center gap-1.5 flex-wrap">
         {delta}
-        {subtitle && <span className="text-[10px] text-slate-400 font-medium">{subtitle}</span>}
+        {subtitle && <span className="text-2xs text-slate-400 font-medium">{subtitle}</span>}
       </div>
     </motion.div>
   );
@@ -543,7 +543,7 @@ function WeeklyChart({ data, loading, isService, currency = 'COP' }) {
           {Icons.chart("w-3.5 h-3.5 text-blue-500")}
           <h3 className="text-[11px] font-bold text-slate-700">Últimos 7 días</h3>
         </div>
-        <div className="flex items-center gap-3 text-[10px] font-semibold">
+        <div className="flex items-center gap-3 text-2xs font-semibold">
           <span className="flex items-center gap-1 text-blue-500">
             <span className="w-2 h-2 rounded-sm bg-blue-400" />
             {COP(totalRev, currency)}
@@ -569,7 +569,7 @@ function WeeklyChart({ data, loading, isService, currency = 'COP' }) {
             <div key={day.date} className="flex-1 flex flex-col items-center gap-1 group/bar">
               {/* Revenue value on hover */}
               {!isEmpty && (
-                <div className="text-[9px] font-bold text-slate-400 opacity-0 group-hover/bar:opacity-100 transition-opacity truncate max-w-full h-3">
+                <div className="text-2xs font-bold text-slate-400 opacity-0 group-hover/bar:opacity-100 transition-opacity truncate max-w-full h-3.5">
                   {day.orders > 0 ? COP(day.revenue, currency) : ""}
                 </div>
               )}
@@ -592,13 +592,13 @@ function WeeklyChart({ data, loading, isService, currency = 'COP' }) {
 
               {/* Orders count */}
               {!isEmpty && day.orders > 0 && (
-                <span className={`text-[9px] font-bold ${isToday ? "text-blue-600" : "text-slate-400"}`}>
+                <span className={`text-2xs font-bold ${isToday ? "text-blue-600" : "text-slate-400"}`}>
                   {day.orders}
                 </span>
               )}
 
               {/* Day label */}
-              <span className={`text-[10px] font-semibold ${isToday ? "text-blue-600" : "text-slate-400"}`}>
+              <span className={`text-2xs font-semibold ${isToday ? "text-blue-600" : "text-slate-400"}`}>
                 {isToday ? "Hoy" : dayAbbr(day.date)}
               </span>
             </div>
@@ -625,10 +625,10 @@ function BreakdownBar({ title, data, labels, colors, icon }) {
       >
         <div className="flex items-center gap-1.5 mb-1.5">
           {Icon && Icon("w-3 h-3 text-slate-400")}
-          <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{title}</h4>
+          <h4 className="text-2xs font-bold text-slate-500 uppercase tracking-wide">{title}</h4>
         </div>
         <div className="h-2.5 rounded-full bg-slate-100 mb-2" />
-        <p className="text-[10px] text-slate-400 text-center">Sin datos aún</p>
+        <p className="text-2xs text-slate-400 text-center">Sin datos aún</p>
       </motion.div>
     );
   }
@@ -643,8 +643,8 @@ function BreakdownBar({ title, data, labels, colors, icon }) {
     >
       <div className="flex items-center gap-2 mb-2">
         {Icon && Icon("w-3 h-3 text-slate-400")}
-        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{title}</h4>
-        <span className="ml-auto text-[9px] font-bold text-slate-400">{total}</span>
+        <h4 className="text-2xs font-bold text-slate-500 uppercase tracking-wide">{title}</h4>
+        <span className="ml-auto text-2xs font-bold text-slate-400">{total}</span>
       </div>
 
       {/* Stacked bar */}
@@ -661,7 +661,7 @@ function BreakdownBar({ title, data, labels, colors, icon }) {
       {/* Legend */}
       <div className="flex flex-wrap gap-x-3 gap-y-1">
         {entries.map(([key, val]) => (
-          <span key={key} className="flex items-center gap-1 text-[10px] font-medium text-slate-500">
+          <span key={key} className="flex items-center gap-1 text-2xs font-medium text-slate-500">
             <span className={`w-2 h-2 rounded-sm ${colors[key] || "bg-slate-300"}`} />
             {labels[key] || key} <span className="font-bold text-slate-700">{val}</span>
           </span>
@@ -702,7 +702,7 @@ function TopProducts({ products, loading, isService, currency = 'COP' }) {
         </div>
         <div className="text-center py-4">
           <p className="text-xs text-slate-400">{isService ? 'Aquí verás tus servicios más solicitados' : 'Aquí verás tus productos más vendidos'}</p>
-          <p className="text-[10px] text-slate-300 mt-1">{isService ? 'Los datos se acumulan con cada cita completada' : 'Los datos se acumulan con cada pedido completado'}</p>
+          <p className="text-2xs text-slate-300 mt-1">{isService ? 'Los datos se acumulan con cada cita completada' : 'Los datos se acumulan con cada pedido completado'}</p>
         </div>
       </motion.div>
     );
@@ -720,14 +720,14 @@ function TopProducts({ products, loading, isService, currency = 'COP' }) {
       <div className="flex items-center gap-1.5 mb-2.5">
         {Icons.fire("w-3.5 h-3.5 text-orange-500")}
         <h3 className="text-[11px] font-bold text-slate-700">{isService ? 'Top servicios' : 'Top productos'}</h3>
-        <span className="ml-auto text-[9px] text-slate-400 font-semibold">Últimos 30 días</span>
+        <span className="ml-auto text-2xs text-slate-400 font-semibold">Últimos 30 días</span>
       </div>
 
       <div className="space-y-2">
         {products.map((p, i) => (
           <div key={p.name} className="flex items-center gap-2">
             {/* Rank */}
-            <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-extrabold ${
+            <span className={`w-5 h-5 rounded-md flex items-center justify-center text-2xs font-extrabold ${
               i === 0 ? "bg-amber-100 text-amber-700" : i === 1 ? "bg-slate-100 text-slate-600" : "bg-slate-50 text-slate-400"
             }`}>
               {i + 1}
@@ -749,7 +749,7 @@ function TopProducts({ products, loading, isService, currency = 'COP' }) {
             {/* Stats */}
             <div className="text-right flex-shrink-0">
               <p className="text-[11px] font-bold text-slate-700">{p.quantity} uds</p>
-              <p className="text-[9px] font-medium text-slate-400">{COP(p.revenue, currency)}</p>
+              <p className="text-2xs font-medium text-slate-400">{COP(p.revenue, currency)}</p>
             </div>
           </div>
         ))}
@@ -794,7 +794,7 @@ function CustomerSummary({ customers, loading }) {
         {items.map((item) => (
           <div key={item.label} className="bg-white rounded-xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] p-3 text-center">
             <p className={`text-lg sm:text-xl font-extrabold ${item.color}`}>{item.value}</p>
-            <p className="text-[10px] font-semibold text-slate-400 mt-0.5">{item.label}</p>
+            <p className="text-2xs font-semibold text-slate-400 mt-0.5">{item.label}</p>
           </div>
         ))}
       </div>
@@ -833,7 +833,7 @@ function RecentOrders({ orders, loading, onViewOrders, isService, currency = 'CO
         </div>
         <div className="text-center py-4">
           <p className="text-xs text-slate-400">{isService ? 'Aún no hay citas recientes' : 'Aún no hay pedidos recientes'}</p>
-          <p className="text-[10px] text-slate-300 mt-1">Tu actividad del día aparecerá aquí en tiempo real</p>
+          <p className="text-2xs text-slate-300 mt-1">Tu actividad del día aparecerá aquí en tiempo real</p>
         </div>
       </motion.div>
     );
@@ -854,7 +854,7 @@ function RecentOrders({ orders, loading, onViewOrders, isService, currency = 'CO
         {onViewOrders && (
           <button
             onClick={onViewOrders}
-            className="text-[10px] font-bold text-blue-500 hover:text-blue-600 hover:underline transition-colors"
+            className="text-2xs font-bold text-blue-500 hover:text-blue-600 hover:underline transition-colors"
           >
             Ver todos →
           </button>
@@ -880,7 +880,7 @@ function RecentOrders({ orders, loading, onViewOrders, isService, currency = 'CO
                     · {STATUS_LABELS[statusKey] || statusKey}
                   </span>
                 </p>
-                <p className="text-[10px] text-slate-400 font-medium">
+                <p className="text-2xs text-slate-400 font-medium">
                   {order.itemCount ?? order.items?.length ?? 0} items · {time}
                 </p>
               </div>
@@ -914,7 +914,7 @@ function PendingBanner({ pending, onViewOrders, isService }) {
         <div className="w-7 h-7 rounded-lg bg-amber-400/15 flex items-center justify-center">
           {Icons.pending("w-3.5 h-3.5 text-amber-600")}
         </div>
-        <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center shadow-sm">
+        <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-white text-2xs font-extrabold rounded-full flex items-center justify-center shadow-sm">
           {pending.total}
         </span>
       </div>
@@ -924,7 +924,7 @@ function PendingBanner({ pending, onViewOrders, isService }) {
           {pending.total} {isService ? (pending.total === 1 ? "cita pendiente" : "citas pendientes") : (pending.total === 1 ? "pedido pendiente" : "pedidos pendientes")}
         </p>
         {statuses.length > 0 && (
-          <p className="text-[10px] text-amber-600/70 font-medium mt-0.5 truncate">
+          <p className="text-2xs text-amber-600/70 font-medium mt-0.5 truncate">
             {statuses.map(([s, c]) => `${STATUS_LABELS[s] || s}: ${c}`).join(" · ")}
           </p>
         )}
@@ -1071,7 +1071,7 @@ export default function DashboardMetrics({ setActiveTab, businessId, businessCon
         <button
           onClick={() => fetchStats(true)}
           disabled={refreshing}
-          className="flex items-center gap-1 text-[10px] font-semibold text-slate-400 hover:text-blue-500 disabled:opacity-50 transition-colors px-1.5 py-0.5 rounded-lg hover:bg-blue-50/50"
+          className="flex items-center gap-1 text-2xs font-semibold text-slate-400 hover:text-blue-500 disabled:opacity-50 transition-colors px-1.5 py-0.5 rounded-lg hover:bg-blue-50/50"
         >
           <motion.div animate={refreshing ? { rotate: 360 } : { rotate: 0 }} transition={{ duration: 0.8, repeat: refreshing ? Infinity : 0, ease: "linear" }}>
             {Icons.refresh("w-3 h-3")}

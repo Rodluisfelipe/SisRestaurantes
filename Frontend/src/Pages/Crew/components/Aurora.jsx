@@ -13,7 +13,7 @@ import { motion } from 'framer-motion';
 
 const VARIANTS = {
   default: {
-    bg: 'bg-[#0a0a14]',
+    bg: 'bg-crew-noche',
     blobs: [
       { c: 'bg-red-500/40', size: 'w-[420px] h-[420px]', x: '-15%', y: '-10%', dx: ['-15%', '5%', '-15%'], dy: ['-10%', '5%', '-10%'], dur: 14 },
       { c: 'bg-red-400/25', size: 'w-[360px] h-[360px]', x: '60%', y: '20%', dx: ['60%', '45%', '60%'], dy: ['20%', '35%', '20%'], dur: 18 },

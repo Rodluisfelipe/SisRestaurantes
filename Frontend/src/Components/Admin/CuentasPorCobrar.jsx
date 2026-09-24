@@ -158,8 +158,8 @@ export default function CuentasPorCobrar() {
   return (
     <div className="max-w-5xl mx-auto space-y-4">
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl bg-slate-900 text-white p-4">
-          <p className="text-[11.5px] font-bold uppercase tracking-wide text-slate-400">Cartera por cobrar</p>
+        <div className="rounded-2xl bg-white border border-slate-200 p-4">
+          <p className="text-[11.5px] font-bold uppercase tracking-wide text-slate-500">Cartera por cobrar</p>
           <p className="text-2xl font-black tabular-nums mt-1">{pesos(datos?.cartera)}</p>
         </div>
         <div className="rounded-2xl bg-white border border-slate-200 p-4">

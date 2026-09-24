@@ -21,6 +21,7 @@ import {
   FaWhatsapp, FaMobileAlt, FaCashRegister, FaMoneyBillWave,
   FaCalendarWeek
 } from 'react-icons/fa';
+import { Capa } from './ui';
 
 // Estilo premium por tipo de insight de IA
 const AI_INSIGHT_STYLES = {
@@ -784,6 +785,7 @@ function EnhancedCompletedOrders() {
 
     return (
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <Capa onCerrar={() => { setSelectedOrder(null); setOrderDetails(null); }} />
         <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto">
           {/* Modal header */}
           <div className="flex items-center justify-between p-4 border-b border-slate-100">
@@ -1113,7 +1115,7 @@ function EnhancedCompletedOrders() {
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              <FaCalendarDay className="text-[10px]" />
+              <FaCalendarDay className="text-2xs" />
               <span>Cierre del Día</span>
             </button>
             <button
@@ -1124,7 +1126,7 @@ function EnhancedCompletedOrders() {
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              <FaHistory className="text-[10px]" />
+              <FaHistory className="text-2xs" />
               <span>Historial</span>
             </button>
           </div>
@@ -1152,7 +1154,7 @@ function EnhancedCompletedOrders() {
                   : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
             >
-              <FaFilter className="text-[10px]" />
+              <FaFilter className="text-2xs" />
               <span>Filtros</span>
               {hasActiveFilters && <span className="w-1.5 h-1.5 rounded-full bg-red-500 lg:bg-blue-500" />}
             </button>
@@ -1164,7 +1166,7 @@ function EnhancedCompletedOrders() {
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors disabled:opacity-50"
               title="Exportar Excel"
             >
-              {exportingExcel ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-emerald-500" /> : <FaFileExcel className="text-[10px]" />}
+              {exportingExcel ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-emerald-500" /> : <FaFileExcel className="text-2xs" />}
               <span className="hidden sm:inline">Excel</span>
             </button>
 
@@ -1178,7 +1180,7 @@ function EnhancedCompletedOrders() {
                 {generatingReport ? (
                   <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
                 ) : (
-                  <FaSync className="text-[10px]" />
+                  <FaSync className="text-2xs" />
                 )}
                 <span>Actualizar</span>
               </button>
@@ -1200,7 +1202,7 @@ function EnhancedCompletedOrders() {
               <div className="bg-white rounded-xl border border-slate-200 p-3.5 space-y-3 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
                 {/* Quick date presets */}
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1 mr-1"><FaCalendarWeek className="text-[9px]" />Rápido</span>
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1 mr-1"><FaCalendarWeek className="text-2xs" />Rápido</span>
                   {[['Hoy', 'today'], ['Ayer', 'yesterday'], ['Última semana', 'week'], ['Último mes', 'month'], ['Último año', 'year']].map(([label, key]) => (
                     <button key={key} onClick={() => applyDatePreset(key)}
                       className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-all active:scale-[0.97]">
@@ -1297,7 +1299,7 @@ function EnhancedCompletedOrders() {
               <c.Icon className="text-white text-[11px]" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide truncate leading-none mb-0.5">{c.label}</p>
+              <p className="text-2xs text-slate-400 font-semibold uppercase tracking-wide truncate leading-none mb-0.5">{c.label}</p>
               <p className="text-[15px] lg:text-base font-bold text-slate-900 leading-tight truncate tabular-nums">{c.value}</p>
             </div>
           </motion.div>
@@ -1318,7 +1320,7 @@ function EnhancedCompletedOrders() {
             </div>
             <div className="flex items-center gap-2 min-w-0">
               <h3 className="text-[13px] font-bold text-slate-800 whitespace-nowrap">Análisis IA</h3>
-              <span className="hidden sm:inline text-[10px] text-slate-400 truncate">
+              <span className="hidden sm:inline text-2xs text-slate-400 truncate">
                 {viewMode === 'all' ? (dateFrom || dateTo ? 'rango filtrado' : 'todo el historial') : 'hoy'}
               </span>
             </div>
@@ -1370,7 +1372,7 @@ function EnhancedCompletedOrders() {
                       className={`flex items-start gap-2.5 p-2.5 rounded-lg border ${st.wrap}`}
                     >
                       <div className={`w-6 h-6 rounded-md bg-gradient-to-br ${st.chip} flex items-center justify-center shrink-0`}>
-                        <StIcon className="text-white text-[10px]" />
+                        <StIcon className="text-white text-2xs" />
                       </div>
                       <div className="min-w-0">
                         <h4 className="text-[12px] font-bold text-slate-800">{insight.title}</h4>
@@ -1461,9 +1463,9 @@ function EnhancedCompletedOrders() {
                           ? 'bg-amber-50 text-amber-700'
                           : 'bg-blue-50 text-blue-700'
                       }`}>
-                        {order.orderType === 'delivery' ? <><FaTruck className="text-[9px]" /> Delivery</> :
-                         order.orderType === 'takeaway' ? <><FaShoppingBag className="text-[9px]" /> Llevar</> :
-                         <><FaChair className="text-[9px]" /> En sitio</>}
+                        {order.orderType === 'delivery' ? <><FaTruck className="text-2xs" /> Delivery</> :
+                         order.orderType === 'takeaway' ? <><FaShoppingBag className="text-2xs" /> Llevar</> :
+                         <><FaChair className="text-2xs" /> En sitio</>}
                       </span>
                     </td>
                     <td className="px-4 py-2.5 hidden md:table-cell">
@@ -1550,7 +1552,7 @@ function EnhancedCompletedOrders() {
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-[13px] font-bold text-emerald-600 tabular-nums">${chargedOf(order).toLocaleString()}</p>
-                  <p className="text-[10px] text-slate-400">{order.items?.length || 0} items</p>
+                  <p className="text-2xs text-slate-400">{order.items?.length || 0} items</p>
                 </div>
                 <svg className="w-4 h-4 text-slate-300 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
               </button>
@@ -1587,7 +1589,10 @@ function EnhancedCompletedOrders() {
 
       {/* Modals */}
       <AnimatePresence>
-        {selectedOrder && <OrderDetailsModal />}
+        {/* Se llama como función, no como <Componente />: definido dentro del
+            render, React lo trataría como un tipo nuevo en cada render y lo
+            volvería a montar. */}
+        {selectedOrder && OrderDetailsModal()}
         {devolviendo && (
           <ModalDevolucion
             pedido={devolviendo}
@@ -1599,6 +1604,7 @@ function EnhancedCompletedOrders() {
       
       {showNoOrdersModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Capa onCerrar={() => setShowNoOrdersModal(false)} />
           <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 text-center">
             <FaInfoCircle className="mx-auto text-3xl text-blue-400 mb-3" />
             <h3 className="text-base font-semibold text-slate-900 mb-1">Sin pedidos completados</h3>

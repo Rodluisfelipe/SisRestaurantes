@@ -94,7 +94,7 @@ export default function TimeSlotPicker({ businessId, businessConfig, duration, b
           disabled={dateScrollStart === 0}
           className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
         >
-          <FaChevronLeft className="text-[10px]" />
+          <FaChevronLeft className="text-2xs" />
         </button>
 
         <div className="flex gap-1.5 flex-1 justify-center">
@@ -112,9 +112,9 @@ export default function TimeSlotPicker({ businessId, businessConfig, duration, b
                 }`}
                 style={isSelected ? { backgroundColor: buttonColor, color: buttonTextColor } : {}}
               >
-                <span className="text-[10px] font-bold uppercase leading-none">{d.dayName}</span>
+                <span className="text-2xs font-bold uppercase leading-none">{d.dayName}</span>
                 <span className="text-lg font-bold leading-none mt-0.5">{d.dayNum}</span>
-                <span className="text-[9px] uppercase leading-none mt-0.5">{d.monthShort}</span>
+                <span className="text-2xs uppercase leading-none mt-0.5">{d.monthShort}</span>
               </button>
             );
           })}
@@ -126,7 +126,7 @@ export default function TimeSlotPicker({ businessId, businessConfig, duration, b
           disabled={dateScrollStart + visibleDates >= availableDates.length}
           className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
         >
-          <FaChevronRight className="text-[10px]" />
+          <FaChevronRight className="text-2xs" />
         </button>
       </div>
 
@@ -134,7 +134,7 @@ export default function TimeSlotPicker({ businessId, businessConfig, duration, b
       {selectedDate && (
         <div>
           <div className="flex items-center gap-1.5 mb-2">
-            <FaClock className="text-[10px] text-slate-400" />
+            <FaClock className="text-2xs text-slate-400" />
             <span className="text-xs font-semibold text-slate-600">Horarios disponibles</span>
           </div>
 

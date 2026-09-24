@@ -64,7 +64,7 @@ export default function BlogIndex() {
                   
                   <div className="p-5 sm:p-6">
                     <div className="flex items-center gap-3 mb-3">
-                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${categoryColors[post.category] || 'bg-gray-50 text-gray-600'}`}>
+                      <span className={`text-2xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${categoryColors[post.category] || 'bg-gray-50 text-gray-600'}`}>
                         {post.category}
                       </span>
                       <span className="text-xs text-gray-400">{post.readTime}</span>

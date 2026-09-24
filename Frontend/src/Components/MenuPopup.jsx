@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
+import { Capa } from './ui';
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const keyFor = (id) => `mb_popup_${id}`;
@@ -285,6 +286,7 @@ export default function MenuPopup({ businessId, themeColor = '#E8002D' }) {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] flex flex-col bg-white"
           >
+            <Capa onCerrar={close} />
             {/* Hero */}
             <div className="relative shrink-0" style={{ height: '42%' }}>
               {popup.image ? (
@@ -319,6 +321,7 @@ export default function MenuPopup({ businessId, themeColor = '#E8002D' }) {
     <AnimatePresence>
       {visible && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <Capa onCerrar={close} />
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

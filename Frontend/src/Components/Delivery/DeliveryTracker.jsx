@@ -214,7 +214,7 @@ const DeliveryTracker = () => {
           {isDelivered && (
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
               className="bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-bold flex items-center justify-center gap-1.5 mt-1">
-              <FaCheck className="text-[10px]" /> Pedido entregado
+              <FaCheck className="text-2xs" /> Pedido entregado
             </motion.div>
           )}
         </div>
@@ -302,7 +302,7 @@ const DeliveryTracker = () => {
               <span className="font-semibold text-slate-800 text-sm flex-1">
                 {order.deliveryPersonName || 'Tu domiciliario'} en camino
               </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: `${brandColor}15`, color: brandColor }}>
+              <span className="text-2xs px-2 py-0.5 rounded-full font-medium" style={{ background: `${brandColor}15`, color: brandColor }}>
                 EN VIVO
               </span>
             </div>
@@ -329,7 +329,7 @@ const DeliveryTracker = () => {
 
         {/* Order summary */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-          <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-3">Tu pedido</p>
+          <p className="text-2xs uppercase tracking-wider text-slate-400 font-semibold mb-3">Tu pedido</p>
           <div className="space-y-2">
             {order.items?.map((item, i) => (
               <div key={i} className="flex justify-between items-center">
@@ -362,7 +362,7 @@ const DeliveryTracker = () => {
         {/* Confirmation code for client */}
         {order.deliveryCode && !isDelivered && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 text-center">
-            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Código de confirmación</p>
+            <p className="text-2xs uppercase tracking-wider text-slate-400 font-semibold mb-2">Código de confirmación</p>
             <p className="text-xs text-slate-400 mb-3">Dale este código al domiciliario al recibir tu pedido</p>
             <div className="flex justify-center gap-2">
               {order.deliveryCode.split('').map((c, i) => (
@@ -390,7 +390,7 @@ const DeliveryTracker = () => {
           </div>
         )}
 
-        <p className="text-center text-[10px] text-slate-300 pt-2">
+        <p className="text-center text-2xs text-slate-300 pt-2">
           Powered by <span className="font-bold text-red-400">MenuBy</span>
         </p>
       </div>

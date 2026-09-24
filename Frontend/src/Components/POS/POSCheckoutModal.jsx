@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import api from '../../services/api';
 import { queueOfflineOrder } from '../../services/posOfflineStore';
+import { Capa } from '../ui';
 
 const PAYMENT_METHODS = [
   { id: 'cash', label: 'Efectivo', color: '#059669', svg: 'M2 8a2 2 0 012-2h16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8z M2 11h20 M7 15h.01' },
@@ -251,6 +252,7 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
 
   return (
     <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <Capa onCerrar={onClose} />
       <div className="bg-white rounded-t-2xl lg:rounded-2xl shadow-2xl w-full lg:max-w-5xl lg:mx-4 max-h-[95vh] flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 lg:px-6 py-3 border-b border-slate-100 shrink-0">
@@ -353,7 +355,7 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
                               <p className="text-sm font-semibold text-slate-800 truncate">{c.name}</p>
                               <p className="text-[11px] text-slate-500 truncate">{c.phone}{c.address ? ` · ${c.address}` : ''}</p>
                             </div>
-                            <span className="shrink-0 text-[10px] font-bold text-slate-400">{c.totalOrders || 0} ped.</span>
+                            <span className="shrink-0 text-2xs font-bold text-slate-400">{c.totalOrders || 0} ped.</span>
                           </button>
                         ))}
                       </div>
@@ -424,7 +426,7 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
                           style={isSelected ? { backgroundColor: z.color || themeColor, borderColor: z.color || themeColor } : undefined}
                         >
                           <p className="text-xs font-bold">{z.name}</p>
-                          <p className={`text-[10px] ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>
+                          <p className={`text-2xs ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>
                             {z.pricing?.priceLabel || `$${(z.pricing?.displayPrice || 0).toLocaleString()}`}
                             {z.estimatedTime ? ` · ${z.estimatedTime}` : ''}
                           </p>

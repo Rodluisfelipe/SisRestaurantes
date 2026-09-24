@@ -82,7 +82,7 @@ export default function SonandoAhora({ businessId }) {
           ))}
         </span>
         <span
-          className="text-[10px] font-bold uppercase tracking-wide whitespace-nowrap"
+          className="text-2xs font-bold uppercase tracking-wide whitespace-nowrap"
           style={{ color: 'var(--mb-accent)' }}
         >
           Sonando ahora

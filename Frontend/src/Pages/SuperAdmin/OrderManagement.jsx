@@ -299,7 +299,7 @@ export default function OrderManagement() {
                   </div>
 
                   {/* Collection badge */}
-                  <span className={`hidden sm:inline-flex px-2 py-0.5 rounded-md text-[10px] font-medium border ${
+                  <span className={`hidden sm:inline-flex px-2 py-0.5 rounded-md text-2xs font-medium border ${
  order._collection === "orders"
  ? "bg-cyan-50 text-cyan-600 border-cyan-200"
  : "bg-slate-100 text-slate-500 border-slate-200"
@@ -327,21 +327,21 @@ export default function OrderManagement() {
                         {/* Order details grid */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                           <div>
-                            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Tipo</p>
+                            <p className="text-2xs text-slate-400 uppercase tracking-wider">Tipo</p>
                             <p className="text-sm text-slate-700 mt-0.5">
                               {order.orderType === "delivery" ? "Domicilio" : order.orderType === "takeaway" ? "Para llevar" : "En sitio"}
                             </p>
                           </div>
                           <div>
-                            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Teléfono</p>
+                            <p className="text-2xs text-slate-400 uppercase tracking-wider">Teléfono</p>
                             <p className="text-sm text-slate-700 mt-0.5">{order.phone || "—"}</p>
                           </div>
                           <div>
-                            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Total</p>
+                            <p className="text-2xs text-slate-400 uppercase tracking-wider">Total</p>
                             <p className="text-sm text-slate-700 mt-0.5">{formatCurrency(order.total)}</p>
                           </div>
                           <div>
-                            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Colección</p>
+                            <p className="text-2xs text-slate-400 uppercase tracking-wider">Colección</p>
                             <p className="text-sm text-slate-700 mt-0.5">{order._collection === "orders" ? "Pedidos activos" : "Completados"}</p>
                           </div>
                         </div>
@@ -349,7 +349,7 @@ export default function OrderManagement() {
                         {/* Items */}
                         {order.items && order.items.length > 0 && (
                           <div className="mb-4">
-                            <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-1.5">Items ({order.items.length})</p>
+                            <p className="text-2xs text-slate-400 uppercase tracking-wider mb-1.5">Items ({order.items.length})</p>
                             <div className="space-y-1">
                               {order.items.map((item, idx) => (
                                 <div key={idx} className="flex items-center justify-between px-3 py-1.5 bg-white rounded-lg">
@@ -369,14 +369,14 @@ export default function OrderManagement() {
                         {/* Address for delivery */}
                         {order.orderType === "delivery" && order.address && (
                           <div className="mb-4">
-                            <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Dirección</p>
+                            <p className="text-2xs text-slate-400 uppercase tracking-wider mb-1">Dirección</p>
                             <p className="text-xs text-slate-600">{typeof order.address === 'string' ? order.address : JSON.stringify(order.address)}</p>
                           </div>
                         )}
 
                         {/* Status changer */}
                         <div>
-                          <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Cambiar estado</p>
+                          <p className="text-2xs text-slate-400 uppercase tracking-wider mb-2">Cambiar estado</p>
                           <div className="flex flex-wrap gap-1.5">
                             {ALL_STATUSES.map(s => {
                               const sc = STATUS_CONFIG[s];
@@ -409,13 +409,13 @@ export default function OrderManagement() {
                             })}
                           </div>
                           {order._collection === "orders" && ["completed", "delivered", "cancelled"].includes(order.status) && (
-                            <p className="mt-2 text-[10px] text-amber-600 flex items-center gap-1">
+                            <p className="mt-2 text-2xs text-amber-600 flex items-center gap-1">
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
                               Al cambiar a completado/entregado/cancelado se moverá a historial
                             </p>
                           )}
                           {order._collection === "completedorders" && !["completed", "delivered", "cancelled"].includes(order.status) && (
-                            <p className="mt-2 text-[10px] text-cyan-600 flex items-center gap-1">
+                            <p className="mt-2 text-2xs text-cyan-600 flex items-center gap-1">
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
                               Al cambiar a un estado activo se moverá a pedidos activos
                             </p>
@@ -426,7 +426,7 @@ export default function OrderManagement() {
                             para que no se pulse por inercia al cambiar uno. */}
                         <div className="pt-3 mt-3 border-t border-slate-100">
                           <div className="flex items-center justify-between gap-3 flex-wrap">
-                            <p className="text-[10px] text-slate-400 leading-snug max-w-sm">
+                            <p className="text-2xs text-slate-400 leading-snug max-w-sm">
                               Eliminar es definitivo: el pedido deja de contar en ventas, en el cierre
                               mensual y en el Excel. Para anularlo sin perder la traza, cámbialo a cancelado.
                             </p>

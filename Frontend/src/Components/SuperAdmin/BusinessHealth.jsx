@@ -89,7 +89,7 @@ export default function BusinessHealth({ onOpenBusiness }) {
  : 'border-slate-200 bg-white'
  }`}
             >
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{c.label}</p>
+              <p className="text-2xs font-bold uppercase tracking-wider text-slate-400">{c.label}</p>
               <p className={`text-xl font-bold tabular-nums ${c.tone}`}>{c.value ?? 0}</p>
             </button>
           ))}
@@ -141,7 +141,7 @@ export default function BusinessHealth({ onOpenBusiness }) {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-semibold text-slate-800 truncate">{b.businessName}</p>
-                      <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold ${r.chip}`}>{r.label}</span>
+                      <span className={`shrink-0 px-1.5 py-0.5 rounded text-2xs font-bold ${r.chip}`}>{r.label}</span>
                     </div>
                     <p className="text-[12px] text-slate-400 truncate">
                       {b.reason}
@@ -151,7 +151,7 @@ export default function BusinessHealth({ onOpenBusiness }) {
 
                   <div className="hidden sm:block text-right shrink-0 w-24">
                     <p className="text-[13px] font-bold text-slate-700 tabular-nums">{b.ordersLast7}</p>
-                    <p className="text-[10px] text-slate-400">pedidos 7d</p>
+                    <p className="text-2xs text-slate-400">pedidos 7d</p>
                   </div>
 
                   <div className="hidden sm:block text-right shrink-0 w-16">
@@ -160,7 +160,7 @@ export default function BusinessHealth({ onOpenBusiness }) {
                         {up ? '+' : ''}{b.trendPct}%
                       </p>
                     ) : <p className="text-[13px] text-slate-500">—</p>}
-                    <p className="text-[10px] text-slate-400">vs 7d</p>
+                    <p className="text-2xs text-slate-400">vs 7d</p>
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0">
