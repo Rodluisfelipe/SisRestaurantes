@@ -63,7 +63,11 @@ const ProductPeekWrapper = ({ children, product, buttonColor, buttonTextColor })
 
   return (
     <>
+      {/* h-full: la tarjeta de adentro ocupa todo el alto de su celda, y así
+          todas las de una fila o un carrusel miden lo mismo, con el precio y
+          el botón alineados abajo. Sin esto cada una medía lo de su texto. */}
       <div
+        className="h-full"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={endPress}
