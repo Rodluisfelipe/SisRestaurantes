@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import api from '../../services/api';
 import { useBusinessConfig } from '../../Context/BusinessContext';
 import Cajas from './Cajas';
+import PersonalPos from './PersonalPos';
 
 /**
  * Punto de venta: todo lo de la caja nativa en una sola sección.
@@ -28,6 +29,7 @@ const TIPO_AUDITORIA = {
 const PESTANAS = [
   { id: 'resumen', nombre: 'Resumen' },
   { id: 'cajas', nombre: 'Cajas' },
+  { id: 'personal', nombre: 'Personal' },
   { id: 'cierres', nombre: 'Cierres' },
   { id: 'auditoria', nombre: 'Auditoría' },
   { id: 'devoluciones', nombre: 'Devoluciones' },
@@ -61,7 +63,7 @@ export default function PuntoDeVenta() {
     setHasta(r.hasta());
   };
 
-  const conFechas = pestana !== 'cajas';
+  const conFechas = pestana !== 'cajas' && pestana !== 'personal';
 
   return (
     <div className="max-w-6xl mx-auto space-y-4">
@@ -104,6 +106,7 @@ export default function PuntoDeVenta() {
 
       {pestana === 'resumen' && <Resumen businessId={businessId} desde={desde} hasta={hasta} irA={setPestana} />}
       {pestana === 'cajas' && <Cajas />}
+      {pestana === 'personal' && <PersonalPos businessId={businessId} />}
       {pestana === 'cierres' && <Cierres businessId={businessId} desde={desde} hasta={hasta} />}
       {pestana === 'auditoria' && <Auditoria businessId={businessId} desde={desde} hasta={hasta} />}
       {pestana === 'devoluciones' && <Devoluciones businessId={businessId} desde={desde} hasta={hasta} />}

@@ -234,6 +234,118 @@ router.get('/ventas', async (req, res) => {
   }
 });
 
+/* ── Personal y permisos ───────────────────────────────────────────────────
+ *
+ * Quién entra a las cajas, con qué PIN y qué puede hacer. Se define aquí una
+ * vez y baja a todas las cajas del negocio: el cajero que se va deja de entrar
+ * en todas a la vez, y el dueño ya no tiene que repartir su propio PIN.
+ */
+const bcrypt = require('bcryptjs');
+const PosPersonal = require('../Models/PosPersonal');
+const { PERMISOS, ROLES_DE_FABRICA, validarRoles, pinValido } = require('../utils/permisosPos');
+
+/* Costo bajo a propósito: la caja compara el PIN contra cada persona, en un
+   equipo que puede ser un Celeron, y un PIN de cuatro dígitos no se vuelve
+   más difícil de adivinar con un costo alto. La defensa es el bloqueo de la
+   caja tras cinco intentos. */
+const COSTO_PIN = 6;
+
+async function personalDe(businessId) {
+  let doc = await PosPersonal.findOne({ businessId });
+  if (!doc) doc = new PosPersonal({ businessId, roles: ROLES_DE_FABRICA, usuarios: [] });
+  return doc;
+}
+
+const paraPanel = (doc) => ({
+  permisos: PERMISOS,
+  roles: doc.roles,
+  usuarios: doc.usuarios.map((u) => ({ _id: u._id, nombre: u.nombre, rol: u.rol, activo: u.activo, updatedAt: u.updatedAt })),
+});
+
+/* Dos personas activas con el mismo PIN serían indistinguibles: la caja
+   entra con la primera que coincida y las ventas quedarían a nombre de otro. */
+async function pinEnUso(doc, pin, menosId) {
+  for (const u of doc.usuarios) {
+    if (!u.activo || String(u._id) === String(menosId || '')) continue;
+    if (await bcrypt.compare(pin, u.pinHash)) return u.nombre;
+  }
+  return null;
+}
+
+router.get('/personal', async (req, res) => {
+  try {
+    res.json(paraPanel(await personalDe(negocio(req))));
+  } catch (error) {
+    logger.error('Error leyendo el personal del POS', error, req);
+    res.status(500).json({ message: 'No se pudo cargar el personal' });
+  }
+});
+
+router.put('/personal/roles', async (req, res) => {
+  try {
+    const v = validarRoles(req.body?.roles);
+    if (!v.ok) return res.status(400).json({ message: v.error });
+    const doc = await personalDe(negocio(req));
+    const ids = new Set(v.roles.map((r) => r.id));
+    const huerfano = doc.usuarios.find((u) => u.activo && !ids.has(u.rol));
+    if (huerfano) {
+      return res.status(400).json({ message: `${huerfano.nombre} tiene un rol que quitaste: cámbialo primero` });
+    }
+    doc.roles = v.roles;
+    await doc.save();
+    res.json(paraPanel(doc));
+  } catch (error) {
+    logger.error('Error guardando roles del POS', error, req);
+    res.status(500).json({ message: 'No se pudieron guardar los roles' });
+  }
+});
+
+router.post('/personal/usuarios', async (req, res) => {
+  try {
+    const nombre = String(req.body?.nombre || '').trim().slice(0, 60);
+    const { pin, rol } = req.body || {};
+    if (!nombre) return res.status(400).json({ message: 'Falta el nombre' });
+    if (!pinValido(pin)) return res.status(400).json({ message: 'El PIN son de 4 a 6 números' });
+    const doc = await personalDe(negocio(req));
+    if (!doc.roles.some((r) => r.id === rol)) return res.status(400).json({ message: 'Ese rol no existe' });
+    const otro = await pinEnUso(doc, pin);
+    if (otro) return res.status(400).json({ message: 'Ese PIN ya lo usa otra persona' });
+    doc.usuarios.push({ nombre, rol, pinHash: await bcrypt.hash(pin, COSTO_PIN), activo: true });
+    await doc.save();
+    res.status(201).json(paraPanel(doc));
+  } catch (error) {
+    logger.error('Error creando personal del POS', error, req);
+    res.status(500).json({ message: 'No se pudo crear la persona' });
+  }
+});
+
+router.patch('/personal/usuarios/:id', async (req, res) => {
+  try {
+    const doc = await personalDe(negocio(req));
+    const u = doc.usuarios.id(req.params.id);
+    if (!u) return res.status(404).json({ message: 'Esa persona no existe' });
+    const { nombre, rol, activo, pin } = req.body || {};
+    if (typeof nombre === 'string' && nombre.trim()) u.nombre = nombre.trim().slice(0, 60);
+    if (rol !== undefined) {
+      if (!doc.roles.some((r) => r.id === rol)) return res.status(400).json({ message: 'Ese rol no existe' });
+      u.rol = rol;
+    }
+    if (typeof activo === 'boolean') u.activo = activo;
+    if (pin !== undefined) {
+      if (!pinValido(pin)) return res.status(400).json({ message: 'El PIN son de 4 a 6 números' });
+      const otro = await pinEnUso(doc, pin, u._id);
+      if (otro) return res.status(400).json({ message: 'Ese PIN ya lo usa otra persona' });
+      u.pinHash = await bcrypt.hash(pin, COSTO_PIN);
+    }
+    await doc.save();
+    res.json(paraPanel(doc));
+  } catch (error) {
+    logger.error('Error editando personal del POS', error, req);
+    res.status(500).json({ message: 'No se pudo guardar' });
+  }
+});
+
+
 router.resumir = resumir;
 router.rango = rango;
 module.exports = router;

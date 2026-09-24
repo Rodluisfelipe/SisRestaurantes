@@ -6,7 +6,7 @@ import {
   Wallet, X, XCircle,
 } from 'lucide-react';
 import { type EstadoCliente,
-  ajustesCaja, AJUSTES_DE_FABRICA, type AjustesCaja,
+  ajustesCaja, AJUSTES_DE_FABRICA, type AjustesCaja, puede,
   pedidosWeb, moverPedidoWeb, imprimirPedidoWeb, type PedidoWeb,
 } from './nativo';
 import {
@@ -306,6 +306,18 @@ function Caja({
      un modal de React se dibuja con el resto de la pantalla y no congela el
      proceso mientras está abierto. */
   const [pidiendoGaveta, setPidiendoGaveta] = useState(false);
+  /* Una acción que el usuario de la caja no puede hacer solo, esperando el
+     PIN de alguien que sí. Ver `conPermiso`. */
+  const [pidiendoPermiso, setPidiendoPermiso] = useState<
+    { permiso: string; titulo: string; accion: () => void } | null
+  >(null);
+  /* Hacer algo si se puede, o pedir el PIN de quien pueda. La caja lo
+     vuelve a revisar al ejecutar: esto solo evita que el cajero se entere
+     del "no" después de haber llenado todo. */
+  const conPermiso = (permiso: string, titulo: string, accion: () => void) => {
+    if (puede(usuario, permiso)) accion();
+    else setPidiendoPermiso({ permiso, titulo, accion });
+  };
   const [descartando, setDescartando] = useState<EnEspera | null>(null);
   /* La línea que acaba de entrar al carrito, para encenderla un momento. Es la
      confirmación de que el toque llegó: sin ella el cajero tiene que leer el
@@ -1208,7 +1220,7 @@ function Caja({
     cobrandoAhora || anulando !== null || pidiendoDescuento ||
     porAutorizar !== null || anotando !== null || pidiendoGaveta || descartando !== null ||
     pidiendoDevolucion || devolucionPorAutorizar !== null || verImpresoras || verNube ||
-    verTurno || verEspera || verCliente || verRecompensas || verVentas || verLibre || verAgotados || verApartadas;
+    verTurno || verEspera || verCliente || verRecompensas || verVentas || verLibre || verAgotados || verApartadas || pidiendoPermiso !== null;
 
   useEffect(() => {
     if (hayModal) buscador.current?.blur();
@@ -1224,7 +1236,7 @@ function Caja({
          modal que el cajero todavía está llenando. */
       if (hayModal) return;
 
-      if (e.key === 'F2') { e.preventDefault(); finalizar(); }
+      if (e.key === 'F2') { e.preventDefault(); conPermiso('cobrar', 'Cobrar', () => finalizar()); }
       /* F4 anula la línea señalada y F5 aparta la venta. F4 era "en espera"
          hasta esta versión: se movió a F5 porque la carta de atajos del POS
          industrial pone la anulación ahí, y tener dos cosas distintas en la
@@ -1292,7 +1304,7 @@ function Caja({
     const libre = e.key === 'Enter' ? leerPrecioLibre(busqueda) : null;
     if (libre !== null) {
       e.preventDefault();
-      agregarLibre('Varios', libre);
+      conPermiso('precio_libre', 'Vender con precio libre', () => agregarLibre('Varios', libre));
       setBusqueda('');
       return;
     }
@@ -1319,7 +1331,7 @@ function Caja({
           <span className="text-left leading-tight">
             <span className="block text-[13px] font-bold">{usuario.nombre}</span>
             <span className="block text-[10px] font-semibold opacity-70">
-              {usuario.rol === 'supervisor' ? 'Supervisor' : 'Turno abierto'}
+              {usuario.rol_nombre || 'Turno abierto'}
             </span>
           </span>
         </button>
@@ -1398,7 +1410,7 @@ function Caja({
 
         {cola.apartadas > 0 && (
           <button
-            onClick={() => setVerApartadas(true)}
+            onClick={() => conPermiso('configurar', 'Ver lo rechazado', () => setVerApartadas(true))}
             title="La nube rechazó estos registros. Están guardados en la caja: toca para ver por qué y reintentar."
             className="flex items-center gap-2 px-3 h-toque rounded-xl bg-red-500 text-white text-[12.5px] font-bold"
           >
@@ -1457,7 +1469,7 @@ function Caja({
 
         <BotonBarra
           icono={Ban}
-          onClick={() => setVerAgotados(true)}
+          onClick={() => conPermiso('agotados', 'Marcar agotados', () => setVerAgotados(true))}
           title="Marcar lo que se acabó: sale de la caja y del menú web"
         >
           Agotados
@@ -1465,7 +1477,7 @@ function Caja({
 
         <BotonBarra
           icono={Printer}
-          onClick={() => setVerVentas(true)}
+          onClick={() => conPermiso('ventas', 'Ver las ventas del turno', () => setVerVentas(true))}
           title="Ventas del turno: reimprimir cualquiera y ver lo más vendido"
         >
           Ventas
@@ -1473,7 +1485,7 @@ function Caja({
 
         <BotonBarra
           icono={Wallet}
-          onClick={() => setPidiendoGaveta(true)}
+          onClick={() => conPermiso('gaveta', 'Abrir la gaveta', () => setPidiendoGaveta(true))}
           title="Queda registrado quién la abre y para qué"
         >
           Gaveta
@@ -1487,11 +1499,11 @@ function Caja({
           Devolver
         </BotonBarra>
 
-        <BotonBarra icono={Printer} onClick={() => setVerImpresoras(true)} title="Configurar las impresoras">
+        <BotonBarra icono={Printer} onClick={() => conPermiso('configurar', 'Configurar impresoras', () => setVerImpresoras(true))} title="Configurar las impresoras">
           Impresoras
         </BotonBarra>
 
-        <BotonBarra icono={CloudCheck} onClick={() => setVerNube(true)} title="Conectar esta caja con MenuBy">
+        <BotonBarra icono={CloudCheck} onClick={() => conPermiso('configurar', 'Conexión con MenuBy', () => setVerNube(true))} title="Conectar esta caja con MenuBy">
           MenuBy
         </BotonBarra>
 
@@ -1563,6 +1575,21 @@ function Caja({
           </span>
         ) : null}
       </div>
+
+      {pidiendoPermiso && (
+        <Autorizar
+          sinMotivo
+          permiso={pidiendoPermiso.permiso}
+          titulo={pidiendoPermiso.titulo}
+          detalle="Tu usuario no tiene este permiso. Que ponga su PIN alguien que sí lo tenga."
+          onListo={() => {
+            const { accion } = pidiendoPermiso;
+            setPidiendoPermiso(null);
+            accion();
+          }}
+          onCancelar={() => { setPidiendoPermiso(null); buscador.current?.focus(); }}
+        />
+      )}
 
       {verApartadas && (
         <Apartadas
@@ -1711,6 +1738,8 @@ function Caja({
 
       {devolucionPorAutorizar && (
         <Autorizar
+          permiso="devolucion"
+          yo={puede(usuario, 'devolucion') ? usuario.nombre : undefined}
           titulo="Autorizar devolución"
           detalle={`Venta #${devolucionPorAutorizar.venta.consecutivo} · salen ${pesos(devolucionPorAutorizar.total)}`}
           onListo={async (motivo, autorizo) => {
@@ -1749,6 +1778,8 @@ function Caja({
           verse igual para quien las revisa después. */}
       {porAutorizar && (
         <Autorizar
+          permiso="descuento"
+          yo={puede(usuario, 'descuento') ? usuario.nombre : undefined}
           titulo="Autorizar descuento"
           detalle={`${porAutorizar.detalle} · se rebajan ${pesos(porAutorizar.monto)}`}
           onListo={async (motivo, autorizo) => {
@@ -1825,6 +1856,8 @@ function Caja({
 
       {anulando && (
         <Autorizar
+          permiso="anular"
+          yo={puede(usuario, 'anular') ? usuario.nombre : undefined}
           titulo="Quitar del pedido"
           detalle={`${anulando.linea.nombre} · ${pesos(anulando.linea.precio * anulando.linea.cantidad)}`}
           onListo={confirmarAnulacion}
@@ -1846,7 +1879,7 @@ function Caja({
                   </p>
                 </div>
                 <button
-                  onClick={() => setDescartando(p)}
+                  onClick={() => conPermiso('descartar', 'Descartar una venta en espera', () => setDescartando(p))}
                   title="Descartar este pedido"
                   className="flex items-center justify-center w-toque h-toque rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                 >
@@ -2070,7 +2103,10 @@ function Caja({
             <PedidosWeb
               pedidos={pedidos}
               error={errorPedidos}
-              onMover={moverPedido}
+              onMover={(p, estado) =>
+                new Promise<void>((listo) =>
+                  conPermiso('pedidos_web', 'Atender pedidos web', () => { moverPedido(p, estado).finally(listo); }),
+                )}
               onImprimir={imprimirPedido}
             />
           ) : vista === 'salon' ? (
@@ -2135,7 +2171,7 @@ function Caja({
                 />
                 {/* El precio libre a un toque, para quien no usa el teclado. */}
                 <button
-                  onClick={() => setVerLibre(true)}
+                  onClick={() => conPermiso('precio_libre', 'Vender con precio libre', () => setVerLibre(true))}
                   title="Agregar algo que no está en la carta"
                   className="absolute right-1.5 top-1/2 -translate-y-1/2 px-3 h-9 rounded-lg bg-slate-100 text-[12px] font-bold text-slate-600 hover:bg-slate-200"
                 >
@@ -2405,7 +2441,7 @@ function Caja({
                 {[aCobrar, ...billetesProbables(aCobrar)].map((monto, n) => (
                   <button
                     key={monto}
-                    onClick={() => cobrarRapido(monto)}
+                    onClick={() => conPermiso('cobrar', 'Cobrar', () => cobrarRapido(monto))}
                     disabled={cobrando}
                     title={n === 0 ? 'Cobrar exacto en efectivo' : `Paga con ${pesos(monto)}`}
                     className={`flex-1 flex flex-col items-center justify-center h-12 rounded-xl border-2 text-[12px] font-black tabular-nums disabled:opacity-30 active:scale-95 transition-transform duration-75 ${
@@ -2438,7 +2474,7 @@ function Caja({
                 </button>
               )}
               <button
-                onClick={() => finalizar()}
+                onClick={() => conPermiso('cobrar', 'Cobrar', () => finalizar())}
                 disabled={!carrito.length || cobrando}
                 className={`${enCuenta ? 'w-24' : 'flex-1'} flex items-center justify-center gap-2.5 h-16 rounded-xl ${
                   enCuenta ? 'border-2 border-slate-200 text-slate-600' : 'bg-accion text-sobre-accion'

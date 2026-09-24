@@ -1085,4 +1085,30 @@ router.patch('/productos/:id/disponible', tenantAuth, cajaVigente, async (req, r
 });
 
 
+/* GET /api/pos/personal — quién entra a esta caja y qué puede hacer.
+ *
+ * Lo define el dueño en el panel (Punto de venta → Personal). Si nunca lo
+ * definió, van listas vacías y la caja sigue con sus usuarios locales. */
+router.get('/personal', tenantAuth, cajaVigente, async (req, res) => {
+  try {
+    const PosPersonal = require('../Models/PosPersonal');
+    const doc = await PosPersonal.findOne({ businessId: req.user.businessId }).lean();
+    res.set('Cache-Control', 'no-store');
+    res.json({
+      roles: doc?.roles || [],
+      usuarios: (doc?.usuarios || []).map((u) => ({
+        id: String(u._id),
+        nombre: u.nombre,
+        pin_hash: u.pinHash,
+        rol: u.rol,
+        activo: u.activo !== false,
+      })),
+    });
+  } catch (error) {
+    logger.error('Error entregando el personal al POS', error, req);
+    res.status(500).json({ message: 'No se pudo cargar el personal' });
+  }
+});
+
+
 module.exports = router;

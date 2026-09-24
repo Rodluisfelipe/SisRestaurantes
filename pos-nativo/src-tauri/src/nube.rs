@@ -526,6 +526,30 @@ pub fn canjear(
     respuesta.into_json().map_err(|e| format!("Respuesta ilegible: {e}"))
 }
 
+#[derive(serde::Deserialize)]
+struct Personal {
+    #[serde(default)]
+    roles: Vec<pos_core::permisos::Rol>,
+    #[serde(default)]
+    usuarios: Vec<pos_core::usuarios::UsuarioRemoto>,
+}
+
+/// Baja el personal y los roles que el dueño definió en el panel.
+///
+/// Si falla, la caja sigue con los que tenía: nadie puede quedarse sin
+/// entrar porque se cayó internet. Devuelve cuántos usuarios llegaron.
+pub fn bajar_personal(conexion: &rusqlite::Connection, nube: &Nube) -> Result<usize, String> {
+    let respuesta = ureq::get(&format!("{}/pos/personal", nube.base))
+        .timeout(ESPERA)
+        .set("Authorization", &format!("Bearer {}", nube.token))
+        .call()
+        .map_err(|e| e.to_string())?;
+    let personal: Personal = respuesta.into_json().map_err(|e| format!("Respuesta ilegible: {e}"))?;
+    pos_core::usuarios::sincronizar_personal(conexion, &personal.roles, &personal.usuarios)
+        .map_err(|e| e.to_string())?;
+    Ok(personal.usuarios.len())
+}
+
 /// Marca un producto como disponible o agotado en la nube.
 ///
 /// Necesita internet, como el canje: es un cambio del catálogo del negocio, y

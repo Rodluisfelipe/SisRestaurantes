@@ -21,6 +21,7 @@ pub mod impuestos;
 pub mod negocio;
 pub mod pagos;
 pub mod pausadas;
+pub mod permisos;
 pub mod sync;
 pub mod turnos;
 pub mod usuarios;

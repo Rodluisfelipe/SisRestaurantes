@@ -43,6 +43,46 @@ pub struct Estado {
     pub datos: std::path::PathBuf,
     /// Quién tiene la caja ahora mismo. Se cierra sola por inactividad.
     pub sesion: Mutex<Option<usuarios::Usuario>>,
+    /// Un permiso prestado: alguien que lo tiene puso su PIN para que quien
+    /// está en la caja haga **una** cosa. Ver `exige`.
+    pub autorizacion: Mutex<Option<Autorizacion>>,
+}
+
+pub struct Autorizacion {
+    permiso: String,
+    nombre: String,
+    expira: i64,
+}
+
+/// ¿Puede hacerse esto ahora? Devuelve quién responde por ello.
+///
+/// Pasa si el usuario de la caja tiene el permiso, o si alguien que lo tiene
+/// acaba de poner su PIN para esto mismo (`autorizar`). Esa autorización
+/// sirve **una vez** y por un minuto: un PIN de supervisor puesto para un
+/// descuento no puede quedar abierto para lo que venga después.
+///
+/// Se revisa aquí y no solo en la pantalla: la pantalla esconde botones, pero
+/// quien manda es la caja.
+fn exige(estado: &Estado, permiso: &str) -> Result<String, String> {
+    let Some(usuario) = estado.sesion.lock().ok().and_then(|s| s.clone()) else {
+        return Err("Primero ingresa con tu PIN".into());
+    };
+    if usuario.puede(permiso) {
+        return Ok(usuario.nombre);
+    }
+    if let Ok(mut prestada) = estado.autorizacion.lock() {
+        if let Some(a) = prestada.take() {
+            if a.permiso == permiso && a.expira >= ahora_epoch() {
+                return Ok(a.nombre);
+            }
+        }
+    }
+    let nombre = pos_core::permisos::PERMISOS
+        .iter()
+        .find(|(k, _)| *k == permiso)
+        .map(|(_, n)| *n)
+        .unwrap_or(permiso);
+    Err(format!("Tu usuario no tiene permiso para: {}", nombre.to_lowercase()))
 }
 
 /// A dónde sincronizar. Vacío = caja sin configurar: vende igual, pero no sube.
@@ -369,6 +409,7 @@ async fn cobrar(
     nueva: venta::NuevaVenta,
     voucher: Option<pagos::Voucher>,
 ) -> Result<Cobro, String> {
+    exige(&estado, "cobrar")?;
     let ahora = ahora_local();
 
     /* El turno y el cajero los pone el backend nativo, no la interfaz. Si
@@ -506,6 +547,7 @@ async fn cobrar(
 /// que más se abusan, y el patrón solo se ve si cada apertura deja rastro.
 #[tauri::command]
 async fn abrir_cajon(estado: State<'_, Estado>, motivo: String) -> Result<(), String> {
+    exige(&estado, "gaveta")?;
     anotar_excepcion(&estado, auditoria::TipoExcepcion::AbrirCajon, "", 0, &motivo, "");
 
     /* El pulso viaja por el mismo cable que la tirilla: el cajón cuelga del
@@ -683,10 +725,10 @@ fn crear_usuario(
             .lock()
             .ok()
             .and_then(|s| s.clone())
-            .map(|u| u.rol == usuarios::Rol::Supervisor)
+            .map(|u| u.puede("configurar"))
             .unwrap_or(false);
         if !soy_supervisor {
-            return Err("Solo un supervisor puede crear usuarios".into());
+            return Err("Tu usuario no puede crear usuarios".into());
         }
     }
 
@@ -894,6 +936,7 @@ fn retomar_venta(estado: State<Estado>, id: String) -> Result<Option<String>, St
 /// Descarta una venta en espera. Queda registrada: es plata que no se cobró.
 #[tauri::command]
 fn descartar_pausada(estado: State<Estado>, id: String, motivo: String) -> Result<(), String> {
+    exige(&estado, "descartar")?;
     let (detalle, monto) = {
         let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
         let turno = turnos::activo(&base).map_err(|e| e.to_string())?.ok_or("No hay turno abierto")?;
@@ -921,12 +964,20 @@ fn descartar_pausada(estado: State<Estado>, id: String, motivo: String) -> Resul
 /// queda logueado y el cajero sigue vendiendo con su usuario". Lo segundo
 /// borraría de un plumazo toda la trazabilidad del turno.
 #[tauri::command]
-fn autorizar(estado: State<Estado>, pin: String) -> Result<String, String> {
-    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
-    let quien = usuarios::entrar(&base, &pin, ahora_epoch()).map_err(|e| e.to_string())?;
+fn autorizar(estado: State<Estado>, pin: String, permiso: String) -> Result<String, String> {
+    let quien = {
+        let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+        usuarios::entrar(&base, &pin, ahora_epoch()).map_err(|e| e.to_string())?
+    };
 
-    if quien.rol != usuarios::Rol::Supervisor {
-        return Err("Ese PIN no es de un supervisor".into());
+    /* Ya no basta con "ser supervisor": el PIN tiene que ser de alguien cuyo
+       rol tenga **este** permiso. El que puede hacer devoluciones no por eso
+       puede autorizar descuentos. */
+    if !quien.puede(&permiso) {
+        return Err(format!("{} no tiene permiso para esto", quien.nombre));
+    }
+    if let Ok(mut prestada) = estado.autorizacion.lock() {
+        *prestada = Some(Autorizacion { permiso, nombre: quien.nombre.clone(), expira: ahora_epoch() + 60 });
     }
     Ok(quien.nombre)
 }
@@ -942,6 +993,7 @@ fn anular_item(
     // De qué mesa se quita, si la línea ya se mandó a la cocina.
     cuenta: Option<String>,
 ) -> Result<(), String> {
+    exige(&estado, "anular")?;
     if autorizo.trim().is_empty() {
         return Err("Falta la autorización de un supervisor".into());
     }
@@ -1000,6 +1052,7 @@ fn registrar_descuento(
     motivo: String,
     autorizo: String,
 ) -> Result<(), String> {
+    exige(&estado, "descuento")?;
     if autorizo.trim().is_empty() {
         return Err("Falta la autorización de un supervisor".into());
     }
@@ -1084,6 +1137,7 @@ fn devolver(
     motivo: String,
     autorizo: String,
 ) -> Result<devoluciones::Devolucion, String> {
+    exige(&estado, "devolucion")?;
     let cajero = estado
         .sesion
         .lock()
@@ -1135,6 +1189,7 @@ fn turno_activo(estado: State<Estado>) -> Result<Option<turnos::Turno>, String> 
 
 #[tauri::command]
 fn abrir_turno(estado: State<Estado>, fondo: i64) -> Result<turnos::Turno, String> {
+    exige(&estado, "turno")?;
     let usuario = estado
         .sesion
         .lock()
@@ -1154,6 +1209,7 @@ fn mover_efectivo(
     monto: i64,
     motivo: String,
 ) -> Result<(), String> {
+    exige(&estado, "efectivo")?;
     let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
     let turno = turnos::activo(&base).map_err(|e| e.to_string())?.ok_or("No hay turno abierto")?;
     let quien = estado
@@ -1230,6 +1286,7 @@ async fn imprimir_arqueo(app: tauri::AppHandle, cierre: turnos::CierreTurno) -> 
 /// el único donde se puede hacer un `TRUNCATE` del WAL sin frenar a nadie.
 #[tauri::command]
 fn cerrar_turno(estado: State<Estado>, contado: i64) -> Result<turnos::CierreTurno, String> {
+    exige(&estado, "turno")?;
     let cierre = {
         let mut base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
         turnos::cerrar(&mut base, Pesos(contado), &ahora_local()).map_err(|e| e.to_string())?
@@ -1391,7 +1448,8 @@ fn url_nube(estado: State<Estado>) -> String {
 /// No toca ventas ni turnos. Es para cuando el equipo cambia de dueño o sale a
 /// reparación: lo que se va es la llave, no la historia.
 #[tauri::command]
-fn desconectar_nube() -> Result<(), String> {
+fn desconectar_nube(estado: State<Estado>) -> Result<(), String> {
+    exige(&estado, "configurar")?;
     credenciales::borrar()
 }
 
@@ -1415,6 +1473,7 @@ fn configurar_impresora(
     rol: String,
     config: perifericos::Config,
 ) -> Result<(), String> {
+    exige(&estado, "configurar")?;
     if rol != "caja" && rol != "cocina" {
         return Err("Solo hay impresora de caja y de cocina".into());
     }
@@ -1464,6 +1523,11 @@ async fn probar_impresora(estado: State<'_, Estado>, rol: String) -> Result<(), 
 /// venta ya ocurrió y la gaveta ya se abrió una vez.
 #[tauri::command]
 async fn reimprimir(estado: State<'_, Estado>, venta_id: Option<String>) -> Result<(), String> {
+    /* Reimprimir la última —la que acaba de fallar por falta de papel— lo
+       puede cualquiera que cobra. Buscar una venta vieja es ver ventas. */
+    if venta_id.is_some() {
+        exige(&estado, "ventas")?;
+    }
     let (completa, config, negocio) = {
         let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
 
@@ -1536,6 +1600,7 @@ async fn pedidos_web(app: tauri::AppHandle) -> Result<Vec<pedidos_web::PedidoWeb
 
 #[tauri::command]
 async fn mover_pedido_web(app: tauri::AppHandle, id: String, estado: String) -> Result<(), String> {
+    exige(&app.state::<Estado>(), "pedidos_web")?;
     tauri::async_runtime::spawn_blocking(move || {
         let destino = destino_nube(&app.state::<Estado>())?;
         pedidos_web::mover(&destino, &id, &estado)
@@ -1570,6 +1635,7 @@ async fn imprimir_pedido_web(
 /// reimprimir. Sin totales por medio: el arqueo es ciego.
 #[tauri::command]
 fn resumen_turno(estado: State<Estado>) -> Result<turnos::Resumen, String> {
+    exige(&estado, "ventas")?;
     let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
     let turno = turnos::activo(&base)
         .map_err(|e| e.to_string())?
@@ -1586,6 +1652,7 @@ fn resumen_turno(estado: State<Estado>) -> Result<turnos::Resumen, String> {
 /// filas, tallas incluidas.
 #[tauri::command]
 async fn marcar_agotado(app: tauri::AppHandle, producto_id: String, agotado: bool) -> Result<(), String> {
+    exige(&app.state::<Estado>(), "agotados")?;
     tauri::async_runtime::spawn_blocking(move || {
         let estado = app.state::<Estado>();
         let destino = destino_nube(&estado)?;
@@ -1644,6 +1711,7 @@ fn apartadas(estado: State<Estado>) -> Result<Vec<sync::Apartada>, String> {
 /// Vuelve a encolar lo apartado y sube de una.
 #[tauri::command]
 async fn reintentar_apartadas(app: tauri::AppHandle) -> Result<ResumenSync, String> {
+    exige(&app.state::<Estado>(), "configurar")?;
     tauri::async_runtime::spawn_blocking(move || {
         let estado = app.state::<Estado>();
         {
@@ -1701,6 +1769,7 @@ fn configurar_datafono(
     puerto: u16,
     espera: Option<u64>,
 ) -> Result<(), String> {
+    exige(&estado, "configurar")?;
     let anfitrion = host.trim().to_string();
 
     /* Un datáfono de red sin dirección es un datáfono que no existe, y la venta
@@ -1845,6 +1914,7 @@ fn hardware_del_panel(estado: State<Estado>) -> Result<bool, String> {
 /// un solo sitio. Lo que llegue en la próxima sincronización pisará lo local.
 #[tauri::command]
 fn devolver_hardware_al_panel(estado: State<Estado>) -> Result<(), String> {
+    exige(&estado, "configurar")?;
     let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
     configuracion::devolver_al_panel(&base);
     Ok(())
@@ -2091,6 +2161,12 @@ fn sincronizar_ahora(estado: &Estado, app: &tauri::AppHandle) -> ResumenSync {
             0
         }
     };
+
+    /* El personal y sus roles, del panel. Si no se pudo, la caja sigue con
+       los que tenía: nadie se queda afuera porque se cayó la señal. */
+    if let Err(e) = nube::bajar_personal(&base, &destino) {
+        println!("El personal no se pudo bajar: {e}");
+    }
 
     /* Si el dueño le cambió el nombre al negocio en el panel, la próxima
        tirilla ya sale con el nuevo. Sin esto habría que reiniciar la caja. */
@@ -2774,6 +2850,7 @@ pub fn run() {
                 base: Mutex::new(base),
                 negocio: Mutex::new(if nombre.is_empty() { "MenuBy POS".into() } else { nombre }),
                 sesion: Mutex::new(None),
+                autorizacion: Mutex::new(None),
             });
 
             /* Un hilo aparte, no un temporizador en el webview: la caja tiene
@@ -3111,5 +3188,71 @@ mod pruebas_tirilla {
             fuente.contains(&aguja),
             "la venta dejó de imprimir la tirilla completa",
         );
+    }
+}
+
+#[cfg(test)]
+mod pruebas_permisos {
+    use super::*;
+
+    fn caja_con(permisos: &[&str]) -> Estado {
+        let usuario = usuarios::Usuario {
+            id: "u".into(),
+            nombre: "Ana".into(),
+            rol: "r".into(),
+            rol_nombre: "Cajero".into(),
+            permisos: permisos.iter().map(|p| p.to_string()).collect(),
+        };
+        Estado {
+            base: Mutex::new(rusqlite::Connection::open_in_memory().unwrap()),
+            negocio: Mutex::new(String::new()),
+            datos: std::env::temp_dir(),
+            sesion: Mutex::new(Some(usuario)),
+            autorizacion: Mutex::new(None),
+        }
+    }
+
+    fn prestar(estado: &Estado, permiso: &str, expira: i64) {
+        *estado.autorizacion.lock().unwrap() =
+            Some(Autorizacion { permiso: permiso.into(), nombre: "Felipe".into(), expira });
+    }
+
+    #[test]
+    fn con_el_permiso_pasa_a_su_nombre() {
+        assert_eq!(exige(&caja_con(&["descuento"]), "descuento").unwrap(), "Ana");
+    }
+
+    #[test]
+    fn sin_el_permiso_no_pasa() {
+        assert!(exige(&caja_con(&["cobrar"]), "descuento").is_err());
+    }
+
+    #[test]
+    fn un_permiso_prestado_sirve_una_sola_vez_y_a_nombre_de_quien_lo_presto() {
+        let caja = caja_con(&["cobrar"]);
+        prestar(&caja, "descuento", ahora_epoch() + 60);
+        assert_eq!(exige(&caja, "descuento").unwrap(), "Felipe");
+        assert!(exige(&caja, "descuento").is_err(), "el préstamo no se reutiliza");
+    }
+
+    #[test]
+    fn un_permiso_prestado_no_sirve_para_otra_cosa() {
+        let caja = caja_con(&["cobrar"]);
+        prestar(&caja, "descuento", ahora_epoch() + 60);
+        assert!(exige(&caja, "devolucion").is_err());
+    }
+
+    #[test]
+    fn un_permiso_prestado_vence() {
+        let caja = caja_con(&["cobrar"]);
+        prestar(&caja, "descuento", ahora_epoch() - 1);
+        assert!(exige(&caja, "descuento").is_err());
+    }
+
+    #[test]
+    fn sin_nadie_en_la_caja_no_pasa_nada() {
+        let caja = caja_con(&["descuento"]);
+        *caja.sesion.lock().unwrap() = None;
+        assert!(exige(&caja, "descuento").is_err());
     }
 }

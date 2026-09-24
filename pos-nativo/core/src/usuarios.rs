@@ -10,12 +10,13 @@
 //! seguidos la caja se bloquea un minuto, y probar diez mil PINes a un minuto
 //! por cada cinco deja de ser un ataque y pasa a ser una tarde perdida.
 //!
-//! Dos roles y nada más, porque un POS con doce permisos termina con todos los
-//! cajeros usando el usuario del dueño:
+//! Qué puede hacer cada usuario lo dice su rol, y los roles son listas de
+//! permisos (ver `permisos`). Los dos de fábrica —cajero y supervisor— siguen
+//! existiendo para las cajas que no reciben personal del panel.
 //!
-//! - **Cajero**: vende, y pide su propio arqueo.
-//! - **Supervisor**: además anula, abre el cajón sin venta y cierra turnos
-//!   ajenos.
+//! Los usuarios pueden nacer en la caja (el dueño, la primera vez) o bajar del
+//! panel. Los del panel traen el PIN en bcrypt, que es lo que usa el backend;
+//! los de la caja, en Argon2. Aquí se verifican los dos.
 
 use argon2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
 use rand_core::OsRng;
@@ -39,17 +40,92 @@ impl Rol {
         }
     }
 
-    fn desde(texto: &str) -> Rol {
-        // Ante cualquier cosa rara, el rol de menos permisos.
-        if texto == "supervisor" { Rol::Supervisor } else { Rol::Cajero }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Usuario {
     pub id: String,
     pub nombre: String,
-    pub rol: Rol,
+    /// El id del rol.
+    pub rol: String,
+    /// Cómo se llama el rol, para la pantalla.
+    #[serde(default)]
+    pub rol_nombre: String,
+    /// Lo que puede hacer, resuelto al entrar.
+    #[serde(default)]
+    pub permisos: Vec<String>,
+}
+
+impl Usuario {
+    pub fn puede(&self, permiso: &str) -> bool {
+        self.permisos.iter().any(|p| p == permiso)
+    }
+
+    fn con_rol(conexion: &Connection, id: String, nombre: String, rol_id: String) -> Usuario {
+        let rol = crate::permisos::rol(conexion, &rol_id);
+        Usuario { id, nombre, rol: rol_id, rol_nombre: rol.nombre, permisos: rol.permisos }
+    }
+}
+
+/// Un usuario que bajó del panel.
+#[derive(Debug, Clone, Deserialize)]
+pub struct UsuarioRemoto {
+    pub id: String,
+    pub nombre: String,
+    /// bcrypt, tal como lo guarda el backend.
+    pub pin_hash: String,
+    pub rol: String,
+    #[serde(default = "verdadero")]
+    pub activo: bool,
+}
+
+fn verdadero() -> bool {
+    true
+}
+
+/// Si un PIN corresponde a un hash, sea Argon2 (hecho en la caja) o bcrypt
+/// (hecho en el panel).
+fn coincide(pin: &str, hash: &str) -> bool {
+    if hash.starts_with("$2") {
+        return bcrypt::verify(pin, hash).unwrap_or(false);
+    }
+    PasswordHash::new(hash)
+        .map(|guardado| Argon2::default().verify_password(pin.as_bytes(), &guardado).is_ok())
+        .unwrap_or(false)
+}
+
+/// Deja en la caja el personal que definió el panel.
+///
+/// Si el panel mandó personal, **manda él**: los usuarios que se crearon en la
+/// caja se desactivan —no se borran: sus turnos y ventas los siguen
+/// nombrando—. Así el dueño administra a su gente en un solo lugar para todas
+/// sus cajas, y un cajero que se fue deja de entrar en todas a la vez.
+///
+/// Con la lista vacía no se toca nada: un negocio que nunca configuró personal
+/// en el panel sigue con los usuarios de su caja.
+pub fn sincronizar_personal(
+    conexion: &Connection,
+    roles: &[crate::permisos::Rol],
+    usuarios: &[UsuarioRemoto],
+) -> Result<()> {
+    if usuarios.is_empty() {
+        return Ok(());
+    }
+    crate::permisos::guardar_roles(conexion, roles)?;
+    let tx = conexion.unchecked_transaction()?;
+    tx.execute("UPDATE usuarios SET activo = 0", [])?;
+    for u in usuarios {
+        if u.pin_hash.is_empty() {
+            continue;
+        }
+        tx.execute(
+            "INSERT INTO usuarios (id, nombre, rol, pin_hash, activo) VALUES (?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT(id) DO UPDATE SET nombre = excluded.nombre, rol = excluded.rol,
+               pin_hash = excluded.pin_hash, activo = excluded.activo",
+            params![u.id, u.nombre.trim(), u.rol, u.pin_hash, u.activo as i64],
+        )?;
+    }
+    tx.commit()
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -103,7 +179,7 @@ pub fn guardar(
         params![id, nombre.trim(), rol.como_texto(), hash],
     )?;
 
-    Ok(Usuario { id, nombre: nombre.trim().to_string(), rol })
+    Ok(Usuario::con_rol(conexion, id, nombre.trim().to_string(), rol.como_texto().to_string()))
 }
 
 /// Verifica un PIN contra los usuarios activos.
@@ -126,13 +202,12 @@ pub fn entrar(conexion: &Connection, pin: &str, ahora_epoch: i64) -> Result<Usua
         ))
     })?;
 
-    for fila in filas {
-        let (id, nombre, rol, hash) = fila?;
-        let Ok(guardado) = PasswordHash::new(&hash) else { continue };
-
-        if Argon2::default().verify_password(pin.as_bytes(), &guardado).is_ok() {
+    let filas: Vec<(String, String, String, String)> = filas.collect::<Result<_>>()?;
+    drop(consulta);
+    for (id, nombre, rol, hash) in filas {
+        if coincide(pin, &hash) {
             limpiar_fallos(conexion)?;
-            return Ok(Usuario { id, nombre, rol: Rol::desde(&rol) });
+            return Ok(Usuario::con_rol(conexion, id, nombre, rol));
         }
     }
 
@@ -187,14 +262,10 @@ fn escribir(conexion: &Connection, clave: &str, valor: &str) -> Result<(), Error
 /// Los usuarios de la caja, para la pantalla de configuración.
 pub fn listar(conexion: &Connection) -> Result<Vec<Usuario>> {
     let mut consulta = conexion.prepare("SELECT id, nombre, rol FROM usuarios WHERE activo = 1 ORDER BY nombre")?;
-    let filas = consulta.query_map([], |f| {
-        Ok(Usuario {
-            id: f.get(0)?,
-            nombre: f.get(1)?,
-            rol: Rol::desde(&f.get::<_, String>(2)?),
-        })
-    })?;
-    filas.collect()
+    let filas: Vec<(String, String, String)> = consulta
+        .query_map([], |f| Ok((f.get(0)?, f.get(1)?, f.get(2)?)))?
+        .collect::<Result<_>>()?;
+    Ok(filas.into_iter().map(|(id, nombre, rol)| Usuario::con_rol(conexion, id, nombre, rol)).collect())
 }
 
 #[cfg(test)]
@@ -236,7 +307,7 @@ mod pruebas {
     fn entra_con_su_pin_y_trae_su_rol() {
         let c = con_usuarios();
         assert_eq!(entrar(&c, "1234", 1_000).unwrap().nombre, "Ana");
-        assert_eq!(entrar(&c, "9999", 1_000).unwrap().rol, Rol::Supervisor);
+        assert_eq!(entrar(&c, "9999", 1_000).unwrap().rol, "supervisor");
     }
 
     #[test]
@@ -289,5 +360,74 @@ mod pruebas {
         let c = db::abrir_en_memoria().unwrap();
         assert!(guardar(&c, "X", "12", Rol::Cajero).is_err());
         assert!(guardar(&c, "X", "abcd", Rol::Cajero).is_err());
+    }
+
+    #[test]
+    fn el_usuario_trae_los_permisos_de_su_rol() {
+        let c = con_usuarios();
+        let ana = entrar(&c, "1234", 1_000).unwrap();
+        assert!(ana.puede("cobrar"));
+        assert!(!ana.puede("descuento"));
+        assert!(entrar(&c, "9999", 1_000).unwrap().puede("descuento"));
+    }
+
+    #[test]
+    fn entra_con_un_pin_hecho_en_el_panel() {
+        // El backend guarda bcrypt; la caja lo verifica sin internet.
+        let c = db::abrir_en_memoria().unwrap();
+        let hash = bcrypt::hash("4321", 4).unwrap();
+        let roles = vec![crate::permisos::Rol { id: "r1".into(), nombre: "Mesero".into(), permisos: vec!["cobrar".into()] }];
+        sincronizar_personal(&c, &roles, &[UsuarioRemoto {
+            id: "u1".into(), nombre: "Luis".into(), pin_hash: hash, rol: "r1".into(), activo: true,
+        }]).unwrap();
+        let luis = entrar(&c, "4321", 1_000).unwrap();
+        assert_eq!(luis.nombre, "Luis");
+        assert_eq!(luis.rol_nombre, "Mesero");
+    }
+
+    #[test]
+    fn con_personal_del_panel_los_de_la_caja_dejan_de_entrar() {
+        let c = con_usuarios();
+        let hash = bcrypt::hash("4321", 4).unwrap();
+        sincronizar_personal(&c, &crate::permisos::de_fabrica(), &[UsuarioRemoto {
+            id: "u1".into(), nombre: "Luis".into(), pin_hash: hash, rol: "cajero".into(), activo: true,
+        }]).unwrap();
+        assert!(matches!(entrar(&c, "1234", 1_000), Err(ErrorAcceso::PinInvalido)));
+        assert_eq!(listar(&c).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn con_la_lista_vacia_no_se_toca_nada() {
+        let c = con_usuarios();
+        sincronizar_personal(&c, &[], &[]).unwrap();
+        assert_eq!(entrar(&c, "1234", 1_000).unwrap().nombre, "Ana");
+    }
+
+    #[test]
+    fn un_usuario_desactivado_en_el_panel_no_entra() {
+        let c = db::abrir_en_memoria().unwrap();
+        let hash = bcrypt::hash("4321", 4).unwrap();
+        sincronizar_personal(&c, &crate::permisos::de_fabrica(), &[
+            UsuarioRemoto { id: "u1".into(), nombre: "Luis".into(), pin_hash: hash.clone(), rol: "cajero".into(), activo: false },
+            UsuarioRemoto { id: "u2".into(), nombre: "Sara".into(), pin_hash: bcrypt::hash("1111", 4).unwrap(), rol: "cajero".into(), activo: true },
+        ]).unwrap();
+        assert!(entrar(&c, "4321", 1_000).is_err());
+    }
+
+    #[test]
+    fn acepta_el_hash_que_hace_el_backend() {
+        /* Generado con el bcryptjs del backend (costo 6, PIN 2468). Si el
+           backend cambiara de librería o de formato, esta prueba lo diría
+           antes de que un cajero se quede sin entrar. */
+        let c = db::abrir_en_memoria().unwrap();
+        sincronizar_personal(&c, &crate::permisos::de_fabrica(), &[UsuarioRemoto {
+            id: "u1".into(),
+            nombre: "Luis".into(),
+            pin_hash: "$2b$06$lO3zY15xqY3m5.UFk5hfoubDXxlUJWkrjP.IMkMTS1d69.aK79Dqy".into(),
+            rol: "cajero".into(),
+            activo: true,
+        }]).unwrap();
+        assert_eq!(entrar(&c, "2468", 1_000).unwrap().nombre, "Luis");
+        assert!(entrar(&c, "2469", 1_000).is_err());
     }
 }

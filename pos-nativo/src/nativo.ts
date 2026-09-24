@@ -710,7 +710,17 @@ export const pesos = (n: number) => '$' + Math.round(n).toLocaleString('es-CO');
 export interface Usuario {
   id: string;
   nombre: string;
-  rol: 'cajero' | 'supervisor';
+  /** El id del rol. */
+  rol: string;
+  /** Cómo se llama el rol: "Cajero", "Supervisor", "Cajero de confianza"… */
+  rol_nombre?: string;
+  /** Lo que puede hacer. Los decide el dueño en el panel. */
+  permisos?: string[];
+}
+
+/** Si el usuario tiene un permiso. */
+export function puede(u: Usuario | null | undefined, permiso: string): boolean {
+  return Boolean(u?.permisos?.includes(permiso));
 }
 
 export interface Turno {
@@ -764,7 +774,11 @@ export interface CierreTurno {
 
 /* En modo navegador hay una sesión de mentira para poder diseñar las pantallas
    sin compilar Rust. Nunca toca la base ni cobra. */
-const DEMO_USUARIO: Usuario = { id: 'demo', nombre: 'Demo', rol: 'supervisor' };
+const DEMO_USUARIO: Usuario = {
+  id: 'demo', nombre: 'Demo', rol: 'supervisor', rol_nombre: 'Supervisor',
+  permisos: ['cobrar', 'turno', 'ventas', 'pedidos_web', 'efectivo', 'gaveta', 'descuento', 'anular',
+    'devolucion', 'descartar', 'precio_libre', 'agotados', 'configurar'],
+};
 let demoTurno: Turno | null = null;
 
 export async function entrar(pin: string): Promise<Usuario> {
@@ -904,12 +918,16 @@ export async function descartarPausada(id: string, motivo: string): Promise<void
  * El supervisor autoriza y se va; el turno sigue siendo del cajero. Si la
  * sesión cambiara, la trazabilidad del turno se borraría de un plumazo.
  */
-export async function autorizar(pin: string): Promise<string> {
+/**
+ * Alguien que tiene `permiso` pone su PIN para que quien está en la caja haga
+ * esa cosa **una vez**. Devuelve quién autorizó.
+ */
+export async function autorizar(pin: string, permiso: string): Promise<string> {
   if (!enTauri) {
     if (pin.length < 4) throw new Error('PIN incorrecto');
     return 'Supervisor demo';
   }
-  return invoke<string>('autorizar', { pin });
+  return invoke<string>('autorizar', { pin, permiso });
 }
 
 /**
