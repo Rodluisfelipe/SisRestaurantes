@@ -96,7 +96,9 @@ export interface LineaVenta {
 
 /** Los medios que acepta la caja. El orden es el que se ve en pantalla. */
 export const MEDIOS = ['efectivo', 'tarjeta', 'transferencia'] as const;
-export type Medio = (typeof MEDIOS)[number];
+/* "credito" no está en la lista fija: solo aparece si el cliente asociado
+   tiene crédito habilitado. */
+export type Medio = (typeof MEDIOS)[number] | 'credito';
 
 /**
  * Un pago. Una venta puede tener varios.
@@ -376,6 +378,29 @@ export interface Cliente {
   saldo_favor: number;
   estado: string;
   actualizado: string;
+  /** Si se le puede fiar, hasta cuánto, y cuánto debe. */
+  credito_habilitado?: boolean;
+  cupo?: number;
+  saldo_credito?: number;
+}
+
+/** Lo que todavía se le puede fiar. null = no tiene crédito. */
+export function cupoDisponible(c: Cliente | null | undefined): number | null {
+  if (!c?.credito_habilitado) return null;
+  return Math.max(0, (c.cupo ?? 0) - (c.saldo_credito ?? 0));
+}
+
+export interface Abono {
+  id: string;
+  cliente_id: string;
+  monto: number;
+  medio: string;
+  saldo_despues: number;
+}
+
+/** Un abono de quien debe. En efectivo entra a la gaveta e imprime comprobante. */
+export async function registrarAbono(clienteId: string, monto: number, medio: string): Promise<Abono> {
+  return invoke<Abono>('registrar_abono', { clienteId, monto, medio });
 }
 
 export interface Recompensa {
@@ -1131,6 +1156,49 @@ export async function marcarAgotado(productoId: string, agotado: boolean): Promi
 export async function apagados(): Promise<Apagado[]> {
   if (!enTauri) return [];
   return invoke<Apagado[]>('apagados');
+}
+
+/* ── Cortes X y Z ────────────────────────────────────────────────────── */
+
+export interface InformeCorte {
+  tipo: 'X' | 'Z';
+  numero: number;
+  desde: string;
+  hasta: string;
+  cajero: string;
+  ventas: number;
+  primera: number;
+  ultima: number;
+  bruto: number;
+  descuentos: number;
+  propinas: number;
+  total: number;
+  base_inc: number;
+  inc: number;
+  base_iva: number;
+  iva: number;
+  exento: number;
+  por_medio: { metodo: string; total: number }[];
+  devoluciones: number;
+  devoluciones_monto: number;
+  anulaciones: number;
+  anulaciones_monto: number;
+  borradores: number;
+  aperturas_gaveta: number;
+}
+
+export async function corteX(): Promise<InformeCorte> {
+  return invoke<InformeCorte>('corte_x');
+}
+
+/** Cierra el día: no tiene vuelta. */
+export async function corteZ(): Promise<InformeCorte> {
+  return invoke<InformeCorte>('corte_z');
+}
+
+export async function imprimirCorte(informe: InformeCorte): Promise<void> {
+  if (!enTauri) return;
+  await invoke('imprimir_corte', { informe });
 }
 
 /* ── Ventas del turno ─────────────────────────────────────────────────── */

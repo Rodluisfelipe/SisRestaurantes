@@ -321,6 +321,9 @@ mod pruebas {
                 saldo_favor: 0,
                 estado: "active".into(),
                 actualizado: "2026-09-20T10:00:00Z".into(),
+                credito_habilitado: false,
+                cupo: 0,
+                saldo_credito: 0,
             }],
         )
         .unwrap();

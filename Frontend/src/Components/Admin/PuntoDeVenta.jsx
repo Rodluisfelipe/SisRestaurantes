@@ -31,6 +31,7 @@ const PESTANAS = [
   { id: 'cajas', nombre: 'Cajas' },
   { id: 'personal', nombre: 'Personal' },
   { id: 'cierres', nombre: 'Cierres' },
+  { id: 'cortes', nombre: 'Cortes Z' },
   { id: 'auditoria', nombre: 'Auditoría' },
   { id: 'devoluciones', nombre: 'Devoluciones' },
   { id: 'ventas', nombre: 'Ventas' },
@@ -108,6 +109,7 @@ export default function PuntoDeVenta() {
       {pestana === 'cajas' && <Cajas />}
       {pestana === 'personal' && <PersonalPos businessId={businessId} />}
       {pestana === 'cierres' && <Cierres businessId={businessId} desde={desde} hasta={hasta} />}
+      {pestana === 'cortes' && <CortesZ businessId={businessId} desde={desde} hasta={hasta} />}
       {pestana === 'auditoria' && <Auditoria businessId={businessId} desde={desde} hasta={hasta} />}
       {pestana === 'devoluciones' && <Devoluciones businessId={businessId} desde={desde} hasta={hasta} />}
       {pestana === 'ventas' && <Ventas businessId={businessId} desde={desde} hasta={hasta} />}
@@ -308,6 +310,58 @@ function Cierres({ businessId, desde, hasta }) {
         );
       })}
     </div>
+    </div>
+  );
+}
+
+/**
+ * Los cortes Z: el cierre del día de cada caja, numerado. Es el papel que pide
+ * el contador; aquí se consulta sin tener que buscar la tirilla.
+ */
+function CortesZ({ businessId, desde, hasta }) {
+  const { datos, error, cargando } = useConsulta('cortes', businessId, desde, hasta);
+  const [abierto, setAbierto] = useState(null);
+  const cortes = datos?.cortes || [];
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+      <Estado error={error} cargando={cargando} vacio={!cortes.length} texto="No hay cortes Z en este periodo. Se sacan desde la caja, en Ventas del turno." />
+      {cortes.map((c) => {
+        const i = c.informe || {};
+        const verlo = abierto === c._id;
+        return (
+          <div key={c._id}>
+            <button onClick={() => setAbierto(verlo ? null : c._id)} className="w-full flex items-center gap-3 p-3.5 text-left hover:bg-slate-50">
+              <div className="flex-1 min-w-0">
+                <p className="text-[13.5px] font-bold text-slate-800">Z #{c.numero}{c.cajaNombre ? ` · ${c.cajaNombre}` : ''}</p>
+                <p className="text-[11.5px] text-slate-400">{fechaHora(c.createdAt)} · {c.cajero} · {c.ventas} ventas{i.primera ? ` (#${i.primera} a #${i.ultima})` : ''}</p>
+              </div>
+              <span className="text-[14px] font-black tabular-nums">{pesos(c.total)}</span>
+            </button>
+            {verlo && (
+              <div className="px-4 pb-4 grid md:grid-cols-3 gap-4 text-[12.5px]">
+                <div className="space-y-1">
+                  <Fila texto="Venta bruta" valor={pesos(i.bruto)} />
+                  <Fila texto="Descuentos" valor={pesos(i.descuentos)} />
+                  <Fila texto="Propinas" valor={pesos(i.propinas)} />
+                  <Fila texto="Devoluciones" valor={`${i.devoluciones ?? 0} · ${pesos(i.devoluciones_monto)}`} />
+                </div>
+                <div className="space-y-1">
+                  <Fila texto="Base INC 8%" valor={pesos(i.base_inc)} />
+                  <Fila texto="INC" valor={pesos(i.inc)} />
+                  <Fila texto="Base IVA 19%" valor={pesos(i.base_iva)} />
+                  <Fila texto="IVA" valor={pesos(i.iva)} />
+                  <Fila texto="Exento" valor={pesos(i.exento)} />
+                </div>
+                <div className="space-y-1">
+                  {(i.por_medio || []).map((m) => <Fila key={m.metodo} texto={MEDIO[m.metodo] ?? m.metodo} valor={pesos(m.total)} />)}
+                  <Fila texto="Anuladas en cocina" valor={`${i.anulaciones ?? 0} · ${pesos(i.anulaciones_monto)}`} />
+                  <Fila texto="Gaveta sin venta" valor={i.aperturas_gaveta ?? 0} />
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Printer, X } from 'lucide-react';
-import { pesos, reimprimir, resumenTurno, type ResumenTurno } from './nativo';
+import { corteX, corteZ, pesos, reimprimir, resumenTurno, type InformeCorte, type ResumenTurno } from './nativo';
+import Corte from './Corte';
 
 const MEDIO: Record<string, string> = {
   efectivo: 'Efectivo',
@@ -27,11 +28,25 @@ function hora(creada: string): string {
 export default function VentasTurno({
   onCerrar,
   onFallo,
+  conPermiso,
 }: {
   onCerrar: () => void;
   onFallo: (mensaje: string) => void;
+  /** Hacer algo si se puede, o pedir el PIN de quien pueda. */
+  conPermiso: (permiso: string, titulo: string, accion: () => void) => void;
 }) {
+  const [corte, setCorte] = useState<InformeCorte | null>(null);
+  /* El Z cierra el día: se pide un segundo toque en el mismo botón. */
+  const [confirmandoZ, setConfirmandoZ] = useState(false);
+  const sacar = (tipo: 'X' | 'Z') =>
+    conPermiso('cortes', tipo === 'Z' ? 'Sacar el corte Z' : 'Sacar el corte X', () => {
+      (tipo === 'Z' ? corteZ() : corteX())
+        .then(setCorte)
+        .catch((e) => setError(String(e).replace(/^Error:\s*/, '')))
+        .finally(() => setConfirmandoZ(false));
+    });
   const [datos, setDatos] = useState<ResumenTurno | null>(null);
+  // Un error de carga o de un corte ("Cierra el turno antes del Z").
   const [error, setError] = useState('');
   const [imprimiendo, setImprimiendo] = useState('');
 
@@ -56,6 +71,8 @@ export default function VentasTurno({
     }
   };
 
+  if (corte) return <Corte informe={corte} onCerrar={() => setCorte(null)} />;
+
   return (
     <div className="fixed inset-0 z-30 bg-black/50 flex items-center justify-center" onMouseDown={onCerrar}>
       <div
@@ -64,6 +81,24 @@ export default function VentasTurno({
       >
         <div className="flex items-center justify-between">
           <p className="text-[17px] font-black">Ventas del turno</p>
+          <div className="ml-auto mr-2 flex gap-2">
+            <button
+              onClick={() => sacar('X')}
+              title="Cómo va el día desde el último Z. No cierra nada."
+              className="h-10 px-3 rounded-lg border-2 border-slate-200 text-[12.5px] font-bold text-slate-700"
+            >
+              Corte X
+            </button>
+            <button
+              onClick={() => (confirmandoZ ? sacar('Z') : setConfirmandoZ(true))}
+              title="Cierra el día: se numera y sube al panel. Con los turnos cerrados."
+              className={`h-10 px-3 rounded-lg text-[12.5px] font-bold border-2 ${
+                confirmandoZ ? 'border-red-500 bg-red-500 text-white' : 'border-slate-200 text-slate-700'
+              }`}
+            >
+              {confirmandoZ ? '¿Cerrar el día?' : 'Corte Z'}
+            </button>
+          </div>
           <button onClick={onCerrar} aria-label="Cerrar" className="w-10 h-10 flex items-center justify-center rounded-lg text-slate-400">
             <X size={18} strokeWidth={2.5} />
           </button>

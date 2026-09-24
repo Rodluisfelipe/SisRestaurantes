@@ -61,6 +61,8 @@ impl sync::Transporte for Nube {
             "devolucion" => format!("{}/pos/sync-refund", self.base),
             "excepcion" => format!("{}/pos/audit", self.base),
             "cliente" => format!("{}/pos/customers", self.base),
+            "corte_z" => format!("{}/pos/cortes", self.base),
+            "abono" => format!("{}/pos/abonos", self.base),
             otro => {
                 return Err(sync::FalloEnvio::Rechazado(
                     422,

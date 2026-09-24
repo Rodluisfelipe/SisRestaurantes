@@ -12,6 +12,8 @@ pub mod auditoria;
 pub mod busqueda;
 pub mod catalogo;
 pub mod clientes;
+pub mod cortes;
+pub mod credito;
 pub mod cuentas;
 pub mod db;
 pub mod devoluciones;

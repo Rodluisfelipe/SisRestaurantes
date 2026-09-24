@@ -50,6 +50,9 @@ const InventoryManager = lazy(() => import("../Components/Admin/InventoryManager
 const Devoluciones = lazy(() => import("../Components/Admin/Devoluciones"));
 /* "cajas" abre la sección Punto de venta: las cajas son una de sus pestañas. */
 const PuntoDeVenta = lazy(() => import("../Components/Admin/PuntoDeVenta"));
+const Rentabilidad = lazy(() => import("../Components/Admin/Rentabilidad"));
+const CuentasPorCobrar = lazy(() => import("../Components/Admin/CuentasPorCobrar"));
+const Compras = lazy(() => import("../Components/Admin/Compras"));
 const WhatsAppInbox = lazy(() => import("../Components/Admin/WhatsAppInbox"));
 const FeaturedProductsManager = lazy(() => import("../Components/Admin/FeaturedProductsManager"));
 const SubscriptionPayment = lazy(() => import("./SubscriptionPayment"));
@@ -517,6 +520,27 @@ function Admin() {
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Pedidos Completados" onGoBack={() => setActiveTab('dashboard')}>
                       <EnhancedCompletedOrders />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'compras' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Compras" onGoBack={() => setActiveTab('dashboard')}>
+                      <Compras />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'credito' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Cuentas por cobrar" onGoBack={() => setActiveTab('dashboard')}>
+                      <CuentasPorCobrar />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'rentabilidad' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Rentabilidad" onGoBack={() => setActiveTab('dashboard')}>
+                      <Rentabilidad />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}

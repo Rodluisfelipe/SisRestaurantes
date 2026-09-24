@@ -559,6 +559,32 @@ const MIGRACIONES: &[&str] = &[
        bajarlo entero otra vez. Misma regla que la migración 10. */
     DELETE FROM ajustes WHERE clave = 'catalogo_desde';
     "#,
+    // 18 — los cortes Z: el cierre del día, numerado.
+    r#"
+    /* Un Z por fila, con su informe completo tal como salió. Se guarda el
+       informe y no se recalcula: si mañana se reclasifica un producto, el Z
+       de hoy tiene que seguir diciendo lo que dijo. */
+    CREATE TABLE cortes_z (
+        numero     INTEGER PRIMARY KEY,
+        desde      TEXT NOT NULL,
+        hasta      TEXT NOT NULL,
+        cajero     TEXT NOT NULL DEFAULT '',
+        informe    TEXT NOT NULL,
+        creado_en  TEXT NOT NULL
+    );
+    "#,
+    // 19 — el crédito de los clientes: habilitado, cupo y lo que deben.
+    r#"
+    /* Una copia, como los puntos: la verdad está en la nube. La caja la usa
+       para no dejar fiar por encima del cupo aunque no haya internet, y la
+       corrige ella misma después de cada venta o abono. */
+    ALTER TABLE clientes_cache ADD COLUMN credito_habilitado INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE clientes_cache ADD COLUMN cupo INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE clientes_cache ADD COLUMN saldo_credito INTEGER NOT NULL DEFAULT 0;
+
+    /* Columnas nuevas alimentadas por la bajada de clientes: se baja entera. */
+    DELETE FROM ajustes WHERE clave = 'clientes_desde';
+    "#,
 ];
 
 /// Abre (o crea) la base y la deja lista para operar.

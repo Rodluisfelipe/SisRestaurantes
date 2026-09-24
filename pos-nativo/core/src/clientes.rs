@@ -39,6 +39,15 @@ pub struct FilaCliente {
     /// La fecha del cambio en la nube: es lo que alimenta la marca de agua.
     #[serde(default)]
     pub actualizado: String,
+    /// Si se le puede fiar. Ver `credito`.
+    #[serde(default)]
+    pub credito_habilitado: bool,
+    /// Hasta cuánto se le fía.
+    #[serde(default)]
+    pub cupo: i64,
+    /// Lo que debe ahora.
+    #[serde(default)]
+    pub saldo_credito: i64,
 }
 
 /// Una recompensa canjeable.
@@ -81,9 +90,13 @@ pub fn aplicar(conexion: &mut Connection, filas: &[FilaCliente]) -> Result<Optio
     {
         let mut sentencia = tx.prepare(
             "INSERT INTO clientes_cache
-               (id, documento, tipo_documento, telefono, nombre, puntos, saldo_favor, estado, actualizado)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+               (id, documento, tipo_documento, telefono, nombre, puntos, saldo_favor, estado, actualizado,
+                credito_habilitado, cupo, saldo_credito)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
              ON CONFLICT(id) DO UPDATE SET
+               credito_habilitado = excluded.credito_habilitado,
+               cupo           = excluded.cupo,
+               saldo_credito  = excluded.saldo_credito,
                documento      = excluded.documento,
                tipo_documento = excluded.tipo_documento,
                telefono       = excluded.telefono,
@@ -108,6 +121,9 @@ pub fn aplicar(conexion: &mut Connection, filas: &[FilaCliente]) -> Result<Optio
                 f.saldo_favor.max(0),
                 f.estado.trim(),
                 f.actualizado,
+                f.credito_habilitado as i64,
+                f.cupo.max(0),
+                f.saldo_credito,
             ])?;
 
             /* La misma persona, si quedó registrada dos veces.
@@ -176,7 +192,7 @@ pub fn buscar(conexion: &Connection, texto: &str, limite: i64) -> Result<Vec<Fil
     let patron = format!("{limpio}%");
 
     let mut sentencia = conexion.prepare(
-        "SELECT id, documento, tipo_documento, telefono, nombre, puntos, saldo_favor, estado, actualizado
+        "SELECT id, documento, tipo_documento, telefono, nombre, puntos, saldo_favor, estado, actualizado, credito_habilitado, cupo, saldo_credito
            FROM clientes_cache
           WHERE estado <> 'inactive'
             AND (telefono LIKE ?1 OR documento LIKE ?1 OR nombre LIKE ?1)
@@ -194,7 +210,7 @@ pub fn buscar(conexion: &Connection, texto: &str, limite: i64) -> Result<Vec<Fil
 /// Un cliente por su id, para releerlo al cobrar.
 pub fn por_id(conexion: &Connection, id: &str) -> Result<Option<FilaCliente>> {
     let mut sentencia = conexion.prepare(
-        "SELECT id, documento, tipo_documento, telefono, nombre, puntos, saldo_favor, estado, actualizado
+        "SELECT id, documento, tipo_documento, telefono, nombre, puntos, saldo_favor, estado, actualizado, credito_habilitado, cupo, saldo_credito
            FROM clientes_cache WHERE id = ?1",
     )?;
 
@@ -217,6 +233,9 @@ fn leer_cliente(f: &rusqlite::Row) -> Result<FilaCliente> {
         saldo_favor: f.get(6)?,
         estado: f.get(7)?,
         actualizado: f.get(8)?,
+        credito_habilitado: f.get::<_, i64>(9)? != 0,
+        cupo: f.get(10)?,
+        saldo_credito: f.get(11)?,
     })
 }
 
@@ -317,6 +336,9 @@ pub fn crear_local(
            fecha local haría que la caja se saltara los clientes que la nube
            cambió entre esa hora y la próxima bajada. */
         actualizado: ahora.to_string(),
+        credito_habilitado: false,
+        cupo: 0,
+        saldo_credito: 0,
     };
 
     let tx = conexion.transaction()?;
@@ -386,6 +408,9 @@ mod pruebas {
             saldo_favor: 0,
             estado: "active".into(),
             actualizado: actualizado.into(),
+            credito_habilitado: false,
+            cupo: 0,
+            saldo_credito: 0,
         }
     }
 

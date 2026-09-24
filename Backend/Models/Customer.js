@@ -58,6 +58,14 @@ const customerSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  /* La cartera: lo que el cliente debe. Es el modelo aparte que pedía el
+     comentario de arriba: habilitado, un cupo, y el saldo, que es la suma de
+     sus movimientos (Models/CreditoMovimiento.js). */
+  credito: {
+    habilitado: { type: Boolean, default: false },
+    cupo: { type: Number, default: 0, min: 0 },
+    saldo: { type: Number, default: 0, min: 0 },
+  },
   // Estadísticas del cliente
   totalOrders: {
     type: Number,

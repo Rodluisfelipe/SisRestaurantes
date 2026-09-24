@@ -232,6 +232,9 @@ app.use("/api/rastreo", require("./Routes/rastreo")); // Rastreo de guías por t
 app.use("/api/pos", require("./Routes/pos")); // Caja nativa: subir ventas y bajar catálogo
 app.use("/api/cajas", require("./Routes/cajas")); // Terminales vinculadas: listar y revocar
 app.use("/api/pos-panel", require("./Routes/posPanel")); // Panel: todo lo de la caja nativa en una sección
+app.use("/api/rentabilidad", require("./Routes/rentabilidad")); // Ventas, costo, utilidad y margen
+app.use("/api/credito", require("./Routes/credito")); // Cuentas por cobrar: crédito de los clientes
+app.use("/api/compras", require("./Routes/compras")); // Proveedores, compras, por pagar y reposición
 app.use("/api/favorites", require("./Routes/favorites")); // Productos favoritos del cliente
 app.use("/api/delivery-zones", require("./Routes/deliveryZones")); // Zonas de entrega
 app.use("/api/delivery-admin", require("./Routes/deliveryAdmin")); // Gestión de domiciliarios (admin)

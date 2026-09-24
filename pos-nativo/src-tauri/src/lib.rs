@@ -412,6 +412,15 @@ async fn cobrar(
     exige(&estado, "cobrar")?;
     let ahora = ahora_local();
 
+    /* Lo fiado se revisa **antes** de cobrar nada: si hay una parte con
+       tarjeta, el datáfono ya habría cobrado cuando se descubre que el
+       cliente no tenía cupo. */
+    let fiado: i64 = nueva.pagos.iter().filter(|p| p.metodo == "credito").map(|p| p.monto.0).sum();
+    if fiado > 0 {
+        let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+        pos_core::credito::validar_venta(&base, &nueva.cliente_id, fiado).map_err(|e| e.to_string())?;
+    }
+
     /* El turno y el cajero los pone el backend nativo, no la interfaz. Si
        vinieran del webview, bastaría con abrir las herramientas de desarrollo
        para firmar una venta a nombre de otro cajero, y el arqueo dejaría de
@@ -490,7 +499,13 @@ async fn cobrar(
 
     let registrada = {
         let mut base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
-        venta::registrar(&mut base, &nueva, &ahora).map_err(|e| e.to_string())?
+        let r = venta::registrar(&mut base, &nueva, &ahora).map_err(|e| e.to_string())?;
+        /* La copia local de lo que debe, al día: la próxima venta del mismo
+           cliente ya ve el cupo que le queda. La nube hace lo suyo al subir. */
+        if fiado > 0 {
+            let _ = pos_core::credito::reflejar(&base, &nueva.cliente_id, fiado);
+        }
+        r
     };
 
     /* Guardada. De aquí en adelante nada puede perder la venta: lo que sigue
@@ -1724,6 +1739,82 @@ async fn reintentar_apartadas(app: tauri::AppHandle) -> Result<ResumenSync, Stri
     .unwrap_or_else(|e| Err(format!("el reintento se interrumpió: {e}")))
 }
 
+/* ── Crédito ───────────────────────────────────────────────────────────── */
+
+/// Recibe un abono de un cliente que debe. En efectivo entra a la gaveta.
+#[tauri::command]
+async fn registrar_abono(
+    estado: State<'_, Estado>,
+    cliente_id: String,
+    monto: i64,
+    medio: String,
+) -> Result<pos_core::credito::Abono, String> {
+    let quien = exige(&estado, "cobrar")?;
+    let (abono, config, negocio) = {
+        let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+        let turno = turnos::activo(&base)
+            .map_err(|e| e.to_string())?
+            .ok_or("Abre el turno para recibir abonos")?;
+        let abono = pos_core::credito::registrar_abono(&base, &turno.id, &cliente_id, monto, &medio, &quien, &ahora_local())
+            .map_err(|e| e.to_string())?;
+        (abono, perifericos::leer_config(&base, "caja"), estado.negocio.lock().map(|n| n.clone()).unwrap_or_default())
+    };
+
+    /* El comprobante: el cliente se lleva un papel que dice cuánto abonó y
+       cuánto le queda. Si la impresora falla, el abono ya quedó. */
+    let mut t = escpos::Tirilla::nueva(config.ancho);
+    t.alinear(escpos::Alineacion::Centro)
+        .negrita(true)
+        .linea(&negocio)
+        .negrita(false)
+        .doble(true)
+        .linea("ABONO A CRÉDITO")
+        .doble(false)
+        .linea(&abono.creada_en)
+        .alinear(escpos::Alineacion::Izquierda)
+        .separador()
+        .linea(&abono.cliente_nombre)
+        .par("Abono", &Pesos(abono.monto).to_string())
+        .par("Medio", &abono.medio)
+        .par("Queda debiendo", &Pesos(abono.saldo_despues).to_string())
+        .linea(&format!("Recibió {}", abono.cajero))
+        .salto();
+    if abono.medio == "efectivo" {
+        t.abrir_cajon();
+    }
+    t.cortar();
+    let _ = imprimir(config.impresora, perifericos::papel(config.corte, t.terminar())).await;
+    Ok(abono)
+}
+
+/* ── Cortes X y Z ──────────────────────────────────────────────────────── */
+
+/// El corte X: cómo va el día desde el último Z, sin cerrar nada.
+#[tauri::command]
+fn corte_x(estado: State<Estado>) -> Result<pos_core::cortes::Informe, String> {
+    let quien = exige(&estado, "cortes")?;
+    let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    pos_core::cortes::corte_x(&base, &quien, &ahora_local()).map_err(|e| e.to_string())
+}
+
+/// El corte Z: cierra el día, lo numera y lo deja en la cola hacia el panel.
+#[tauri::command]
+fn corte_z(estado: State<Estado>) -> Result<pos_core::cortes::Informe, String> {
+    let quien = exige(&estado, "cortes")?;
+    let mut base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+    pos_core::cortes::corte_z(&mut base, &quien, &ahora_local()).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn imprimir_corte(estado: State<'_, Estado>, informe: pos_core::cortes::Informe) -> Result<(), String> {
+    let (config, negocio) = {
+        let base = estado.base.lock().map_err(|_| "base ocupada".to_string())?;
+        (perifericos::leer_config(&base, "caja"), estado.negocio.lock().map(|n| n.clone()).unwrap_or_default())
+    };
+    let bytes = pos_core::cortes::tirilla(&informe, &negocio, config.ancho);
+    imprimir(config.impresora, perifericos::papel(config.corte, bytes)).await
+}
+
 /// Lo que el panel decide sobre el trato de esta caja con el cajero.
 ///
 /// Estos valores bajaban con la configuración y se guardaban, pero la
@@ -2927,6 +3018,10 @@ pub fn run() {
             hardware_del_panel,
             ajustes_caja,
             resumen_turno,
+            corte_x,
+            registrar_abono,
+            corte_z,
+            imprimir_corte,
             apartadas,
             reintentar_apartadas,
             marcar_agotado,

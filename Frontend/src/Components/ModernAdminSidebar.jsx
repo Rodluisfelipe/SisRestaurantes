@@ -14,7 +14,7 @@ import {
   FaShoppingBag, FaStore, FaTools, FaCog, FaMoneyBillWave, FaStar, FaGift,
   FaQuestionCircle, FaExternalLinkAlt, FaChartBar, FaPrint, FaCashRegister,
   FaCalendarAlt, FaShareAlt, FaCodeBranch, FaLink, FaCalculator, FaBoxOpen,
-  FaChevronLeft, FaChrome, FaChartLine
+  FaChevronLeft, FaChrome, FaChartLine, FaHandHoldingUsd, FaTruck
 } from 'react-icons/fa';
 
 const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, whatsappSinLeer, subscriptionData, onboarding, userRole, colapsado = false, onAlternar }) => {
@@ -60,6 +60,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
         ...(businessConfig?.features?.posBetaEnabled ? [{ id: 'cash-closings', label: 'Cierres de Caja', Icon: FaCashRegister, badge: null }] : []),
         { id: 'cajas', label: 'Punto de venta', Icon: FaCashRegister, badge: null },
         { id: 'completed_orders', label: 'Completados', Icon: FaCheckCircle, badge: null },
+        { id: 'rentabilidad', label: 'Rentabilidad', Icon: FaChartLine, badge: null },
         ...(tienda ? [{ id: 'devoluciones', label: 'Devoluciones', Icon: FaUndo, badge: null }] : []),
         ...(businessConfig?.enableBookings ? [{ id: 'bookings', label: 'Agenda', Icon: FaCalendarAlt, badge: null }] : []),
         /* El cierre mensual no depende del POS: todo negocio cierra su mes,
@@ -84,6 +85,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
         ...(!isService && !isHotel ? [{ id: 'delivery', label: 'Domiciliarios', Icon: FaMotorcycle, badge: null }] : []),
         { id: 'reviews', label: 'Reseñas', Icon: FaStar, badge: null },
         { id: 'customers', label: 'Clientes', Icon: FaUsers, badge: null },
+        { id: 'credito', label: 'Cuentas por cobrar', Icon: FaHandHoldingUsd, badge: null },
         { id: 'coupons', label: 'Cupones', Icon: FaTicketAlt, badge: null },
         { id: 'loyalty', label: 'Fidelidad', Icon: FaGift, badge: null, beta: true },
         ...(!isService && !isHotel ? [{ id: 'delivery-zones', label: 'Zonas', Icon: FaMapMarkedAlt, badge: null }] : []),
@@ -98,6 +100,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       items: [
         { id: 'products', label: isService ? 'Servicios' : 'Productos', Icon: isService ? FaTools : FaHamburger, badge: null },
         { id: 'inventory', label: 'Inventario', Icon: FaBoxOpen, badge: null },
+        { id: 'compras', label: 'Compras', Icon: FaTruck, badge: null },
         { id: 'toppings', label: isService ? 'Opciones' : 'Extras', Icon: isService ? FaCog : FaCheese, badge: null },
         { id: 'categories', label: 'Categorías', Icon: FaFolderOpen, badge: null },
         { id: 'product-order', label: 'Orden', Icon: FaSortAmountDown, badge: null },

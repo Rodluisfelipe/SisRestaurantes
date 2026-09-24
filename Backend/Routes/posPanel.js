@@ -250,6 +250,16 @@ const { PERMISOS, ROLES_DE_FABRICA, validarRoles, pinValido } = require('../util
    caja tras cinco intentos. */
 const COSTO_PIN = 6;
 
+/* Crear personas, cambiar PIN y permisos es del administrador: un usuario
+   "staff" del panel no puede darse a sí mismo —ni a nadie— más poder en la
+   caja. */
+router.use('/personal', (req, res, next) => {
+  if (req.method !== 'GET' && req.user?.role === 'staff') {
+    return res.status(403).json({ message: 'Solo el administrador cambia el personal de la caja' });
+  }
+  next();
+});
+
 async function personalDe(businessId) {
   let doc = await PosPersonal.findOne({ businessId });
   if (!doc) doc = new PosPersonal({ businessId, roles: ROLES_DE_FABRICA, usuarios: [] });
@@ -342,6 +352,23 @@ router.patch('/personal/usuarios/:id', async (req, res) => {
   } catch (error) {
     logger.error('Error editando personal del POS', error, req);
     res.status(500).json({ message: 'No se pudo guardar' });
+  }
+});
+
+
+/* Los cortes Z de todas las cajas, del más nuevo al más viejo. */
+router.get('/cortes', async (req, res) => {
+  try {
+    const PosCorteZ = require('../Models/PosCorteZ');
+    const { inicio, fin } = rango(req.query);
+    const cortes = await PosCorteZ.find({ businessId: negocio(req), createdAt: { $gte: inicio, $lte: fin } })
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .lean();
+    res.json({ cortes });
+  } catch (error) {
+    logger.error('Error listando cortes Z', error, req);
+    res.status(500).json({ message: 'No se pudieron cargar los cortes' });
   }
 });
 

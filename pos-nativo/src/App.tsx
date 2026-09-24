@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CircleUser, CloudCheck, CloudOff, Gift, Inbox, Minus, Monitor,
-  Ban, Globe, LayoutGrid, MessageSquarePlus, PauseCircle, Percent, Plus, Presentation, Printer, RefreshCw, ScanLine,
+  Ban, Globe, HandCoins, LayoutGrid, MessageSquarePlus, PauseCircle, Percent, Plus, Presentation, Printer, RefreshCw, ScanLine,
   LayoutList, Pencil, Star, Timer, Trash2, Undo2, UserPlus, UtensilsCrossed, Volume2, VolumeX,
   Wallet, X, XCircle,
 } from 'lucide-react';
 import { type EstadoCliente,
-  ajustesCaja, AJUSTES_DE_FABRICA, type AjustesCaja, puede,
+  ajustesCaja, AJUSTES_DE_FABRICA, type AjustesCaja, puede, cupoDisponible,
   pedidosWeb, moverPedidoWeb, imprimirPedidoWeb, type PedidoWeb,
 } from './nativo';
 import {
@@ -45,6 +45,7 @@ import VentasTurno from './VentasTurno';
 import ProductoLibre from './ProductoLibre';
 import Agotados from './Agotados';
 import Apartadas from './Apartadas';
+import AbonoCredito from './AbonoCredito';
 import { columnaDe, recienLlegados } from './reglasPedidosWeb';
 import { billetesProbables } from './cobroRapido';
 import { leerCantidad, leerPrecioLibre, lineaARepetir } from './atajosBusqueda';
@@ -296,6 +297,7 @@ function Caja({
   const [verVentas, setVerVentas] = useState(false);
   const [verLibre, setVerLibre] = useState(false);
   const [verAgotados, setVerAgotados] = useState(false);
+  const [abonando, setAbonando] = useState(false);
   const [verApartadas, setVerApartadas] = useState(false);
   /* El aviso de que la tirilla no salió. Va como toast y no como bloqueo: la
      venta ya está cobrada y guardada, y el cajero tiene que poder seguir
@@ -1220,7 +1222,7 @@ function Caja({
     cobrandoAhora || anulando !== null || pidiendoDescuento ||
     porAutorizar !== null || anotando !== null || pidiendoGaveta || descartando !== null ||
     pidiendoDevolucion || devolucionPorAutorizar !== null || verImpresoras || verNube ||
-    verTurno || verEspera || verCliente || verRecompensas || verVentas || verLibre || verAgotados || verApartadas || pidiendoPermiso !== null;
+    verTurno || verEspera || verCliente || verRecompensas || verVentas || verLibre || verAgotados || verApartadas || pidiendoPermiso !== null || abonando;
 
   useEffect(() => {
     if (hayModal) buscador.current?.blur();
@@ -1576,6 +1578,20 @@ function Caja({
         ) : null}
       </div>
 
+      {abonando && cliente && (
+        <AbonoCredito
+          cliente={cliente}
+          onListo={(abono) => {
+            setAbonando(false);
+            setCliente({ ...cliente, saldo_credito: abono.saldo_despues });
+            setAvisoCuenta(`Abono de ${pesos(abono.monto)} recibido · queda debiendo ${pesos(abono.saldo_despues)}`);
+            window.setTimeout(() => setAvisoCuenta(''), 6000);
+            buscador.current?.focus();
+          }}
+          onCancelar={() => { setAbonando(false); buscador.current?.focus(); }}
+        />
+      )}
+
       {pidiendoPermiso && (
         <Autorizar
           sinMotivo
@@ -1619,6 +1635,7 @@ function Caja({
         <VentasTurno
           onCerrar={() => { setVerVentas(false); buscador.current?.focus(); }}
           onFallo={setFalloImpresion}
+          conPermiso={conPermiso}
         />
       )}
 
@@ -1842,6 +1859,7 @@ function Caja({
           propinaSugerida={enCuenta ? ajustes.propina_sugerida : 0}
           opcionSugerida={ajustes.propina_sugerida}
           pidiendoVoucher={digitaVoucher}
+          credito={cupoDisponible(cliente)}
           onCambio={setVistaPago}
           onMedio={setMedioElegido}
           onCobrar={cobrarCon}
@@ -1939,7 +1957,31 @@ function Caja({
                     </span>
                   )}
                 </div>
+                {/* Lo que debe y lo que le queda, a la vista: el cajero tiene
+                    que saberlo antes de fiarle otra vez, no después. */}
+                {(cliente.credito_habilitado || (cliente.saldo_credito ?? 0) > 0) && (
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <span className={`px-2 h-6 flex items-center rounded-md text-[11px] font-bold tabular-nums ${
+                      (cliente.saldo_credito ?? 0) > 0 ? 'bg-amber-50 text-amber-800' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      Debe {pesos(cliente.saldo_credito ?? 0)}
+                    </span>
+                    {cliente.credito_habilitado && (
+                      <span className="text-[11px] text-slate-400 tabular-nums">cupo {pesos(cupoDisponible(cliente) ?? 0)}</span>
+                    )}
+                  </div>
+                )}
               </div>
+
+              {(cliente.saldo_credito ?? 0) > 0 && (
+                <button
+                  onClick={() => conPermiso('cobrar', 'Recibir un abono', () => setAbonando(true))}
+                  className="w-full flex items-center gap-2 px-3 h-toque border-t border-slate-100 text-[12.5px] font-black text-slate-700 hover:bg-slate-50"
+                >
+                  <HandCoins size={15} strokeWidth={2.5} />
+                  Recibir abono
+                </button>
+              )}
 
               {/* El aviso de que hay algo que ofrecerle. Es la razón por la que
                   el programa de puntos sirve de algo en el mostrador: sin esto,

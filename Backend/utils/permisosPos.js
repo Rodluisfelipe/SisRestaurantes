@@ -19,6 +19,7 @@ const PERMISOS = [
   { clave: 'descartar', nombre: 'Descartar ventas en espera' },
   { clave: 'precio_libre', nombre: 'Vender con precio libre' },
   { clave: 'agotados', nombre: 'Marcar productos agotados' },
+  { clave: 'cortes', nombre: 'Sacar el corte X y el corte Z' },
   { clave: 'configurar', nombre: 'Configurar la caja (impresoras, datáfono, conexión)' },
 ];
 

@@ -18,12 +18,14 @@ const ICONO: Record<Medio, typeof Banknote> = {
   efectivo: Banknote,
   tarjeta: CreditCard,
   transferencia: Smartphone,
+  credito: HandCoins,
 };
 
 const NOMBRE: Record<Medio, string> = {
   efectivo: 'Efectivo',
   tarjeta: 'Tarjeta',
   transferencia: 'Transfer.',
+  credito: 'Crédito',
 };
 
 /**
@@ -47,6 +49,7 @@ export default function CobroMixto({
   propinaSugerida = 0,
   opcionSugerida = 10,
   pidiendoVoucher,
+  credito = null,
   onCambio,
   onMedio,
   onCobrar,
@@ -61,6 +64,8 @@ export default function CobroMixto({
   opcionSugerida?: number;
   /** Si el datáfono no está integrado, la tarjeta exige voucher a mano. */
   pidiendoVoucher: boolean;
+  /** Lo que se le puede fiar al cliente asociado. null = sin crédito. */
+  credito?: number | null;
   /** Avisa lo que lleva cobrado, para la pantalla del cliente. */
   onCambio: (pagos: PagoDetalle[]) => void;
   /** Con qué se está por pagar. La pantalla del cliente muestra el QR si es
@@ -140,8 +145,12 @@ export default function CobroMixto({
     onCobrar(pagos, propina);
   };
 
-  const listo = falta === 0 || (pagos.length === 0 && (valor || aPagar) >= aPagar) || valor >= falta;
-  const faltaRef = metodo !== 'efectivo' && pidiendoVoucher && !referencia.trim();
+  /* Lo que se fiaría con esta parte, para no pasar del cupo. La caja lo
+     vuelve a revisar al guardar, con su copia del saldo. */
+  const aFiar = metodo === 'credito' ? (valor || (pagos.length === 0 ? aPagar : falta)) : 0;
+  const superaCupo = metodo === 'credito' && aFiar > (credito ?? 0);
+  const listo = !superaCupo && (falta === 0 || (pagos.length === 0 && (valor || aPagar) >= aPagar) || valor >= falta);
+  const faltaRef = (metodo === 'tarjeta' || metodo === 'transferencia') && pidiendoVoucher && !referencia.trim();
 
   return (
     <div className="fixed inset-0 z-40 bg-black/50 flex items-center justify-center" onMouseDown={onCancelar}>
@@ -250,7 +259,7 @@ export default function CobroMixto({
 
         {/* Con qué se paga esta parte */}
         <div className="flex gap-1.5">
-          {MEDIOS.map((m) => {
+          {([...MEDIOS, ...(credito !== null ? ['credito' as const] : [])] as Medio[]).map((m) => {
             const Icono = ICONO[m];
             const elegido = metodo === m;
             return (
@@ -267,6 +276,14 @@ export default function CobroMixto({
             );
           })}
         </div>
+
+        {metodo === 'credito' && (
+          <p className={`text-[12.5px] font-semibold ${superaCupo ? 'text-red-600' : 'text-slate-500'}`}>
+            {superaCupo
+              ? `Supera el cupo: le quedan ${pesos(credito ?? 0)} disponibles`
+              : `Se le fía. Cupo disponible: ${pesos(credito ?? 0)}`}
+          </p>
+        )}
 
         <div className="space-y-2">
           <input

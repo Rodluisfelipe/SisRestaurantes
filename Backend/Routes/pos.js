@@ -271,12 +271,20 @@ router.post('/sync-sale', tenantAuth, cajaVigente, async (req, res) => {
 
     const orderNumber = await siguienteNumero(businessId);
 
+    /* El cliente, si el cajero lo asoció: por su id de la nube, o por su
+       teléfono si se registró en la caja y todavía tenía el id local. */
+    const { clienteDeLaCaja, mover: moverCredito } = require('../services/credito');
+    const cliente = (venta.clienteId || venta.clienteTelefono)
+      ? await clienteDeLaCaja(businessId, { clienteId: venta.clienteId, telefono: venta.clienteTelefono })
+      : null;
+
     const guardada = await CompletedOrder.create({
       businessId,
       posSaleId: venta.id,
       orderNumber,
-      customerName: 'Mostrador',
-      phone: '',
+      customerName: cliente?.name || 'Mostrador',
+      phone: cliente?.phone || '',
+      ...(cliente ? { customerId: cliente._id } : {}),
       orderType: 'takeaway',
       orderChannel: 'pos',
       status: 'completed',
@@ -314,6 +322,29 @@ router.post('/sync-sale', tenantAuth, cajaVigente, async (req, res) => {
         duracionTomaSegundos: venta.duracionTomaSegundos,
       },
     });
+
+    if (cliente) {
+      await Customer.updateOne(
+        { _id: cliente._id, businessId },
+        { $inc: { totalOrders: 1, totalSpent: venta.total }, $set: { lastOrderDate: new Date(venta.creadaEn || Date.now()) } },
+      );
+    }
+
+    /* Lo fiado, a la cuenta del cliente. Idempotente por el id de la venta:
+       un reintento de la cola no carga dos veces. La caja ya revisó el cupo
+       —con su copia, posiblemente sin internet— y la venta ya ocurrió: aquí
+       se registra, no se decide. */
+    const fiado = venta.pagos.filter((p) => p.metodo === 'credito').reduce((t, p) => t + p.monto, 0);
+    if (fiado > 0) {
+      if (cliente) {
+        await moverCredito({
+          businessId, customerId: cliente._id, tipo: 'cargo', monto: fiado, origenId: venta.id,
+          referencia: `Venta #${orderNumber}`, usuario: venta.cajero, fecha: venta.creadaEn,
+        });
+      } else {
+        logger.warn('Venta a crédito sin cliente identificable', { businessId: String(businessId), venta: venta.id });
+      }
+    }
 
     /* El inventario se mueve con la misma función que el resto del sistema, no
        con una copia: descontar por una venta de caja y por un pedido del menú
@@ -794,6 +825,9 @@ router.get('/customers', tenantAuth, cajaVigente, async (req, res) => {
       puntos: porTelefono[c.phone] || 0,
       saldo_favor: Math.max(0, Math.round(c.saldoFavor || 0)),
       estado: c.status || 'active',
+      credito_habilitado: c.credito?.habilitado === true,
+      cupo: Math.max(0, Math.round(c.credito?.cupo || 0)),
+      saldo_credito: Math.max(0, Math.round(c.credito?.saldo || 0)),
       actualizado: (c.updatedAt || new Date()).toISOString(),
     }));
 
@@ -1107,6 +1141,68 @@ router.get('/personal', tenantAuth, cajaVigente, async (req, res) => {
   } catch (error) {
     logger.error('Error entregando el personal al POS', error, req);
     res.status(500).json({ message: 'No se pudo cargar el personal' });
+  }
+});
+
+
+/* POST /api/pos/cortes — un corte Z que sube la caja por su cola.
+ *
+ * Idempotente por caja y número: un reintento responde "ya estaba". */
+router.post('/cortes', tenantAuth, cajaVigente, async (req, res) => {
+  try {
+    const PosCorteZ = require('../Models/PosCorteZ');
+    const inf = req.body || {};
+    const numero = parseInt(inf.numero, 10);
+    if (!Number.isInteger(numero) || numero < 1 || inf.tipo !== 'Z') {
+      return res.status(400).json({ message: 'No es un corte Z válido' });
+    }
+    const cajaTokenId = req.caja?.tokenId || 'sin-caja';
+    const businessId = req.user.businessId;
+    const ya = await PosCorteZ.findOne({ businessId, cajaTokenId, numero }).select('_id').lean();
+    if (ya) return res.json({ ok: true, duplicado: true });
+    await PosCorteZ.create({
+      businessId,
+      cajaTokenId,
+      cajaNombre: req.caja?.nombre || '',
+      numero,
+      desde: String(inf.desde || ''),
+      hasta: String(inf.hasta || ''),
+      cajero: String(inf.cajero || '').slice(0, 80),
+      ventas: Number(inf.ventas) || 0,
+      total: Number(inf.total) || 0,
+      informe: inf,
+    });
+    res.status(201).json({ ok: true, duplicado: false });
+  } catch (error) {
+    if (error?.code === 11000) return res.json({ ok: true, duplicado: true });
+    logger.error('Error guardando un corte Z', error, req);
+    res.status(500).json({ message: 'No se pudo guardar el corte' });
+  }
+});
+
+
+/* POST /api/pos/abonos — un abono recibido en la caja, por su cola.
+ *
+ * Idempotente por el id del abono: un reintento no abona dos veces. */
+router.post('/abonos', tenantAuth, cajaVigente, async (req, res) => {
+  try {
+    const { clienteDeLaCaja, mover } = require('../services/credito');
+    const a = req.body || {};
+    const id = String(a.id || '').trim();
+    const monto = Math.round(Number(a.monto) || 0);
+    if (id.length < 8 || monto <= 0) return res.status(400).json({ message: 'Abono inválido' });
+    const businessId = req.user.businessId;
+    const cliente = await clienteDeLaCaja(businessId, { clienteId: a.cliente_id, telefono: a.cliente_telefono });
+    if (!cliente) return res.status(400).json({ message: 'No se encontró el cliente del abono' });
+    const r = await mover({
+      businessId, customerId: cliente._id, tipo: 'abono', monto, origenId: id,
+      medio: String(a.medio || 'efectivo').slice(0, 20), usuario: String(a.cajero || '').slice(0, 80),
+      referencia: req.caja?.nombre ? `Caja ${req.caja.nombre}` : 'Caja', fecha: a.creada_en,
+    });
+    res.status(r.duplicado ? 200 : 201).json({ ok: true, ...r });
+  } catch (error) {
+    logger.error('Error registrando un abono del POS', error, req);
+    res.status(500).json({ message: 'No se pudo registrar el abono' });
   }
 });
 

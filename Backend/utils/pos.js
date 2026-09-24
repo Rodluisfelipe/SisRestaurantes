@@ -236,6 +236,11 @@ function validarVenta(cuerpo) {
       impuestos: desgloseTributario,
       descuento,
       descuentoMotivo: String(cuerpo.descuento_motivo || '').trim().slice(0, 120),
+      /* A quién se le vendió, si el cajero lo asoció. Antes se descartaba y
+         toda venta de caja quedaba como "Mostrador", sin historial del cliente
+         ni forma de fiarle. */
+      clienteId: String(cuerpo.cliente_id || '').trim().slice(0, 64),
+      clienteTelefono: String(cuerpo.cliente_telefono || '').trim().slice(0, 30),
       cajero: String(cuerpo.cajero || '').slice(0, 80),
       turnoId: String(cuerpo.turno_id || '').slice(0, 64),
       creadaEn: cuerpo.creada_en ? new Date(cuerpo.creada_en) : new Date(),

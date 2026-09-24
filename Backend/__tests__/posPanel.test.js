@@ -135,3 +135,18 @@ describe('los cierres en Punto de venta', () => {
     expect(src).toContain("if (req.query.origen === 'web') filtro.origen = { $ne: 'pos-nativo' }");
   });
 });
+
+describe('los cortes Z', () => {
+  const pos = fuente('Routes/pos.js');
+  const modelo = fuente('Models/PosCorteZ.js');
+
+  it('solo acepta cortes Z de una caja vigente', () => {
+    expect(pos).toMatch(/router\.post\('\/cortes', tenantAuth, cajaVigente/);
+    expect(pos).toContain("inf.tipo !== 'Z'");
+  });
+
+  it('un reintento de la cola no duplica el corte', () => {
+    expect(modelo).toContain('{ businessId: 1, cajaTokenId: 1, numero: 1 }, { unique: true }');
+    expect(pos).toContain('duplicado: true');
+  });
+});

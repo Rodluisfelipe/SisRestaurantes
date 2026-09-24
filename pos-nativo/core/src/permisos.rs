@@ -32,6 +32,7 @@ pub const PERMISOS: &[(&str, &str)] = &[
     ("descartar", "Descartar ventas en espera"),
     ("precio_libre", "Vender con precio libre"),
     ("agotados", "Marcar productos agotados"),
+    ("cortes", "Sacar el corte X y el corte Z"),
     ("configurar", "Configurar la caja (impresoras, datáfono, conexión)"),
 ];
 
