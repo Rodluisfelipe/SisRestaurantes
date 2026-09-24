@@ -271,7 +271,9 @@ function Testimonio({ t }) {
           {t.logo && <img src={t.logo} alt="" className="w-9 h-9 rounded-lg object-contain shrink-0" style={{ border: '1px solid ' + C.borderLight }} loading="lazy" />}
           <div className="min-w-0">
             <p className="text-[14px] font-bold leading-tight" style={{ color: C.text }}>{t.negocio}</p>
-            <p className="text-[12.5px]" style={{ color: C.muted }}>Cliente de Menuby</p>
+            {t.slug
+              ? <a href={`/${t.slug}`} target="_blank" rel="noopener noreferrer" className="text-[12.5px] underline underline-offset-2" style={{ color: C.muted }}>Ver su menú en Menuby</a>
+              : <p className="text-[12.5px]" style={{ color: C.muted }}>Cliente de Menuby</p>}
           </div>
         </div>
       </figcaption>
@@ -296,6 +298,7 @@ const TESTIMONIOS = [
   {
     negocio: 'Fraise',
     logo: '/customers/fraise.webp',
+    slug: 'fraise',
     video: '/landing/real/testimonio-fraise.mp4',
     poster: '/landing/real/testimonio-fraise.webp',
     subtitulos: '/landing/real/testimonio-fraise.vtt',
@@ -304,11 +307,12 @@ const TESTIMONIOS = [
     cita2: 'Manualmente es un caos: de tanto escribir, la mano duele. Con el sistema tenemos todo ahí, nada más es seleccionar y ya.',
   },
   {
-    negocio: 'Doguitos',
-    logo: null,
-    video: '/landing/real/testimonio-doguitos.mp4',
-    poster: '/landing/real/testimonio-doguitos.webp',
-    subtitulos: '/landing/real/testimonio-doguitos.vtt',
+    negocio: 'Doggitos',
+    logo: '/customers/doggitos.webp',
+    slug: 'doggitos',
+    video: '/landing/real/testimonio-doggitos.mp4',
+    poster: '/landing/real/testimonio-doggitos.webp',
+    subtitulos: '/landing/real/testimonio-doggitos.vtt',
     duracion: '0:35',
     cita: 'Desde que trabajamos con ellos todo ha mejorado: los pedidos se toman mucho más rápido y los clientes se sienten más satisfechos.',
     cita2: 'Antes tomábamos los pedidos a mano, y eso nos frenaba mucho.',
@@ -341,13 +345,15 @@ const CYCLES = [
 ];
 
 /* Clientes reales usando Menuby. */
+/* `slug`: el logo abre su menú en vivo. Solo los que tienen el menú activo. */
 const CUSTOMERS = [
-  { name: 'GO BURGER', logo: '/customers/go-burger.png' },
-  { name: 'Fraise', logo: '/customers/fraise.webp' },
+  { name: 'GO BURGER', logo: '/customers/go-burger.png', slug: 'go-burger' },
+  { name: 'Fraise', logo: '/customers/fraise.webp', slug: 'fraise' },
+  { name: 'Doggitos', logo: '/customers/doggitos.webp', slug: 'doggitos' },
   { name: 'Cremu', logo: '/customers/cremu.webp' },
   { name: 'Las 4 en Punto', logo: '/customers/las-4-en-punto.webp' },
-  { name: 'Kalunga', logo: '/customers/kalunga.webp' },
-  { name: 'Caprichosos', logo: '/customers/caprichosos.webp' },
+  { name: 'Kalunga', logo: '/customers/kalunga.webp', slug: 'kalunga' },
+  { name: 'Caprichosos', logo: '/customers/caprichosos.webp', slug: 'caprichosos' },
 ];
 
 /* Funciones: la principal ocupa 2×2 y las otras ocho llenan la cuadrícula
@@ -660,14 +666,19 @@ export default function Home() {
             <p className="text-center text-[14px] font-semibold mb-6" style={{ color: C.muted }}>
               Algunos negocios que ya venden con Menuby
             </p>
-            <StaggerContainer className="grid grid-cols-3 sm:grid-cols-6 gap-3 sm:gap-4" stagger={0.06}>
-              {CUSTOMERS.map((c) => (
-                <motion.div key={c.name} variants={staggerChild} title={c.name}>
-                  <div className="h-16 sm:h-[76px] rounded-2xl flex items-center justify-center p-2.5 sm:p-3" style={{ background: C.bg, border: '1px solid ' + C.borderLight }}>
-                    <img src={c.logo} alt={c.name} loading="lazy" className="max-h-full max-w-full object-contain" style={{ borderRadius: '8px' }} />
-                  </div>
-                </motion.div>
-              ))}
+            <StaggerContainer className="flex flex-wrap justify-center gap-3" stagger={0.05}>
+              {CUSTOMERS.map((c) => {
+                const cls = 'h-16 sm:h-[76px] rounded-2xl flex items-center justify-center p-2.5 sm:p-3 transition-shadow hover:shadow-[0_8px_24px_rgba(23,18,15,0.08)]';
+                const st = { background: C.bg, border: '1px solid ' + C.borderLight };
+                const logo = <img src={c.logo} alt={c.name} loading="lazy" className="max-h-full max-w-full object-contain" style={{ borderRadius: '8px' }} />;
+                return (
+                  <motion.div key={c.name} variants={staggerChild} title={c.slug ? `Ver el menú de ${c.name}` : c.name} className="basis-[calc(33.333%-8px)] sm:basis-[calc(14.285%-11px)]">
+                    {c.slug
+                      ? <a href={`/${c.slug}`} target="_blank" rel="noopener noreferrer" className={cls} style={st}>{logo}</a>
+                      : <div className={cls} style={st}>{logo}</div>}
+                  </motion.div>
+                );
+              })}
             </StaggerContainer>
 
             {stats && stats.ordersThisMonth > 0 && (
