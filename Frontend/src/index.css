@@ -59,6 +59,18 @@
 }
 
 /* Safe-area padding for bottom-anchored elements */
+/* La hoja a pantalla completa en el celular (la ficha de producto): deja solo
+   una franja arriba para ver que es una hoja y poder cerrarla. `dvh` descuenta
+   la barra del navegador; `vh` no, y la hoja quedaba más baja de lo que se
+   pedía. La primera línea es el respaldo para navegadores sin `dvh`. */
+.hoja-completa {
+  height: calc(100vh - 8px);
+  height: calc(100dvh - env(safe-area-inset-top, 0px) - 8px);
+}
+@media (min-width: 640px) {
+  .hoja-completa { height: auto; }
+}
+
 .pb-safe {
   padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
 }

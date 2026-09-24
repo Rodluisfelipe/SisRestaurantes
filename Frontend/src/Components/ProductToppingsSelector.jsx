@@ -888,6 +888,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
     <Hoja
       onCerrar={onClose}
       etiqueta={product.name}
+      alto="completo"
       cabecera={
         <div className="flex items-start gap-3 px-5 pt-5 pb-3">
           <h2 className="flex-1 min-w-0 text-[22px] leading-tight font-black text-tinta tracking-tight">{product.name}</h2>

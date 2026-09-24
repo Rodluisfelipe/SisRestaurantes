@@ -16,6 +16,9 @@ export default function Hoja({
   cabecera = null,
   pie = null,
   ancho = 'max-w-lg',
+  /* 'auto': crece con su contenido. 'completo': en el celular ocupa casi toda
+     la pantalla aunque el contenido sea corto (la ficha de producto). */
+  alto = 'auto',
   className = '',
   children,
 }) {
@@ -45,7 +48,7 @@ export default function Hoja({
         aria-modal="true"
         aria-label={etiqueta}
         tabIndex={-1}
-        className={`w-full ${ancho} max-h-[94vh] sm:max-h-[90vh] flex flex-col bg-superficie-tarjeta rounded-t-[28px] sm:rounded-3xl shadow-2xl outline-none pb-safe ${className}`}
+        className={`w-full ${ancho} ${alto === 'completo' ? 'hoja-completa' : 'max-h-[94dvh]'} sm:max-h-[90vh] flex flex-col bg-superficie-tarjeta rounded-t-[28px] sm:rounded-3xl shadow-2xl outline-none pb-safe ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         {cabecera && <div className="flex-shrink-0">{cabecera}</div>}
