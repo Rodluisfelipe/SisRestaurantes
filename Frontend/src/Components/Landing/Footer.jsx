@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const Footer = () => {
   const year = new Date().getFullYear();
+  // En escritorio todas las listas abiertas; en celular solo las cortas.
+  const [ancho] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 640px)').matches);
 
   const sections = [
     {
@@ -87,7 +89,7 @@ const Footer = () => {
               </span>
             </Link>
             <p className="text-stone-500 text-sm leading-relaxed mb-5 sm:mb-6 max-w-xs">
-              El sistema completo para restaurantes en Colombia: menú digital, POS, cocina y domicilios. 0% comisiones. Más de 500 negocios confían en nosotros.
+              El sistema completo para restaurantes en Colombia: menú digital, POS, cocina y domicilios. 0% comisiones.
             </p>
             <a
               href="https://wa.me/573028181520"
@@ -101,9 +103,14 @@ const Footer = () => {
           </div>
 
           {/* Links */}
+          {/* En celular las listas largas van plegadas: antes el footer
+              ocupaba tres pantallas de links. En escritorio se ven todas. */}
           {sections.map((section) => (
-            <div key={section.title}>
-              <h3 className="text-menuby-tinta text-xs font-bold uppercase tracking-wider mb-3 sm:mb-4">{section.title}</h3>
+            <details key={section.title} className="group" open={ancho || section.links.length <= 7 || undefined}>
+              <summary className="list-none cursor-pointer flex items-center justify-between text-menuby-tinta text-xs font-bold uppercase tracking-wider mb-3 sm:mb-4">
+                {section.title}
+                <svg className="w-3.5 h-3.5 sm:hidden transition-transform group-open:rotate-180 text-stone-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+              </summary>
               <ul className="space-y-1.5 sm:space-y-2">
                 {section.links.map((link) => (
                   <li key={link.name}>
@@ -119,7 +126,7 @@ const Footer = () => {
                   </li>
                 ))}
               </ul>
-            </div>
+            </details>
           ))}
         </div>
       </div>

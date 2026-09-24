@@ -141,6 +141,80 @@ const AdminOrderChat = ({ orderId, messages: initialMessages, isOpen, onClose })
 };
 
 // Gift order panel — shows recipient info + ready-to-send message to forward to the recipient
+/* "PRODUCTO NO DESEADO" → "Producto no deseado": los nombres que llegan en
+   mayúsculas se leen gritados en la comanda de pantalla. */
+const suave = (t = '') => {
+  const x = String(t).trim();
+  return x && x === x.toUpperCase() ? x.charAt(0) + x.slice(1).toLowerCase() : x;
+};
+const esQuitar = (grupo, opcion) => /no deseado|quitar|sin ingred/i.test(grupo) || /^sin\s/i.test(opcion);
+
+/* Los extras de un producto, una línea por grupo: "Extras: Pepinillos ×2
+   (+$3.800)". Antes cada opción era una etiqueta suelta repitiendo el nombre
+   del grupo, y lo que el cliente pidió QUITAR se perdía entre lo demás; ahora
+   va en rojo, que es lo que cocina no puede pasar por alto. */
+const ExtrasDelItem = ({ toppings }) => {
+  const grupos = new Map();
+  const sumar = (grupo, nombre, precio) => {
+    if (!nombre) return;
+    const g = grupos.get(grupo) || new Map();
+    const o = g.get(nombre) || { nombre, n: 0, precio: 0 };
+    o.n += 1;
+    o.precio += Number(precio) || 0;
+    g.set(nombre, o);
+    grupos.set(grupo, g);
+  };
+  toppings.forEach((t) => {
+    sumar(t.groupName || 'Extras', t.optionName, t.price);
+    (t.subGroups || []).forEach((sg) => sumar(sg.subGroupTitle || t.groupName || 'Extras', sg.optionName, sg.price));
+  });
+  return (
+    <div className="mt-1 space-y-0.5">
+      {[...grupos].map(([grupo, opciones]) => {
+        const lista = [...opciones.values()];
+        const quitar = lista.every((o) => esQuitar(grupo, o.nombre));
+        return (
+          <p key={grupo} className="text-[12px] leading-snug">
+            <span className="text-slate-400">{suave(grupo)}: </span>
+            <span className={quitar ? 'text-rose-600 font-semibold' : 'text-slate-700'}>
+              {lista.map((o) => `${suave(o.nombre)}${o.n > 1 ? ` ×${o.n}` : ''}${o.precio > 0 ? ` (+$${o.precio.toLocaleString()})` : ''}`).join(', ')}
+            </span>
+          </p>
+        );
+      })}
+    </div>
+  );
+};
+
+/* Qué puede pasar ahora con el pedido, en el orden en que se hace. El primero
+   es el paso normal (va lleno: azul avanza, verde cierra); los demás son
+   atajos y van claros. Mismos saltos que acepta VALID_TRANSITIONS. */
+const pasosDelDetalle = (o) => {
+  const S = ORDER_STATUS;
+  const entregar = {
+    to: S.COMPLETED,
+    label: o.orderType === 'inSite' ? 'Marcar como servido' : o.orderType === 'delivery' ? 'Entregado al cliente' : 'Entregado',
+    Icon: FaCheck,
+    tono: 'verde',
+  };
+  const iniciar = { to: S.IN_PROGRESS, label: 'Iniciar preparación', Icon: FaPlay, tono: 'azul' };
+  if (o.status === S.PENDING_PAYMENT) return [{ to: S.PAYMENT_CONFIRMED, label: 'Confirmar pago', Icon: FaCheckCircle, tono: 'verde' }];
+  if (o.status === S.PENDING || o.status === S.PAYMENT_CONFIRMED) return [iniciar];
+  if (o.status === S.CONFIRMED) return [iniciar, { ...entregar, tono: 'claro' }];
+  if (o.status === S.IN_PROGRESS || o.status === S.PREPARING) {
+    if (o.orderType === 'delivery') return [{ to: S.READY, label: 'Salió · En camino', Icon: FaMotorcycle, tono: 'azul' }, { ...entregar, label: 'Entregado', tono: 'claro' }];
+    if (o.orderType === 'takeaway') return [{ to: S.READY, label: 'Listo para recoger', Icon: FaCheck, tono: 'azul' }, { ...entregar, tono: 'claro' }];
+    return [entregar];
+  }
+  if (o.status === S.READY) return [entregar];
+  return [];
+};
+const TONOS_PASO = {
+  azul: 'bg-blue-600 hover:bg-blue-700 text-white',
+  verde: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+  claro: 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200',
+};
+
 const GiftPanel = ({ order, businessName }) => {
   const [copied, setCopied] = useState(false);
   if (!order?.isGift || !order?.gift) return null;
@@ -649,318 +723,241 @@ function ModernOrdersDashboard() {
         )}
       </div>
 
-      {/* Order Details Modal — bottom sheet on mobile, centered modal on desktop */}
+      {/* Detalle del pedido — hoja en celular, ventana ancha en escritorio.
+          En escritorio va en dos columnas (quién y dónde | qué pidió) con las
+          acciones fijas abajo: todo a la vista sin scroll en un pedido normal. */}
       <AnimatePresence>
-        {selectedOrder && orderDetails && (
+        {selectedOrder && orderDetails && (() => {
+          const o = orderDetails;
+          const cerrar = () => { setSelectedOrder(null); setOrderDetails(null); setShowChatModal(false); };
+          const tipo = getOrderTypeInfo(o.orderType);
+          const TipoIcon = tipo.Icon;
+          const estado = getStatusInfo(o.status);
+          const abierto = ![ORDER_STATUS.COMPLETED, ORDER_STATUS.CANCELLED, ORDER_STATUS.DELIVERED].includes(o.status);
+          const mensajesCliente = (o.messages || []).filter((m) => m.sender === 'customer').length;
+          const unidades = (o.items || []).reduce((n, it) => n + (Number(it.quantity) || 1), 0);
+          const total = o.couponCode
+            ? (o.totalAmount || 0) + (o.deliveryFee || 0) - (o.discountAmount || 0)
+            : (o.totalAmount || 0) + (o.deliveryFee || 0);
+          const envioPendiente = o.deliveryNeedsConfirmation && !o.deliveryFee;
+          const whatsapp = o.phone ? enlaceWhatsApp(o.phone) : '';
+          const pasos = pasosDelDetalle(o);
+          const chip = 'inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border text-xs font-semibold whitespace-nowrap shrink-0 transition-colors active:scale-[0.97]';
+          return (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 flex lg:items-center items-end justify-center lg:p-4 z-50"
-            onClick={() => {
-              setSelectedOrder(null);
-              setOrderDetails(null);
-              setShowChatModal(false);
-            }}
+            className="fixed inset-0 bg-black/40 flex lg:items-center items-end justify-center lg:p-6 z-50"
+            onClick={cerrar}
           >
-            <Capa onCerrar={() => { setSelectedOrder(null); setOrderDetails(null); setShowChatModal(false); }} />
+            <Capa onCerrar={cerrar} />
             <motion.div
               initial={{ opacity: 0, y: 100 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 100 }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-t-2xl lg:rounded-xl border-0 lg:border lg:border-slate-200 w-full lg:max-w-2xl max-h-[92vh] lg:max-h-[90vh] overflow-y-auto"
+              className="relative bg-white rounded-t-2xl lg:rounded-2xl lg:border lg:border-slate-200 lg:shadow-2xl w-full lg:max-w-5xl max-h-[92dvh] lg:max-h-[90vh] flex flex-col overflow-hidden"
             >
-              {/* Drag handle — mobile only */}
-              <div className="lg:hidden flex justify-center pt-2 pb-1">
+              <div className="lg:hidden flex justify-center pt-2 pb-1 shrink-0">
                 <div className="w-9 h-1 rounded-full bg-slate-300" />
               </div>
-              {/* Modal Header */}
-              <div className="sticky top-0 bg-white border-b border-slate-200 px-4 py-3 rounded-t-xl z-10 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    {(() => { const ModalTypeIcon = getOrderTypeInfo(orderDetails.orderType).Icon; return (
-                      <div className={`w-8 h-8 ${getOrderTypeInfo(orderDetails.orderType).color} rounded-lg flex items-center justify-center`}>
-                        <ModalTypeIcon className="text-white text-xs" />
-                      </div>
-                    ); })()}
-                    <div>
-                      <h2 className="text-base font-bold text-slate-800">Pedido #{orderDetails.orderNumber}</h2>
-                      <p className="text-[11px] text-slate-400">{getOrderTypeInfo(orderDetails.orderType).label} · {orderDetails._id?.slice(-6)}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {orderDetails.orderChannel === 'inapp' && !['completed', 'delivered', 'cancelled'].includes(orderDetails.status) && (
-                      <button
-                        onClick={() => setShowChatModal(prev => !prev)}
-                        className="relative flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 px-2.5 py-2 rounded-lg text-[11px] font-semibold border border-blue-200/60 transition-colors"
-                      >
-                        <FaCommentDots className="text-2xs" /> Chat
-                        {(orderDetails.messages || []).filter(m => m.sender === 'customer').length > 0 && (
-                          <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-2xs font-bold rounded-full flex items-center justify-center">
-                            {(orderDetails.messages || []).filter(m => m.sender === 'customer').length}
-                          </span>
-                        )}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => { setSelectedOrder(null); setOrderDetails(null); setShowChatModal(false); }}
-                      className="w-9 h-9 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center transition-colors"
-                    >
-                      <FaTimes className="text-slate-400 text-xs" />
-                    </button>
-                  </div>
+
+              {/* ── Cabecera: qué pedido, en qué va y hace cuánto ── */}
+              <div className="shrink-0 flex items-center gap-3 px-4 lg:px-5 py-3 border-b border-slate-200">
+                <div className={`w-10 h-10 ${tipo.color} rounded-xl flex items-center justify-center shrink-0`}>
+                  <TipoIcon className="text-white text-sm" />
                 </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg font-black text-slate-900 leading-tight">Pedido #{o.orderNumber}</h2>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${estado.bgColor} ${estado.textColor}`}>
+                      <estado.Icon className="text-2xs" /> {estado.label}
+                    </span>
+                  </div>
+                  <p className="text-[12px] text-slate-500 flex items-center gap-1.5 flex-wrap">
+                    <span>{tipo.label}</span>
+                    <span className="text-slate-300">·</span>
+                    <span className="inline-flex items-center gap-1"><FaClock className="text-2xs text-slate-400" /> hace {calculateTimeElapsed(o.createdAt)}</span>
+                    {o.source && <><span className="text-slate-300">·</span><span>vino por {o.source}</span></>}
+                    {o.orderChannel === 'inapp' && <><span className="text-slate-300">·</span><span className="text-indigo-600 font-medium">in-app</span></>}
+                  </p>
+                </div>
+                {o.orderChannel === 'inapp' && abierto && (
+                  <button
+                    onClick={() => setShowChatModal((prev) => !prev)}
+                    className="relative flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 h-9 rounded-lg text-xs font-semibold border border-blue-200/60 transition-colors shrink-0"
+                  >
+                    <FaCommentDots className="text-2xs" /> Chat
+                    {mensajesCliente > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-2xs font-bold rounded-full flex items-center justify-center">{mensajesCliente}</span>
+                    )}
+                  </button>
+                )}
+                <button onClick={cerrar} className="w-9 h-9 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center transition-colors shrink-0" aria-label="Cerrar">
+                  <FaTimes className="text-slate-500 text-xs" />
+                </button>
               </div>
 
-              {/* Modal Body */}
-              <div className="p-4 space-y-3">
-                {/* ── Info Strip ── */}
-                <div className="bg-slate-50 rounded-xl p-3 space-y-2">
-                  {/* Row 1: Customer + Phone */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FaUser className="text-2xs text-slate-400 shrink-0" />
-                      <span className="text-[13px] font-semibold text-slate-800 truncate">{orderDetails.customerName}</span>
+              {/* ── Cuerpo en dos columnas ── */}
+              <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+                {/* Izquierda: quién, dónde y cómo paga */}
+                <div className="p-4 lg:p-5 space-y-3 lg:overflow-y-auto lg:bg-slate-50/60 lg:border-r lg:border-slate-100">
+                  {/* Cliente */}
+                  <section className="bg-white rounded-xl border border-slate-200 p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 font-black flex items-center justify-center shrink-0">
+                        {(o.customerName || '?').trim().charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[15px] font-bold text-slate-900 truncate">{o.customerName || 'Cliente'}</p>
+                        {o.phone && <p className="text-[12px] text-slate-500 tabular-nums">{o.phone}</p>}
+                      </div>
                     </div>
-                    {orderDetails.phone && (
-                      <a href={`tel:${orderDetails.phone}`} className="flex items-center gap-1.5 text-[12px] text-slate-500 hover:text-blue-500 shrink-0 tabular-nums">
-                        <FaPhone className="text-2xs" /> {orderDetails.phone}
-                      </a>
+                    {o.phone && (
+                      <div className="grid grid-cols-2 gap-1.5 mt-2.5">
+                        <a href={`tel:${o.phone}`} className="h-9 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold inline-flex items-center justify-center gap-1.5">
+                          <FaPhone className="text-2xs" /> Llamar
+                        </a>
+                        {whatsapp && (
+                          <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="h-9 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold inline-flex items-center justify-center gap-1.5">
+                            <FaCommentDots className="text-2xs" /> WhatsApp
+                          </a>
+                        )}
+                      </div>
                     )}
-                  </div>
+                  </section>
 
-                  {/* Row 2: Context tags */}
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-slate-500">
-                    {orderDetails.tableNumber && (
-                      <span className="flex items-center gap-1">
-                        <FaChair className="text-2xs text-slate-300" /> {businessConfig?.businessType === 'hotel' ? 'Hab.' : 'Mesa'} {orderDetails.tableNumber}
-                      </span>
+                  {/* Nota del cliente: arriba, que no se pierda */}
+                  {o.customerNotes && (
+                    <section className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                      <FaTag className="text-xs text-amber-500 mt-0.5 shrink-0" />
+                      <p className="text-[13px] text-amber-900 leading-snug"><span className="font-bold">Nota: </span>{o.customerNotes}</p>
+                    </section>
+                  )}
+
+                  {/* Dónde: una sola vez la dirección, y el mapa */}
+                  <section className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="px-3 py-2.5">
+                      <p className="text-2xs font-bold uppercase tracking-wider text-slate-400 mb-1">
+                        {o.orderType === 'delivery' ? 'Entregar en' : o.orderType === 'takeaway' ? 'Para recoger' : 'En el local'}
+                      </p>
+                      {o.orderType === 'delivery' ? (
+                        <>
+                          <p className="text-[14px] font-semibold text-slate-900 leading-snug">{o.address || 'Sin dirección'}</p>
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {o.deliveryZoneName && (
+                              <span className="inline-flex items-center gap-1 h-6 px-2 rounded-md bg-slate-100 text-[11px] font-medium text-slate-600">
+                                <FaMapMarkerAlt className="text-2xs text-slate-400" /> {o.deliveryZoneName}
+                              </span>
+                            )}
+                            {o.deliveryFee > 0 && (
+                              <span className="inline-flex items-center gap-1 h-6 px-2 rounded-md bg-slate-100 text-[11px] font-medium text-slate-600">
+                                <FaTruck className="text-2xs text-slate-400" /> Envío ${o.deliveryFee.toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                          {o.deliveryNeedsConfirmation && (
+                            <p className="mt-2 flex items-center gap-1.5 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200 text-[11px] font-semibold text-amber-700">
+                              <FaExclamationTriangle className="text-2xs text-amber-500 shrink-0" /> Envío por confirmar — fuera de zonas automáticas
+                            </p>
+                          )}
+                        </>
+                      ) : o.tableNumber ? (
+                        <p className="text-[14px] font-semibold text-slate-900 flex items-center gap-1.5">
+                          <FaChair className="text-xs text-slate-400" /> {businessConfig?.businessType === 'hotel' ? 'Habitación' : 'Mesa'} {o.tableNumber}
+                        </p>
+                      ) : (
+                        <p className="text-[14px] font-semibold text-slate-900">{tipo.label}</p>
+                      )}
+                    </div>
+                    {o.orderType === 'delivery' && o.deliveryCoordinates?.lat && (
+                      <DeliveryLocationMap lat={o.deliveryCoordinates.lat} lon={o.deliveryCoordinates.lon} sinBorde />
                     )}
-                    {orderDetails.orderType === 'delivery' && orderDetails.address && (
-                      <span className="flex items-center gap-1">
-                        <FaHome className="text-2xs text-slate-300" /> {orderDetails.address}
-                      </span>
-                    )}
-                  {orderDetails.orderType === 'delivery' && orderDetails.deliveryCoordinates?.lat && (
-                      <a
-                        href={`https://maps.google.com/?q=${orderDetails.deliveryCoordinates.lat},${orderDetails.deliveryCoordinates.lon}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-blue-500 hover:text-blue-600 font-semibold"
+                  </section>
+
+                  {/* Pago */}
+                  {(o.paymentMethod || o.paymentProof) && (
+                    <section className="bg-white rounded-xl border border-slate-200 px-3 py-2.5 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                        <FaCreditCard className="text-xs text-slate-500" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-2xs font-bold uppercase tracking-wider text-slate-400">Pago</p>
+                        <p className="text-[14px] font-semibold text-slate-900">{PAYMENT_LABELS[o.paymentMethod] || o.paymentMethod || '—'}</p>
+                      </div>
+                      {o.paymentProof && (
+                        <button
+                          onClick={() => { setProofImageUrl(getProofUrl(o.paymentProof)); setShowProofModal(true); }}
+                          className="flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 pl-1 pr-2.5 py-1 transition-colors"
+                          title="Ver comprobante"
+                        >
+                          <img src={getProofUrl(o.paymentProof)} alt="" className="w-8 h-8 rounded-md object-cover" />
+                          <span className="text-[11px] font-semibold text-purple-700">Comprobante</span>
+                        </button>
+                      )}
+                    </section>
+                  )}
+
+                  {o.isGift && <GiftPanel order={o} businessName={businessConfig?.businessName} />}
+                </div>
+
+                {/* Derecha: qué pidió y cuánto es */}
+                <div className="p-4 lg:p-5 pt-0 lg:pt-5 space-y-3 lg:overflow-y-auto">
+                  {/* Cambios que cocina todavía no tiene en papel. Se acumulan
+                      para no sacar una comanda por cada ajuste. */}
+                  {o.pendingKitchenChanges?.length > 0 && (
+                    <div className="rounded-xl border border-amber-300 bg-amber-50 overflow-hidden">
+                      <div className="px-3 py-2 border-b border-amber-200 flex items-center gap-2">
+                        <FaExclamationTriangle className="text-amber-500 text-[11px] shrink-0" />
+                        <span className="text-[12px] font-bold text-amber-900">
+                          Cocina aún no sabe {o.pendingKitchenChanges.length === 1 ? 'de 1 cambio' : `de ${o.pendingKitchenChanges.length} cambios`}
+                        </span>
+                      </div>
+                      <div className="px-3 py-2 space-y-1">
+                        {o.pendingKitchenChanges.map((c, i) => (
+                          <p key={i} className="text-[11px] font-mono text-amber-900 leading-snug"><span className="font-bold">{c.qty || 1}x</span> {c.text}</p>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => printPendingChanges(o)}
+                        disabled={printingChanges}
+                        className="w-full flex items-center justify-center gap-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white py-2.5 text-xs font-bold transition-colors active:scale-[0.98]"
                       >
-                        <FaMapMarkerAlt className="text-2xs" /> Ver en Maps
-                      </a>
-                    )}
-                    {orderDetails.orderType === 'delivery' && orderDetails.deliveryZoneName && (
-                      <span className="flex items-center gap-1">
-                        <FaMapMarkerAlt className="text-2xs text-slate-300" /> {orderDetails.deliveryZoneName}
-                      </span>
-                    )}
-                    {orderDetails.orderType === 'delivery' && orderDetails.deliveryFee > 0 && (
-                      <span className="flex items-center gap-1 font-semibold text-slate-600">
-                        <FaTruck className="text-2xs text-slate-300" /> Envío ${orderDetails.deliveryFee.toLocaleString()}
-                      </span>
-                    )}
-                    <span className="flex items-center gap-1">
-                      <FaClock className="text-2xs text-slate-300" /> {calculateTimeElapsed(orderDetails.createdAt)}
-                    </span>
-                    {orderDetails.paymentMethod && (
-                      <span className="flex items-center gap-1">
-                        <FaCreditCard className="text-2xs text-slate-300" /> {PAYMENT_LABELS[orderDetails.paymentMethod] || orderDetails.paymentMethod}
-                      </span>
-                    )}
-                    {(() => { const si = getStatusInfo(orderDetails.status); return (
-                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-2xs font-bold ${si.bgColor} ${si.textColor}`}>
-                        <si.Icon className="text-[7px]" /> {si.label}
-                      </span>
-                    ); })()}
+                        <FaPrint className="text-2xs" />
+                        {printingChanges ? 'Enviando...' : 'Imprimir comanda de cambios'}
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex items-baseline justify-between">
+                    <h3 className="text-2xs font-bold text-slate-400 uppercase tracking-wider">{isService ? 'Servicios' : 'Productos'}</h3>
+                    <span className="text-[11px] text-slate-400">{unidades} {unidades === 1 ? 'unidad' : 'unidades'}</span>
                   </div>
-
-                  {orderDetails.orderType === 'delivery' && orderDetails.deliveryNeedsConfirmation && (
-                    <div className="flex items-center gap-1.5 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200">
-                      <FaExclamationTriangle className="text-2xs text-amber-500 shrink-0" />
-                      <span className="text-[11px] font-semibold text-amber-700">Envío por confirmar — fuera de zonas automáticas</span>
-                    </div>
-                  )}
-
-                  {orderDetails.customerNotes && (
-                    <div className="flex items-start gap-1.5 bg-amber-50/60 px-2.5 py-1.5 rounded-lg">
-                      <FaTag className="text-2xs text-amber-400 mt-0.5 shrink-0" />
-                      <p className="text-[12px] text-amber-700">{orderDetails.customerNotes}</p>
-                    </div>
-                  )}
-
-                  {orderDetails.orderChannel === 'inapp' && (
-                    <div className="flex items-center gap-1.5 text-[11px] text-indigo-600 font-medium">
-                      <FaMoneyBillWave className="text-2xs" /> Pedido in-app
-                    </div>
-                  )}
-                </div>
-
-                {/* ── Delivery location map ── */}
-                {orderDetails.orderType === 'delivery' && orderDetails.deliveryCoordinates?.lat && (
-                  <DeliveryLocationMap
-                    lat={orderDetails.deliveryCoordinates.lat}
-                    lon={orderDetails.deliveryCoordinates.lon}
-                    address={orderDetails.address}
-                  />
-                )}
-
-                {/* ── Gift panel ── */}
-                {orderDetails.isGift && (
-                  <GiftPanel order={orderDetails} businessName={businessConfig?.businessName} />
-                )}
-
-                {/* ── Action Buttons — TOP ── */}
-                <div className="space-y-1.5">
-                  {/* Primary actions: verde confirma, rojo rechaza, oscuro avanza. */}
-                  {orderDetails.status === ORDER_STATUS.PAYMENT_UPLOADED && (
-                    <div className="flex gap-2">
-                      <Boton variante="accion" redondo={false} className="flex-1" icono={<FaCheckCircle className="text-xs" />} onClick={() => confirmPayment(orderDetails._id)}>
-                        Confirmar pago
-                      </Boton>
-                      <Boton variante="peligro" redondo={false} icono={<FaTimesCircle className="text-xs" />} onClick={() => rejectPayment(orderDetails._id)}>
-                        Rechazar
-                      </Boton>
-                    </div>
-                  )}
-
-                  {(orderDetails.status === ORDER_STATUS.PAYMENT_CONFIRMED || orderDetails.status === ORDER_STATUS.PENDING) && (
-                    <Boton variante="oscuro" redondo={false} bloque icono={<FaPlay className="text-xs" />} onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.IN_PROGRESS)}>
-                      Iniciar preparación
-                    </Boton>
-                  )}
-
-                  {orderDetails.status === ORDER_STATUS.PENDING_PAYMENT && (
-                    <Boton variante="accion" redondo={false} bloque icono={<FaCheckCircle className="text-xs" />} onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.PAYMENT_CONFIRMED)}>
-                      Confirmar pago
-                    </Boton>
-                  )}
-
-                  {/* En preparación → "En camino" (domicilio) o "Listo para recoger"
-                      (para llevar): el cliente lo ve en su pantalla de estado.
-                      Luego, "Entregado". */}
-                  {[ORDER_STATUS.IN_PROGRESS, ORDER_STATUS.PREPARING].includes(orderDetails.status) && (
-                    <div className="space-y-1.5">
-                      {orderDetails.orderType === 'delivery' && (
-                        <Boton variante="oscuro" redondo={false} bloque icono={<FaMotorcycle className="text-sm" />} onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.READY)}>
-                          Salió · En camino
-                        </Boton>
-                      )}
-                      {orderDetails.orderType === 'takeaway' && (
-                        <Boton variante="oscuro" redondo={false} bloque icono={<FaCheck className="text-xs" />} onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.READY)}>
-                          Listo para recoger
-                        </Boton>
-                      )}
-                      <Boton variante={orderDetails.orderType === 'inSite' ? 'accion' : 'secundario'} redondo={false} bloque icono={<FaCheck className="text-xs" />} onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.COMPLETED)}>
-                        {orderDetails.orderType === 'inSite' ? 'Marcar como servido' : 'Entregado'}
-                      </Boton>
-                    </div>
-                  )}
-
-                  {orderDetails.status === ORDER_STATUS.READY && (
-                    <Boton variante="accion" redondo={false} bloque icono={<FaCheck className="text-xs" />} onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.COMPLETED)}>
-                      {orderDetails.orderType === 'delivery' ? 'Entregado al cliente' : 'Entregado'}
-                    </Boton>
-                  )}
-
-                  {/* Secondary actions row */}
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {!orderDetails.sentToKitchen && (
-                      <Boton variante="secundario" redondo={false} tamano="md" className="text-xs" icono={<FaUtensils className="text-2xs" />} onClick={() => sendToKitchen(orderDetails._id)}>
-                        Enviar a cocina
-                      </Boton>
-                    )}
-                    {orderDetails.status !== ORDER_STATUS.COMPLETED && orderDetails.status !== ORDER_STATUS.CANCELLED && orderDetails.status !== ORDER_STATUS.DELIVERED && (
-                      <Boton variante="secundario" redondo={false} tamano="md" className="text-xs" icono={<FaPlus className="text-2xs" />} onClick={() => setAddItemsOrder(orderDetails)}>
-                        Agregar productos
-                      </Boton>
-                    )}
-                    {orderDetails.status !== ORDER_STATUS.COMPLETED && orderDetails.status !== ORDER_STATUS.CANCELLED && orderDetails.status !== ORDER_STATUS.DELIVERED && (
-                      <Boton variante="peligro-suave" redondo={false} tamano="md" className="text-xs" icono={<FaTimes className="text-2xs" />} onClick={() => { if (window.confirm('¿Cancelar pedido #' + orderDetails.orderNumber + '?')) { updateOrderStatus(orderDetails._id, ORDER_STATUS.CANCELLED); setOrderDetails(null); } }}>
-                        Cancelar pedido
-                      </Boton>
-                    )}
-                  </div>
-                </div>
-
-                {/* ── Chat removed from body — now floating ── */}
-
-                {/* Cambios que cocina todavía no tiene en papel. Se acumulan
-                    para no sacar una comanda por cada ajuste. */}
-                {orderDetails.pendingKitchenChanges?.length > 0 && (
-                  <div className="rounded-xl border border-amber-300 bg-amber-50 overflow-hidden">
-                    <div className="px-3 py-2 border-b border-amber-200 flex items-center gap-2">
-                      <FaExclamationTriangle className="text-amber-500 text-[11px] shrink-0" />
-                      <span className="text-[12px] font-bold text-amber-900">
-                        Cocina aún no sabe {orderDetails.pendingKitchenChanges.length === 1 ? 'de 1 cambio' : `de ${orderDetails.pendingKitchenChanges.length} cambios`}
-                      </span>
-                    </div>
-                    <div className="px-3 py-2 space-y-1">
-                      {orderDetails.pendingKitchenChanges.map((c, i) => (
-                        <p key={i} className="text-[11px] font-mono text-amber-900 leading-snug"><span className="font-bold">{c.qty || 1}x</span> {c.text}</p>
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => printPendingChanges(orderDetails)}
-                      disabled={printingChanges}
-                      className="w-full flex items-center justify-center gap-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white py-2.5 text-xs font-bold transition-colors active:scale-[0.98]"
-                    >
-                      <FaPrint className="text-2xs" />
-                      {printingChanges ? 'Enviando...' : 'Imprimir comanda de cambios'}
-                    </button>
-                  </div>
-                )}
-
-                {/* ── Products ── */}
-                <div>
-                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Productos</h3>
-                  <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
-                    {orderDetails.items?.map((item, index) => (
-                      <div key={item._id || index} className="flex justify-between items-start px-3 py-2 bg-white">
+                  <ul className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
+                    {o.items?.map((item, index) => (
+                      <li key={item._id || index} className="flex items-start gap-3 px-3 py-2.5 bg-white">
+                        <span className="min-w-[28px] h-7 px-1.5 rounded-lg bg-slate-100 text-slate-700 text-[13px] font-black tabular-nums flex items-center justify-center shrink-0">
+                          {item.quantity}×
+                        </span>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[13px] font-medium text-slate-800">{item.name}</span>
-                            <span className="text-[11px] text-slate-400">x{item.quantity}</span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[14px] font-semibold text-slate-900 leading-snug">{item.name}</span>
                             {item.isLoyaltyReward && (
                               <span className="text-2xs px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold inline-flex items-center gap-0.5">{AI.gift('w-3 h-3')} Loyalty</span>
                             )}
                           </div>
-                          {item.selectedToppings && item.selectedToppings.length > 0 && (
-                            <div className="mt-1 flex flex-wrap gap-1">
-                              {item.selectedToppings.flatMap((topping, toppingIndex) => {
-                                const tags = [];
-                                if (topping.optionName) {
-                                  tags.push(
-                                    <span key={`t-${toppingIndex}`} className="text-2xs text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded">
-                                      + {topping.groupName && <>{topping.groupName}: </>}{topping.optionName}{topping.price > 0 && ` ($${topping.price.toLocaleString()})`}
-                                    </span>
-                                  );
-                                }
-                                if (topping.subGroups) {
-                                  topping.subGroups.forEach((sg, si) => {
-                                    tags.push(
-                                      <span key={`s-${toppingIndex}-${si}`} className="text-2xs text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
-                                        + {sg.subGroupTitle && <>{sg.subGroupTitle}: </>}{sg.optionName}{sg.price > 0 && ` ($${sg.price.toLocaleString()})`}
-                                      </span>
-                                    );
-                                  });
-                                }
-                                return tags;
-                              })}
-                            </div>
-                          )}
+                          {item.selectedToppings?.length > 0 && <ExtrasDelItem toppings={item.selectedToppings} />}
                         </div>
-                        <div className="text-right shrink-0 ml-3">
-                          <p className="text-[13px] font-semibold text-slate-800">${(item.price * item.quantity).toLocaleString()}</p>
-                          {item.quantity > 1 && <p className="text-2xs text-slate-400">${item.price.toLocaleString()} c/u</p>}
+                        <div className="text-right shrink-0">
+                          <p className="text-[14px] font-bold text-slate-900 tabular-nums">${(item.price * item.quantity).toLocaleString()}</p>
+                          {item.quantity > 1 && <p className="text-2xs text-slate-400 tabular-nums">${item.price.toLocaleString()} c/u</p>}
 
-                          {puedeEditarItems(orderDetails) && item._id && (
+                          {puedeEditarItems(o) && item._id && (
                             <div className="flex items-center justify-end gap-1 mt-1.5">
                               <button
-                                onClick={() => changeItemQty(orderDetails, item, item.quantity - 1)}
+                                onClick={() => changeItemQty(o, item, item.quantity - 1)}
                                 disabled={itemBusy === item._id || item.quantity <= 1}
                                 className="w-7 h-7 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
                                 title="Quitar una unidad"
@@ -971,7 +968,7 @@ function ModernOrdersDashboard() {
                                 {itemBusy === item._id ? '·' : item.quantity}
                               </span>
                               <button
-                                onClick={() => changeItemQty(orderDetails, item, item.quantity + 1)}
+                                onClick={() => changeItemQty(o, item, item.quantity + 1)}
                                 disabled={itemBusy === item._id}
                                 className="w-7 h-7 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 transition-colors flex items-center justify-center"
                                 title="Agregar una unidad"
@@ -979,7 +976,7 @@ function ModernOrdersDashboard() {
                                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
                               </button>
                               <button
-                                onClick={() => changeItemQty(orderDetails, item, 0)}
+                                onClick={() => changeItemQty(o, item, 0)}
                                 disabled={itemBusy === item._id}
                                 className="w-7 h-7 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-30 transition-colors flex items-center justify-center ml-0.5"
                                 title="Quitar del pedido"
@@ -989,101 +986,115 @@ function ModernOrdersDashboard() {
                             </div>
                           )}
                         </div>
-                      </div>
+                      </li>
                     ))}
+                  </ul>
+
+                  {/* Dónde va el paquete. Es el pedido EN CURSO: justo el que
+                      el cliente pregunta por WhatsApp mientras espera. */}
+                  {o.envio?.guia && (
+                    <RastreoEnvio guia={o.envio.guia} transportadora={o.envio.transportadora} urlRastreo={o.envio.urlRastreo} compacto />
+                  )}
+
+                  {/* Totales */}
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 space-y-1 text-[13px]">
+                    {(o.deliveryFee > 0 || o.couponCode || o.deliveryNeedsConfirmation) && (
+                      <div className="flex justify-between text-slate-500"><span>Subtotal</span><span className="tabular-nums">${(o.totalAmount || 0).toLocaleString()}</span></div>
+                    )}
+                    {o.deliveryFee > 0 && (
+                      <div className="flex justify-between text-slate-500"><span>Envío</span><span className="tabular-nums">${o.deliveryFee.toLocaleString()}</span></div>
+                    )}
+                    {envioPendiente && (
+                      <div className="flex justify-between text-amber-600"><span>Envío</span><span>Por confirmar</span></div>
+                    )}
+                    {o.couponCode && (
+                      <div className="flex justify-between text-emerald-700"><span>Cupón ({o.couponCode})</span><span className="tabular-nums">-${(o.discountAmount || 0).toLocaleString()}</span></div>
+                    )}
+                    <div className="flex justify-between items-baseline pt-2 mt-1 border-t border-slate-200">
+                      <span className="text-sm font-bold text-slate-900">Total</span>
+                      <span className="text-xl font-black text-slate-900 tabular-nums">
+                        ${(envioPendiente ? (o.totalAmount || 0) : total).toLocaleString()}{envioPendiente ? ' + envío' : ''}
+                      </span>
+                    </div>
                   </div>
-                </div>
-
-                {/* Dónde va el paquete. Es el pedido EN CURSO: justo el que
-                    el cliente pregunta por WhatsApp mientras espera. */}
-                {orderDetails.envio?.guia && (
-                  <RastreoEnvio
-                    guia={orderDetails.envio.guia}
-                    transportadora={orderDetails.envio.transportadora}
-                    urlRastreo={orderDetails.envio.urlRastreo}
-                    compacto
-                  />
-                )}
-
-                {/* ── Total ── */}
-                <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 space-y-1">
-                  {(orderDetails.deliveryFee > 0 || orderDetails.couponCode || orderDetails.deliveryNeedsConfirmation) && (
-                    <div className="flex justify-between items-center text-slate-500 text-[12px]">
-                      <span>Subtotal</span>
-                      <span>${(orderDetails.totalAmount || 0).toLocaleString()}</span>
-                    </div>
-                  )}
-                  {orderDetails.deliveryFee > 0 && (
-                    <div className="flex justify-between items-center text-slate-500 text-[12px]">
-                      <span>Envío</span>
-                      <span>${orderDetails.deliveryFee.toLocaleString()}</span>
-                    </div>
-                  )}
-                  {orderDetails.deliveryNeedsConfirmation && !orderDetails.deliveryFee && (
-                    <div className="flex justify-between items-center text-amber-600 text-[12px]">
-                      <span>Envío</span>
-                      <span>Por confirmar</span>
-                    </div>
-                  )}
-                  {orderDetails.couponCode && (
-                    <div className="flex justify-between items-center text-emerald-700 text-[12px]">
-                      <span>Cupón ({orderDetails.couponCode})</span>
-                      <span>-${(orderDetails.discountAmount || 0).toLocaleString()}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between items-center pt-2 mt-1 border-t border-slate-200">
-                    <span className="text-sm font-bold text-slate-900">Total</span>
-                    <span className="text-lg font-bold text-slate-900">
-                      {orderDetails.couponCode
-                        ? `$${((orderDetails.totalAmount || 0) + (orderDetails.deliveryFee || 0) - (orderDetails.discountAmount || 0)).toLocaleString()}`
-                        : orderDetails.deliveryNeedsConfirmation && !orderDetails.deliveryFee
-                          ? `$${(orderDetails.totalAmount || 0).toLocaleString()} + envío`
-                          : `$${((orderDetails.totalAmount || 0) + (orderDetails.deliveryFee || 0)).toLocaleString()}`
-                      }
-                    </span>
-                  </div>
-                </div>
-
-                {/* ── Payment Proof ── */}
-                {orderDetails.paymentProof && (
-                  <div
-                    className="flex items-center gap-3 bg-purple-50 rounded-xl px-3 py-2.5 border border-purple-200/60 cursor-pointer hover:bg-purple-100 transition-colors"
-                    onClick={() => { setProofImageUrl(getProofUrl(orderDetails.paymentProof)); setShowProofModal(true); }}
-                  >
-                    <img src={getProofUrl(orderDetails.paymentProof)} alt="Comprobante" className="w-12 h-12 rounded-lg object-cover border border-purple-200" />
-                    <div>
-                      <p className="text-[12px] font-semibold text-purple-800">Comprobante de pago</p>
-                      <p className="text-[11px] text-purple-600">Toca para ver completo</p>
-                    </div>
-                    <FaImage className="text-purple-400 text-sm ml-auto" />
-                  </div>
-                )}
-
-                {/* ── Print row ── */}
-                <div className="grid grid-cols-2 gap-1.5">
-                  <button
-                    onClick={async () => { try { await api.post(`/print-agent/print-comanda/${orderDetails._id}`); } catch { handlePrintOrder(orderDetails); } }}
-                    className="flex items-center justify-center gap-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 py-2.5 rounded-xl text-xs font-semibold border border-slate-200/60 transition-colors active:scale-[0.97]"
-                  >
-                    <FaPrint className="text-2xs" /> Imprimir comanda
-                  </button>
-                  {orderDetails.status !== 'pending' && orderDetails.status !== 'pending_payment' && (
-                    <button
-                      onClick={async () => { try { await api.post(`/print-agent/print-receipt/${orderDetails._id}`); } catch { handlePrintOrder(orderDetails); } }}
-                      className="flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 py-2.5 rounded-xl text-xs font-semibold border border-emerald-200/60 transition-colors active:scale-[0.97]"
-                    >
-                      <FaMoneyBillWave className="text-2xs" /> Imprimir recibo
-                    </button>
-                  )}
                 </div>
               </div>
 
-              {/* Floating Chat Modal */}
+              {/* ── Acciones, siempre a la vista ──
+                  En celular el paso siguiente va arriba (a mano del pulgar) y
+                  las utilidades debajo; en escritorio, utilidades a la
+                  izquierda y el paso a la derecha. */}
+              <div
+                className="shrink-0 border-t border-slate-200 bg-white px-4 lg:px-5 pt-3 flex flex-col-reverse lg:flex-row lg:items-center gap-2 lg:gap-3"
+                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
+              >
+                <div className="flex items-center gap-1.5 overflow-x-auto lg:flex-1 -mx-1 px-1 pb-0.5">
+                  <button
+                    onClick={async () => { try { await api.post(`/print-agent/print-comanda/${o._id}`); } catch { handlePrintOrder(o); } }}
+                    className={`${chip} bg-white border-slate-200 text-slate-600 hover:bg-slate-50`}
+                  >
+                    <FaPrint className="text-2xs" /> Comanda
+                  </button>
+                  {o.status !== 'pending' && o.status !== 'pending_payment' && (
+                    <button
+                      onClick={async () => { try { await api.post(`/print-agent/print-receipt/${o._id}`); } catch { handlePrintOrder(o); } }}
+                      className={`${chip} bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50`}
+                    >
+                      <FaMoneyBillWave className="text-2xs" /> Recibo
+                    </button>
+                  )}
+                  {!o.sentToKitchen && (
+                    <button onClick={() => sendToKitchen(o._id)} className={`${chip} bg-white border-slate-200 text-slate-600 hover:bg-slate-50`}>
+                      <FaUtensils className="text-2xs" /> Enviar a cocina
+                    </button>
+                  )}
+                  {abierto && (
+                    <button onClick={() => setAddItemsOrder(o)} className={`${chip} bg-white border-slate-200 text-slate-600 hover:bg-slate-50`}>
+                      <FaPlus className="text-2xs" /> Agregar productos
+                    </button>
+                  )}
+                  {abierto && (
+                    <button
+                      onClick={() => { if (window.confirm('¿Cancelar pedido #' + o.orderNumber + '?')) { updateOrderStatus(o._id, ORDER_STATUS.CANCELLED); setOrderDetails(null); } }}
+                      className={`${chip} bg-white border-red-200 text-red-600 hover:bg-red-50`}
+                    >
+                      <FaTimes className="text-2xs" /> Cancelar
+                    </button>
+                  )}
+                </div>
+
+                {(o.status === ORDER_STATUS.PAYMENT_UPLOADED || pasos.length > 0) && (
+                  <div className="flex gap-2 lg:shrink-0">
+                    {o.status === ORDER_STATUS.PAYMENT_UPLOADED && (
+                      <>
+                        <button onClick={() => rejectPayment(o._id)} className="h-11 px-4 rounded-xl border border-red-200 bg-white hover:bg-red-50 text-red-600 text-sm font-bold inline-flex items-center justify-center gap-1.5 active:scale-[0.98]">
+                          <FaTimesCircle className="text-xs" /> Rechazar
+                        </button>
+                        <button onClick={() => confirmPayment(o._id)} className={`h-11 px-5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 flex-1 lg:flex-none active:scale-[0.98] ${TONOS_PASO.verde}`}>
+                          <FaCheckCircle className="text-xs" /> Confirmar pago
+                        </button>
+                      </>
+                    )}
+                    {/* El atajo a la izquierda, el paso normal a la derecha */}
+                    {[...pasos].reverse().map(({ to, label, Icon, tono }) => (
+                      <button
+                        key={to}
+                        onClick={() => updateOrderStatus(o._id, to)}
+                        className={`min-h-11 py-2 px-4 lg:px-5 rounded-xl text-sm font-bold leading-tight text-center inline-flex items-center justify-center gap-2 flex-1 lg:flex-none transition-colors active:scale-[0.98] ${TONOS_PASO[tono]}`}
+                      >
+                        <Icon className="text-xs shrink-0" /> <span>{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Chat flotante */}
               <AnimatePresence>
-                {showChatModal && orderDetails.orderChannel === 'inapp' && (
+                {showChatModal && o.orderChannel === 'inapp' && (
                   <AdminOrderChat
-                    orderId={orderDetails._id}
-                    messages={orderDetails.messages || []}
+                    orderId={o._id}
+                    messages={o.messages || []}
                     isOpen={showChatModal}
                     onClose={() => setShowChatModal(false)}
                   />
@@ -1091,7 +1102,8 @@ function ModernOrdersDashboard() {
               </AnimatePresence>
             </motion.div>
           </motion.div>
-        )}
+          );
+        })()}
       </AnimatePresence>
 
       {/* Payment Proof Full-screen Modal */}

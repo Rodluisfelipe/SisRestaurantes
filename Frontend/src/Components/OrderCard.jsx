@@ -40,7 +40,7 @@ function OrderCard({
      solo devolvería 400. */
   const S = ORDER_STATUS;
   const START = { to: S.IN_PROGRESS, label: 'Iniciar preparación', Icon: FaPlay, primary: false };
-  const FINISH = { to: S.COMPLETED, label: 'Completar pedido', Icon: FaCheck, primary: true };
+  const FINISH = { to: S.COMPLETED, label: 'Completar', Icon: FaCheck, primary: true };
   /* "Listo" dice cosas distintas según el pedido: en un domicilio es que
      salió (el cliente ve "En camino"), en uno para llevar que ya puede pasar.
      En la mesa no hace falta: de la cocina va directo a servido. */
@@ -54,8 +54,8 @@ function OrderCard({
     [S.PENDING]: [START],
     [S.PAYMENT_CONFIRMED]: [START],
     [S.CONFIRMED]: [START, FINISH],
-    [S.PREPARING]: [LISTO, FINISH].filter(Boolean),
-    [S.IN_PROGRESS]: [LISTO, FINISH].filter(Boolean),
+    [S.PREPARING]: [LISTO, ENTREGADO].filter(Boolean),
+    [S.IN_PROGRESS]: [LISTO, ENTREGADO].filter(Boolean),
     [S.READY]: [ENTREGADO],
   };
   const nextSteps = NEXT_STEPS[order.status] || [];
@@ -71,6 +71,15 @@ function OrderCard({
      transportadora y queda un número de guía. Mientras no lo tenga, despachar
      es la acción que falta; cuando lo tiene, lo que importa es verlo. */
   const despachado = !!order.envio?.guia;
+
+  const tonoPaso = (primary, i) => (i > 0
+    ? 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'
+    : primary ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white');
+
+  // Qué pidió, de un vistazo (cocina no tiene que abrir el detalle).
+  const items = order.items || [];
+  const unidades = items.reduce((n, it) => n + (Number(it.quantity) || 1), 0);
+  const cancelar = () => { if (window.confirm('¿Cancelar pedido #' + order.orderNumber + '?')) onUpdateStatus(order._id, ORDER_STATUS.CANCELLED); };
   const porDespachar = tienda && order.orderType === 'delivery' && !despachado && !isTerminal;
 
   return (
@@ -151,8 +160,8 @@ function OrderCard({
 
           {/* ── Body ── */}
           <div className="px-3 py-2.5">
-            {/* Customer row */}
-            <div className="flex items-center gap-1.5 mb-1.5">
+            {/* Cliente */}
+            <div className="flex items-center gap-1.5">
               <FaUser className="text-2xs text-slate-300 shrink-0" />
               <span className="text-[13px] font-semibold text-slate-800 truncate">{order.customerName}</span>
               {order.phone && (
@@ -162,46 +171,67 @@ function OrderCard({
               )}
             </div>
 
-            {/* Context row: table / address / zone */}
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500 mb-2">
-              {order.tableNumber && (
-                <span className="flex items-center gap-1">
-                  <FaChair className="text-2xs text-slate-300" /> {businessType === 'hotel' ? 'Hab.' : 'Mesa'} {order.tableNumber}
-                </span>
-              )}
-              {order.orderType === 'delivery' && order.address && (
-                <span className="flex items-center gap-1 truncate max-w-full">
-                  <FaHome className="text-2xs text-slate-300 shrink-0" /> {order.address}
-                </span>
-              )}
-              {order.orderType === 'delivery' && order.deliveryCoordinates?.lat && (
-                <a
-                  href={`https://maps.google.com/?q=${order.deliveryCoordinates.lat},${order.deliveryCoordinates.lon}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-0.5 text-blue-500 hover:text-blue-600 font-semibold shrink-0"
-                  title="Abrir en Google Maps"
-                >
-                  <FaMapMarkerAlt className="text-2xs" /> Maps
-                </a>
-              )}
-              {order.orderType === 'delivery' && order.deliveryZoneName && (
-                <span className="flex items-center gap-1">
-                  <FaMapMarkerAlt className="text-2xs text-slate-300" /> {order.deliveryZoneName}
-                </span>
-              )}
-              {order.orderType === 'delivery' && order.deliveryFee > 0 && (
-                <span className="flex items-center gap-1 font-semibold text-slate-600">
-                  <FaTruck className="text-2xs text-slate-300" /> Envío ${order.deliveryFee.toLocaleString()}
-                </span>
-              )}
-              {order.paymentMethod && (
-                <span className="flex items-center gap-1">
-                  <FaCreditCard className="text-2xs text-slate-300" /> {PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod}
-                </span>
-              )}
-            </div>
+            {/* Dónde: mesa o dirección, en su propia línea */}
+            {order.tableNumber && (
+              <p className="mt-1 flex items-center gap-1.5 text-[12px] text-slate-600">
+                <FaChair className="text-2xs text-slate-300 shrink-0" /> {businessType === 'hotel' ? 'Habitación' : 'Mesa'} {order.tableNumber}
+              </p>
+            )}
+            {order.orderType === 'delivery' && order.address && (
+              <div className="mt-1 flex items-start gap-1.5 text-[12px] text-slate-600 min-w-0">
+                <FaHome className="text-2xs text-slate-300 shrink-0 mt-[3px]" />
+                <span className="leading-snug break-words min-w-0">{order.address}</span>
+                {order.deliveryCoordinates?.lat && (
+                  <a
+                    href={`https://maps.google.com/?q=${order.deliveryCoordinates.lat},${order.deliveryCoordinates.lon}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="ml-auto shrink-0 inline-flex items-center gap-0.5 text-blue-600 hover:text-blue-700 font-semibold"
+                    title="Abrir en Google Maps"
+                  >
+                    <FaMapMarkerAlt className="text-2xs" /> Maps
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* Datos cortos en fichas */}
+            {(order.deliveryZoneName || order.deliveryFee > 0 || order.paymentMethod) && (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {order.orderType === 'delivery' && order.deliveryZoneName && (
+                  <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded-md bg-slate-50 border border-slate-100 text-2xs font-medium text-slate-600">
+                    <FaMapMarkerAlt className="text-2xs text-slate-400" /> {order.deliveryZoneName}
+                  </span>
+                )}
+                {order.orderType === 'delivery' && order.deliveryFee > 0 && (
+                  <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded-md bg-slate-50 border border-slate-100 text-2xs font-medium text-slate-600">
+                    <FaTruck className="text-2xs text-slate-400" /> Envío ${order.deliveryFee.toLocaleString()}
+                  </span>
+                )}
+                {order.paymentMethod && (
+                  <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded-md bg-slate-50 border border-slate-100 text-2xs font-medium text-slate-600">
+                    <FaCreditCard className="text-2xs text-slate-400" /> {PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Lo que pidió */}
+            {items.length > 0 && (
+              <ul className="mt-2 space-y-0.5">
+                {items.slice(0, 2).map((it, k) => (
+                  <li key={it._id || k} className="flex items-baseline gap-1.5 text-[12px] text-slate-700 min-w-0">
+                    <span className="font-bold text-slate-500 tabular-nums shrink-0">{it.quantity || 1}×</span>
+                    <span className="leading-snug line-clamp-2 min-w-0">{it.name}</span>
+                    {it.selectedToppings?.length > 0 && <span className="text-2xs text-slate-400 shrink-0">+{it.selectedToppings.length}</span>}
+                  </li>
+                ))}
+                {items.length > 2 && <li className="text-2xs text-slate-400 pl-4">y {items.length - 2} más</li>}
+              </ul>
+            )}
+
+            <div className="mb-2" />
 
             {order.orderType === 'delivery' && order.deliveryNeedsConfirmation && (
               <div className="flex items-center gap-1.5 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200 mb-2">
@@ -225,7 +255,7 @@ function OrderCard({
             <div className={`flex items-center justify-between py-1.5 border-t ${
               isPending ? 'border-yellow-200' : 'border-slate-100'
             }`}>
-              <span className="text-[11px] text-slate-400">{order.items?.length || 0} {isService ? 'servicios' : 'productos'}</span>
+              <span className="text-[11px] text-slate-400">{unidades} {isService ? (unidades === 1 ? 'servicio' : 'servicios') : (unidades === 1 ? 'producto' : 'productos')}</span>
               <div className="text-right">
                 {order.couponCode ? (
                   <div className="flex items-center gap-1.5">
@@ -245,75 +275,73 @@ function OrderCard({
               </div>
             </div>
 
-            {/* ═══ Action Buttons ═══ */}
-            <div className="pt-2.5 space-y-2">
-              {/* Utility row — 2x2 grid */}
-              <div className="grid grid-cols-2 gap-1.5">
-                <button onClick={() => onShowDetails(order)} className="flex items-center justify-center gap-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 py-2.5 rounded-xl text-xs font-semibold border border-slate-200/60 transition-colors active:scale-[0.97]">
+            {/* ═══ Acciones ═══ */}
+            <div className="pt-2 space-y-1.5">
+              {order.status === ORDER_STATUS.PAYMENT_UPLOADED && (
+                <div className="flex gap-1.5">
+                  <button onClick={() => onConfirmPayment(order._id)} className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white h-10 rounded-xl text-xs font-bold transition-colors active:scale-[0.97]">
+                    <FaCheckCircle className="text-2xs" /> Confirmar pago
+                  </button>
+                  <button onClick={() => onRejectPayment(order._id)} className="flex items-center justify-center gap-1.5 bg-white hover:bg-red-50 text-red-600 border border-red-200 px-4 h-10 rounded-xl text-xs font-bold transition-colors active:scale-[0.97]">
+                    <FaTimesCircle className="text-2xs" /> Rechazar
+                  </button>
+                </div>
+              )}
+
+              {needsDelivery && !tienda && (
+                <button onClick={() => onAssignDelivery(order)} className="w-full flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 h-10 rounded-xl text-xs font-bold transition-colors active:scale-[0.97]">
+                  <FaMotorcycle className="text-sm" /> Asignar domiciliario
+                </button>
+              )}
+
+              {porDespachar && (
+                <button onClick={() => onDespachar?.(order)} className="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 text-white h-10 rounded-xl text-xs font-bold transition-colors active:scale-[0.97]">
+                  <FaTruck className="text-sm" /> Despachar con guía
+                </button>
+              )}
+
+              {despachado && (
+                <div className="w-full flex items-center justify-center gap-2 bg-violet-50 text-violet-700 py-2.5 rounded-xl text-[11.5px] font-bold">
+                  <FaTruck className="text-[11px]" />
+                  {order.envio.transportadora} · guía {order.envio.guia}
+                </div>
+              )}
+
+              {nextSteps.length > 0 && (
+                <div className={`grid gap-1.5 ${nextSteps.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  {nextSteps.map(({ to, label, Icon, primary }, i) => (
+                    <button
+                      key={to}
+                      onClick={() => onUpdateStatus(order._id, to)}
+                      className={`flex items-center justify-center gap-1.5 min-h-10 py-2 px-2 rounded-xl text-xs font-bold leading-tight text-center transition-colors active:scale-[0.97] ${tonoPaso(primary, i)}`}
+                    >
+                      <Icon className="text-2xs shrink-0" /> <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Utilidades en una sola fila; cancelar al final, sin gritar */}
+              <div className="flex gap-1.5">
+                <button onClick={() => onShowDetails(order)} className="flex-1 flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 h-9 rounded-lg text-[11px] font-semibold border border-slate-200 transition-colors active:scale-[0.97]">
                   <FaEye className="text-2xs" /> Detalles
                 </button>
-                <button onClick={async () => { try { await api.post(`/print-agent/print-comanda/${order._id}`); } catch { onPrint(order); } }} className="flex items-center justify-center gap-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 py-2.5 rounded-xl text-xs font-semibold border border-slate-200/60 transition-colors active:scale-[0.97]" title="Imprimir comanda">
+                <button onClick={async () => { try { await api.post(`/print-agent/print-comanda/${order._id}`); } catch { onPrint(order); } }} className="flex-1 flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 h-9 rounded-lg text-[11px] font-semibold border border-slate-200 transition-colors active:scale-[0.97]" title="Imprimir comanda">
                   <FaPrint className="text-2xs" /> Comanda
                 </button>
                 {order.status !== ORDER_STATUS.PENDING && order.status !== 'pending_payment' && (
-                  <button onClick={async () => { try { await api.post(`/print-agent/print-receipt/${order._id}`); } catch { onPrint(order); } }} className="flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 py-2.5 rounded-xl text-xs font-semibold border border-emerald-200/60 transition-colors active:scale-[0.97]" title="Imprimir recibo">
+                  <button onClick={async () => { try { await api.post(`/print-agent/print-receipt/${order._id}`); } catch { onPrint(order); } }} className="flex-1 flex items-center justify-center gap-1.5 bg-white hover:bg-emerald-50 text-emerald-700 h-9 rounded-lg text-[11px] font-semibold border border-emerald-200 transition-colors active:scale-[0.97]" title="Imprimir recibo">
                     <FaMoneyBillWave className="text-2xs" /> Recibo
                   </button>
                 )}
                 {order.paymentProof && (
-                  <button onClick={() => onShowProof(order.paymentProof)} className="flex items-center justify-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-600 py-2.5 rounded-xl text-xs font-semibold border border-purple-200/60 transition-colors active:scale-[0.97]">
+                  <button onClick={() => onShowProof(order.paymentProof)} className="flex-1 flex items-center justify-center gap-1.5 bg-white hover:bg-purple-50 text-purple-700 h-9 rounded-lg text-[11px] font-semibold border border-purple-200 transition-colors active:scale-[0.97]" title="Ver comprobante">
                     <FaImage className="text-2xs" /> Pago
                   </button>
                 )}
-              </div>
-
-              {/* Primary action row */}
-              <div className="space-y-1.5">
-                {order.status === ORDER_STATUS.PAYMENT_UPLOADED && (
-                  <div className="flex gap-1.5">
-                    <button onClick={() => onConfirmPayment(order._id)} className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl text-xs font-bold transition-colors active:scale-[0.97]">
-                      <FaCheckCircle className="text-2xs" /> Confirmar pago
-                    </button>
-                    <button onClick={() => onRejectPayment(order._id)} className="flex items-center justify-center gap-1.5 bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-xl text-xs font-bold transition-colors active:scale-[0.97]">
-                      <FaTimesCircle className="text-2xs" /> Rechazar
-                    </button>
-                  </div>
-                )}
-
-                {needsDelivery && !tienda && (
-                  <button onClick={() => onAssignDelivery(order)} className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl text-xs font-bold transition-colors active:scale-[0.97]">
-                    <FaMotorcycle className="text-sm" /> Asignar domiciliario
-                  </button>
-                )}
-
-                {porDespachar && (
-                  <button onClick={() => onDespachar?.(order)} className="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 text-white py-3 rounded-xl text-xs font-bold transition-colors active:scale-[0.97]">
-                    <FaTruck className="text-sm" /> Despachar con guía
-                  </button>
-                )}
-
-                {despachado && (
-                  <div className="w-full flex items-center justify-center gap-2 bg-violet-50 text-violet-700 py-2.5 rounded-xl text-[11.5px] font-bold">
-                    <FaTruck className="text-[11px]" />
-                    {order.envio.transportadora} · guía {order.envio.guia}
-                  </div>
-                )}
-
-                {nextSteps.map(({ to, label, Icon, primary }) => (
-                  <button
-                    key={to}
-                    onClick={() => onUpdateStatus(order._id, to)}
-                    className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold text-white transition-colors active:scale-[0.97] ${
-                      primary ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-slate-800 hover:bg-slate-900'
-                    }`}
-                  >
-                    <Icon className="text-2xs" /> {label}
-                  </button>
-                ))}
-
                 {!isTerminal && (
-                  <button onClick={() => { if (window.confirm('¿Cancelar pedido #' + order.orderNumber + '?')) onUpdateStatus(order._id, ORDER_STATUS.CANCELLED); }} className="w-full flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-500 py-2.5 rounded-xl text-xs font-semibold border border-red-200/60 transition-colors active:scale-[0.97]">
-                    <FaTimes className="text-2xs" /> Cancelar pedido
+                  <button onClick={cancelar} className="w-9 h-9 shrink-0 flex items-center justify-center bg-white hover:bg-red-50 text-red-500 rounded-lg border border-red-200 transition-colors active:scale-[0.97]" title="Cancelar pedido" aria-label="Cancelar pedido">
+                    <FaTimes className="text-xs" />
                   </button>
                 )}
               </div>
@@ -395,13 +423,11 @@ function OrderCard({
                 </button>
               )}
 
-              {nextSteps.map(({ to, label, Icon, primary }) => (
+              {nextSteps.map(({ to, label, Icon, primary }, i) => (
                 <button
                   key={to}
                   onClick={() => onUpdateStatus(order._id, to)}
-                  className={`p-2 rounded-lg text-white transition-colors ${
-                    primary ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-slate-800 hover:bg-slate-900'
-                  }`}
+                  className={`p-2 rounded-lg transition-colors ${tonoPaso(primary, i)}`}
                   title={label}
                 >
                   <Icon className="text-xs" />
@@ -409,7 +435,7 @@ function OrderCard({
               ))}
 
               {!isTerminal && (
-                <button onClick={() => { if (window.confirm('¿Cancelar pedido #' + order.orderNumber + '?')) onUpdateStatus(order._id, ORDER_STATUS.CANCELLED); }} className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition-colors border border-red-200" title="Cancelar pedido">
+                <button onClick={cancelar} className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition-colors border border-red-200" title="Cancelar pedido">
                   <FaTimes className="text-xs" />
                 </button>
               )}

@@ -44,3 +44,6 @@ temp_*
 # Página de prueba de Bold: la genera scripts/probar-bold-link.js y lleva
 # la llave de identidad del comercio adentro. Es un artefacto, no código.
 bold-prueba.html
+
+# Fotos y videos originales (la web usa las copias comprimidas de Frontend/public/landing/real)
+videosimagenes/

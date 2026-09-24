@@ -3,7 +3,9 @@ import { MapContainer, TileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MAP_TILE_URL, MAP_ATTRIBUTION } from '../utils/mapTiles';
 
-export default function DeliveryLocationMap({ lat, lon, address }) {
+/* `sinBorde`: va dentro de otra tarjeta que ya muestra la dirección. Las
+   coordenadas no se muestran: nadie las lee, para eso están Maps y Compartir. */
+export default function DeliveryLocationMap({ lat, lon, address, sinBorde = false }) {
   const [copied, setCopied] = useState(false);
   const mapsUrl = `https://maps.google.com/?q=${lat},${lon}`;
 
@@ -18,9 +20,9 @@ export default function DeliveryLocationMap({ lat, lon, address }) {
   };
 
   return (
-    <div className="rounded-xl overflow-hidden border border-slate-200 bg-white">
+    <div className={sinBorde ? 'bg-white border-t border-slate-100' : 'rounded-xl overflow-hidden border border-slate-200 bg-white'}>
       {/* Mini map */}
-      <div className="relative" style={{ height: 160 }}>
+      <div className="relative" style={{ height: sinBorde ? 150 : 160 }}>
         <MapContainer
           center={[lat, lon]}
           zoom={16}
@@ -52,14 +54,11 @@ export default function DeliveryLocationMap({ lat, lon, address }) {
       </div>
 
       {/* Bottom action bar */}
-      <div className="flex items-center gap-2 px-3 py-2.5 border-t border-slate-100">
+      <div className="flex items-center gap-2 px-3 py-2 border-t border-slate-100">
         <div className="flex-1 min-w-0">
           {address && (
             <p className="text-[12px] text-slate-700 font-medium leading-snug line-clamp-1">{address}</p>
           )}
-          <p className="text-2xs text-slate-400 font-mono tabular-nums mt-0.5">
-            {lat.toFixed(5)}, {lon.toFixed(5)}
-          </p>
         </div>
 
         <a
