@@ -839,17 +839,31 @@ function ModernOrdersDashboard() {
                     </Boton>
                   )}
 
-                  {orderDetails.status === ORDER_STATUS.IN_PROGRESS && (
+                  {/* En preparación → "En camino" (domicilio) o "Listo para recoger"
+                      (para llevar): el cliente lo ve en su pantalla de estado.
+                      Luego, "Entregado". */}
+                  {[ORDER_STATUS.IN_PROGRESS, ORDER_STATUS.PREPARING].includes(orderDetails.status) && (
                     <div className="space-y-1.5">
-                      {orderDetails.orderType === 'delivery' && !orderDetails.deliveryToken && !orderDetails.deliveryPersonId && !orderDetails.confirmationCode && (
-                        <Boton variante="secundario" redondo={false} bloque icono={<FaMotorcycle className="text-sm" />} onClick={() => setAssignDomiOrder(orderDetails)}>
-                          Asignar domiciliario
+                      {orderDetails.orderType === 'delivery' && (
+                        <Boton variante="oscuro" redondo={false} bloque icono={<FaMotorcycle className="text-sm" />} onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.READY)}>
+                          Salió · En camino
                         </Boton>
                       )}
-                      <Boton variante="accion" redondo={false} bloque icono={<FaCheck className="text-xs" />} onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.COMPLETED)}>
-                        {orderDetails.orderType === 'delivery' ? 'Completar pedido' : 'Marcar como completado'}
+                      {orderDetails.orderType === 'takeaway' && (
+                        <Boton variante="oscuro" redondo={false} bloque icono={<FaCheck className="text-xs" />} onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.READY)}>
+                          Listo para recoger
+                        </Boton>
+                      )}
+                      <Boton variante={orderDetails.orderType === 'inSite' ? 'accion' : 'secundario'} redondo={false} bloque icono={<FaCheck className="text-xs" />} onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.COMPLETED)}>
+                        {orderDetails.orderType === 'inSite' ? 'Marcar como servido' : 'Entregado'}
                       </Boton>
                     </div>
+                  )}
+
+                  {orderDetails.status === ORDER_STATUS.READY && (
+                    <Boton variante="accion" redondo={false} bloque icono={<FaCheck className="text-xs" />} onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.COMPLETED)}>
+                      {orderDetails.orderType === 'delivery' ? 'Entregado al cliente' : 'Entregado'}
+                    </Boton>
                   )}
 
                   {/* Secondary actions row */}

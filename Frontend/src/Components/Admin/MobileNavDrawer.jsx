@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { esTienda } from '../../utils/tienda';
 import { Capa } from '../ui';
+import { SECCIONES_OCULTAS } from '../../utils/seccionesOcultas';
 
 /* ═══ iOS-style section icon components ═══ */
 const SectionIcon = ({ bg, children }) => (
@@ -152,6 +153,7 @@ export default function MobileNavDrawer({ isOpen, onClose, activeTab, setActiveT
       ...section,
       items: section.items
         .filter(item => !pinnedIds.has(item.id))
+        .filter(item => !SECCIONES_OCULTAS.has(item.id))
         .filter(item => !isStaff || STAFF_ALLOWED.has(item.id)),
     }))
     .filter(section => section.items.length > 0);

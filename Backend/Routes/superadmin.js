@@ -515,6 +515,59 @@ router.get('/system-status', requireRole('support'), async (req, res) => {
 });
 
 /**
+ * GET /embudo-pedidos?dias=7&businessId= — dónde se caen los pedidos del menú,
+ * de todos los negocios o de uno. Trae además, por negocio, visitas, pedidos
+ * y conversión, para ver quién convierte y quién no. Ver utils/embudoPedido.
+ */
+router.get('/embudo-pedidos', requireRole('support'), async (req, res) => {
+  try {
+    const ViewerSession = require('../Models/ViewerSession');
+    const { armarEmbudo } = require('../utils/embudoPedido');
+    const dias = Math.min(Math.max(parseInt(req.query.dias, 10) || 7, 1), 90);
+    const desde = new Date(Date.now() - dias * 864e5);
+    const filtro = { enteredAt: { $gte: desde } };
+    if (req.query.businessId && mongoose.isValidObjectId(req.query.businessId)) {
+      filtro.businessId = new mongoose.Types.ObjectId(String(req.query.businessId));
+    }
+    // Visitas de antes de medir el embudo: si pidieron, 6; si no, 0.
+    const etapa = { $ifNull: ['$etapa', { $cond: ['$converted', 6, 0] }] };
+    const [conteos, porNegocio] = await Promise.all([
+      ViewerSession.aggregate([{ $match: filtro }, { $group: { _id: etapa, n: { $sum: 1 } } }]),
+      ViewerSession.aggregate([
+        { $match: { enteredAt: { $gte: desde } } },
+        { $group: {
+          _id: '$businessId',
+          visitas: { $sum: 1 },
+          conCarrito: { $sum: { $cond: [{ $gte: [etapa, 1] }, 1, 0] } },
+          pidieron: { $sum: { $cond: [{ $gte: [etapa, 6] }, 1, 0] } },
+        } },
+        { $sort: { visitas: -1 } },
+        { $limit: 30 },
+      ]),
+    ]);
+    const nombres = new Map(
+      (await BusinessConfig.find({ _id: { $in: porNegocio.map((n) => n._id) } }).select('businessName slug').lean())
+        .map((b) => [String(b._id), b.businessName || b.slug || 'Negocio']),
+    );
+    res.json({
+      dias,
+      pasos: armarEmbudo(conteos),
+      negocios: porNegocio.map((n) => ({
+        id: String(n._id),
+        nombre: nombres.get(String(n._id)) || 'Negocio',
+        visitas: n.visitas,
+        conCarrito: n.conCarrito,
+        pidieron: n.pidieron,
+        conversion: n.visitas ? Math.round((n.pidieron / n.visitas) * 1000) / 10 : 0,
+      })),
+    });
+  } catch (error) {
+    logger.error('Error building global order funnel', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+/**
  * GET /activation-funnel — dónde se atascan los negocios nuevos.
  *
  * No usa onboarding.level (que solo cuenta guías vistas, no actividad real):

@@ -46,10 +46,10 @@ export const ROLE_INFO = {
  * Tabs visibles por rol. El sidebar oculta los no permitidos.
  */
 export const NAV_BY_ROLE = {
-  owner:   ['home', 'businesses', 'health', 'activation', 'brands', 'orders', 'partners', 'banners', 'announcements', 'subscriptions', 'referrals', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_vacancies', 'crew_finance', 'team', 'audit', 'system', 'whatsapp', 'panel_live'],
-  admin:   ['home', 'businesses', 'health', 'activation', 'brands', 'orders', 'partners', 'banners', 'announcements', 'subscriptions', 'referrals', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_vacancies', 'crew_finance', 'audit', 'system', 'whatsapp', 'panel_live'],
-  support: ['home', 'businesses', 'health', 'activation', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_vacancies', 'crew_finance', 'audit', 'system'],
-  auditor: ['home', 'businesses', 'health', 'activation', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_vacancies', 'crew_finance', 'audit', 'system'],
+  owner:   ['home', 'businesses', 'health', 'activation', 'embudo_pedidos', 'brands', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_vacancies', 'crew_finance', 'team', 'audit', 'system', 'whatsapp', 'panel_live'],
+  admin:   ['home', 'businesses', 'health', 'activation', 'embudo_pedidos', 'brands', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_vacancies', 'crew_finance', 'audit', 'system', 'whatsapp', 'panel_live'],
+  support: ['home', 'businesses', 'health', 'activation', 'embudo_pedidos', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_vacancies', 'crew_finance', 'audit', 'system'],
+  auditor: ['home', 'businesses', 'health', 'activation', 'embudo_pedidos', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_vacancies', 'crew_finance', 'audit', 'system'],
 };
 
 /**

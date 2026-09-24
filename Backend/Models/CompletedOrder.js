@@ -47,6 +47,15 @@ const completedOrderSchema = new mongoose.Schema({
   },
   
   // In-app ordering fields (for analytics breakdowns)
+  /* El seguimiento del cliente sigue funcionando después de completar: sin
+     el token y el historial, al archivar el pedido la pantalla de estado
+     decía "no encontramos este pedido" justo cuando llegaba. */
+  customerToken: { type: String, default: null, index: true },
+  statusHistory: [{
+    status: { type: String },
+    timestamp: { type: Date },
+    note: { type: String, default: '' }
+  }],
   orderChannel: {
     type: String,
     enum: ['whatsapp', 'inapp', 'pos', 'admin'],

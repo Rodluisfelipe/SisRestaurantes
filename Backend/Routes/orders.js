@@ -960,7 +960,14 @@ router.get('/track/:id', publicOrderLimiter, async (req, res) => {
       return res.status(401).json({ message: 'Token requerido' });
     }
 
-    const order = await Order.findById(id).lean();
+    /* Completar un pedido lo archiva en CompletedOrder (con el mismo id): el
+       seguimiento lo busca ahí también, o el cliente veía "no encontrado"
+       justo cuando su pedido llegaba. */
+    let order = await Order.findById(id).lean();
+    if (!order) {
+      const CompletedOrder = require('../Models/CompletedOrder');
+      order = await CompletedOrder.findById(id).lean();
+    }
     if (!order) {
       return res.status(404).json({ message: 'Pedido no encontrado' });
     }

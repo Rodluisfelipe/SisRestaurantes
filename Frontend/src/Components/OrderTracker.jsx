@@ -59,7 +59,7 @@ const STATUS_CONFIG = {
 
 
 const OrderTracker = ({ 
-  orderId, customerToken, businessConfig, onClose, onUploadProof, initialOrder = null 
+  orderId, customerToken, businessConfig, onClose, onUploadProof, onNoEncontrado, initialOrder = null 
 }) => {
   const [order, setOrder] = useState(initialOrder);
   const [loading, setLoading] = useState(!initialOrder);
@@ -372,8 +372,16 @@ const OrderTracker = ({
         <Capa onCerrar={onClose} />
         <div className="max-w-sm w-full text-center">
           {I.exclamation('w-12 h-12 mx-auto text-slate-300 mb-3')}
-          <h3 className="font-black text-slate-900 text-lg">{error === 'No encontrado' ? 'No encontramos este pedido' : error}</h3>
-          <button onClick={onClose} className="mt-6 w-full h-12 rounded-full font-bold" style={{ backgroundColor: themeColor, color: textColor }}>Volver al menú</button>
+          {/* Lo normal es que ya terminó: se completó y dejó de seguirse. */}
+          <h3 className="font-black text-slate-900 text-lg">{error === 'No encontrado' ? 'Este pedido ya terminó' : error}</h3>
+          {error === 'No encontrado' && <p className="mt-1 text-sm text-slate-500">Si tienes alguna duda, escríbele al negocio.</p>}
+          <button
+            onClick={() => { if (error === 'No encontrado') onNoEncontrado?.(); onClose(); }}
+            className="mt-6 w-full h-12 rounded-full font-bold"
+            style={{ backgroundColor: themeColor, color: textColor }}
+          >
+            Volver al menú
+          </button>
         </div>
       </div>
     );

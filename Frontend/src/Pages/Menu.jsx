@@ -227,6 +227,20 @@ export default function Menu() {
 
   const [activeOrderMeta, setActiveOrderMeta] = useState(null);
 
+  /* El pedido activo ya no existe para el seguimiento (se completó hace rato,
+     se borró, o el token no corresponde): se olvida en silencio. Antes la
+     tarjeta se quedaba en "Pedido recibido" para siempre y al tocarla decía
+     "no encontramos el pedido". */
+  const olvidarPedidoActivo = useCallback(() => {
+    sessionStorage.removeItem('activeOrderId');
+    sessionStorage.removeItem('activeCustomerToken');
+    setActiveOrderId(null);
+    setActiveCustomerToken(null);
+    setActiveOrderStatus(null);
+    setActiveOrderMeta(null);
+    setShowOrderTracker(false);
+  }, []);
+
   // Poll active order status for banner display (socket + fallback)
   useEffect(() => {
     if (!activeOrderId || !activeCustomerToken) {
@@ -251,8 +265,10 @@ export default function Menu() {
             statusHistory: res.data.statusHistory || [],
           });
         }
-      } catch {
-        if (!cancelled) setActiveOrderStatus(null);
+      } catch (err) {
+        if (cancelled) return;
+        if ([403, 404].includes(err?.response?.status)) olvidarPedidoActivo();
+        else setActiveOrderStatus(null);
       }
     };
     fetchStatus();
@@ -1955,6 +1971,7 @@ export default function Menu() {
           customerToken={activeCustomerToken}
           businessConfig={businessConfig}
           onClose={() => setShowOrderTracker(false)}
+          onNoEncontrado={olvidarPedidoActivo}
           onUploadProof={() => {
             setShowOrderTracker(false);
             setShowPaymentUpload(true);

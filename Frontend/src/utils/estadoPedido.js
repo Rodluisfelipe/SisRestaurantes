@@ -8,10 +8,10 @@
  * para recoger") o de uno en la mesa.
  */
 
-/* Qué tan avanzado va cada estado. En un domicilio con domiciliario,
-   "completado" es que salió y "entregado" que llegó; sin domiciliario (el
-   negocio lo completa y listo), "completado" ya es el final. */
-function nivelDe(status, tipo, conDomiciliario) {
+/* Qué tan avanzado va cada estado. "Listo" (ready) es "en camino" en un
+   domicilio y "listo para recoger" en uno para llevar: el panel lo marca con
+   su botón. "Completado" y "entregado" son el final. */
+function nivelDe(status) {
   switch (status) {
     case 'pending_payment': return 0;
     case 'payment_uploaded': return 1;
@@ -21,13 +21,13 @@ function nivelDe(status, tipo, conDomiciliario) {
     case 'preparing':
     case 'inProgress': return 3;
     case 'ready': return 4;
-    case 'completed': return tipo === 'delivery' && conDomiciliario ? 4 : 5;
+    case 'completed': return 5;
     case 'delivered': return 5;
     default: return 2;
   }
 }
 
-export function pasosDelPedido({ status, orderType, orderChannel, statusHistory = [], tienda = false, hotel = false, conDomiciliario = false }) {
+export function pasosDelPedido({ status, orderType, orderChannel, statusHistory = [], tienda = false, hotel = false }) {
   const tipo = orderType || 'takeaway';
   const pasos = [];
   if (orderChannel === 'inapp') {
@@ -46,14 +46,14 @@ export function pasosDelPedido({ status, orderType, orderChannel, statusHistory 
   });
 
   const cancelado = status === 'cancelled';
-  const nivel = nivelDe(status, tipo, conDomiciliario);
+  const nivel = nivelDe(status);
   // El paso actual: el más avanzado que ya se alcanzó.
   let actual = 0;
   pasos.forEach((p, i) => { if (p.nivel <= nivel) actual = i; });
 
   // La hora en que se llegó a cada paso, del historial.
   const horaDe = (paso) => {
-    const h = (statusHistory || []).find((e) => nivelDe(e.status, tipo, conDomiciliario) >= paso.nivel && e.status !== 'cancelled');
+    const h = (statusHistory || []).find((e) => nivelDe(e.status) >= paso.nivel && e.status !== 'cancelled');
     return h?.timestamp || null;
   };
 

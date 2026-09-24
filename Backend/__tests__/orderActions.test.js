@@ -42,19 +42,22 @@ const ORDER_STATUS = new Function(`return ${bloqueDespuesDe(srcConst, 'export co
 
 const srcCard = leer('Frontend', 'src', 'Components', 'OrderCard.jsx');
 const icono = () => null;
-const evaluarPaso = (marca) => new Function(
-  'S', 'FaPlay', 'FaCheck', `return ${bloqueDespuesDe(srcCard, marca)}`,
-)(ORDER_STATUS, icono, icono);
-const START = evaluarPaso('const START = {');
-const FINISH = evaluarPaso('const FINISH = {');
-const NEXT_STEPS = new Function(
-  'S', 'START', 'FINISH', 'FaPlay', 'FaCheck',
-  `return ${bloqueDespuesDe(srcCard, 'const NEXT_STEPS = {')}`,
-)(ORDER_STATUS, START, FINISH, icono, icono);
+/* Los pasos dependen del tipo de pedido (en un domicilio "Listo" es "En
+   camino"; en la mesa no existe): se evalúa el bloque del panel, de
+   `const S =` a `const nextSteps`, para cada tipo. */
+const bloquePasos = srcCard.slice(srcCard.indexOf('const S = ORDER_STATUS;'), srcCard.indexOf('const nextSteps ='));
+const pasosPara = (orderType) => new Function(
+  'ORDER_STATUS', 'order', 'FaPlay', 'FaCheck', 'FaMotorcycle',
+  `${bloquePasos}
+return NEXT_STEPS;`,
+)(ORDER_STATUS, { orderType }, icono, icono, icono);
+const TIPOS = ['delivery', 'takeaway', 'inSite'];
+const NEXT_STEPS = pasosPara('delivery');
 
 const TERMINALES = ['completed', 'delivered', 'cancelled'];
 
-describe('acciones del panel vs. máquina de estados', () => {
+describe.each(TIPOS)('acciones del panel vs. máquina de estados (%s)', (tipo) => {
+  const NEXT_STEPS = pasosPara(tipo);
   it('el panel solo ofrece saltos que el backend acepta', () => {
     const invalidos = [];
     for (const [desde, pasos] of Object.entries(NEXT_STEPS)) {

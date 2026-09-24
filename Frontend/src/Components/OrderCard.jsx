@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fa';
 import { ORDER_STATUS } from '../utils/constants';
 import api from '../services/api';
+import { SECCIONES_OCULTAS } from '../utils/seccionesOcultas';
 
 const PAYMENT_LABELS = {
   cash: 'Efectivo', efectivo: 'Efectivo',
@@ -40,20 +41,29 @@ function OrderCard({
   const S = ORDER_STATUS;
   const START = { to: S.IN_PROGRESS, label: 'Iniciar preparación', Icon: FaPlay, primary: false };
   const FINISH = { to: S.COMPLETED, label: 'Completar pedido', Icon: FaCheck, primary: true };
+  /* "Listo" dice cosas distintas según el pedido: en un domicilio es que
+     salió (el cliente ve "En camino"), en uno para llevar que ya puede pasar.
+     En la mesa no hace falta: de la cocina va directo a servido. */
+  const LISTO = order.orderType === 'delivery'
+    ? { to: S.READY, label: 'En camino', Icon: FaMotorcycle, primary: false }
+    : order.orderType === 'takeaway'
+      ? { to: S.READY, label: 'Listo para recoger', Icon: FaCheck, primary: false }
+      : null;
+  const ENTREGADO = order.orderType === 'inSite' ? FINISH : { ...FINISH, label: 'Entregado' };
   const NEXT_STEPS = {
     [S.PENDING]: [START],
     [S.PAYMENT_CONFIRMED]: [START],
     [S.CONFIRMED]: [START, FINISH],
-    [S.PREPARING]: [{ to: S.READY, label: 'Marcar como listo', Icon: FaCheck, primary: false }, FINISH],
-    [S.IN_PROGRESS]: [FINISH],
-    [S.READY]: [FINISH],
+    [S.PREPARING]: [LISTO, FINISH].filter(Boolean),
+    [S.IN_PROGRESS]: [LISTO, FINISH].filter(Boolean),
+    [S.READY]: [ENTREGADO],
   };
   const nextSteps = NEXT_STEPS[order.status] || [];
 
   /* Un domicilio también necesita repartidor mientras está confirmado o en
      preparación, no solo en `inProgress`, que era el único estado que lo
      mostraba. */
-  const needsDelivery = order.orderType === 'delivery'
+  const needsDelivery = !SECCIONES_OCULTAS.has('delivery') && order.orderType === 'delivery'
     && !order.deliveryToken && !order.deliveryPersonId && !order.confirmationCode
     && [S.CONFIRMED, S.PREPARING, S.IN_PROGRESS].includes(order.status);
 

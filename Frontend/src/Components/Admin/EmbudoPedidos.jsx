@@ -28,8 +28,6 @@ export default function EmbudoPedidos({ businessId }) {
 
   const pasos = datos?.pasos || [];
   const total = pasos[0]?.llegaron || 0;
-  // El paso (después del primero) donde más gente se va, en porcentaje.
-  const peor = pasos.slice(1).reduce((m, p) => (p.pctCaida > (m?.pctCaida || 0) ? p : m), null);
 
   return (
     <section className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
@@ -61,7 +59,19 @@ export default function EmbudoPedidos({ businessId }) {
       ) : total === 0 ? (
         <p className="text-sm text-slate-500">Aún no hay visitas en este periodo. El embudo se llena a medida que los clientes usan el menú.</p>
       ) : (
-        <>
+        <BarrasEmbudo pasos={pasos} />
+      )}
+    </section>
+  );
+}
+
+/** Las barras del embudo (también las usa el superadmin). */
+export function BarrasEmbudo({ pasos }) {
+  const total = pasos[0]?.llegaron || 0;
+  // El paso (después del primero) donde más gente se va, en porcentaje.
+  const peor = pasos.slice(1).reduce((m, p) => (p.pctCaida > (m?.pctCaida || 0) ? p : m), null);
+  return (
+    <>
           <ol className="space-y-1.5">
             {pasos.map((p, i) => {
               const esPeor = peor && p.clave === peor.clave && p.pctCaida >= 15;
@@ -98,7 +108,5 @@ export default function EmbudoPedidos({ businessId }) {
             </p>
           )}
         </>
-      )}
-    </section>
   );
 }

@@ -16,6 +16,7 @@ import {
   FaCalendarAlt, FaShareAlt, FaCodeBranch, FaLink, FaCalculator, FaBoxOpen,
   FaChevronLeft, FaChrome, FaChartLine, FaHandHoldingUsd, FaTruck
 } from 'react-icons/fa';
+import { SECCIONES_OCULTAS } from '../utils/seccionesOcultas';
 
 const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, whatsappSinLeer, subscriptionData, onboarding, userRole, colapsado = false, onAlternar }) => {
   const navigate = useNavigate();
@@ -157,14 +158,18 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
 
   // Staff tabs whitelist
   const STAFF_ALLOWED_TABS = ['orders', 'completed_orders', 'cash-closings', 'change-password'];
+  // Las secciones que hoy no se usan no salen (ver utils/seccionesOcultas).
+  const seccionesVisibles = menuSections
+    .map(section => ({ ...section, items: section.items.filter(item => !SECCIONES_OCULTAS.has(item.id)) }))
+    .filter(section => section.items.length > 0);
   const filteredSections = isStaff
-    ? menuSections
+    ? seccionesVisibles
         .map(section => ({
           ...section,
           items: section.items.filter(item => STAFF_ALLOWED_TABS.includes(item.id))
         }))
         .filter(section => section.items.length > 0)
-    : menuSections;
+    : seccionesVisibles;
 
   const [collapsedSections, setCollapsedSections] = useState({});
 

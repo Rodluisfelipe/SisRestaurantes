@@ -17,6 +17,7 @@ import AuditLogsPanel from "../../Components/SuperAdmin/AuditLogsPanel";
 import BusinessHealth from "../../Components/SuperAdmin/BusinessHealth";
 import GlobalSearch from "../../Components/SuperAdmin/GlobalSearch";
 import ActivationFunnel from "../../Components/SuperAdmin/ActivationFunnel";
+import EmbudoPedidosGlobal from "../../Components/SuperAdmin/EmbudoPedidosGlobal";
 import SystemStatus from "../../Components/SuperAdmin/SystemStatus";
 import TeamManagement from "../../Components/SuperAdmin/TeamManagement";
 import CrewKYCManagement from "../../Components/SuperAdmin/CrewKYCManagement";
@@ -52,6 +53,11 @@ const NAV_SECTIONS = [
       { id: 'health', label: 'Salud', desc: 'Negocios en riesgo de irse', icon: (
         <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h3.5l2-6 4 12 2-6h4.5" />
+        </svg>
+      )},
+      { id: 'embudo_pedidos', label: 'Embudo de pedidos', desc: 'Dónde se caen los pedidos del menú', icon: (
+        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 10h12M9 15h6M11 20h2" />
         </svg>
       )},
       { id: 'activation', label: 'Activación', desc: 'Dónde se atascan los nuevos', icon: (
@@ -567,6 +573,12 @@ function SuperAdminDashboard() {
             {currentView === 'system' && (
               <motion.div key="system" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
                 <SystemStatus />
+              </motion.div>
+            )}
+
+            {currentView === 'embudo_pedidos' && (
+              <motion.div key="embudo_pedidos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                <EmbudoPedidosGlobal />
               </motion.div>
             )}
 
