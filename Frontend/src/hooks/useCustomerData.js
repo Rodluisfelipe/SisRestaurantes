@@ -3,6 +3,7 @@ import { logSystem } from '../utils/systemLogger';
 import * as SessionManager from '../utils/sessionManager';
 import api from '../services/api';
 import { socket } from '../services/socket';
+import { tieneCuenta } from '../utils/cuentaCliente';
 
 export const useCustomerData = () => {
   const [customerData, setCustomerData] = useState(null);
@@ -58,6 +59,8 @@ export const useCustomerData = () => {
     try {
       const phone = customerData?.phone || SessionManager.getFromLocalStorage('customerPhone', '') || localStorage.getItem('customerPhone');
       if (!phone) return;
+      // Sin la llave de la cuenta en este celular, el servidor no los da (ver utils/cuentaCliente).
+      if (!tieneCuenta()) return;
 
       // Obtener businessId del contexto o de la URL
       const businessId = window.location.pathname.split('/')[1] || '';

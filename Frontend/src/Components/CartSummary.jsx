@@ -22,6 +22,8 @@ import TimeSlotPicker from './TimeSlotPicker';
 const cargarLocationPicker = () => import('./Catalog/LocationPicker');
 const LocationPicker = lazy(cargarLocationPicker);
 import { Capa } from './ui';
+import MapaPunto from './Catalog/MapaPunto';
+import { marcarEtapa, ETAPA } from '../utils/embudo';
 
 /* ── Checkout SVG Icon System (admin-style, no emojis) ── */
 const CI = {
@@ -80,6 +82,12 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
   const [locationChecked, setLocationChecked] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [customerNotes, setCustomerNotes] = useState('');
+  /* "Terminar y pagar": apto/torre aparte de la dirección (el domiciliario los
+     busca de primero), con cuánto paga en efectivo (para llevar el cambio) y
+     las hojas de pago y de resumen. */
+  const [detallesDireccion, setDetallesDireccion] = useState('');
+  const [pagaCon, setPagaCon] = useState('');
+  const [verResumen, setVerResumen] = useState(false);
   // Gift order state (delivery only)
   const [isGift, setIsGift] = useState(false);
   const [giftRecipientName, setGiftRecipientName] = useState('');
@@ -140,6 +148,21 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
       });
     }
   }, [hasServices, businessConfig?.enableBookings, businessConfig?.bookingSettings?.enableStaffAssignment, businessConfig?._id]);
+
+  /* Lo que falta para pedir: el botón de abajo lo nombra, y al tocarlo se
+     llega a eso y se resalta un momento. Antes el botón desaparecía o se
+     ponía gris sin decir por qué, y el cliente terminaba pidiendo por
+     WhatsApp. */
+  const [resaltado, setResaltado] = useState(null);
+  const irA = useCallback((id) => {
+    const el = document.getElementById(id);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setResaltado(id);
+    setTimeout(() => setResaltado((r) => (r === id ? null : r)), 1600);
+  }, []);
+  const resalte = (id) => (resaltado === id ? 'ring-2 ring-amber-400 ring-offset-2 rounded-2xl' : '');
+  // Los comentarios casi nadie los usa: plegados hasta que se piden.
+  const [conComentario, setConComentario] = useState(false);
 
   // Auto-scroll to checkout section when order type changes
   const scrollToCheckout = useCallback(() => {
@@ -230,6 +253,31 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
     (orderInfo.orderType === 'inSite' || orderInfo.orderType === 'takeaway')) ||
     (orderInfo.orderType === 'inSite' && orderInfo.tableNumber && orderInfo.tableNumber.trim() !== '') ||
     (orderInfo.orderType === 'takeaway');
+
+  /* El embudo del pedido: hasta qué paso llega cada cliente (ver utils/embudo). */
+  useEffect(() => { marcarEtapa(ETAPA.CARRITO); }, []);
+  useEffect(() => { if (step === 2) marcarEtapa(ETAPA.FINALIZAR); }, [step]);
+  useEffect(() => {
+    if (step !== 2) return;
+    const tipo = orderType || orderInfo?.orderType;
+    if (tipo) marcarEtapa(ETAPA.TIPO);
+    const listo = (tipo === 'delivery' && (deliverySelectedLocation || orderInfo?.orderType === 'delivery'))
+      || tipo === 'takeaway'
+      || (tipo === 'inSite' && ((formState.tableNumber || '').trim() || tableNumber));
+    if (listo) marcarEtapa(ETAPA.DIRECCION);
+    if (listo && selectedPaymentMethod) marcarEtapa(ETAPA.PAGO);
+  }, [step, orderType, orderInfo?.orderType, deliverySelectedLocation, formState.tableNumber, tableNumber, selectedPaymentMethod]);
+
+  // Si el negocio tiene un solo método de pago, no hay nada que elegir.
+  useEffect(() => {
+    if (step !== 2 || selectedPaymentMethod) return;
+    const pm = businessConfig?.paymentMethods;
+    const modo = isInAppMode ? 'inapp' : 'whatsapp';
+    const ids = ['efectivo', 'nequi', 'daviplata', 'transferencia']
+      .filter((id) => pm?.[id]?.enabled && pm[id].modes?.[modo] !== false);
+    if (businessConfig?.boldActivo) ids.push('bold');
+    if (ids.length === 1) setSelectedPaymentMethod(ids[0]);
+  }, [step, selectedPaymentMethod, businessConfig?.paymentMethods, businessConfig?.boldActivo, isInAppMode]);
 
   // Calcular totales usando hook
   const { totalItems, totalAmount, finalAmount, loyaltyDiscountAmount } = useCartPricing(cart, appliedCoupon, loyaltyReward);
@@ -574,7 +622,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: '100%', opacity: 0 }}
         transition={{ type: 'spring', damping: 30, stiffness: 350 }}
-        className="bg-white sm:rounded-2xl rounded-t-[20px] max-w-lg w-full modal-h-full sm:modal-h-desktop shadow-2xl border border-slate-200/50 flex flex-col"
+        className="bg-white sm:rounded-2xl rounded-t-[20px] max-w-lg w-full hoja-completa sm:modal-h-desktop shadow-2xl border border-slate-200/50 flex flex-col"
         onTouchStart={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
       >
@@ -595,7 +643,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.8}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
                 Atrás
               </button>
-              <h2 className="text-[15px] font-bold text-slate-800">Confirmar pedido</h2>
+              <h2 className="text-[17px] font-bold text-slate-800">Terminar y pagar</h2>
             </div>
           )}
           {step === 1 ? (
@@ -608,7 +656,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
         </div>
 
         {/* Cart Items - Scrollable Content */}
-        <div ref={scrollContainerRef} className="overflow-y-auto overscroll-contain px-4 sm:px-6 py-2 min-h-0 shrink" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div ref={scrollContainerRef} className="overflow-y-auto overscroll-contain px-4 sm:px-6 py-2 min-h-0 flex-1" style={{ WebkitOverflowScrolling: 'touch' }}>
           {step === 1 && cart.map((item, itemIndex) => (
             <div key={item.uniqueId || item._id} className={`py-3 ${itemIndex < cart.length - 1 ? 'border-b border-slate-100' : ''}`}>
               <div className="flex items-start gap-3">
@@ -774,31 +822,38 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
 
               {/* ── Tipo de pedido inline ── */}
               {!initialOrderTypeSelected && !hasServices && (
-                <div className="space-y-1.5">
-                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">{tienda ? 'Cómo lo recibes' : 'Tipo de pedido'}</p>
-                  <div className={`relative p-1 rounded-2xl bg-slate-100`} style={{ display: 'grid', gridTemplateColumns: `repeat(${[
+                <div id="co-tipo" className={`space-y-2 scroll-mt-4 transition-shadow ${resalte('co-tipo')}`}>
+                  <p className="text-[13px] font-bold text-slate-800">{tienda ? '¿Cómo lo recibes?' : '¿Cómo quieres tu pedido?'}</p>
+                  <div className="grid gap-2" style={{ display: 'grid', gridTemplateColumns: `repeat(${[
                     !tienda && (!tipoDelEnlace || tipoDelEnlace === 'inSite') && businessConfig?.orderTypes?.inSite !== false ? 1 : 0,
                     (!tipoDelEnlace || tipoDelEnlace === 'takeaway') && businessConfig?.orderTypes?.takeaway !== false ? 1 : 0,
                     (!tipoDelEnlace || tipoDelEnlace === 'delivery') && !isFromTableQR && businessConfig?.orderTypes?.delivery !== false ? 1 : 0
                   ].reduce((a, b) => a + b, 0) || 1}, 1fr)` }}>
                     {[
-                      ...(!tienda && (!tipoDelEnlace || tipoDelEnlace === 'inSite') && businessConfig?.orderTypes?.inSite !== false ? [{ id: 'inSite', label: 'En Sitio', Icon: UtensilsCrossed }] : []),
-                      ...((!tipoDelEnlace || tipoDelEnlace === 'takeaway') && businessConfig?.orderTypes?.takeaway !== false ? [{ id: 'takeaway', label: copy.llevar, Icon: ShoppingBag }] : []),
-                      ...((!tipoDelEnlace || tipoDelEnlace === 'delivery') && !isFromTableQR && businessConfig?.orderTypes?.delivery !== false ? [{ id: 'delivery', label: copy.domicilio, Icon: Bike }] : [])
+                      ...(!tienda && (!tipoDelEnlace || tipoDelEnlace === 'inSite') && businessConfig?.orderTypes?.inSite !== false ? [{ id: 'inSite', label: isHotel ? 'A la habitación' : 'En el local', hint: isHotel ? 'Te lo subimos' : 'Comes aquí', Icon: UtensilsCrossed }] : []),
+                      ...((!tipoDelEnlace || tipoDelEnlace === 'takeaway') && businessConfig?.orderTypes?.takeaway !== false ? [{ id: 'takeaway', label: copy.llevar, hint: 'Pasas por él', Icon: ShoppingBag }] : []),
+                      ...((!tipoDelEnlace || tipoDelEnlace === 'delivery') && !isFromTableQR && businessConfig?.orderTypes?.delivery !== false ? [{ id: 'delivery', label: copy.domicilio, hint: 'Te lo llevamos', Icon: Bike }] : [])
                     ].map(opt => {
                       const isActive = orderType === opt.id;
                       return (
                         <button
                           key={opt.id}
                           type="button"
-                          onClick={() => { setOrderType(opt.id); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); setDeliverySelectedLocation(null); scrollToCheckout(); }}
-                          className={`relative flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-semibold transition-all duration-200 ${
-                            isActive ? 'bg-white shadow-sm' : ''
-                          }`}
-                          style={{ color: isActive ? themeColor : '#64748b' }}
+                          aria-pressed={isActive}
+                          onClick={() => {
+                            const yaEra = orderType === opt.id;
+                            setOrderType(opt.id);
+                            if (!yaEra) { setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); setDeliverySelectedLocation(null); }
+                            // Domicilio sin dirección: se abre de una vez, es lo siguiente.
+                            if (opt.id === 'delivery' && (!yaEra || !deliverySelectedLocation)) setShowLocationPicker(true);
+                            else scrollToCheckout();
+                          }}
+                          className="flex flex-col items-center justify-center gap-1 px-1 py-3 rounded-2xl border-2 bg-white text-center transition-colors active:scale-[0.97]"
+                          style={isActive ? { borderColor: themeColor, backgroundColor: `${themeColor}0d` } : { borderColor: '#e2e8f0' }}
                         >
-                          <opt.Icon className="w-3.5 h-3.5" />
-                          <span>{opt.label}</span>
+                          <opt.Icon className="w-5 h-5" style={{ color: isActive ? themeColor : '#64748b' }} />
+                          <span className="text-[13px] font-bold leading-tight" style={{ color: isActive ? themeColor : '#1e293b' }}>{opt.label}</span>
+                          <span className="text-[11px] text-slate-500 leading-tight">{opt.hint}</span>
                         </button>
                       );
                     })}
@@ -808,7 +863,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
 
               {/* ── Selector de horario para servicios con agenda ── */}
               {hasServices && businessConfig?.enableBookings && (
-                <div className="space-y-1.5">
+                <div id="co-horario" className={`space-y-1.5 scroll-mt-4 ${resalte('co-horario')}`}>
                   <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
                     Selecciona fecha y hora
                   </p>
@@ -884,7 +939,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
 
               {/* ── Dirección de entrega ── */}
               {orderType === 'delivery' && !initialOrderTypeSelected && (
-                <div className="space-y-2">
+                <div id="co-direccion" className={`space-y-2 scroll-mt-4 ${resalte('co-direccion')}`}>
                   <div className="flex items-center gap-2">
                     <span className="text-slate-400">{CI.mapPin('w-3.5 h-3.5')}</span>
                     <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Dirección de entrega</p>
@@ -900,26 +955,50 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                         {CI.mapPin('w-5 h-5 text-slate-400 group-hover:text-red-500')}
                       </div>
                       <div className="text-left flex-1">
-                        <p className="text-[13px] font-bold text-slate-700 group-hover:text-red-600 transition-colors">Seleccionar dirección</p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Escribe y ubica tu dirección en el mapa</p>
+                        <p className="text-[14px] font-bold text-slate-800">Agrega tu dirección de entrega</p>
+                        <p className="text-[12px] text-slate-500 mt-0.5">Escríbela y confirma el punto en el mapa</p>
                       </div>
                       <svg className="w-4 h-4 text-slate-300 group-hover:text-red-400 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                       </svg>
                     </button>
                   ) : (
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-green-50 border border-green-200">
-                      <div className="w-8 h-8 rounded-xl bg-green-500 flex items-center justify-center flex-shrink-0 shadow-sm">
-                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    <div className="space-y-2">
+                      {deliverySelectedLocation.coords && (
+                        <MapaPunto
+                          lat={deliverySelectedLocation.coords.lat}
+                          lon={deliverySelectedLocation.coords.lon ?? deliverySelectedLocation.coords.lng}
+                          onAjustar={() => setShowLocationPicker(true)}
+                        />
+                      )}
+                      <div className="rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => setShowLocationPicker(true)}
+                          className="w-full flex items-center gap-3 px-3.5 py-3 text-left"
+                        >
+                          <span className="text-slate-500 flex-shrink-0">{CI.mapPin('w-5 h-5')}</span>
+                          <span className="flex-1 min-w-0">
+                            <span className="block text-[14px] font-bold text-slate-900 leading-snug">{deliverySelectedLocation.address}</span>
+                            <span className="block text-[12px] text-slate-500">Toca para cambiarla</span>
+                          </span>
+                          <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                        </button>
+                        <label className="flex items-center gap-3 px-3.5 py-2.5">
+                          <svg className="w-5 h-5 text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16M9 7h2m-2 4h2m4-4h0m0 4h0" /></svg>
+                          <span className="flex-1 min-w-0">
+                            <span className="block text-[12px] font-semibold text-slate-500">Detalles</span>
+                            {/* 16 px: con menos, el iPhone hace zoom al tocar. */}
+                            <input
+                              type="text"
+                              value={detallesDireccion}
+                              onChange={(e) => setDetallesDireccion(e.target.value.slice(0, 80))}
+                              placeholder="Apto, torre, casa, conjunto…"
+                              className="w-full bg-transparent text-base text-slate-900 placeholder:text-slate-400 outline-none"
+                            />
+                          </span>
+                        </label>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[12px] font-semibold text-green-800 leading-snug">{deliverySelectedLocation.address}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => { setDeliverySelectedLocation(null); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); setShowLocationPicker(true); }}
-                        className="text-[11px] font-bold text-green-700 hover:text-green-900 underline underline-offset-2 flex-shrink-0"
-                      >Cambiar</button>
                     </div>
                   )}
                   {deliverySelectedLocation && envioN && (
@@ -994,46 +1073,55 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                 ];
                 if (methods.length === 0) return null;
                 return (
-                  <div>
-                    <div className={`flex items-center gap-2 mb-2 ${!selectedPaymentMethod ? 'text-red-500' : 'text-slate-500'}`}>
-                      <span className="text-slate-400">{CI.card('w-3.5 h-3.5')}</span>
-                      <p className="text-[11px] font-bold uppercase tracking-wide">
-                        Método de pago{!selectedPaymentMethod && <span className="text-red-400 ml-1">*</span>}
-                      </p>
-                    </div>
-                    <div className="grid gap-2 grid-cols-2">
-                      {methods.map(m => {
-                        const isSelected = selectedPaymentMethod === m.id;
+                  <div id="co-pago" className={`scroll-mt-4 ${resalte('co-pago')}`}>
+                    {/* Sin rojo ni asterisco antes de que el cliente haga nada: se
+                        veía como un error y todavía no había ninguno. */}
+                    <p className="text-[13px] font-bold text-slate-800 mb-2">¿Cómo pagas?</p>
+                    {/* Los métodos a la vista, con su logo: un toque y listo. */}
+                    <div className={`grid gap-2 ${methods.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                      {methods.map((m) => {
+                        const activo = m.id === selectedPaymentMethod;
                         return (
                           <button
                             key={m.id}
                             type="button"
-                            onClick={() => setSelectedPaymentMethod(isSelected ? null : m.id)}
-                            className={`flex flex-col items-center justify-center gap-1.5 py-3.5 rounded-2xl border-2 transition-all text-center active:scale-[0.97] ${
-                              isSelected ? '' : !selectedPaymentMethod ? 'border-red-100 bg-white' : 'border-slate-100 bg-white'
-                            }`}
-                            style={isSelected ? { borderColor: themeColor, backgroundColor: `${themeColor}08` } : undefined}
+                            aria-pressed={activo}
+                            onClick={() => setSelectedPaymentMethod(activo && methods.length > 1 ? null : m.id)}
+                            className="flex items-center gap-2.5 min-h-[56px] px-3 py-2.5 rounded-2xl border-2 bg-white text-left transition-colors active:scale-[0.98]"
+                            style={activo ? { borderColor: themeColor, backgroundColor: `${themeColor}0d` } : { borderColor: '#e2e8f0' }}
                           >
-                            {m.logo ? (
-                              <img src={m.logo} alt="" className="w-8 h-8 object-contain rounded-lg" />
-                            ) : (
-                              <span style={{ color: isSelected ? themeColor : '#94a3b8' }}>{CI[m.iconKey]('w-7 h-7')}</span>
-                            )}
-                            <span className="text-[12px] font-bold flex items-center gap-1" style={{ color: isSelected ? themeColor : '#475569' }}>
+                            <span className="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0 overflow-hidden">
+                              {m.logo
+                                ? <img src={m.logo} alt="" className="w-8 h-8 object-contain" />
+                                : <span style={{ color: activo ? themeColor : '#64748b' }}>{CI[m.iconKey]('w-6 h-6')}</span>}
+                            </span>
+                            <span className="flex-1 min-w-0 text-[14px] font-bold text-slate-900 truncate flex items-center gap-1">
                               {m.label}
-                              {/* El sello. Mientras esté en pruebas, que el
-                                  cliente lo sepa antes de elegirlo y no
-                                  después, con la tarjeta en la mano. */}
-                              {m.beta && (
-                                <span className="text-2xs font-black px-1 py-0.5 rounded bg-amber-100 text-amber-700 leading-none">
-                                  BETA
-                                </span>
-                              )}
+                              {m.beta && <span className="text-2xs font-black px-1 py-0.5 rounded bg-amber-100 text-amber-700 leading-none">BETA</span>}
+                            </span>
+                            <span className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0" style={{ borderColor: activo ? themeColor : '#cbd5e1' }}>
+                              {activo && <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: themeColor }} />}
                             </span>
                           </button>
                         );
                       })}
                     </div>
+                    {/* Efectivo a domicilio: con cuánto paga, para que el domiciliario lleve el cambio. */}
+                    {selectedPaymentMethod === 'efectivo' && orderType === 'delivery' && (
+                      <label className="mt-2 flex items-center gap-3 px-3.5 py-2.5 rounded-2xl border border-slate-200 bg-white">
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-[12px] font-semibold text-slate-500">¿Con cuánto pagas? <span className="font-normal">(opcional)</span></span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={pagaCon}
+                            onChange={(e) => setPagaCon(e.target.value.replace(/[^0-9]/g, '').slice(0, 9))}
+                            placeholder="Ej: 50000, para llevarte el cambio"
+                            className="w-full bg-transparent text-base text-slate-900 placeholder:text-slate-400 outline-none"
+                          />
+                        </span>
+                      </label>
+                    )}
 
                     {/* Payment info details based on selected method */}
                     {selectedPaymentMethod && selectedPaymentMethod !== 'efectivo' && (
@@ -1116,7 +1204,17 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               })()}
 
               {/* ── Notas adicionales ── */}
-              {(initialOrderTypeSelected || orderType) && (
+              {(initialOrderTypeSelected || orderType) && !conComentario && !customerNotes && (
+                <button
+                  type="button"
+                  onClick={() => setConComentario(true)}
+                  className="w-full flex items-center gap-2 px-1 py-2 text-[13px] font-semibold text-slate-600"
+                >
+                  <span className="w-7 h-7 rounded-full border-2 border-slate-200 flex items-center justify-center text-slate-500 text-base leading-none">+</span>
+                  Agregar un comentario <span className="font-normal text-slate-400">(sin cebolla, timbre…)</span>
+                </button>
+              )}
+              {(initialOrderTypeSelected || orderType) && (conComentario || customerNotes) && (
                 <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 overflow-hidden transition-all">
                   <div className="flex items-center gap-2.5 px-3.5 pt-3 pb-2">
                     <div className="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center flex-shrink-0">
@@ -1130,6 +1228,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                   </div>
                   <div className="px-3.5 pb-3.5">
                     <textarea
+                      autoFocus={conComentario && !customerNotes}
                       value={customerNotes}
                       onChange={(e) => setCustomerNotes(e.target.value.slice(0, 200))}
                       placeholder="Ej: sin cebolla, alérgico al maní, tocar timbre..."
@@ -1167,6 +1266,57 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                 <div className="flex items-center gap-1.5 p-2 bg-blue-50 border border-blue-200 rounded-xl">
                   <span className="text-blue-500">{CI.table('w-3.5 h-3.5')}</span>
                   <p className="text-blue-800 font-semibold text-[11px]">{isHotel ? 'Hab.' : 'Mesa'} {tableNumber} · En sitio</p>
+                </div>
+              )}
+
+              {/* ── Resumen y desglose, como en Rappi: se ve qué se paga antes de pagar ── */}
+              {(initialOrderTypeSelected || orderType || (hasServices && bookingSlot)) && (
+                <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setVerResumen((v) => !v)}
+                    className="w-full flex items-center justify-between px-3.5 py-3 text-left"
+                    aria-expanded={verResumen}
+                  >
+                    <span>
+                      <span className="block text-[14px] font-bold text-slate-900">Resumen de tu pedido</span>
+                      <span className="block text-[12px] text-slate-500">{cart.reduce((n, it) => n + (it.quantity || 0), 0)} {cart.reduce((n, it) => n + (it.quantity || 0), 0) === 1 ? 'producto' : 'productos'}</span>
+                    </span>
+                    <svg className={`w-4 h-4 text-slate-400 transition-transform ${verResumen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                  </button>
+                  {verResumen && (
+                    <ul className="px-3.5 pb-2 space-y-1.5">
+                      {cart.map((it, idx) => (
+                        <li key={it.uniqueId || idx} className="flex items-start justify-between gap-3 text-[13px]">
+                          <span className="text-slate-700 min-w-0"><b>{it.quantity}×</b> {it.name}</span>
+                          <button type="button" onClick={goToStep1} className="text-[12px] font-bold text-slate-500 underline underline-offset-2 flex-shrink-0">Editar</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="px-3.5 py-3 border-t border-slate-100 space-y-1.5 text-[13px]">
+                    <div className="flex justify-between text-slate-600"><span>Productos</span><span className="tabular-nums">{formatCurrency(totalAmount, businessConfig?.currency)}</span></div>
+                    {orderType === 'delivery' && (
+                      <div className="flex justify-between text-slate-600">
+                        <span>Envío</span>
+                        <span className="tabular-nums">
+                          {deliveryZoneInfo?.noZonesConfigured ? 'A convenir'
+                            : deliveryFee > 0 ? (loyaltyReward?.reward?.type === 'free_delivery' ? <><span className="line-through mr-1">{formatCurrency(deliveryFee, businessConfig?.currency)}</span>Gratis</> : formatCurrency(deliveryFee, businessConfig?.currency))
+                            : deliverySelectedLocation ? '—' : 'Según tu dirección'}
+                        </span>
+                      </div>
+                    )}
+                    {appliedCoupon && (
+                      <div className="flex justify-between text-emerald-700"><span>Cupón</span><span className="tabular-nums">-{formatCurrency(appliedCoupon.discountAmount, businessConfig?.currency)}</span></div>
+                    )}
+                    {loyaltyDiscountAmount > 0 && (
+                      <div className="flex justify-between text-emerald-700"><span>{loyaltyReward.reward.name}</span><span className="tabular-nums">-{formatCurrency(loyaltyDiscountAmount, businessConfig?.currency)}</span></div>
+                    )}
+                    <div className="flex justify-between font-black text-slate-900 text-[15px] pt-1 border-t border-dashed border-slate-200">
+                      <span>{deliveryZoneInfo?.noZonesConfigured ? 'Total sin envío' : 'Total'}</span>
+                      <span className="tabular-nums">{formatCurrency(finalAmount + ((loyaltyReward?.reward?.type === 'free_delivery' ? 0 : deliveryFee) || 0), businessConfig?.currency)}</span>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -1243,20 +1393,20 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
         {/* ── Paso 1: Footer simple con Subtotal + Continuar ── */}
         {step === 1 && cart.length > 0 && (
           <div className="border-t border-slate-200 bg-white px-4 pt-3 sm:px-6 flex-shrink-0 sm:rounded-b-2xl" style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom, 1.25rem))' }}>
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-sm font-semibold text-slate-500">Subtotal</span>
-              <span className="text-2xl font-extrabold text-slate-900">{formatCurrency(totalAmount, businessConfig?.currency)}</span>
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0">
+                <p className="text-[11px] font-semibold text-slate-500 leading-none">Subtotal</p>
+                <p className="text-xl font-black text-slate-900 tabular-nums leading-tight mt-0.5">{formatCurrency(totalAmount, businessConfig?.currency)}</p>
+              </div>
+              <button
+                onClick={goToStep2}
+                style={{ backgroundColor: themeColor, color: themeTextColor, boxShadow: `0 8px 24px ${themeColor}40` }}
+                className="flex-1 min-w-0 py-4 rounded-full font-bold flex items-center justify-center gap-2 text-[15px] active:scale-[0.97] transition-all duration-200"
+              >
+                <span>Continuar</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
+              </button>
             </div>
-            <button
-              onClick={goToStep2}
-              style={{ backgroundColor: themeColor, color: themeTextColor, boxShadow: `0 8px 24px ${themeColor}40` }}
-              className="w-full py-4 rounded-full font-bold flex items-center justify-center gap-3 text-[15px] active:scale-[0.97] transition-all duration-200"
-            >
-              <span>Continuar</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
-              <span className="w-px h-5 bg-current opacity-20" />
-              <span className="font-extrabold tabular-nums">{formatCurrency(totalAmount, businessConfig?.currency)}</span>
-            </button>
           </div>
         )}
 
@@ -1266,59 +1416,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
             className="border-t border-slate-200 bg-white px-4 pt-3 sm:px-6 flex-shrink-0 sm:rounded-b-2xl"
             style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom, 1.25rem))' }}
           >
-            {/* Price breakdown when there are extras */}
-            {(deliveryFee > 0 || deliveryZoneInfo?.noZonesConfigured || appliedCoupon) && (
-              <div className="space-y-1 mb-2">
-                <div className="flex justify-between text-xs text-slate-400">
-                  <span>Subtotal</span>
-                  <span>{formatCurrency(totalAmount, businessConfig?.currency)}</span>
-                </div>
-                {deliveryZoneInfo?.noZonesConfigured ? (
-                  <div className="flex justify-between text-xs text-amber-600">
-                    <span>Envío</span>
-                    <span className="font-medium">A convenir</span>
-                  </div>
-                ) : deliveryFee > 0 && (
-                  <div className="flex justify-between text-xs text-slate-400">
-                    <span>Envío</span>
-                    <span>{loyaltyReward?.reward?.type === 'free_delivery' ? <span className="line-through">{formatCurrency(deliveryFee, businessConfig?.currency)}</span> : formatCurrency(deliveryFee, businessConfig?.currency)}</span>
-                  </div>
-                )}
-                {loyaltyReward?.reward?.type === 'free_delivery' && deliveryFee > 0 && (
-                  <div className="flex justify-between text-xs text-amber-500">
-                    <span className="inline-flex items-center gap-1"><Gift className="w-3 h-3" /> Envío gratis</span>
-                    <span>-{formatCurrency(deliveryFee, businessConfig?.currency)}</span>
-                  </div>
-                )}
-                {appliedCoupon && (
-                  <div className="flex justify-between text-xs text-green-500">
-                    <span>Descuento cupón</span>
-                    <span>-{formatCurrency(appliedCoupon.discountAmount, businessConfig?.currency)}</span>
-                  </div>
-                )}
-                {loyaltyDiscountAmount > 0 && (
-                  <div className="flex justify-between text-xs text-amber-500">
-                    <span className="inline-flex items-center gap-1"><Gift className="w-3 h-3" /> {loyaltyReward.reward.name}</span>
-                    <span>-{formatCurrency(loyaltyDiscountAmount, businessConfig?.currency)}</span>
-                  </div>
-                )}
-                <div className="border-t border-dashed border-slate-200" />
-              </div>
-            )}
-
-            {/* Total row — prominent */}
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-sm font-semibold text-slate-500">{deliveryZoneInfo?.noZonesConfigured ? 'Subtotal' : 'Total'}</span>
-              <div className="flex items-baseline gap-2">
-                {(appliedCoupon || loyaltyDiscountAmount > 0 || loyaltyReward?.reward?.type === 'free_delivery') && (
-                  <span className="text-xs line-through text-slate-300">{formatCurrency((deliveryFee || 0) + totalAmount, businessConfig?.currency)}</span>
-                )}
-                <span className="text-2xl font-extrabold text-slate-900">
-                  {formatCurrency(finalAmount + ((loyaltyReward?.reward?.type === 'free_delivery' ? 0 : deliveryFee) || 0), businessConfig?.currency)}
-                </span>
-              </div>
-            </div>
-
             {/* Confirm button */}
             {(() => {
               const hasSelectedType = initialOrderTypeSelected || orderType || (hasServices && bookingSlot);
@@ -1342,7 +1439,47 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               const minShortfall = Math.max(minOrder - totalAmount, 0);
               const isDisabled = isSubmitting || !businessStatus?.isOpen || subscriptionStatus === 'suspended' || needsPayment || isDeliveryWithoutZone || needsBookingSlot || belowMin;
 
-              if (!showButton) return null;
+              /* Lo primero que falta, en el orden en que se llena la pantalla. */
+              const sinDireccion = orderType === 'delivery' && !initialOrderTypeSelected && !deliverySelectedLocation;
+              const sinMesa = orderType === 'inSite' && !initialOrderTypeSelected
+                && !formState.tableNumber.trim() && !(isFromTableQR && tableNumber);
+              let falta = null;
+              if (!businessStatus?.isOpen) falta = { texto: 'El negocio está cerrado ahora', accion: null };
+              else if (!hasSelectedType) falta = { texto: tienda ? 'Elige cómo lo recibes' : 'Elige cómo quieres tu pedido', accion: () => irA('co-tipo') };
+              else if (needsBookingSlot) falta = { texto: 'Elige fecha y hora', accion: () => irA('co-horario') };
+              else if (sinDireccion) falta = { texto: 'Agrega tu dirección', accion: () => setShowLocationPicker(true) };
+              else if (!showButton) falta = { texto: 'Revisando tu zona de entrega…', accion: null, esperando: true };
+              else if (isDeliveryWithoutZone) falta = { texto: 'Elige tu zona de entrega', accion: () => irA('co-direccion') };
+              else if (sinMesa) falta = { texto: isHotel ? 'Escribe tu habitación' : 'Escribe tu número de mesa', accion: () => { irA('inline-table-number'); setTimeout(() => document.getElementById('inline-table-number')?.focus(), 350); } };
+              else if (needsPayment) falta = { texto: 'Elige cómo pagas', accion: () => irA('co-pago') };
+
+              const totalAPagar = finalAmount + ((loyaltyReward?.reward?.type === 'free_delivery' ? 0 : deliveryFee) || 0);
+              const filaTotal = (boton) => (
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0">
+                    <p className="text-[11px] font-semibold text-slate-500 leading-none">{deliveryZoneInfo?.noZonesConfigured ? 'Total sin envío' : 'Total a pagar'}</p>
+                    <p className="text-xl font-black text-slate-900 tabular-nums leading-tight mt-0.5">{formatCurrency(totalAPagar, businessConfig?.currency)}</p>
+                  </div>
+                  <div className="flex-1 min-w-0">{boton}</div>
+                </div>
+              );
+
+              if (falta && !belowMin) {
+                return filaTotal(
+                  <button
+                    type="button"
+                    onClick={falta.accion || undefined}
+                    disabled={!falta.accion}
+                    style={{ backgroundColor: themeColor, color: themeTextColor }}
+                    className={`w-full py-4 px-4 rounded-full font-bold flex items-center justify-center gap-2 text-[14px] transition-all duration-200 ${
+                      falta.accion ? 'opacity-80 active:scale-[0.97]' : 'opacity-50 cursor-not-allowed'
+                    }`}
+                  >
+                    {falta.esperando && <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />}
+                    <span className="truncate">{falta.texto}</span>
+                  </button>
+                );
+              }
 
               // Helper to enrich orderInfo with booking data
               const withBookingData = (info) => {
@@ -1377,7 +1514,11 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
 
                 const submitWith = (extraFields) => {
                   setLocalIsSubmitting(true);
-                  const updatedOrderInfo = withBookingData({ ...orderInfo, paymentMethod: selectedPaymentMethod, customerNotes: customerNotes.trim(), ...extraFields });
+                  // "Paga con $50.000" va en las notas: el domiciliario las lee.
+                  const conCambio = selectedPaymentMethod === 'efectivo' && pagaCon && (extraFields.orderType === 'delivery')
+                    ? `Paga con ${formatCurrency(Number(pagaCon), businessConfig?.currency)}` : '';
+                  const notas = [customerNotes.trim(), conCambio].filter(Boolean).join(' · ');
+                  const updatedOrderInfo = withBookingData({ ...orderInfo, paymentMethod: selectedPaymentMethod, customerNotes: notas, ...extraFields });
                   updateOrderInfo(updatedOrderInfo);
                   SessionManager.saveOrderInfo(updatedOrderInfo);
                   setTimeout(() => { onOrder(updatedOrderInfo, appliedCoupon); setTimeout(() => setLocalIsSubmitting(false), 500); }, 150);
@@ -1401,7 +1542,8 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                 } else if (orderType === 'takeaway') {
                   submitWith({ orderType: 'takeaway', tableNumber: '' });
                 } else if (orderType === 'delivery') {
-                  const trimmedAddress = deliverySelectedLocation?.address || (deliveryAddressRef.current?.value || '').trim();
+                  const baseAddress = deliverySelectedLocation?.address || (deliveryAddressRef.current?.value || '').trim();
+                  const trimmedAddress = baseAddress && detallesDireccion.trim() ? `${baseAddress} · ${detallesDireccion.trim()}` : baseAddress;
                   if (!trimmedAddress) { alert('Por favor selecciona tu dirección de entrega'); return; }
                   if (isGift && !giftRecipientName.trim()) { alert('Ingresa el nombre del destinatario del regalo'); return; }
                   const coords = deliverySelectedLocation?.coords;
@@ -1423,16 +1565,14 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                 }
               };
 
-              let buttonLabel = 'Confirmar Pedido';
+              let buttonLabel = 'Hacer pedido';
               if (belowMin) buttonLabel = `Te faltan ${formatCurrency(minShortfall, businessConfig?.currency)}`;
               else if (hasServices && bookingSlot) buttonLabel = 'Confirmar Cita';
-              else if (initialOrderTypeSelected && orderInfo.orderType === 'inSite') buttonLabel = `Confirmar · Mesa ${tableNumber}`;
-              else if (initialOrderTypeSelected && orderInfo.orderType === 'takeaway') buttonLabel = 'Confirmar · Para Llevar';
-              else if (orderType === 'inSite') buttonLabel = `Confirmar · Mesa${formState.tableNumber ? ` ${formState.tableNumber}` : ''}`;
-              else if (orderType === 'takeaway') buttonLabel = 'Confirmar · Para Llevar';
-              else if (orderType === 'delivery') buttonLabel = isDeliveryWithoutZone ? 'Selecciona una zona' : 'Confirmar · Domicilio';
-
-              const displayTotal = (finalAmount + ((loyaltyReward?.reward?.type === 'free_delivery' ? 0 : deliveryFee) || 0));
+              else if (initialOrderTypeSelected && orderInfo.orderType === 'inSite') buttonLabel = `Pedir · Mesa ${tableNumber}`;
+              else if (initialOrderTypeSelected && orderInfo.orderType === 'takeaway') buttonLabel = 'Hacer pedido';
+              else if (orderType === 'inSite') buttonLabel = `Pedir · Mesa${formState.tableNumber ? ` ${formState.tableNumber}` : ''}`;
+              else if (orderType === 'takeaway') buttonLabel = 'Hacer pedido';
+              else if (orderType === 'delivery') buttonLabel = isDeliveryWithoutZone ? 'Selecciona una zona' : 'Hacer pedido';
 
               return (
                 <>
@@ -1444,6 +1584,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                     </p>
                   </div>
                 )}
+                {filaTotal(
                 <button
                   onClick={handleConfirmClick}
                   style={{ 
@@ -1451,7 +1592,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                     color: themeTextColor,
                     boxShadow: isDisabled ? undefined : `0 8px 24px ${themeColor}40`
                   }}
-                  className={`w-full py-4 rounded-full font-bold flex items-center justify-center gap-3 text-[15px] transition-all duration-200 ${
+                  className={`w-full py-4 px-4 rounded-full font-bold flex items-center justify-center gap-3 text-[15px] transition-all duration-200 ${
                     isDisabled ? 'opacity-60 cursor-not-allowed' : 'active:scale-[0.97]'
                   }`}
                   disabled={isDisabled}
@@ -1464,11 +1605,10 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                   ) : (
                     <>
                       <span>{buttonLabel}</span>
-                      <span className="w-px h-5 bg-current opacity-20" />
-                      <span className="font-extrabold tabular-nums">{formatCurrency(displayTotal, businessConfig?.currency)}</span>
                     </>
                   )}
                 </button>
+                )}
                 </>
               );
             })()}
@@ -1485,7 +1625,16 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
 
       {/* Location picker — opens above the cart modal */}
       {showLocationPicker && (
-        <Suspense fallback={null}>
+        /* Mientras llega el mapa (en 4G lento, un segundo): que se note que el
+           toque funcionó. */
+        <Suspense fallback={
+          <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/30">
+            <div className="flex items-center gap-2.5 rounded-2xl bg-white px-4 py-3 shadow-xl text-sm font-semibold text-slate-700">
+              <span className="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
+              Abriendo el mapa…
+            </div>
+          </div>
+        }>
           <LocationPicker
             open={showLocationPicker}
             onClose={() => setShowLocationPicker(false)}

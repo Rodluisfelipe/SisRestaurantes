@@ -43,7 +43,9 @@ function addViewer(businessId, socketId, data) {
     cartTotal: data.cartTotal || 0,
     cartProducts: Array.isArray(data.cartProducts) ? data.cartProducts.slice(0, 20) : [],
     isReturning: false,
-    previousOrders: 0
+    previousOrders: 0,
+    etapa: 0,
+    converted: false,
   };
   
   businessViewers.get(bid).set(socketId, viewer);
@@ -121,6 +123,9 @@ function heartbeat(socketId, data = {}) {
       if (data.cartItems !== undefined) viewer.cartItems = data.cartItems;
       if (data.cartTotal !== undefined) viewer.cartTotal = data.cartTotal;
       if (Array.isArray(data.cartProducts)) viewer.cartProducts = data.cartProducts.slice(0, 20);
+      // El embudo solo avanza: volver al menú no borra hasta dónde llegó.
+      const etapa = Number(data.etapa);
+      if (Number.isInteger(etapa) && etapa >= 0 && etapa <= 6 && etapa > (viewer.etapa || 0)) viewer.etapa = etapa;
       return bid;
     }
   }
@@ -257,7 +262,9 @@ async function persistSession(businessId, viewer) {
           enteredAt: { $gte: todayStart }
         },
         {
+          $max: { etapa: viewer.etapa || 0 },
           $set: {
+            converted: !!viewer.converted,
             customerName: viewer.customerName,
             device: viewer.device,
             source: viewer.source || 'direct',
@@ -290,7 +297,8 @@ async function persistSession(businessId, viewer) {
         lastCategory: viewer.currentCategory,
         cartProducts: (viewer.cartProducts || []).slice(0, 20),
         cartTotal: viewer.cartTotal || 0,
-        converted: false,
+        converted: !!viewer.converted,
+        etapa: viewer.etapa || 0,
         isReturning: viewer.isReturning,
         previousOrders: viewer.previousOrders
       });
@@ -319,6 +327,16 @@ async function persistSession(businessId, viewer) {
 async function markConverted(businessId, phone) {
   try {
     if (!businessId || !phone) return;
+
+    /* El cliente sigue en el menú cuando pide, y su visita se guarda al salir:
+       se marca también en memoria, o al salir quedaba como "no compró" y
+       contaba como carrito abandonado. */
+    const enVivo = businessViewers.get(String(businessId));
+    if (enVivo) {
+      for (const v of enVivo.values()) {
+        if (v.phone && v.phone === phone) { v.converted = true; v.etapa = 6; }
+      }
+    }
     
     // Buscar la sesión más reciente de este phone en este business (últimos 30 min)
     const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
@@ -330,7 +348,7 @@ async function markConverted(businessId, phone) {
         enteredAt: { $gte: thirtyMinAgo },
         converted: false
       },
-      { converted: true },
+      { converted: true, $max: { etapa: 6 } },
       { sort: { enteredAt: -1 }, new: true }
     );
     

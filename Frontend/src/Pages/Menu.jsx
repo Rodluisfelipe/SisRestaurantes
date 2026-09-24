@@ -26,7 +26,7 @@ import { menuCssVars } from "../utils/menuTokens";
 import CartSummary from "../Components/CartSummary";
 import OrderTypeSelector from "../Components/OrderTypeSelector";
 import FilterableMenu from "../Components/FilterableMenu";
-import OrderConfirmationModal from "../Components/OrderConfirmationModal";
+import PedidoConfirmado from "../Components/PedidoConfirmado";
 import BottomNav from "../Components/BottomNav";
 const MoreSheet = lazy(() => import("../Components/MoreSheet"));
 const MenuScreen = lazy(() => import("../Components/MenuScreen"));
@@ -143,11 +143,8 @@ export default function Menu() {
   const statusLoading = false; // status now derived from businessConfig synchronously
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [menuNetworkError, setMenuNetworkError] = useState(false);
-  const [showOrderConfirmationModal, setShowOrderConfirmationModal] = useState(false);
-  const [orderConfirmationDetails, setOrderConfirmationDetails] = useState({
-    type: '',
-    message: ''
-  });
+  // La pantalla de "pedido confirmado" (con lo que pidió y, si aplica, WhatsApp).
+  const [pedidoConfirmado, setPedidoConfirmado] = useState(null);
   const [businessNotFound, setBusinessNotFound] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
@@ -228,7 +225,7 @@ export default function Menu() {
 
   // Poll active order status for banner display (socket + fallback)
   useEffect(() => {
-    if (!activeOrderId || !activeCustomerToken || !isInAppMode) {
+    if (!activeOrderId || !activeCustomerToken) {
       setActiveOrderStatus(null);
       return;
     }
@@ -270,7 +267,7 @@ export default function Menu() {
     // Fallback: polling only if socket unavailable
     const interval = setInterval(fetchStatus, 6000);
     return () => { cancelled = true; clearInterval(interval); };
-  }, [activeOrderId, activeCustomerToken, isInAppMode]);
+  }, [activeOrderId, activeCustomerToken]);
 
   // Auto-clear cancelled orders from the banner
   useEffect(() => {
@@ -440,11 +437,26 @@ export default function Menu() {
     currentCategoryRef.current = categoryName;
   }, []);
 
+  /* Hasta qué paso del pedido llegó (embudo, ver utils/embudo): se manda en
+     cuanto avanza y en cada latido. Solo sube; nunca baja. */
+  const etapaRef = useRef(0);
+  useEffect(() => {
+    const alAvanzar = (e) => {
+      const etapa = Number(e.detail?.etapa) || 0;
+      if (etapa <= etapaRef.current) return;
+      etapaRef.current = etapa;
+      if (socket?.connected) socket.emit('viewer:heartbeat', { currentView: 'menu', etapa });
+    };
+    window.addEventListener('mb:etapa', alAvanzar);
+    return () => window.removeEventListener('mb:etapa', alAvanzar);
+  }, []);
+
   // Send cart update to viewer tracking when cart changes
   useEffect(() => {
     if (socket?.connected) {
       socket.emit('viewer:heartbeat', {
         currentView: 'menu',
+        etapa: etapaRef.current,
         currentCategory: currentCategoryRef.current,
         cartItems: cart?.length || 0,
         cartTotal: cart?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0,
@@ -495,6 +507,7 @@ export default function Menu() {
           const c = cartRef.current;
           socket.emit('viewer:heartbeat', {
             currentView: 'menu',
+            etapa: etapaRef.current,
             currentCategory: currentCategoryRef.current,
             cartItems: c?.length || 0,
             cartTotal: c?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0,
@@ -526,7 +539,7 @@ export default function Menu() {
   }, [businessId, activeOrderId, activeCustomerToken]);
 
   useEffect(() => {
-    if (activeOrderId || !isInAppMode || !orderInfo.phone || !businessId) return;
+    if (activeOrderId || !isInAppMode || !orderInfo.phone || !businessId || !tieneCuenta(businessId)) return;
     let cancelled = false;
     const recover = async () => {
       try {
@@ -1228,6 +1241,10 @@ export default function Menu() {
   // Función que ejecuta todo el proceso de envío del pedido
   const executeOrderSubmission = async (orderDetails, cartItems, totalAmount, appliedCoupon) => {
     logger.info('Ejecutando envío de pedido con detalles:', orderDetails);
+    /* WhatsApp se abre DESPUÉS de guardar el pedido, desde la pantalla de
+       confirmación. Antes se abría primero: el celular podía cortar la página
+       al saltar a WhatsApp y el pedido no alcanzaba a guardarse. */
+    let whatsappPedidoUrl = null;
 
     try {
       // Crear estructura de datos específica para enviar al backend
@@ -1352,17 +1369,7 @@ export default function Menu() {
           }
         }
 
-        // Abrir WhatsApp
-        try {
-          window.location.href = whatsappUrl;
-        } catch (error) {
-          // Fallback si el protocolo whatsapp:// no funciona
-          // Error silencioso
-          const fallbackUrl = numeroNegocio
-            ? `https://wa.me/${numeroNegocio}?text=${whatsappMessage}`
-            : `https://wa.me/?text=${whatsappMessage}`;
-          window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
-        }
+        whatsappPedidoUrl = whatsappUrl;
       }
 
       // Guardar el pedido/cita en la base de datos
@@ -1445,7 +1452,7 @@ export default function Menu() {
       logger.info('Número de orden guardado:', response.data.orderNumber);
 
       // For in-app orders, save customerToken and show tracker
-      if (isInAppMode && response.data.customerToken) {
+      if (response.data.customerToken) {
         sessionStorage.setItem('activeOrderId', response.data._id);
         sessionStorage.setItem('activeCustomerToken', response.data.customerToken);
         setActiveOrderId(response.data._id);
@@ -1478,18 +1485,25 @@ export default function Menu() {
         confirmMessage = '¡Gracias por tu pedido! Tu orden estará lista para recoger en breve.';
       }
 
-      // Mostrar modal de confirmación o tracker
-      if (isInAppMode) {
-        // For in-app: skip confirmation modal, show tracker directly
-        setShowOrderTracker(true);
-      } else {
-        setOrderConfirmationDetails({
-          type: orderDetails.orderType,
-          message: confirmMessage,
-          isBooking: isBookingOrder
-        });
-        setShowOrderConfirmationModal(true);
-      }
+      /* La confirmación a pantalla completa, con lo que pidió (foto,
+         cantidad, precio) para que vea que quedó bien. */
+      setPedidoConfirmado({
+        numero: response.data.orderNumber,
+        orderId: response.data._id,
+        token: response.data.customerToken || null,
+        isBooking: isBookingOrder,
+        esApp: isInAppMode && !isBookingOrder,
+        mensaje: confirmMessage,
+        whatsappUrl: whatsappPedidoUrl,
+        total: (appliedCoupon?.finalAmount ?? totalAmount) + (Number(orderDetails.deliveryFee) || 0),
+        items: cartItems.map((it) => ({
+          nombre: it.name,
+          cantidad: it.quantity || 1,
+          imagen: it.image || '',
+          precio: calcItemPriceUtil(it),
+          detalle: (it.selectedToppings || []).map((t) => t.optionName).filter(Boolean).slice(0, 4).join(', '),
+        })),
+      });
 
       // Actualizar orderInfo con la información del pedido completado para mantener los datos del cliente
       const updatedOrderInfo = {
@@ -1549,6 +1563,10 @@ export default function Menu() {
         return false;
       }
 
+      if (whatsappPedidoUrl && window.confirm('No pudimos registrar tu pedido en el sistema. ¿Lo enviamos por WhatsApp para no perderlo?')) {
+        window.location.href = whatsappPedidoUrl;
+        return false;
+      }
       alert(`Error al procesar el pedido en el servidor: ${error.response?.data?.message || error.message || 'Error desconocido'}`);
       return false; // Indicar fallo
     }
@@ -1799,7 +1817,7 @@ export default function Menu() {
         onToppingsClose={() => setIsSelectingToppings(false)}
         subscriptionStatus={subscriptionStatus}
         isViewOnly={isViewOnly}
-        hasActiveOrder={!!(isInAppMode && activeOrderId && activeCustomerToken && !showOrderTracker && !showPaymentUpload)}
+        hasActiveOrder={!!(activeOrderId && activeCustomerToken && !showOrderTracker && !showPaymentUpload && !pedidoConfirmado)}
         activeOrderStatus={activeOrderStatus}
         onViewActiveOrder={() => setShowOrderTracker(true)}
         onDismissCompletedOrder={clearActiveOrder}
@@ -1883,30 +1901,34 @@ export default function Menu() {
         />
       )}
 
-      <OrderConfirmationModal
-        show={showOrderConfirmationModal}
-        onClose={() => {
-          // Recargar orderInfo desde sessionStorage después de cerrar el modal
-          const reloadedOrderInfo = SessionManager.loadOrderInfo();
-          if (reloadedOrderInfo) {
-            logger.info('Recargando orderInfo después de cerrar modal de confirmación:', reloadedOrderInfo);
-            setOrderInfo(reloadedOrderInfo);
-          }
-
-          // Asegurarse de que el carrito esté vacío
-          setCart([]);
-          SessionManager.removeFromSessionStorage('cart');
-
-          setShowOrderConfirmationModal(false);
-        }}
-        orderInfo={orderInfo}
-        orderConfirmationDetails={orderConfirmationDetails}
-        businessConfig={businessConfig}
-        businessId={businessId}
-        setOrderInfo={setOrderInfo}
-        setCart={setCart}
-        setShowCartSummary={setShowCartSummary}
-      />
+      {pedidoConfirmado && (
+        <PedidoConfirmado
+          datos={pedidoConfirmado}
+          negocio={businessConfig?.businessName}
+          moneda={businessConfig?.currency || 'COP'}
+          color={businessConfig?.theme?.buttonColor}
+          onCerrar={() => {
+            /* Mesa por QR: la sesión se limpia para el siguiente comensal y se
+               vuelve al menú de esa mesa, como antes; el pedido activo se
+               conserva para poder ver su estado. */
+            if (SessionManager.isQRMode()) {
+              const id = sessionStorage.getItem('activeOrderId');
+              const tok = sessionStorage.getItem('activeCustomerToken');
+              sessionStorage.clear();
+              if (id && tok) { sessionStorage.setItem('activeOrderId', id); sessionStorage.setItem('activeCustomerToken', tok); }
+              const mesa = SessionManager.getTableNumberFromURL();
+              window.location.href = mesa ? `/${businessId}/mesa/${mesa}` : `/${businessId}`;
+              return;
+            }
+            const reloadedOrderInfo = SessionManager.loadOrderInfo();
+            if (reloadedOrderInfo) setOrderInfo(reloadedOrderInfo);
+            setCart([]);
+            SessionManager.removeFromSessionStorage('cart');
+            setPedidoConfirmado(null);
+          }}
+          onVerEstado={pedidoConfirmado.token ? () => { setPedidoConfirmado(null); setShowOrderTracker(true); } : null}
+        />
+      )}
 
       {/* Order Tracker for in-app orders */}
       {showOrderTracker && activeOrderId && activeCustomerToken && (

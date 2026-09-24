@@ -5,6 +5,7 @@ import { socket } from "../../services/socket";
 import { formatCurrency } from "../../utils/currency";
 import MenuHealthScore from "./MenuHealthScore";
 import { enlaceWhatsApp } from '../../utils/whatsapp';
+import EmbudoPedidos from './EmbudoPedidos';
 
 const EMPTY_ARRAY = [];
 
@@ -1085,6 +1086,9 @@ export default function DashboardMetrics({ setActiveTab, businessId, businessCon
 
       {/* ═══ Abandoned Carts ═══ */}
       <AbandonedCarts carts={abandonedCarts.carts} totalLost={abandonedCarts.totalLost} currency={businessConfig?.currency || 'COP'} />
+
+      {/* ═══ Embudo del pedido ═══ */}
+      <EmbudoPedidos businessId={businessId} />
 
       {/* ═══ KPI Cards ═══ */}
       {loading ? (

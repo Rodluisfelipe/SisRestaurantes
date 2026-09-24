@@ -6,6 +6,7 @@ import logger from '../utils/logger';
 import { formatCurrency } from '../utils/currency';
 import { ClipboardList, CreditCard, Upload, CheckCircle2, ChefHat, PartyPopper, Sparkles, Home, XCircle, PackageOpen } from 'lucide-react';
 import { Capa } from './ui';
+import { tieneCuenta } from '../utils/cuentaCliente';
 
 const STATUS_LABELS = {
   pending: { label: 'Recibido', icon: ClipboardList, bg: 'bg-blue-100', text: 'text-blue-700' },
@@ -31,7 +32,7 @@ const MyOrders = ({ businessId, phone, businessConfig, onTrackOrder, onClose }) 
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
 
   const fetchOrders = useCallback(async () => {
-    if (!phone || !businessId) return;
+    if (!phone || !businessId || !tieneCuenta()) return;
     try {
       const response = await api.get(`/orders/my-orders?phone=${encodeURIComponent(phone)}&businessId=${businessId}`);
       setOrders(response.data);

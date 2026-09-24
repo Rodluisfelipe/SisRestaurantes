@@ -575,7 +575,10 @@ router.post("/", (req, res, next) => {
     const isOpenTab = isPOS && !!req.body.posOpenTab;
     const isAdmin = orderChannel === 'admin';
     const initialStatus = isPOS ? ORDER_STATUS.CONFIRMED : isAdmin ? ORDER_STATUS.CONFIRMED : isInApp ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.PENDING;
-    const customerToken = isInApp ? generateCustomerToken() : null;
+    /* Seguimiento para todo pedido que hace un cliente desde el menú, también
+       los que se mandan por WhatsApp: así puede volver y ver cómo va. El POS,
+       el pedido rápido y el personal no lo necesitan. */
+    const customerToken = (isPOS || isAdmin || esPersonalDelNegocio(req)) ? null : generateCustomerToken();
 
     // Create the order
     const newOrder = new Order({
@@ -906,6 +909,39 @@ router.get('/bought-together', publicOrderLimiter, async (req, res) => {
   } catch (error) {
     logger.error('Error in bought-together', error);
     res.json({ productIds: [] });
+  }
+});
+
+/* El cliente cancela su pedido recién hecho (la pantalla de confirmación da
+   2 minutos). Con el token de seguimiento de ese pedido y solo si el negocio
+   aún no lo tomó. Antes el botón llamaba a DELETE /:id, que es del personal:
+   al cliente siempre le salía error. No se borra: queda cancelado y el
+   negocio lo ve. */
+const MINUTOS_PARA_CANCELAR = 2;
+router.post('/:id/cancelar-cliente', publicOrderLimiter, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const token = req.headers['x-customer-token'] || req.body?.customerToken;
+    if (!isValidObjectId(id) || !token) return res.status(400).json({ message: 'Datos incompletos' });
+    const order = await Order.findById(id);
+    if (!order || !order.customerToken || order.customerToken !== token) {
+      return res.status(403).json({ message: 'No se pudo verificar el pedido' });
+    }
+    const edadMin = (Date.now() - new Date(order.createdAt).getTime()) / 60000;
+    const cancelable = [ORDER_STATUS.PENDING, ORDER_STATUS.PENDING_PAYMENT, ORDER_STATUS.PAYMENT_UPLOADED].includes(order.status);
+    if (!cancelable || edadMin > MINUTOS_PARA_CANCELAR) {
+      return res.status(409).json({ message: 'El negocio ya está preparando tu pedido. Escríbele para cancelarlo.' });
+    }
+    order.status = ORDER_STATUS.CANCELLED;
+    order.cancellationReason = 'Cancelado por el cliente';
+    if (Array.isArray(order.statusHistory)) order.statusHistory.push({ status: ORDER_STATUS.CANCELLED, timestamp: new Date() });
+    await order.save();
+    socketService.emitToBusiness(order.businessId.toString(), 'order_updated', order);
+    socketService.emitToOrder(order._id, 'order_status_changed', { orderId: order._id, status: order.status, order });
+    return res.json({ ok: true });
+  } catch (error) {
+    logger.error('Error cancelling order by customer', error);
+    return res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 

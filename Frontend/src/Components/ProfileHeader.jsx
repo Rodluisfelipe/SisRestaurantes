@@ -222,7 +222,7 @@ export default function ProfileHeader({
                 alt={`Logo de ${name}`}
                 className="w-full h-full object-cover"
                 loading="eager"
-                fetchPriority="high"
+                fetchpriority="high"
                 onError={() => setLogoError(true)}
               />
             </div>

@@ -580,6 +580,34 @@ router.get('/viewers', tenantAuth, async (req, res) => {
 });
 
 /**
+ * GET /api/dashboard/embudo?dias=7
+ *
+ * Dónde se caen los pedidos del menú: de las visitas de los últimos días,
+ * cuántas llegaron a cada paso (carrito, finalizar, tipo, dirección, pago,
+ * pedido). Ver utils/embudoPedido.
+ */
+router.get('/embudo', tenantAuth, async (req, res) => {
+  try {
+    const businessId = req.resolvedBusinessId || req.user?.businessId;
+    if (!businessId) return res.status(400).json({ message: 'businessId is required' });
+    const dias = Math.min(Math.max(parseInt(req.query.dias, 10) || 7, 1), 90);
+    const ViewerSession = require('../Models/ViewerSession');
+    const { armarEmbudo } = require('../utils/embudoPedido');
+    const desde = startOfDayCOL(new Date(Date.now() - (dias - 1) * 24 * 60 * 60 * 1000));
+    const conteos = await ViewerSession.aggregate([
+      { $match: { businessId: new mongoose.Types.ObjectId(String(businessId)), enteredAt: { $gte: desde } } },
+      /* Las visitas de antes de medir el embudo no tienen etapa: si pidieron
+         cuentan como 6, si no, como 0 (vieron el menú). */
+      { $group: { _id: { $ifNull: ['$etapa', { $cond: ['$converted', 6, 0] }] }, n: { $sum: 1 } } },
+    ]);
+    res.json({ dias, desde, pasos: armarEmbudo(conteos) });
+  } catch (error) {
+    logger.error('Error building order funnel', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+/**
  * GET /api/dashboard/abandoned-carts
  * 
  * Returns today's abandoned carts (sessions with cartTotal > 0 that didn't convert).

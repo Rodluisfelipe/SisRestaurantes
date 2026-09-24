@@ -122,7 +122,7 @@ const FeaturedProducts = ({ businessId, products, onAddToCart, theme, onToppings
       </div>
 
       {/* CSS for line-clamp + scrollbar hide */}
-      <style jsx>{`
+      <style>{`
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
         }

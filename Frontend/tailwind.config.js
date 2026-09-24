@@ -113,10 +113,27 @@ export default {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
         },
+        // El check de "pedido confirmado" se dibuja de un trazo.
+        trazo: {
+          '0%': { strokeDashoffset: '48' },
+          '100%': { strokeDashoffset: '0' },
+        },
+        subir: {
+          '0%': { opacity: '0', transform: 'translateY(14px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        // La barra de "abriendo WhatsApp en…" se vacía.
+        vaciar: {
+          '0%': { transform: 'scaleX(1)' },
+          '100%': { transform: 'scaleX(0)' },
+        },
       },
       animation: {
         agregado: 'agregado 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both',
         aparecer: 'aparecer 180ms ease-out both',
+        trazo: 'trazo 450ms 350ms ease-out both',
+        subir: 'subir 420ms ease-out both',
+        vaciar: 'vaciar 4s linear forwards',
       },
     },
   },

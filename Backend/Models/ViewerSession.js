@@ -44,6 +44,10 @@ const viewerSessionSchema = new mongoose.Schema({
 
   // Conversion
   converted: { type: Boolean, default: false },
+  /* Hasta dónde llegó en el pedido (embudo): 0 vio el menú, 1 abrió el
+     carrito, 2 fue a finalizar, 3 eligió cómo recibirlo, 4 puso dirección o
+     mesa, 5 eligió cómo pagar, 6 pidió. Se guarda el máximo alcanzado. */
+  etapa: { type: Number, default: 0, min: 0, max: 6 },
 
   // Returning customer data
   isReturning: { type: Boolean, default: false },
