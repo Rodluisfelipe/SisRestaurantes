@@ -1,3 +1,4 @@
+import { precioDeOpciones } from '../utils/orderUtils';
 /**
  * Calculate the total price for a single cart item including toppings.
  */
@@ -5,28 +6,7 @@ export function calculateItemTotal(item) {
   const basePrice = parseFloat(item.finalPrice || item.price || 0);
   const quantity = parseInt(item.quantity || 0);
 
-  let toppingPriceSum = 0;
-
-  if (item.selectedToppings && item.selectedToppings.length > 0) {
-    toppingPriceSum = item.selectedToppings.reduce((toppingSum, topping) => {
-      // Precio base del grupo de toppings
-      let toppingGroupPrice = parseFloat(topping.basePrice || 0);
-
-      // Precio de la opción seleccionada
-      toppingGroupPrice += parseFloat(topping.price || 0);
-
-      // Precios de subgrupos
-      if (topping.subGroups && topping.subGroups.length > 0) {
-        const subGroupsPrice = topping.subGroups.reduce(
-          (subSum, subItem) => subSum + parseFloat(subItem.price || 0),
-          0
-        );
-        toppingGroupPrice += subGroupsPrice;
-      }
-
-      return toppingSum + toppingGroupPrice;
-    }, 0);
-  }
+  const toppingPriceSum = precioDeOpciones(item.selectedToppings);
 
   // Precio total: (base + toppings) * cantidad
   return (basePrice + toppingPriceSum) * quantity;

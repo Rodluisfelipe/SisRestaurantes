@@ -694,7 +694,7 @@ router.get('/catalog', tenantAuth, cajaVigente, async (req, res) => {
         .populate({
           path: 'toppingGroups',
           match: { active: true },
-          select: 'name isMultipleChoice isRequired basePrice options subGroups active',
+          select: 'name isMultipleChoice isRequired allowRepeats maxSelections basePrice options subGroups active',
         })
         .sort({ updatedAt: 1 })
         .limit(limite)

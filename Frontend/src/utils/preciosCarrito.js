@@ -1,3 +1,4 @@
+import { precioDeOpciones } from './orderUtils';
 /**
  * Volver a ponerle precio al carrito cuando el menú cambia debajo.
  *
@@ -31,18 +32,22 @@ export function precioUnitario(producto, seleccionados) {
   let precio = Number(producto?.price) || 0;
   const grupos = producto?.toppingGroups || [];
 
+  // Recargo y subgrupos una vez por grupo, como el servidor (orderPricing).
+  const gruposContados = new Set();
   for (const elegido of seleccionados || []) {
     const grupo = grupos.find((g) => g.name === elegido.groupName);
     if (!grupo) continue;
+    const primera = !gruposContados.has(grupo.name);
+    gruposContados.add(grupo.name);
 
-    if (typeof grupo.basePrice === 'number') precio += grupo.basePrice;
+    if (primera && typeof grupo.basePrice === 'number') precio += grupo.basePrice;
 
     if (elegido.optionName) {
       const opcion = (grupo.options || []).find((o) => o.name === elegido.optionName);
       if (opcion?.price) precio += opcion.price;
     }
 
-    for (const sub of elegido.subGroups || []) {
+    for (const sub of primera ? (elegido.subGroups || []) : []) {
       const subGrupo = (grupo.subGroups || []).find((sg) => sg.title === sub.subGroupTitle);
       if (!subGrupo || !sub.optionName) continue;
       const opcionSub = (subGrupo.options || []).find((o) => o.name === sub.optionName);
@@ -105,13 +110,7 @@ export function resincronizarCarrito(carrito, productos) {
 
 /** Lo que el carrito creía que costaban los toppings de una línea. */
 function sumaDeToppings(seleccionados) {
-  let suma = 0;
-  for (const t of seleccionados || []) {
-    suma += Number(t.basePrice) || 0;
-    suma += Number(t.price) || 0;
-    for (const sub of t.subGroups || []) suma += Number(sub.price) || 0;
-  }
-  return suma;
+  return precioDeOpciones(seleccionados);
 }
 
 /** La misma selección, con los precios que tiene hoy el producto. */

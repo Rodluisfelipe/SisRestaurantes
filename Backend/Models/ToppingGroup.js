@@ -91,6 +91,19 @@ const toppingGroupSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  /* ¿Cada opción se puede pedir varias veces ("Carne extra ×3")?
+     null = automático: los extras con precio sí, los gratis (salsas) no.
+     Solo aplica a grupos de opción múltiple. */
+  allowRepeats: {
+    type: Boolean,
+    default: null
+  },
+  // Tope de unidades en todo el grupo (null = sin tope).
+  maxSelections: {
+    type: Number,
+    default: null,
+    min: 1
+  },
   // Opciones directas en el grupo principal
   options: [toppingOptionSchema],
   // Subgrupos

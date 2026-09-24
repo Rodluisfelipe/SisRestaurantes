@@ -6,6 +6,18 @@ import { Hoja, Boton, Cantidad } from "./ui";
 import useFavoritos from "../hooks/useFavoritos";
 import { negocioDeLaCuenta } from "../utils/cuentaCliente";
 
+/* Un extra del grupo principal se pide por cantidad ("Carne extra ×3")
+   cuando el grupo es de opción múltiple y el dueño lo permitió; si no dijo
+   nada (allowRepeats null), los extras con precio sí y los gratis no: nadie
+   pide tres veces "sin cebolla". */
+const TOPE_POR_OPCION = 20;
+function repiteEnGrupo(group, option) {
+  if (!group?.isMultipleChoice) return false;
+  if (group.allowRepeats === true) return true;
+  if (group.allowRepeats === false) return false;
+  return Number(option?.price) > 0;
+}
+
 function ProductToppingsSelector({ product, onAddToCart, onClose, compact = false }) {
   const [selectedToppings, setSelectedToppings] = useState({});
   const [totalPrice, setTotalPrice] = useState(product.price || 0);
@@ -254,9 +266,10 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
       // Calcular precios de las opciones seleccionadas
       if (Array.isArray(group.options)) {
         group.options.forEach(option => {
-          if (option && option._id && groupSelections.includes(option._id)) {
-            optionsPriceTotal += Number(option.price || 0);
-          }
+          if (!option || !option._id) return;
+          // Por unidades: "Carne extra ×3" cobra tres veces.
+          const count = groupSelections.filter(id => id === option._id).length;
+          if (count > 0) optionsPriceTotal += Number(option.price || 0) * count;
         });
       }
       
@@ -303,7 +316,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
       const group = uniqueToppingGroups.find(g => g && g._id === groupId);
       const subGroup = isSubGroup ? group?.subGroups?.find(s => s?._id === subGroupId) : null;
       const isMultiple = isSubGroup ? subGroup?.isMultipleChoice : group?.isMultipleChoice;
-      const maxSelections = isSubGroup ? subGroup?.maxSelections : null;
+      const maxSelections = isSubGroup ? subGroup?.maxSelections : group?.maxSelections;
 
       if (!isMultiple) {
         // Para selección única
@@ -342,6 +355,21 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
       const idx = current.lastIndexOf(optionId);
       if (idx === -1) return prev;
       return { ...prev, [key]: [...current.slice(0, idx), ...current.slice(idx + 1)] };
+    });
+  };
+
+  const cambiarCantidadExtra = (groupId, optionId, delta) => {
+    setSelectedToppings(prev => {
+      const current = prev[groupId] || [];
+      if (delta > 0) {
+        const group = uniqueToppingGroups.find(g => g && g._id === groupId);
+        if (group?.maxSelections && current.length >= group.maxSelections) return prev;
+        if (current.filter(id => id === optionId).length >= TOPE_POR_OPCION) return prev;
+        return { ...prev, [groupId]: [...current, optionId] };
+      }
+      const idx = current.lastIndexOf(optionId);
+      if (idx === -1) return prev;
+      return { ...prev, [groupId]: [...current.slice(0, idx), ...current.slice(idx + 1)] };
     });
   };
 
@@ -434,14 +462,18 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
       if (hasMainSelections || hasSubGroupSelections) {
         // Para cada opción principal seleccionada, crear un objeto de topping
         if (hasMainSelections) {
-          groupSelections.forEach(optionId => {
+          /* Una entrada por unidad ("Carne extra ×3" son tres): así la cocina,
+             las comandas y el cobro las cuentan sin saber de cantidades. El
+             recargo del grupo y los subgrupos van solo en la primera, porque
+             son del grupo y no de cada opción (ver precioDeOpciones). */
+          groupSelections.forEach((optionId, i) => {
             const option = group.options?.find(o => o._id === optionId);
             result.push({
               groupName: group.name || 'Desconocido',
               optionName: option?.name || 'Desconocida',
               price: option?.price || 0,
-              basePrice: group.basePrice || 0,
-              subGroups: hasSubGroupSelections ? subGroupSelections : []
+              basePrice: i === 0 ? (group.basePrice || 0) : 0,
+              subGroups: i === 0 && hasSubGroupSelections ? subGroupSelections : []
             });
           });
         } else if (hasSubGroupSelections) {
@@ -1066,7 +1098,10 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
                 <Encabezado
                   titulo={group.name}
                   nota={[
-                    group.isMultipleChoice ? 'Puedes elegir varias' : 'Elige una',
+                    group.isMultipleChoice
+                      ? ((group.options || []).some((o) => repiteEnGrupo(group, o)) ? 'Pide las que quieras de cada una' : 'Puedes elegir varias')
+                      : 'Elige una',
+                    group.isMultipleChoice && group.maxSelections ? `máximo ${group.maxSelections}` : '',
                     Number(group.basePrice) > 0 ? `+${pesosCO(group.basePrice)}` : '',
                     gratisEnGrupo ? 'hay opciones gratis' : '',
                   ].filter(Boolean).join(' · ')}
@@ -1076,18 +1111,40 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
                 />
 
                 <div className="space-y-2">
-                  {(group.options || []).filter((o) => o && o._id && o.active !== false).map((option) => (
-                    <Opcion
-                      key={option._id}
-                      nombre={option.name || 'Opción'}
-                      imagen={option.image}
-                      precio={Number(option.price) || 0}
-                      gratis={isFreeOption(option.name)}
-                      multiple={group.isMultipleChoice}
-                      elegida={(selectedToppings[group._id] || []).includes(option._id)}
-                      onTocar={() => handleOptionChange(group._id, option._id)}
-                    />
-                  ))}
+                  {(group.options || []).filter((o) => o && o._id && o.active !== false).map((option) => {
+                    const elegidas = selectedToppings[group._id] || [];
+                    if (repiteEnGrupo(group, option)) {
+                      const count = elegidas.filter((id) => id === option._id).length;
+                      const lleno = group.maxSelections && elegidas.length >= group.maxSelections;
+                      return (
+                        <Opcion
+                          key={option._id}
+                          nombre={option.name || 'Opción'}
+                          imagen={option.image}
+                          precio={Number(option.price) || 0}
+                          gratis={isFreeOption(option.name)}
+                          elegida={count > 0}
+                          cantidad={count}
+                          puedeSumar={!lleno && count < TOPE_POR_OPCION}
+                          onMas={() => cambiarCantidadExtra(group._id, option._id, 1)}
+                          onMenos={() => cambiarCantidadExtra(group._id, option._id, -1)}
+                        />
+                      );
+                    }
+                    return (
+                      <Opcion
+                        key={option._id}
+                        nombre={option.name || 'Opción'}
+                        imagen={option.image}
+                        precio={Number(option.price) || 0}
+                        gratis={isFreeOption(option.name)}
+                        multiple={group.isMultipleChoice}
+                        elegida={elegidas.includes(option._id)}
+                        deshabilitada={!elegidas.includes(option._id) && !!group.maxSelections && elegidas.length >= group.maxSelections}
+                        onTocar={() => handleOptionChange(group._id, option._id)}
+                      />
+                    );
+                  })}
                 </div>
 
                 {(group.subGroups || []).filter((sg) => sg && sg._id).map((subGroup) => {
@@ -1206,15 +1263,37 @@ function Opcion({ nombre, imagen, precio, gratis, multiple, elegida, deshabilita
     : { borderColor: '#e2e8f0', backgroundColor: '#ffffff' };
 
   if (repetible) {
+    /* En cero, solo "+" y la fila entera suma uno. Con más de uno, el
+       subtotal de ese extra a la vista: "×3 · $15.000". */
     return (
-      <div className="w-full min-h-[60px] flex items-center gap-3 px-4 py-2.5 rounded-2xl border-2 transition-colors" style={estilo}>
-        {contenido}
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <button type="button" onClick={onMenos} disabled={!cantidad}
-            className="w-9 h-9 rounded-full border-2 border-slate-200 flex items-center justify-center text-slate-700 disabled:opacity-30" aria-label={`Quitar ${nombre}`}>−</button>
-          <span className="w-6 text-center text-[15px] font-black tabular-nums">{cantidad}</span>
+      <div
+        className="w-full min-h-[60px] flex items-center gap-3 px-4 py-2.5 rounded-2xl border-2 transition-colors"
+        style={estilo}
+        onClick={!cantidad && puedeSumar ? onMas : undefined}
+        role={!cantidad ? 'button' : undefined}
+      >
+        {imagen && <img src={imagen} alt="" loading="lazy" className="w-11 h-11 rounded-xl object-cover flex-shrink-0 bg-slate-100" />}
+        <span className="flex-1 min-w-0">
+          <span className="block text-[15px] font-bold text-slate-900 leading-snug">{nombre}</span>
+          {gratis
+            ? <span className="block text-[12px] font-black text-emerald-600">GRATIS</span>
+            : precio > 0 && (
+              <span className="block text-[13px] font-bold tabular-nums text-slate-600">
+                + ${Math.round(precio).toLocaleString('es-CO')}
+                {cantidad > 1 && <span className="text-slate-900"> · ×{cantidad} = ${Math.round(precio * cantidad).toLocaleString('es-CO')}</span>}
+              </span>
+            )}
+        </span>
+        <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+          {cantidad > 0 && (
+            <>
+              <button type="button" onClick={onMenos}
+                className="w-10 h-10 rounded-full border-2 border-slate-200 flex items-center justify-center text-slate-700 text-lg" aria-label={`Quitar un ${nombre}`}>−</button>
+              <span className="w-7 text-center text-[16px] font-black tabular-nums" aria-live="polite">{cantidad}</span>
+            </>
+          )}
           <button type="button" onClick={onMas} disabled={!puedeSumar}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-white disabled:opacity-30" style={{ backgroundColor: color }} aria-label={`Agregar ${nombre}`}>+</button>
+            className="w-10 h-10 rounded-full flex items-center justify-center text-white text-lg disabled:opacity-30" style={{ backgroundColor: color }} aria-label={`Agregar un ${nombre}`}>+</button>
         </div>
       </div>
     );

@@ -48,7 +48,7 @@ const getAllProducts = async () => {
     .populate({
       path: 'toppingGroups',
       match: { active: true },
-      select: 'name description isMultipleChoice isRequired options basePrice subGroups'
+      select: 'name description isMultipleChoice isRequired allowRepeats maxSelections options basePrice subGroups'
     })
     .lean();
   
@@ -98,7 +98,7 @@ router.get("/", publicProductLimiter, async (req, res) => {
       .populate({
         path: 'toppingGroups',
         match: { active: true },
-        select: 'name description isMultipleChoice isRequired options basePrice subGroups'
+        select: 'name description isMultipleChoice isRequired allowRepeats maxSelections options basePrice subGroups'
       })
       .sort({ displayOrder: 1, createdAt: 1 })
       .limit(500)
@@ -131,7 +131,7 @@ router.get("/featured", publicProductLimiter, async (req, res) => {
     .populate({
       path: 'toppingGroups',
       match: { active: true },
-      select: 'name description isMultipleChoice isRequired options basePrice subGroups'
+      select: 'name description isMultipleChoice isRequired allowRepeats maxSelections options basePrice subGroups'
     })
     .sort({ featuredOrder: 1, displayOrder: 1 })
     .lean();
@@ -249,7 +249,7 @@ async function buildPopularPayload(businessId, popCfg) {
     .populate({
       path: 'toppingGroups',
       match: { active: true },
-      select: 'name description isMultipleChoice isRequired options basePrice subGroups'
+      select: 'name description isMultipleChoice isRequired allowRepeats maxSelections options basePrice subGroups'
     })
     .lean();
 
@@ -658,7 +658,7 @@ router.get("/:id", publicProductLimiter, async (req, res) => {
       .populate({
         path: 'toppingGroups',
         match: { active: true },
-        select: 'name description isMultipleChoice isRequired options basePrice subGroups'
+        select: 'name description isMultipleChoice isRequired allowRepeats maxSelections options basePrice subGroups'
       });
     res.json(product);
   } catch (error) {
@@ -778,7 +778,7 @@ router.post("/", tenantAuth, validateProductInput, async (req, res) => {
       .populate({
         path: 'toppingGroups',
         match: { active: true },
-        select: 'name description isMultipleChoice isRequired options basePrice subGroups'
+        select: 'name description isMultipleChoice isRequired allowRepeats maxSelections options basePrice subGroups'
       });
     
     // Emitir evento de actualización por WebSocket
@@ -1084,7 +1084,7 @@ router.put("/:id", tenantAuth, validateUpdateProductParam, validateProductInput,
     ).populate({
       path: 'toppingGroups',
       match: { active: true },
-      select: 'name description isMultipleChoice isRequired options basePrice subGroups'
+      select: 'name description isMultipleChoice isRequired allowRepeats maxSelections options basePrice subGroups'
     });
     
     if (!updatedProduct) {

@@ -47,6 +47,12 @@ async function validateOrderPrices(items, businessObjectId, clientTotal) {
         if (item.selectedToppings && Array.isArray(item.selectedToppings) && item.selectedToppings.length > 0) {
           // Build a set of valid topping group IDs for this product
           const validGroupIds = new Set((dbProduct.toppingGroups || []).map(id => id.toString()));
+          /* Cada opción elegida llega como una entrada ("Carne extra" ×3 son
+             tres entradas). El recargo del grupo y los subgrupos son del grupo,
+             no de cada opción: se cuentan una sola vez. Antes se sumaban en
+             cada entrada y dos opciones del mismo grupo cobraban el recargo
+             dos veces. */
+          const gruposContados = new Set();
 
           for (const topping of item.selectedToppings) {
             // Try to find the matching DB topping group by name
@@ -58,9 +64,12 @@ async function validateOrderPrices(items, businessObjectId, clientTotal) {
               }
             }
 
+            const primeraDelGrupo = dbGroup && !gruposContados.has(dbGroup._id.toString());
+            if (dbGroup) gruposContados.add(dbGroup._id.toString());
+
             if (dbGroup) {
               // Use DB basePrice, not client-sent basePrice
-              if (dbGroup.basePrice && typeof dbGroup.basePrice === 'number') {
+              if (primeraDelGrupo && dbGroup.basePrice && typeof dbGroup.basePrice === 'number') {
                 itemPrice += dbGroup.basePrice;
               }
               // Find the selected option in DB and use DB price
@@ -71,7 +80,7 @@ async function validateOrderPrices(items, businessObjectId, clientTotal) {
                 }
               }
               // subGroups — validate against DB
-              if (topping.subGroups && Array.isArray(topping.subGroups)) {
+              if (primeraDelGrupo && topping.subGroups && Array.isArray(topping.subGroups)) {
                 for (const sub of topping.subGroups) {
                   const dbSubGroup = (dbGroup.subGroups || []).find(sg => sg.title === sub.subGroupTitle);
                   if (dbSubGroup && sub.optionName) {

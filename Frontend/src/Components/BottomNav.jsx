@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Home, ReceiptText, ShoppingBag, Sparkles, Star } from 'lucide-react';
+import { Home, ReceiptText, ShoppingBag, Sparkles, Star, UserRound, Gift, Wifi, CalendarCheck, Heart } from 'lucide-react';
+import { useBusinessConfig } from '../Context/BusinessContext';
+import useResumenCuenta from '../hooks/useResumenCuenta';
 
 /* Nav claro: gris medio sobre superficie clara — legible sin competir con el
    carrito, que es el único elemento a color. */
@@ -117,8 +119,74 @@ export default function BottomNav({
         </div>
 
         <Item icon={Sparkles} label="Descubre" onClick={onDiscover} />
-        <Item icon={Star} label="Más" onClick={onShowMore} />
+        <ItemMas onClick={onShowMore} />
       </div>
     </div>
   );
+}
+
+/* "Más" va mostrando lo que tiene adentro —tu cuenta, tus puntos, el Wi-Fi,
+   reservar— para que el cliente sepa que existe sin tener que entrar. Empieza
+   y vuelve siempre a "Más", para que se entienda qué pestaña es. Con
+   "reducir movimiento" se queda quieta. */
+const CADA_MS = 3000;
+
+function ItemMas({ onClick }) {
+  const { businessConfig } = useBusinessConfig();
+  const { resumen } = useResumenCuenta();
+  const reduceMotion = useReducedMotion();
+
+  const vistas = [{ clave: 'mas', Icono: Star, texto: 'Más' }, { clave: 'cuenta', Icono: UserRound, texto: 'Cuenta' }];
+  if (resumen?.puntos) vistas.push({ clave: 'puntos', Icono: Gift, texto: `${compacto(resumen.puntos.puntos)} pts` });
+  if (businessConfig?.wifi?.enabled && businessConfig?.wifi?.ssid) vistas.push({ clave: 'wifi', Icono: Wifi, texto: 'Wi-Fi' });
+  if (businessConfig?.enableBookings) vistas.push({ clave: 'reservar', Icono: CalendarCheck, texto: 'Reservar' });
+  const social = businessConfig?.socialMedia || {};
+  if (['instagram', 'tiktok', 'facebook'].some((k) => social[k]?.isVisible && social[k]?.url)) {
+    vistas.push({ clave: 'redes', Icono: Heart, texto: 'Redes' });
+  }
+
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (reduceMotion || vistas.length < 2) return undefined;
+    const t = setInterval(() => {
+      if (document.visibilityState === 'visible') setI((n) => n + 1);
+    }, CADA_MS);
+    return () => clearInterval(t);
+  }, [reduceMotion, vistas.length]);
+
+  const v = reduceMotion ? vistas[0] : vistas[i % vistas.length];
+
+  return (
+    <button
+      onClick={onClick}
+      className="flex-1 py-1.5 flex flex-col items-center justify-center gap-0.5 active:scale-90 transition-transform overflow-hidden"
+      aria-label="Más: tu cuenta, puntos, Wi-Fi y más"
+    >
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.span
+          key={v.clave}
+          initial={{ y: 12, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -12, opacity: 0 }}
+          transition={{ duration: 0.28, ease: 'easeOut' }}
+          className="flex flex-col items-center gap-0.5"
+        >
+          <v.Icono size={20} strokeWidth={1.8} style={{ color: v.clave === 'mas' ? INACTIVE : 'var(--mb-accent)' }} />
+          <span
+            className="text-2xs font-medium leading-none whitespace-nowrap"
+            style={{ color: v.clave === 'mas' ? INACTIVE : 'var(--mb-ink)' }}
+          >
+            {v.texto}
+          </span>
+        </motion.span>
+      </AnimatePresence>
+    </button>
+  );
+}
+
+/** 1.250 → "1,2k": la pestaña es angosta. */
+function compacto(n) {
+  const v = Number(n) || 0;
+  if (v < 1000) return String(v);
+  return `${(v / 1000).toFixed(v < 10000 ? 1 : 0).replace('.', ',')}k`;
 }

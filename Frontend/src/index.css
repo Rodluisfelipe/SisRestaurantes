@@ -158,6 +158,17 @@ body.light-theme {
   color: var(--light-text-primary);
 }
 
+/* Mientras el menú del cliente está abierto (Menu.jsx pone la clase): la
+   página toma el fondo del menú y no se deja arrastrar de lado. El panel usa
+   un tema con fondo azul marino en <body>, y en el menú ese azul asomaba
+   detrás al mover la pantalla hacia los lados. */
+html.pagina-menu,
+html.pagina-menu body {
+  background-color: #f9fafb;
+  overscroll-behavior-x: none;
+  overflow-x: clip;
+}
+
 body.modal-open {
   overflow: hidden;
 }

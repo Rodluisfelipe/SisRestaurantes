@@ -105,6 +105,9 @@ router.post("/", tenantAuth, async (req, res) => {
       });
     }
 
+    // Tope vacío o en cero = sin tope (el modelo exige >= 1 si viene).
+    req.body.maxSelections = Number(req.body.maxSelections) > 0 ? Math.floor(Number(req.body.maxSelections)) : null;
+    if (req.body.allowRepeats !== undefined && req.body.allowRepeats !== null) req.body.allowRepeats = Boolean(req.body.allowRepeats);
     const group = new ToppingGroup(req.body);
     await group.save();
     
@@ -189,6 +192,13 @@ router.put("/:id", tenantAuth, async (req, res) => {
       basePrice: Number(req.body.basePrice || existingGroup.basePrice || 0),
       isMultipleChoice: Boolean(req.body.isMultipleChoice),
       isRequired: Boolean(req.body.isRequired),
+      // null = automático (ver el modelo); true/false lo fija el dueño.
+      allowRepeats: req.body.allowRepeats === undefined
+        ? existingGroup.allowRepeats
+        : (req.body.allowRepeats === null ? null : Boolean(req.body.allowRepeats)),
+      maxSelections: req.body.maxSelections === undefined
+        ? existingGroup.maxSelections
+        : (Number(req.body.maxSelections) > 0 ? Math.floor(Number(req.body.maxSelections)) : null),
       options: cleanOptions,
       subGroups: cleanSubGroups,
       businessId: existingGroup.businessId // Mantener el businessId original

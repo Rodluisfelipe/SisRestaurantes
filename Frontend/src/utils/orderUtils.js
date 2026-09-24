@@ -1,33 +1,29 @@
+/**
+ * Lo que suman las opciones elegidas de UNA unidad de un producto.
+ *
+ * Cada opción llega como una entrada; "Carne extra ×3" son tres entradas y se
+ * cobra tres veces. El recargo del grupo (`basePrice`) y los subgrupos son del
+ * grupo, no de cada opción: se cuentan una sola vez por grupo. Es el mismo
+ * cálculo del servidor (Backend/utils/orderPricing); si difieren más de un 5 %,
+ * el pedido se rechaza.
+ */
+export const precioDeOpciones = (selectedToppings) => {
+  let suma = 0;
+  const gruposContados = new Set();
+  for (const t of selectedToppings || []) {
+    const primera = !gruposContados.has(t.groupName);
+    gruposContados.add(t.groupName);
+    if (primera) suma += parseFloat(t.basePrice || 0) || 0;
+    suma += parseFloat(t.price || 0) || 0;
+    if (primera) for (const sub of t.subGroups || []) suma += parseFloat(sub.price || 0) || 0;
+  }
+  return suma;
+};
+
 // Calculación del precio de un item incluyendo toppings
 export const calculateItemPrice = (item) => {
-  // Precio base del producto
-  let totalPrice = parseFloat(item.finalPrice || item.price || 0);
-  
-  // Sumar precio de toppings si existen
-  if (item.selectedToppings && item.selectedToppings.length > 0) {
-    item.selectedToppings.forEach(topping => {
-      // Añadir precio base del grupo si existe
-      if (topping.basePrice) {
-        totalPrice += parseFloat(topping.basePrice);
-      }
-      
-      // Añadir precio de la opción seleccionada
-      if (topping.price) {
-        totalPrice += parseFloat(topping.price);
-      }
-      
-      // Añadir precios de subgrupos si existen
-      if (topping.subGroups && topping.subGroups.length > 0) {
-        topping.subGroups.forEach(subItem => {
-          if (subItem.price) {
-            totalPrice += parseFloat(subItem.price);
-          }
-        });
-      }
-    });
-  }
-  
-  return totalPrice * (item.quantity || 1);
+  const unidad = parseFloat(item.finalPrice || item.price || 0) + precioDeOpciones(item.selectedToppings);
+  return unidad * (item.quantity || 1);
 };
 
 // Calcular total del carrito
@@ -224,4 +220,4 @@ export const createWhatsAppMessage = async (orderInfo, cart, totalAmount, totalI
   }
 
   return encodeURIComponent(msg).replace(/'/g, "%27");
-}; 
+};

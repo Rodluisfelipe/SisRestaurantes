@@ -73,11 +73,6 @@ const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, t
       animate={{ opacity: 1, y: 0 }}
       className="mb-5 sm:mb-6 relative"
     >
-      {/* Glowing aura backdrop */}
-      <div
-        className="absolute -inset-x-4 -top-6 -bottom-4 rounded-3xl opacity-[0.08] blur-3xl pointer-events-none"
-        style={{ background: `radial-gradient(ellipse at 50% 40%, ${buttonColor}, transparent 70%)` }}
-      />
 
       <div className="relative px-3 sm:px-4 lg:px-6">
         {/* Header */}

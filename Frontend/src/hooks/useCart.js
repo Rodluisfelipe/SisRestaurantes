@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import * as SessionManager from '../utils/sessionManager';
 import logger from '../utils/logger';
+import { calculateItemPrice as calcularPrecioItem } from '../utils/orderUtils';
 
 /**
  * Custom hook for cart state management.
@@ -91,23 +92,7 @@ export default function useCart(subscriptionStatus) {
   }, []);
 
   // Price calculation including toppings
-  const calculateItemPrice = useCallback((item) => {
-    let totalPrice = parseFloat(item.finalPrice || item.price || 0);
-
-    if (item.selectedToppings && item.selectedToppings.length > 0) {
-      item.selectedToppings.forEach(topping => {
-        if (topping.basePrice) totalPrice += parseFloat(topping.basePrice);
-        if (topping.price) totalPrice += parseFloat(topping.price);
-        if (topping.subGroups && topping.subGroups.length > 0) {
-          topping.subGroups.forEach(subItem => {
-            if (subItem.price) totalPrice += parseFloat(subItem.price);
-          });
-        }
-      });
-    }
-
-    return totalPrice * (item.quantity || 1);
-  }, []);
+  const calculateItemPrice = useCallback((item) => calcularPrecioItem(item), []);
 
   const calculateTotalAmount = useCallback(() => {
     return cart.reduce((sum, item) => sum + calculateItemPrice(item), 0);

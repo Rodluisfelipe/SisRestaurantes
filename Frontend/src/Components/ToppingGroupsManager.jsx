@@ -15,6 +15,8 @@ function ToppingGroupsManager() {
     isMultipleChoice: false,
     isRequired: false,
     esCombo: false,
+    allowRepeats: null,
+    maxSelections: null,
     options: [],
     subGroups: []
   });
@@ -196,6 +198,8 @@ function ToppingGroupsManager() {
       isMultipleChoice: false,
       isRequired: false,
       esCombo: false,
+      allowRepeats: null,
+      maxSelections: null,
       options: [],
       subGroups: []
     });
@@ -380,6 +384,56 @@ function ToppingGroupsManager() {
                           <span className="text-[11px] text-slate-400">Permite elegir varias opciones</span>
                         </div>
                       </label>
+                      {/* Cantidad por extra: "Carne extra ×3". Automático = los
+                          extras con precio se repiten y los gratis no. */}
+                      {currentGroup.isMultipleChoice && (
+                        <div className="p-2.5 bg-white rounded-lg border border-slate-200 space-y-2.5">
+                          <div>
+                            <span className="text-xs font-medium text-slate-700 block">Pedir varias de cada opción</span>
+                            <span className="text-[11px] text-slate-400">Ej: 3 carnes extra en la misma hamburguesa</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-lg" role="radiogroup" aria-label="Pedir varias de cada opción">
+                            {[
+                              { valor: null, texto: 'Automático' },
+                              { valor: true, texto: 'Sí' },
+                              { valor: false, texto: 'No' },
+                            ].map((o) => {
+                              const activo = (currentGroup.allowRepeats ?? null) === o.valor;
+                              return (
+                                <button
+                                  key={o.texto}
+                                  type="button"
+                                  role="radio"
+                                  aria-checked={activo}
+                                  onClick={() => setCurrentGroup({ ...currentGroup, allowRepeats: o.valor })}
+                                  className={`h-8 rounded-md text-xs font-semibold transition-colors ${activo ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                  {o.texto}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <p className="text-[11px] text-slate-400">
+                            {(currentGroup.allowRepeats ?? null) === null
+                              ? 'Las opciones con precio se piden por cantidad; las gratis, una vez.'
+                              : currentGroup.allowRepeats
+                                ? 'Todas las opciones se piden por cantidad.'
+                                : 'Cada opción se elige una sola vez.'}
+                          </p>
+                          <label className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-slate-600">Máximo en total <span className="text-slate-400">(opcional)</span></span>
+                            <input
+                              type="number"
+                              min="1"
+                              inputMode="numeric"
+                              value={currentGroup.maxSelections || ''}
+                              onChange={(e) => setCurrentGroup({ ...currentGroup, maxSelections: e.target.value ? Number(e.target.value) : null })}
+                              placeholder="Sin tope"
+                              className="w-24 h-8 px-2 text-sm border border-slate-200 rounded-lg text-right focus:ring-1 focus:ring-blue-300 focus:border-blue-300"
+                            />
+                          </label>
+                        </div>
+                      )}
                       <label className="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-red-300 transition-colors">
                         <input
                           type="checkbox"

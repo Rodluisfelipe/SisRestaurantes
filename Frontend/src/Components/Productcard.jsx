@@ -116,12 +116,10 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
     document.body.classList.remove('modal-open');
   };
 
+  /* "Agregar" abre la ficha; todavía no agrega nada. La animación al carrito
+     sale cuando de verdad entra (handleAddToCart), no al tocar aquí. */
   const agregar = (e) => {
     e.stopPropagation();
-    if (flyToCart?.triggerFly && !hasToppings && !presentaciones.varias) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      flyToCart.triggerFly({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, image: product.image, color: buttonColor });
-    }
     handleShowToppings();
   };
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
+import { precioDeOpciones } from '../utils/orderUtils';
 
 /* ── SVG Icons (stroke-based, matching admin design language) ── */
 const ZI = {
@@ -42,14 +43,7 @@ function DeliveryZoneSelector({ businessId, address, cart, theme, onZoneSelect, 
   const orderTotal = cart?.reduce((sum, item) => {
     const price = parseFloat(item.finalPrice || item.price || 0);
     const qty = parseInt(item.quantity || 0);
-    let toppingSum = 0;
-    if (item.selectedToppings?.length) {
-      toppingSum = item.selectedToppings.reduce((ts, t) => {
-        let tp = parseFloat(t.basePrice || 0) + parseFloat(t.price || 0);
-        if (t.subGroups?.length) tp += t.subGroups.reduce((s, si) => s + parseFloat(si.price || 0), 0);
-        return ts + tp;
-      }, 0);
-    }
+    const toppingSum = precioDeOpciones(item.selectedToppings);
     return sum + (price + toppingSum) * qty;
   }, 0) || 0;
 
@@ -93,13 +87,13 @@ function DeliveryZoneSelector({ businessId, address, cart, theme, onZoneSelect, 
     try {
       const geoRes = await api.post('/delivery-zones/geocode', { address: addr, country: 'CO' });
       const results = geoRes.data?.results;
-      
+
       if (results?.length > 0) {
         const { lat, lon } = results[0];
         const covRes = await api.post('/delivery-zones/check-coverage', {
           businessId, lat, lon, orderTotal
         });
-        
+
         if (covRes.data?.noZonesConfigured) {
           onZoneSelect({ fee: 0, zoneInfo: { zoneName: 'Por definir con el negocio', noZonesConfigured: true } });
           return;
@@ -129,7 +123,7 @@ function DeliveryZoneSelector({ businessId, address, cart, theme, onZoneSelect, 
 
   const handleSelectZone = (zone) => {
     if (zone.pricing.minimumOrder > 0 && orderTotal < zone.pricing.minimumOrder) return;
-    
+
     setSelectedZoneId(zone.id);
     onZoneSelect({
       fee: zone.pricing.displayPrice,
@@ -222,8 +216,8 @@ function DeliveryZoneSelector({ businessId, address, cart, theme, onZoneSelect, 
                 onClick={() => meetsMinimum && handleSelectZone(zone)}
                 disabled={belowMinimum}
                 className={`w-full text-left rounded-2xl border-2 ${compact ? 'px-3 py-2.5' : 'px-4 py-3.5'} transition-all duration-200 ${
-                  isSelected 
-                    ? 'shadow-md ring-1 ring-offset-1' 
+                  isSelected
+                    ? 'shadow-md ring-1 ring-offset-1'
                     : belowMinimum
                       ? 'border-slate-200 bg-slate-50/60 opacity-50 cursor-not-allowed'
                       : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm active:scale-[0.99]'
@@ -239,7 +233,7 @@ function DeliveryZoneSelector({ businessId, address, cart, theme, onZoneSelect, 
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     {/* Color dot + truck icon overlay */}
                     <div className="relative flex-shrink-0">
-                      <div 
+                      <div
                         className={`${compact ? 'w-9 h-9' : 'w-10 h-10'} rounded-xl flex items-center justify-center`}
                         style={{ backgroundColor: `${zone.color || '#3B82F6'}15` }}
                       >
@@ -258,12 +252,12 @@ function DeliveryZoneSelector({ businessId, address, cart, theme, onZoneSelect, 
                         </motion.div>
                       )}
                     </div>
-                    
+
                     <div className="flex-1 min-w-0">
                       <p className={`${compact ? 'text-[12px]' : 'text-[13px]'} font-semibold truncate ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>
                         {zone.name}
                       </p>
-                      
+
                       <div className={`flex items-center gap-2 ${compact ? 'mt-0' : 'mt-0.5'}`}>
                         {/* Estimated time */}
                         {zone.estimatedTime && (
@@ -272,7 +266,7 @@ function DeliveryZoneSelector({ businessId, address, cart, theme, onZoneSelect, 
                             {zone.estimatedTime.min}-{zone.estimatedTime.max} min
                           </span>
                         )}
-                        
+
                         {/* Minimum order warning */}
                         {belowMinimum && (
                           <span className="text-2xs text-red-500 font-medium">
@@ -292,9 +286,9 @@ function DeliveryZoneSelector({ businessId, address, cart, theme, onZoneSelect, 
 
                   {/* Right: price badge */}
                   <div className="flex-shrink-0">
-                    <div 
+                    <div
                       className={`${compact ? 'px-2.5 py-1' : 'px-3 py-1.5'} rounded-lg text-right`}
-                      style={isSelected 
+                      style={isSelected
                         ? { backgroundColor: `${btnColor}15`, color: btnColor }
                         : { backgroundColor: '#f1f5f9' }
                       }
