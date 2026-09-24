@@ -78,107 +78,108 @@ export default function PedidoConfirmado({ datos, negocio, moneda = 'COP', color
   const titulo = datos.isBooking ? '¡Cita agendada!' : '¡Pedido confirmado!';
   const conWhatsApp = !!datos.whatsappUrl;
 
-  return (
-    <div className="fixed inset-0 z-[160] bg-white overflow-y-auto overscroll-contain animate-aparecer" role="dialog" aria-modal="true" aria-label={titulo}>
-      <Capa onCerrar={onCerrar} />
-      <div className="min-h-full max-w-md mx-auto flex flex-col px-5 pb-safe" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 40px)' }}>
+  const items = datos.items || [];
+  const cantidad = items.reduce((n, it) => n + (Number(it.cantidad) || 1), 0);
+  const visibles = items.slice(0, 4);
+  const sobran = items.length - visibles.length;
 
+  /* Todo en una pantalla, sin scroll: el momento arriba, WhatsApp si aplica,
+     lo que pidió en una tira de fotitos, y las salidas abajo. */
+  return (
+    <div
+      className="fixed inset-0 z-[160] bg-white overflow-hidden animate-aparecer"
+      role="dialog"
+      aria-modal="true"
+      aria-label={titulo}
+    >
+      <Capa onCerrar={onCerrar} />
+      <div
+        className="h-full max-w-md mx-auto flex flex-col px-5"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 28px)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
+      >
         {/* El momento: el check crece y se dibuja */}
         <div className="flex flex-col items-center text-center">
-          <div className="relative w-28 h-28 flex items-center justify-center">
+          <div className="relative w-24 h-24 flex items-center justify-center">
             <span className="absolute inset-0 rounded-full bg-emerald-100 animate-agregado" />
-            <span className="relative w-20 h-20 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30 animate-agregado">
-              <svg viewBox="0 0 24 24" className="w-10 h-10" fill="none" stroke="#fff" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <span className="relative w-[72px] h-[72px] rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30 animate-agregado">
+              <svg viewBox="0 0 24 24" className="w-9 h-9" fill="none" stroke="#fff" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M5 12.5l4.5 4.5L19 7.5" strokeDasharray="48" className="animate-trazo" />
               </svg>
             </span>
           </div>
-          <h1 className="mt-5 text-[28px] leading-tight font-black text-slate-900 animate-subir" style={{ animationDelay: '250ms' }}>{titulo}</h1>
+          <h1 className="mt-3 text-[26px] leading-tight font-black text-slate-900 animate-subir" style={{ animationDelay: '250ms' }}>{titulo}</h1>
           {datos.numero && (
-            <p className="mt-1 text-sm font-bold text-slate-500 animate-subir" style={{ animationDelay: '320ms' }}>
+            <p className="mt-0.5 text-sm font-bold text-slate-500 animate-subir" style={{ animationDelay: '320ms' }}>
               {datos.isBooking ? 'Reserva' : 'Pedido'} #{datos.numero}{negocio ? ` · ${negocio}` : ''}
             </p>
           )}
-          {datos.mensaje && (
-            <p className="mt-3 text-[15px] text-slate-600 leading-relaxed animate-subir" style={{ animationDelay: '380ms' }}>{datos.mensaje}</p>
+          {datos.mensaje && !conWhatsApp && (
+            <p className="mt-2 text-sm text-slate-600 leading-snug animate-subir" style={{ animationDelay: '380ms' }}>{datos.mensaje}</p>
           )}
         </div>
 
         {/* WhatsApp: se abre solo, con tiempo para ver lo de arriba */}
         {conWhatsApp && (
-          <div className="mt-7 rounded-3xl border-2 border-[#25D366]/40 bg-[#25D366]/5 p-4 animate-subir" style={{ animationDelay: '450ms' }}>
-            <p className="text-[15px] font-black text-slate-900">Último paso: envíalo por WhatsApp</p>
-            <p className="mt-1 text-sm text-slate-600">
-              Te abrimos WhatsApp con tu pedido ya escrito. Solo toca <b>enviar</b>.
-            </p>
+          <div className="mt-5 rounded-3xl border-2 border-[#25D366]/40 bg-[#25D366]/5 p-3.5 animate-subir" style={{ animationDelay: '450ms' }}>
+            <p className="text-[15px] font-black text-slate-900 text-center">Último paso: envíalo por WhatsApp</p>
             <button
               type="button"
               onClick={abrirWhatsApp}
-              className="relative mt-3 w-full h-14 rounded-full bg-[#25D366] text-white font-black text-[16px] flex items-center justify-center gap-2 overflow-hidden active:scale-[0.98] transition-transform"
+              className="relative mt-2.5 w-full h-13 min-h-[52px] rounded-full bg-[#25D366] text-white font-black text-[16px] flex items-center justify-center gap-2 overflow-hidden active:scale-[0.98] transition-transform"
             >
-              {/* La barra que se vacía mientras llega el momento de abrir. */}
               {!abierto && esCelular() && (
-                <span
-                  key="barra"
-                  // animate-vaciar dura lo mismo que SEGUNDOS_WHATSAPP (4 s, tailwind.config).
-                  className="absolute inset-0 bg-black/10 origin-left animate-vaciar"
-                  aria-hidden="true"
-                />
+                // animate-vaciar dura lo mismo que SEGUNDOS_WHATSAPP (4 s, tailwind.config).
+                <span className="absolute inset-0 bg-black/10 origin-left animate-vaciar" aria-hidden="true" />
               )}
               <MessageCircle className="relative w-5 h-5" />
               <span className="relative">
                 {abierto ? 'Abrir WhatsApp de nuevo' : esCelular() && restante > 0 ? `Abriendo WhatsApp en ${restante}…` : 'Abrir WhatsApp'}
               </span>
             </button>
-            <p className="mt-3 flex items-start gap-2 text-[13px] text-slate-600">
-              <RotateCcw className="w-4 h-4 mt-0.5 shrink-0 text-emerald-600" />
-              <span><b>Vuelve aquí</b> para ver el estado de tu pedido.</span>
+            <p className="mt-2 flex items-center justify-center gap-1.5 text-[13px] text-slate-600">
+              <RotateCcw className="w-3.5 h-3.5 text-emerald-600" />
+              <span><b>Vuelve aquí</b> para ver el estado de tu pedido</span>
             </p>
           </div>
         )}
 
-        {/* Lo que pidió */}
-        {datos.items?.length > 0 && (
-          <div className="mt-6 animate-subir" style={{ animationDelay: '520ms' }}>
-            <h2 className="text-xs font-black uppercase tracking-wide text-slate-500 mb-2">Tu pedido</h2>
-            <ul className="rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
-              {datos.items.map((it, i) => (
-                <li key={i} className="flex items-center gap-3 px-3 py-2.5">
-                  <span className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden shrink-0">
-                    {it.imagen && <img src={imageAt(it.imagen, 120)} alt="" loading="lazy" className="w-full h-full object-cover" />}
-                  </span>
-                  <span className="flex-1 min-w-0">
-                    <span className="block text-[14px] font-bold text-slate-900 leading-tight line-clamp-2">
-                      <span className="text-slate-500">{it.cantidad}×</span> {it.nombre}
-                    </span>
-                    {it.detalle && <span className="block text-xs text-slate-500 truncate">{it.detalle}</span>}
-                  </span>
-                  <span className="text-[14px] font-bold text-slate-900 tabular-nums shrink-0">{formatCurrency(it.precio, moneda)}</span>
-                </li>
+        {/* Lo que pidió, en una tira de fotitos */}
+        {items.length > 0 && (
+          <div className="mt-5 rounded-2xl border border-slate-200 p-3 flex items-center gap-3 animate-subir" style={{ animationDelay: '520ms' }}>
+            <div className="flex -space-x-2 flex-shrink-0">
+              {visibles.map((it, i) => (
+                <span key={i} className="w-11 h-11 rounded-xl bg-slate-100 overflow-hidden ring-2 ring-white">
+                  {it.imagen && <img src={imageAt(it.imagen, 96)} alt="" className="w-full h-full object-cover" />}
+                </span>
               ))}
-              <li className="flex items-center justify-between px-3 py-3 bg-slate-50">
-                <span className="text-sm font-bold text-slate-600">Total</span>
-                <span className="text-lg font-black text-slate-900 tabular-nums">{formatCurrency(datos.total, moneda)}</span>
-              </li>
-            </ul>
+              {sobran > 0 && (
+                <span className="w-11 h-11 rounded-xl bg-slate-100 ring-2 ring-white flex items-center justify-center text-xs font-black text-slate-600">+{sobran}</span>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] text-slate-500 truncate">{items.map((it) => it.nombre).join(', ')}</p>
+              <p className="text-[15px] font-black text-slate-900">
+                {cantidad} {cantidad === 1 ? 'producto' : 'productos'} · {formatCurrency(datos.total, moneda)}
+              </p>
+            </div>
           </div>
         )}
 
-        {aviso && <p role="status" className="mt-4 text-center text-sm font-semibold text-slate-700">{aviso}</p>}
+        {aviso && <p role="status" className="mt-3 text-center text-sm font-semibold text-slate-700">{aviso}</p>}
 
-        {/* Salidas */}
-        <div className="mt-auto pt-6 pb-4 space-y-2">
+        {/* Salidas, siempre abajo */}
+        <div className="mt-auto pt-4 space-y-1.5">
           {datos.token && onVerEstado && (
             <button
               type="button"
               onClick={onVerEstado}
-              className={`w-full h-14 rounded-full font-black text-[15px] flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform ${conWhatsApp ? 'border-2 border-slate-200 text-slate-800 bg-white' : 'text-white'}`}
+              className={`w-full h-13 min-h-[52px] rounded-full font-black text-[15px] flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform ${conWhatsApp ? 'border-2 border-slate-200 text-slate-800 bg-white' : 'text-white'}`}
               style={conWhatsApp ? undefined : { backgroundColor: color }}
             >
               {datos.esApp ? 'Ver mi pedido y pagar' : 'Ver el estado de mi pedido'} <ChevronRight className="w-4 h-4" />
             </button>
           )}
-          <button type="button" onClick={onCerrar} className="w-full h-12 rounded-full font-bold text-[15px] text-slate-600">
+          <button type="button" onClick={onCerrar} className="w-full h-11 rounded-full font-bold text-[15px] text-slate-600">
             Volver al menú
           </button>
           {puedeCancelar && (

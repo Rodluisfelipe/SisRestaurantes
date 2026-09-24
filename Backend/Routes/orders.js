@@ -969,6 +969,14 @@ router.get('/track/:id', publicOrderLimiter, async (req, res) => {
       return res.status(403).json({ message: 'Token inválido' });
     }
 
+    /* La foto de cada producto: el pedido no la guarda, se busca en el
+       catálogo para que el seguimiento muestre lo que pidió. */
+    const Product = require('../Models/Product');
+    const ids = (order.items || []).map((i) => i.productId).filter(Boolean);
+    const fotos = ids.length
+      ? new Map((await Product.find({ _id: { $in: ids } }).select('image').lean()).map((p) => [String(p._id), p.image || '']))
+      : new Map();
+
     // Return safe subset of order data for tracking
     const trackingData = {
       _id: order._id,
@@ -977,7 +985,14 @@ router.get('/track/:id', publicOrderLimiter, async (req, res) => {
       orderType: order.orderType,
       orderChannel: order.orderChannel,
       customerName: order.customerName,
-      items: order.items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
+      items: order.items.map(i => ({
+        name: i.name, quantity: i.quantity, price: i.price,
+        image: (i.productId && fotos.get(String(i.productId))) || '',
+        opciones: (i.selectedToppings || []).map((t) => t.optionName).filter(Boolean).slice(0, 4),
+      })),
+      tableNumber: order.tableNumber,
+      deliveryPersonName: order.deliveryPersonId?.name || null,
+      cancellationReason: order.cancellationReason || null,
       totalAmount: order.totalAmount,
       finalAmount: order.finalAmount,
       discountAmount: order.discountAmount,

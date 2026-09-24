@@ -7,7 +7,7 @@ import { Capa } from './ui';
  * Modal para que el cliente deje una reseña después de completar un pedido
  * Incluye rating general + "¿Qué tal estuvo?" con thumbs up/down + producto destacado
  */
-const ReviewModal = ({ show, onClose, businessId, orderId, customerName, customerPhone, theme, topProduct, googleReviewUrl, reviewMode = 'funnel', googleThreshold = 4 }) => {
+const ReviewModal = ({ show, onClose, businessId, orderId, customerName, customerPhone, theme, topProduct, googleReviewUrl, reviewMode = 'funnel', googleThreshold = 4, calificacionInicial = 0 }) => {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -34,7 +34,8 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
   // Reset state when modal opens with new order
   useEffect(() => {
     if (show) {
-      setRating(0);
+      // Si tocó una estrella en la tarjeta del menú, llega ya elegida.
+      setRating(calificacionInicial || 0);
       setHoverRating(0);
       setComment('');
       setThumbsUp(null);
@@ -45,7 +46,7 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
       // En modo "elección" preguntamos primero dónde calificar
       setChoice(reviewMode === 'choice' && !!gUrl ? null : 'internal');
     }
-  }, [show, orderId, reviewMode, gUrl]);
+  }, [show, orderId, reviewMode, gUrl, calificacionInicial]);
 
   const goToGoogle = () => {
     window.open(gUrl, '_blank', 'noopener');
@@ -219,14 +220,27 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
             ) : (
               <>
                 {/* Header */}
-                <div className="p-5 pb-3 text-center" style={{ background: `linear-gradient(180deg, ${buttonColor}0d 0%, transparent 100%)` }}>
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2" style={{ backgroundColor: buttonColor + '15' }}>
-                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill={buttonColor} stroke="none">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-bold text-gray-800">¿Cómo fue tu experiencia?</h3>
-                  <p className="text-sm text-gray-500 mt-0.5">Tu opinión es muy importante</p>
+                {/* La foto de lo que pidió, en grande: se califica una cosa que se
+                    ve, no "la experiencia" en abstracto. */}
+                <div className="p-5 pb-3 text-center">
+                  {topProduct?.image && !productImageError ? (
+                    <img
+                      src={topProduct.image}
+                      alt={topProduct.name}
+                      className="w-24 h-24 rounded-3xl object-cover mx-auto mb-3 shadow-md"
+                      onError={() => setProductImageError(true)}
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: buttonColor + '15' }}>
+                      <svg className="w-8 h-8" viewBox="0 0 24 24" fill={buttonColor} stroke="none">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                      </svg>
+                    </div>
+                  )}
+                  <h3 className="text-xl font-black text-gray-900 leading-tight">
+                    {topProduct?.name ? `¿Qué tal tu ${topProduct.name}?` : '¿Qué tal estuvo tu pedido?'}
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">Cuéntale al negocio cómo le fue</p>
                 </div>
 
                 {/* Stars */}

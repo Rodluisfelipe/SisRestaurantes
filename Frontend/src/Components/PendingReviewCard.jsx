@@ -1,124 +1,102 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Star, X } from 'lucide-react';
 import api from '../services/api';
+import { imageAt } from '../utils/imageCdn';
 
 /**
- * Tarjeta que recuerda al cliente calificar su último pedido completado.
- * Se muestra debajo del banner de pedido activo en el menú.
- * Se puede cerrar (dismiss) y se guarda en localStorage.
+ * "¿Qué tal estuvo tu pedido?": recuerda calificar el último pedido entregado.
+ *
+ * Las estrellas se tocan aquí mismo: la que toque abre el modal con esa
+ * calificación ya puesta (un toque menos). Antes era un botón de color con
+ * un texto, y después de calificar seguía ahí hasta recargar la página: nadie
+ * le avisaba. Ahora escucha `mb:resena` (lo manda el menú al cerrar el
+ * modal) y se va en ese momento.
  */
-const PendingReviewCard = ({ businessId, customerPhone, themeColor, themeTextColor, onReview }) => {
+const PendingReviewCard = ({ businessId, customerPhone, themeColor, onReview }) => {
   const [pendingOrder, setPendingOrder] = useState(null);
-  const [dismissed, setDismissed] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [oculta, setOculta] = useState(false);
   const [imageError, setImageError] = useState(false);
 
   const fetchPending = useCallback(async () => {
-    if (!customerPhone || !businessId) {
-      setLoading(false);
-      return;
-    }
+    if (!customerPhone || !businessId) return;
     try {
-      const { data } = await api.get('/reviews/pending', {
-        params: { phone: customerPhone, businessId }
-      });
-      if (data.pendingOrder) {
-        // Check if already dismissed in localStorage
-        const key = `dismissed_review_${data.pendingOrder._id}`;
-        if (localStorage.getItem(key)) {
-          setPendingOrder(null);
-        } else {
-          setImageError(false);
-          setPendingOrder(data.pendingOrder);
-        }
+      const { data } = await api.get('/reviews/pending', { params: { phone: customerPhone, businessId } });
+      const order = data?.pendingOrder;
+      if (order && !localStorage.getItem(`dismissed_review_${order._id}`)) {
+        setImageError(false);
+        setPendingOrder(order);
       } else {
         setPendingOrder(null);
       }
     } catch {
       setPendingOrder(null);
-    } finally {
-      setLoading(false);
     }
   }, [customerPhone, businessId]);
 
+  useEffect(() => { fetchPending(); }, [fetchPending]);
+
+  // Calificado o cerrado el modal: la tarjeta se va ya.
   useEffect(() => {
-    fetchPending();
-  }, [fetchPending]);
+    const alCalificar = (e) => {
+      if (!e.detail?.orderId || e.detail.orderId === pendingOrder?._id) setOculta(true);
+    };
+    window.addEventListener('mb:resena', alCalificar);
+    return () => window.removeEventListener('mb:resena', alCalificar);
+  }, [pendingOrder?._id]);
 
-  const handleDismiss = (e) => {
-    e.stopPropagation();
-    if (pendingOrder) {
-      localStorage.setItem(`dismissed_review_${pendingOrder._id}`, '1');
-    }
-    setDismissed(true);
+  const ahoraNo = () => {
+    if (pendingOrder) localStorage.setItem(`dismissed_review_${pendingOrder._id}`, '1');
+    setOculta(true);
   };
 
-  const handleReview = () => {
-    if (pendingOrder && onReview) {
-      onReview(pendingOrder);
-    }
-  };
-
-  if (loading || !pendingOrder || dismissed) return null;
+  if (!pendingOrder || oculta) return null;
 
   const color = themeColor || '#f97316';
-  const textColor = themeTextColor || '#ffffff';
   const product = pendingOrder.topProduct;
-  const isBooking = false;
+  const cuantos = pendingOrder.itemCount || 0;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        key="pending-review-card"
-        initial={{ opacity: 0, scaleY: 0 }}
-        animate={{ opacity: 1, scaleY: 1 }}
-        exit={{ opacity: 0, scaleY: 0 }}
-        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="w-full mb-3 rounded-2xl overflow-hidden shadow-sm origin-top"
-        style={{ backgroundColor: color }}
-      >
+    <div className="w-full mb-3 rounded-2xl border border-slate-200 bg-white shadow-sm p-3.5 animate-aparecer">
+      <div className="flex items-start gap-3">
         <button
-          onClick={handleReview}
-          className="w-full active:scale-[0.98] transition-transform"
-          aria-label="Califica tu último pedido"
+          type="button"
+          onClick={() => onReview?.(pendingOrder, 0)}
+          className="flex-shrink-0"
+          aria-label="Calificar tu pedido"
         >
-          <div className="flex items-center gap-3 px-4 py-3">
-            {/* Product image or star icon */}
-            <div className="flex-shrink-0">
-              {product?.image && !imageError ? (
-                <img src={product.image} alt={product.name} className="w-10 h-10 rounded-xl object-cover shadow-sm" onError={() => setImageError(true)} />
-              ) : (
-                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill={textColor} stroke="none">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                  </svg>
-                </div>
-              )}
-            </div>
-            <div className="flex-1 text-left min-w-0">
-              <p className="text-sm font-semibold leading-tight" style={{ color: textColor }}>
-                {isBooking ? '¡Califica tu cita!' : '¡Califica tu pedido!'}
-              </p>
-              <p className="text-xs mt-0.5 truncate" style={{ color: textColor, opacity: 0.9 }}>
-                {product?.name ? product.name : `${isBooking ? 'Cita' : 'Pedido'} #${pendingOrder.orderNumber}`} · {pendingOrder.itemCount} {pendingOrder.itemCount === 1 ? (isBooking ? 'servicio' : 'producto') : (isBooking ? 'servicios' : 'productos')}
-              </p>
-            </div>
-            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke={textColor} strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
+          {product?.image && !imageError ? (
+            <img src={imageAt(product.image, 120)} alt="" className="w-14 h-14 rounded-2xl object-cover" onError={() => setImageError(true)} />
+          ) : (
+            <span className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${color}15` }}>
+              <Star className="w-6 h-6" style={{ color }} fill={color} />
+            </span>
+          )}
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-[15px] font-black text-slate-900 leading-tight">¿Qué tal estuvo tu pedido?</p>
+          <p className="text-xs text-slate-500 truncate mt-0.5">
+            {product?.name || `Pedido #${pendingOrder.orderNumber}`}{cuantos > 1 ? ` y ${cuantos - 1} más` : ''}
+          </p>
+          {/* Un toque en una estrella y el modal abre con esa calificación. */}
+          <div className="flex items-center gap-1 mt-1.5" role="group" aria-label="Califica de 1 a 5 estrellas">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => onReview?.(pendingOrder, n)}
+                className="w-9 h-9 -ml-1 first:ml-0 flex items-center justify-center rounded-full active:scale-90 transition-transform"
+                aria-label={`${n} ${n === 1 ? 'estrella' : 'estrellas'}`}
+              >
+                <Star className="w-7 h-7 text-slate-300" strokeWidth={1.6} />
+              </button>
+            ))}
           </div>
+        </div>
+        <button type="button" onClick={ahoraNo} className="w-8 h-8 -mt-1 -mr-1 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 flex-shrink-0" aria-label="Ahora no">
+          <X className="w-4 h-4" />
         </button>
-        <button
-          onClick={handleDismiss}
-          className="w-full py-2 bg-white/20 text-xs font-semibold tracking-wide active:bg-white/30 transition-colors"
-          style={{ color: textColor }}
-        >
-          AHORA NO
-        </button>
-      </motion.div>
-    </AnimatePresence>
+      </div>
+    </div>
   );
 };
 

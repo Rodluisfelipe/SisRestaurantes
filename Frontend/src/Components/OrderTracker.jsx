@@ -8,6 +8,14 @@ import { socket } from '../services/socket';
 import logger from '../utils/logger';
 import { isPushSupported, subscribeToPush, isIOS, isInstalledPWA } from '../utils/pushNotifications';
 import { Capa } from './ui';
+import { ArrowLeft, ReceiptText, ChefHat, Bike, ShoppingBag, CheckCircle2, CreditCard, Hourglass, XCircle, MessageCircle, Package } from 'lucide-react';
+import { pasosDelPedido } from '../utils/estadoPedido';
+import { esTienda } from '../utils/tienda';
+import { enlaceWhatsApp } from '../utils/whatsapp';
+import { imageAt } from '../utils/imageCdn';
+
+const ICONO_PASO = { pago: CreditCard, verificando: Hourglass, recibido: ReceiptText, preparando: ChefHat, camino: Bike, listo: ShoppingBag, final: CheckCircle2 };
+const hora = (ts) => (ts ? new Date(ts).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }) : '');
 
 // ─── SVG Icon system ────────────────────────────────────────────────
 const I = {
@@ -49,9 +57,6 @@ const STATUS_CONFIG = {
   cancelled: { label: 'Cancelado', shortLabel: 'Cancelado', iconFn: I.xCircle, color: '#ef4444', description: 'Este pedido fue cancelado' },
 };
 
-const INAPP_STEPS = ['pending_payment', 'payment_uploaded', 'payment_confirmed', 'inProgress', 'completed'];
-const WHATSAPP_STEPS = ['pending', 'inProgress', 'completed'];
-const BOOKING_STEPS = ['pending', 'confirmed', 'completed'];
 
 const OrderTracker = ({ 
   orderId, customerToken, businessConfig, onClose, onUploadProof, initialOrder = null 
@@ -285,10 +290,6 @@ const OrderTracker = ({
   // ─── Derived state ────────────────────────────────────────────────
   const isInApp = order?.orderChannel === 'inapp';
   const isBooking = order?.isBooking === true;
-  const steps = isBooking ? BOOKING_STEPS : isInApp ? INAPP_STEPS : WHATSAPP_STEPS;
-  const STATUS_ALIASES = { confirmed: 'inProgress', preparing: 'inProgress', ready: 'completed' };
-  const effectiveStatus = STATUS_ALIASES[order?.status] && !steps.includes(order?.status) ? STATUS_ALIASES[order.status] : order?.status;
-  const currentStepIndex = steps.indexOf(effectiveStatus);
 
   const bookingStatusOverrides = isBooking ? {
     pending: { label: 'Cita Pendiente', shortLabel: 'Pendiente', iconFn: I.calendar, color: '#f59e0b', description: 'Tu cita está pendiente de confirmación' },
@@ -324,14 +325,42 @@ const OrderTracker = ({
     }
   }, [order?.status, showPaymentTab]);
 
+  // ─── Pasos según cómo se pidió (ver utils/estadoPedido) ───────────
+  const seguimiento = order && !isBooking
+    ? pasosDelPedido({
+      status: order.status,
+      orderType: order.orderType,
+      orderChannel: order.orderChannel,
+      statusHistory: order.statusHistory,
+      tienda: esTienda(businessConfig),
+      hotel: businessConfig?.businessType === 'hotel',
+      conDomiciliario: !!order.deliveryPersonName,
+    })
+    : null;
+  const pasoActual = seguimiento?.pasos[seguimiento.actual];
+  const IconoActual = seguimiento?.cancelado ? XCircle : (ICONO_PASO[pasoActual?.clave] || Package);
+  const colorHero = seguimiento?.cancelado ? '#ef4444' : seguimiento?.terminado ? '#10b981' : themeColor;
+  const tituloHero = isBooking ? currentStatus.label
+    : seguimiento?.cancelado ? 'Pedido cancelado'
+      : seguimiento?.terminado ? `¡${pasoActual.nombre}!` : pasoActual?.nombre;
+  const descHero = isBooking ? currentStatus.description
+    : seguimiento?.cancelado ? (order?.cancellationReason || 'Este pedido no va a salir.')
+      : pasoActual?.desc;
+  const ultimaHora = order?.statusHistory?.length ? order.statusHistory[order.statusHistory.length - 1].timestamp : order?.updatedAt;
+  const waNegocio = enlaceWhatsApp(
+    businessConfig?.whatsappNumber,
+    `Hola, te escribo por mi pedido #${order?.orderNumber || ''}`,
+    businessConfig?.phoneCountryCode,
+  );
+
   // ─── Loading & error states ───────────────────────────────────────
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="fixed inset-0 z-[150] bg-white flex items-center justify-center">
         <Capa onCerrar={onClose} />
-        <div className="bg-white rounded-2xl p-8 flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-3 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
-          <p className="text-gray-600 text-sm">{isBooking ? 'Cargando cita...' : 'Cargando pedido...'}</p>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-[3px] border-slate-200 rounded-full animate-spin" style={{ borderTopColor: themeColor }} />
+          <p className="text-slate-500 text-sm">{isBooking ? 'Cargando tu cita…' : 'Cargando tu pedido…'}</p>
         </div>
       </div>
     );
@@ -339,12 +368,12 @@ const OrderTracker = ({
 
   if (error) {
     return (
-      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="fixed inset-0 z-[150] bg-white flex items-center justify-center p-6">
         <Capa onCerrar={onClose} />
-        <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center">
-          {I.exclamation('w-10 h-10 mx-auto text-gray-400 mb-3')}
-          <h3 className="font-bold text-gray-900 mb-2">{error}</h3>
-          <button onClick={onClose} className="mt-4 px-6 py-2 rounded-xl text-white text-sm font-medium" style={{ backgroundColor: themeColor }}>Cerrar</button>
+        <div className="max-w-sm w-full text-center">
+          {I.exclamation('w-12 h-12 mx-auto text-slate-300 mb-3')}
+          <h3 className="font-black text-slate-900 text-lg">{error === 'No encontrado' ? 'No encontramos este pedido' : error}</h3>
+          <button onClick={onClose} className="mt-6 w-full h-12 rounded-full font-bold" style={{ backgroundColor: themeColor, color: textColor }}>Volver al menú</button>
         </div>
       </div>
     );
@@ -359,59 +388,55 @@ const OrderTracker = ({
     ...(showChatTab ? [{ id: 'chat', label: 'Chat', iconFn: I.chat, badge: chatUnread }] : []),
   ];
 
+  /* Pantalla completa, como una app de pedidos: arriba el paso actual en
+     grande y su hora, luego la línea de tiempo con la hora de cada paso, y lo
+     que pidió con su foto. */
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end sm:items-center justify-center z-50">
+    <div className="fixed inset-0 z-[150] bg-white flex flex-col animate-aparecer" role="dialog" aria-modal="true" aria-label={`Estado del pedido ${order.orderNumber}`}>
       <Capa onCerrar={onClose} />
-      <motion.div
-        initial={{ y: 100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 100, opacity: 0 }}
-        className="bg-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md overflow-hidden shadow-2xl flex flex-col modal-h-full pb-safe"
-      >
-        {/* ─── Header ─────────────────────────────────────────────── */}
-        <div className="p-5 text-center relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${themeColor} 0%, ${themeColor}dd 100%)`, color: textColor }}>
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full -translate-y-16 translate-x-16" />
-            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white rounded-full translate-y-12 -translate-x-12" />
-          </div>
-          <div className="relative z-10">
-            <button onClick={onClose} className="absolute top-0 right-2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors">
-              {I.xMark('w-5 h-5')}
-            </button>
-            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-2">
-              {currentStatus.iconFn('w-6 h-6')}
-            </div>
-            <h2 className="text-lg font-bold">{currentStatus.label}</h2>
-            <p className="text-sm opacity-90 mt-1">{currentStatus.description}</p>
-            <div className="mt-3 inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5 backdrop-blur-sm">
-              <span className="text-sm font-semibold">{isBooking ? 'Cita' : 'Pedido'} #{order.orderNumber}</span>
-            </div>
-            {isBooking && order.bookingDate && (
-              <div className="mt-2 flex flex-col items-center gap-1">
-                <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5 backdrop-blur-sm">
-                  {I.calendar('w-4 h-4')}
-                  <span className="text-sm">{formatBookingDate(order.bookingDate)} · {formatBookingTime(order.bookingDate)}</span>
-                </div>
-                {order.staffName && (
-                  <div className="inline-flex items-center gap-1.5 bg-white/20 rounded-full px-3 py-1 backdrop-blur-sm">
-                    {I.user('w-3.5 h-3.5')}
-                    <span className="text-xs">{order.staffName}</span>
-                  </div>
-                )}
-              </div>
-            )}
+        {/* ─── Barra superior ─────────────────────────────────────── */}
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 flex-shrink-0" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}>
+          <button onClick={onClose} className="w-10 h-10 rounded-full flex items-center justify-center text-slate-700 hover:bg-slate-100" aria-label="Volver al menú">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className="text-[15px] font-black text-slate-900 leading-tight">{isBooking ? 'Cita' : 'Pedido'} #{order.orderNumber}</p>
+            <p className="text-xs text-slate-500 truncate">{businessConfig?.businessName}</p>
           </div>
         </div>
 
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          {/* ─── El paso actual, en grande ─────────────────────────── */}
+          <div className="px-5 pt-6 pb-5 text-center">
+            <div className="relative mx-auto w-20 h-20">
+              {!seguimiento?.cancelado && !seguimiento?.terminado && (
+                <span className="absolute inset-0 rounded-full animate-ping opacity-20" style={{ backgroundColor: colorHero }} />
+              )}
+              <span className="relative w-20 h-20 rounded-full flex items-center justify-center text-white shadow-lg" style={{ backgroundColor: colorHero }}>
+                <IconoActual className="w-9 h-9" strokeWidth={2} />
+              </span>
+            </div>
+            <h1 className="mt-4 text-2xl font-black text-slate-900 leading-tight">{tituloHero}</h1>
+            {descHero && <p className="mt-1 text-[15px] text-slate-600">{descHero}</p>}
+            {ultimaHora && !isTerminal && (
+              <p className="mt-2 text-xs text-slate-400 flex items-center justify-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> En vivo · actualizado a las {hora(ultimaHora)}
+              </p>
+            )}
+            {isBooking && order.bookingDate && (
+              <p className="mt-2 text-sm font-semibold text-slate-700">{formatBookingDate(order.bookingDate)} · {formatBookingTime(order.bookingDate)}{order.staffName ? ` · ${order.staffName}` : ''}</p>
+            )}
+          </div>
+
         {/* ─── Tab bar ────────────────────────────────────────────── */}
         {tabs.length > 1 && (
-          <div className="flex border-b border-gray-100 bg-gray-50/50">
+          <div className="flex mx-5 mb-2 p-1 bg-slate-100 rounded-2xl">
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-[13px] font-semibold transition-colors relative ${
-                  activeTab === tab.id ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'
+                className={`flex-1 flex items-center justify-center gap-1.5 h-10 rounded-xl text-[13px] font-bold transition-colors ${
+                  activeTab === tab.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
                 }`}
               >
                 {tab.iconFn('w-4 h-4')}
@@ -419,184 +444,99 @@ const OrderTracker = ({
                 {tab.badge > 0 && (
                   <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-2xs font-bold text-white flex items-center justify-center">{tab.badge}</span>
                 )}
-                {activeTab === tab.id && (
-                  <motion.div layoutId="activeTab" className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full" style={{ backgroundColor: themeColor }} />
-                )}
               </button>
             ))}
           </div>
         )}
 
-        {/* ─── Tab content ────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto">
-
           {/* ═══ STATUS TAB ═══ */}
           {activeTab === 'status' && (
-            <div className="p-5 space-y-5">
-              {/* Step Progress */}
-              <div className="flex items-center justify-between px-2">
-                {steps.map((step, index) => {
-                  const stepConfig = (isBooking && bookingStatusOverrides[step]) || STATUS_CONFIG[step];
-                  const isComplete = currentStepIndex > index;
-                  const isCurrent = currentStepIndex === index;
-                  return (
-                    <React.Fragment key={step}>
-                      <div className="flex flex-col items-center gap-1">
-                        <motion.div
-                          initial={false}
-                          animate={{ scale: isCurrent ? 1.15 : 1, backgroundColor: isComplete || isCurrent ? themeColor : '#e5e7eb' }}
-                          className="w-9 h-9 rounded-full flex items-center justify-center"
-                          style={{ color: isComplete || isCurrent ? textColor : '#9ca3af' }}
-                        >
-                          {isComplete ? I.check('w-4 h-4') : stepConfig.iconFn('w-4 h-4')}
-                        </motion.div>
-                        <span className={`text-2xs font-medium text-center leading-tight ${isCurrent ? 'text-gray-900' : 'text-gray-400'}`}>
-                          {stepConfig.shortLabel}
-                        </span>
-                      </div>
-                      {index < steps.length - 1 && (
-                        <div className="flex-1 h-0.5 mx-1 rounded-full" style={{ backgroundColor: isComplete ? themeColor : '#e5e7eb' }} />
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </div>
-
-              {/* Push notification banner */}
-              {pushState === 'idle' && (
-                <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                  {I.bell('w-5 h-5 text-blue-500 flex-shrink-0')}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-blue-800">Recibir notificaciones</p>
-                    <p className="text-2xs text-blue-600 mt-0.5">Te avisamos cuando {isBooking ? 'tu cita' : 'tu pedido'} cambie</p>
-                  </div>
-                  <button onClick={handleEnableNotifications} className="flex-shrink-0 px-3 py-1.5 bg-blue-600 text-white text-[11px] font-semibold rounded-lg">Activar</button>
-                  <button onClick={() => setPushState('dismissed')} className="flex-shrink-0 p-1 text-blue-400">{I.xMark('w-4 h-4')}</button>
-                </div>
-              )}
-
-              {pushState === 'ios-not-pwa' && (
-                <div className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-xl">
-                  {I.phone('w-5 h-5 text-gray-500 flex-shrink-0')}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-gray-700">Recibe notificaciones</p>
-                    <p className="text-2xs text-gray-500 mt-0.5">Toca {I.upload('w-3 h-3 inline text-blue-500')} y luego <strong>"Añadir a inicio"</strong></p>
-                  </div>
-                  <button onClick={() => setPushState('dismissed')} className="flex-shrink-0 p-1 text-gray-400">{I.xMark('w-4 h-4')}</button>
-                </div>
-              )}
-
-              {/* Booking info */}
-              {isBooking && order.bookingDate && (
-                <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">{I.calendar('w-5 h-5 text-indigo-600')}</div>
-                  <div>
-                    <h4 className="font-semibold text-indigo-900 text-sm">Tu cita</h4>
-                    <p className="text-indigo-700 text-xs mt-0.5">{formatBookingDate(order.bookingDate)} a las {formatBookingTime(order.bookingDate)}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Payment status notices */}
-              {isInApp && !isBooking && order.status === 'payment_uploaded' && (
-                <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <div className="w-5 h-5 border-2 border-purple-400 border-t-purple-600 rounded-full animate-spin" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-purple-900 text-sm">Verificando pago</h4>
-                    <p className="text-purple-700 text-xs mt-0.5">{businessLabel.charAt(0).toUpperCase() + businessLabel.slice(1)} está revisando tu comprobante</p>
-                  </div>
-                </div>
-              )}
-
+            <div className="px-5 pb-6 pt-2 space-y-5">
+              {/* Avisos: pago rechazado, notificaciones */}
               {isInApp && !isBooking && order.status === 'pending_payment' && order.statusHistory?.some(h => h.note?.includes('rechazado')) && (
-                <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 flex items-center gap-2">
+                <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center gap-2">
                   {I.exclamation('w-4 h-4 text-red-500 flex-shrink-0')}
-                  <p className="text-xs text-red-700 font-medium">Comprobante rechazado — sube uno nuevo en la pestaña Pago</p>
+                  <p className="text-sm text-red-700 font-semibold">Comprobante rechazado: sube uno nuevo en la pestaña Pago</p>
                 </div>
               )}
-
-              {/* Order ready */}
-              {(order.status === 'ready' || order.status === 'completed') && (
-                <div className="bg-green-50 border border-green-200 rounded-2xl p-4 text-center">
-                  {I.sparkle('w-10 h-10 text-green-500 mx-auto mb-2')}
-                  <h4 className="font-bold text-green-900">{isBooking ? '¡Tu cita fue completada!' : '¡Tu pedido está listo!'}</h4>
-                  <p className="text-green-700 text-sm mt-1">
-                    {isBooking ? '¡Gracias por tu visita!' :
-                     order.orderType === 'delivery' ? 'Tu pedido va en camino' : 
-                     order.orderType === 'takeaway' ? 'Puedes pasar a recogerlo' : 
-                     businessConfig?.businessType === 'hotel' ? 'Será entregado en tu habitación' : 'Será servido en tu mesa'}
-                  </p>
-                </div>
-              )}
-
-              {/* Dónde va el paquete. Antes esto era un número de guía en un
-                  mensaje de WhatsApp; ahora es el recorrido, consultado a la
-                  transportadora, sin que el cliente tenga que salir de aquí. */}
-              {order.envio?.guia && (
-                <RastreoEnvio
-                  guia={order.envio.guia}
-                  transportadora={order.envio.transportadora}
-                  urlRastreo={order.envio.urlRastreo}
-                />
-              )}
-
-              {/* Order Items */}
-              <div className="bg-gray-50 rounded-2xl p-4">
-                <h4 className="text-sm font-semibold text-gray-900 mb-3">{isBooking ? 'Tu Cita' : 'Tu Pedido'}</h4>
-                <div className="space-y-2">
-                  {order.items?.map((item, i) => (
-                    <div key={i} className="flex justify-between items-center text-sm">
-                      <span className="text-gray-700"><span className="font-medium">{item.quantity}x</span> {item.name}</span>
-                      <span className="text-gray-900 font-medium">{formatPrice(item.price * item.quantity)}</span>
-                    </div>
-                  ))}
-                </div>
-                {order.deliveryFee > 0 && (
-                  <div className="flex justify-between items-center text-sm mt-2 pt-2 border-t border-gray-200">
-                    <span className="text-gray-500">Domicilio</span>
-                    <span className="text-gray-700">{formatPrice(order.deliveryFee)}</span>
+              {pushState === 'idle' && !isTerminal && (
+                <div className="flex items-center gap-3 p-3.5 rounded-2xl border border-slate-200">
+                  {I.bell('w-5 h-5 text-slate-500 flex-shrink-0')}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-slate-800">Te avisamos cuando cambie</p>
+                    <p className="text-xs text-slate-500">Sin tener esta pantalla abierta</p>
                   </div>
-                )}
-                {order.discountAmount > 0 && (
-                  <div className="flex justify-between items-center text-sm mt-1">
-                    <span className="text-green-600">Descuento</span>
-                    <span className="text-green-600">-{formatPrice(order.discountAmount)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-200">
-                  <span className="font-bold text-gray-900">Total</span>
-                  <span className="font-bold text-gray-900 text-lg">{formatPrice(order.finalAmount || order.totalAmount)}</span>
+                  <button onClick={handleEnableNotifications} className="flex-shrink-0 h-9 px-3.5 rounded-full text-xs font-bold" style={{ backgroundColor: themeColor, color: textColor }}>Activar</button>
+                  <button onClick={() => setPushState('dismissed')} className="flex-shrink-0 p-1 text-slate-400" aria-label="Ahora no">{I.xMark('w-4 h-4')}</button>
                 </div>
-              </div>
+              )}
 
-              {/* Status History */}
-              {order.statusHistory?.length > 0 && (
-                <div className="bg-gray-50 rounded-2xl p-4">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Historial</h4>
-                  <div className="space-y-3">
-                    {order.statusHistory.map((entry, i) => {
-                      const config = STATUS_CONFIG[entry.status] || {};
-                      const time = formatTime(entry.timestamp);
-                      return (
-                        <div key={i} className="flex items-start gap-3">
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ backgroundColor: `${config.color}20`, color: config.color }}>
-                            {config.iconFn ? config.iconFn('w-3 h-3') : <span className="w-2 h-2 rounded-full bg-current" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-gray-900">{config.label || entry.status}</span>
-                              <span className="text-xs text-gray-400">{time}</span>
-                            </div>
-                            {entry.note && <p className="text-xs text-gray-500 mt-0.5">{entry.note}</p>}
-                          </div>
+              {/* ─── La línea de tiempo ────────────────────────────── */}
+              {seguimiento && !seguimiento.cancelado && (
+                <ol aria-label="Pasos del pedido">
+                  {seguimiento.pasos.map((p, i) => {
+                    const ultimo = i === seguimiento.pasos.length - 1;
+                    const Icono = ICONO_PASO[p.clave] || Package;
+                    return (
+                      <li key={p.clave} className="flex gap-3.5">
+                        <div className="flex flex-col items-center">
+                          <span
+                            className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${p.hecho || p.enCurso ? 'text-white' : 'text-slate-300 border-2 border-slate-200 bg-white'}`}
+                            style={p.hecho || p.enCurso ? { backgroundColor: p.clave === 'final' && p.enCurso ? '#10b981' : themeColor } : undefined}
+                          >
+                            {p.hecho ? I.check('w-4 h-4') : <Icono className="w-4 h-4" />}
+                          </span>
+                          {!ultimo && <span className="w-0.5 flex-1 min-h-[26px] my-1 rounded-full" style={{ backgroundColor: p.hecho ? themeColor : '#e2e8f0' }} />}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                        <div className={`flex-1 min-w-0 ${ultimo ? '' : 'pb-4'}`}>
+                          <div className="flex items-baseline justify-between gap-2 pt-1">
+                            <p className={`text-[15px] font-bold leading-tight ${p.hecho || p.enCurso ? 'text-slate-900' : 'text-slate-400'}`}>{p.nombre}</p>
+                            {p.hora && <span className="text-xs text-slate-400 tabular-nums flex-shrink-0">{hora(p.hora)}</span>}
+                          </div>
+                          {p.enCurso && !seguimiento.terminado && <p className="text-[13px] text-slate-500 mt-0.5">{p.desc}</p>}
+                          {p.enCurso && p.clave === 'camino' && order.deliveryPersonName && (
+                            <p className="text-[13px] text-slate-600 mt-0.5">Lo lleva <b>{order.deliveryPersonName}</b></p>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
               )}
+
+              {/* Dónde va el paquete (envíos nacionales). */}
+              {order.envio?.guia && (
+                <RastreoEnvio guia={order.envio.guia} transportadora={order.envio.transportadora} urlRastreo={order.envio.urlRastreo} />
+              )}
+
+              {/* ─── Lo que pidió, con su foto ─────────────────────── */}
+              <div>
+                <h2 className="text-xs font-black uppercase tracking-wide text-slate-500 mb-2">{isBooking ? 'Tu cita' : 'Tu pedido'}</h2>
+                <ul className="rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+                  {order.items?.map((item, i) => (
+                    <li key={i} className="flex items-center gap-3 px-3 py-2.5">
+                      <span className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden flex-shrink-0">
+                        {item.image && <img src={imageAt(item.image, 120)} alt="" loading="lazy" className="w-full h-full object-cover" />}
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-[14px] font-bold text-slate-900 leading-tight line-clamp-2"><span className="text-slate-500">{item.quantity}×</span> {item.name}</span>
+                        {item.opciones?.length > 0 && <span className="block text-xs text-slate-500 truncate">{item.opciones.join(', ')}</span>}
+                      </span>
+                      <span className="text-[14px] font-bold text-slate-900 tabular-nums flex-shrink-0">{formatPrice(item.price * item.quantity)}</span>
+                    </li>
+                  ))}
+                  {order.deliveryFee > 0 && (
+                    <li className="flex justify-between px-3 py-2 text-sm text-slate-600"><span>Domicilio</span><span className="tabular-nums">{formatPrice(order.deliveryFee)}</span></li>
+                  )}
+                  {order.discountAmount > 0 && (
+                    <li className="flex justify-between px-3 py-2 text-sm text-emerald-700"><span>Descuento</span><span className="tabular-nums">-{formatPrice(order.discountAmount)}</span></li>
+                  )}
+                  <li className="flex justify-between items-center px-3 py-3 bg-slate-50">
+                    <span className="text-sm font-bold text-slate-600">Total</span>
+                    <span className="text-lg font-black text-slate-900 tabular-nums">{formatPrice(order.finalAmount || order.totalAmount)}</span>
+                  </li>
+                </ul>
+              </div>
             </div>
           )}
 
@@ -825,15 +765,24 @@ const OrderTracker = ({
           )}
         </div>
 
-        {/* ─── Footer close button (only on status/payment tabs) ──── */}
+        {/* ─── Abajo: hablar con el negocio o volver al menú ───────── */}
         {activeTab !== 'chat' && (
-          <div className="p-4 border-t border-gray-100">
-            <button onClick={onClose} className="w-full py-3 rounded-xl text-white text-sm font-semibold transition-all hover:shadow-lg active:scale-95" style={{ backgroundColor: themeColor }}>
-              Cerrar
+          <div className="flex gap-2 px-4 pt-3 border-t border-slate-100 flex-shrink-0" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}>
+            {waNegocio && (
+              <a
+                href={waNegocio}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="h-12 px-4 rounded-full border-2 border-slate-200 flex items-center justify-center gap-2 text-sm font-bold text-slate-800 flex-shrink-0"
+              >
+                <MessageCircle className="w-4 h-4 text-[#25D366]" /> Escribir
+              </a>
+            )}
+            <button onClick={onClose} className="flex-1 h-12 rounded-full text-[15px] font-bold active:scale-[0.98] transition-transform" style={{ backgroundColor: themeColor, color: textColor }}>
+              Volver al menú
             </button>
           </div>
         )}
-      </motion.div>
     </div>
   );
 };

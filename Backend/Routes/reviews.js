@@ -414,6 +414,12 @@ router.get('/pending', async (req, res) => {
         image: top.image || top.productImage || null,
         price: top.price || 0
       };
+      // El pedido no guarda la foto: se busca en el catálogo.
+      if (!topProduct.image && topProduct.productId) {
+        const Product = require('../Models/Product');
+        const p = await Product.findById(topProduct.productId).select('image').lean().catch(() => null);
+        topProduct.image = p?.image || null;
+      }
     }
 
     res.json({

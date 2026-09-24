@@ -168,6 +168,8 @@ export default function Menu() {
   const [reviewsInitialSource, setReviewsInitialSource] = useState('internal');
   const [pendingReviewOrder, setPendingReviewOrder] = useState(null);
   const [pendingReviewTopProduct, setPendingReviewTopProduct] = useState(null);
+  // Las estrellas que tocó en la tarjeta del menú (el modal abre con ellas).
+  const [pendingReviewEstrellas, setPendingReviewEstrellas] = useState(0);
   const [waReviewName, setWaReviewName] = useState(null);
   const [waReviewPhone, setWaReviewPhone] = useState(null);
 
@@ -223,10 +225,13 @@ export default function Menu() {
     )
   );
 
+  const [activeOrderMeta, setActiveOrderMeta] = useState(null);
+
   // Poll active order status for banner display (socket + fallback)
   useEffect(() => {
     if (!activeOrderId || !activeCustomerToken) {
       setActiveOrderStatus(null);
+      setActiveOrderMeta(null);
       return;
     }
     let cancelled = false;
@@ -235,7 +240,17 @@ export default function Menu() {
         const res = await api.get(`/orders/track/${activeOrderId}`, {
           headers: { 'X-Customer-Token': activeCustomerToken }
         });
-        if (!cancelled) setActiveOrderStatus(res.data.status || null);
+        if (!cancelled) {
+          setActiveOrderStatus(res.data.status || null);
+          // Lo que necesita la tarjeta del pedido en curso para dibujar sus pasos.
+          setActiveOrderMeta({
+            numero: res.data.orderNumber,
+            tipo: res.data.orderType,
+            canal: res.data.orderChannel,
+            conDomiciliario: !!res.data.deliveryPersonName,
+            statusHistory: res.data.statusHistory || [],
+          });
+        }
       } catch {
         if (!cancelled) setActiveOrderStatus(null);
       }
@@ -250,6 +265,7 @@ export default function Menu() {
       const handleStatusChange = (data) => {
         if ((data.orderId === activeOrderId || data.orderId?.toString() === activeOrderId) && !cancelled) {
           setActiveOrderStatus(data.status || null);
+          if (data.order) setActiveOrderMeta((m) => ({ ...(m || {}), statusHistory: data.order.statusHistory || m?.statusHistory || [] }));
         }
       };
       socket.on('order_status_changed', handleStatusChange);
@@ -1819,13 +1835,15 @@ export default function Menu() {
         isViewOnly={isViewOnly}
         hasActiveOrder={!!(activeOrderId && activeCustomerToken && !showOrderTracker && !showPaymentUpload && !pedidoConfirmado)}
         activeOrderStatus={activeOrderStatus}
+        activeOrderMeta={activeOrderMeta}
         onViewActiveOrder={() => setShowOrderTracker(true)}
         onDismissCompletedOrder={clearActiveOrder}
         customerPhone={orderInfo?.phone || null}
         onCategoryVisible={handleCategoryVisible}
-        onPendingReview={(order) => {
+        onPendingReview={(order, estrellas = 0) => {
           setPendingReviewOrder(order._id);
           setPendingReviewTopProduct(order.topProduct || null);
+          setPendingReviewEstrellas(estrellas);
           setShowReviewModal(true);
         }}
       />
@@ -2107,7 +2125,10 @@ export default function Menu() {
               // Always mark as dismissed so PendingReviewCard won't re-show
               if (pendingReviewOrder) {
                 localStorage.setItem(`dismissed_review_${pendingReviewOrder}`, '1');
+                // La tarjeta del menú se va ya, no al recargar.
+                window.dispatchEvent(new CustomEvent('mb:resena', { detail: { orderId: pendingReviewOrder } }));
               }
+              setPendingReviewEstrellas(0);
               setShowReviewModal(false);
               setPendingReviewOrder(null);
               setPendingReviewTopProduct(null);
@@ -2116,6 +2137,7 @@ export default function Menu() {
             }}
             businessId={businessId}
             orderId={pendingReviewOrder}
+            calificacionInicial={pendingReviewEstrellas}
             customerName={waReviewName || orderInfo.customerName}
             customerPhone={waReviewPhone || orderInfo.phone}
             theme={businessConfig?.theme}

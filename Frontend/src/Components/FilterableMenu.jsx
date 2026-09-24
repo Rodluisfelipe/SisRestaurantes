@@ -6,8 +6,13 @@ import { useBusinessConfig } from '../Context/BusinessContext';
 import FeaturedProducts from './FeaturedProducts';
 import PopularProducts from './PopularProducts';
 import PendingReviewCard from './PendingReviewCard';
+import { pasosDelPedido } from '../utils/estadoPedido';
+import { ReceiptText, ChefHat, Bike, ShoppingBag, CheckCircle2, CreditCard, Hourglass, XCircle, ChevronRight } from 'lucide-react';
+
+const ICONO_PASO = { pago: CreditCard, verificando: Hourglass, recibido: ReceiptText, preparando: ChefHat, camino: Bike, listo: ShoppingBag, final: CheckCircle2 };
+const TIPO_PEDIDO = { delivery: 'Domicilio', takeaway: 'Para llevar', inSite: 'En el local' };
 import { NoSearchResultsIllustration, EmptyMenuIllustration } from './EmptyStates';
-import { esTienda, estadoEnTienda } from '../utils/tienda';
+import { esTienda } from '../utils/tienda';
 import { leerPresentaciones } from '../utils/presentaciones';
 import { getEffectivePrice } from '../utils/promo';
 import {
@@ -111,6 +116,7 @@ const FilterableMenu = ({
   businessConfig: businessConfigProp,
   hasActiveOrder = false,
   activeOrderStatus = null,
+  activeOrderMeta = null,
   onViewActiveOrder,
   onDismissCompletedOrder,
   customerPhone = null,
@@ -427,83 +433,76 @@ const FilterableMenu = ({
       {/* Active Order Banner — Rappi style, above search */}
       <AnimatePresence>
         {hasActiveOrder && (() => {
-          const isCompleted = activeOrderStatus === 'completed' || activeOrderStatus === 'ready' || activeOrderStatus === 'delivered';
-          const bizLabel = isHotel ? 'El hotel' : 'El negocio';
-          const statusMap = {
-            pending_payment: { label: 'Pendiente de pago', icon: MI.clipboard('w-5 h-5 text-white'), sub: 'Realiza el pago para continuar' },
-            payment_uploaded: { label: 'Verificando pago', icon: MI.clipboard('w-5 h-5 text-white'), sub: `${bizLabel} revisa tu comprobante` },
-            payment_confirmed: { label: 'Pago confirmado', icon: MI.check('w-5 h-5 text-white'), sub: 'Tu pedido será preparado pronto' },
-            pending: { label: 'Pedido recibido', icon: MI.clipboard('w-5 h-5 text-white'), sub: `${bizLabel} recibió tu pedido` },
-            inProgress: { label: 'En preparación', icon: MI.package('w-5 h-5 text-white'), sub: 'Están preparando tu pedido' },
-            preparing: { label: 'En preparación', icon: MI.package('w-5 h-5 text-white'), sub: 'Están preparando tu pedido' },
-            ready: { label: 'Pedido listo', icon: MI.sparkle('w-5 h-5 text-white'), sub: 'Tu pedido está listo para recoger' },
-            completed: { label: 'Pedido completado', icon: MI.check('w-5 h-5 text-white'), sub: 'Tu pedido ha sido entregado' },
-            delivered: { label: 'Pedido entregado', icon: MI.check('w-5 h-5 text-white'), sub: 'Tu pedido ha sido entregado' },
-          };
-          const base = statusMap[activeOrderStatus] || { label: 'Pedido en curso', icon: MI.clipboard('w-5 h-5 text-white'), sub: 'Toca para ver el estado' };
-          // En tienda se empaca y se despacha, no se cocina.
-          const enTienda = estadoEnTienda(activeOrderStatus, tienda);
-          const info = enTienda ? { ...base, ...enTienda } : base;
+          /* El pedido en curso, en pequeño: el paso en que va y un punto por
+             cada paso. Tocarla abre la pantalla de estado completa. */
+          const seg = pasosDelPedido({
+            status: activeOrderStatus,
+            orderType: activeOrderMeta?.tipo,
+            orderChannel: activeOrderMeta?.canal,
+            statusHistory: activeOrderMeta?.statusHistory,
+            tienda,
+            hotel: isHotel,
+            conDomiciliario: activeOrderMeta?.conDomiciliario,
+          });
+          const paso = seg.pasos[seg.actual];
+          const Icono = seg.cancelado ? XCircle : (ICONO_PASO[paso?.clave] || ReceiptText);
+          const color = seg.cancelado ? '#ef4444' : seg.terminado ? '#10b981' : themeColor;
+          const titulo = seg.cancelado ? 'Pedido cancelado' : paso?.nombre;
 
           return (
             <motion.div
               key="active-order-banner"
-              initial={{ opacity: 0, scaleY: 0 }}
-              animate={{ opacity: 1, scaleY: 1 }}
-              exit={{ opacity: 0, scaleY: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="w-full mb-3 rounded-2xl overflow-hidden shadow-sm origin-top"
-              style={{ backgroundColor: isCompleted ? '#10b981' : themeColor }}
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="w-full mb-3 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden"
             >
               <button
-                onClick={isCompleted ? undefined : onViewActiveOrder}
-                className="w-full active:scale-[0.98] transition-transform"
-                aria-label={isCompleted ? 'Pedido completado' : `Ver pedido activo: ${info.label}`}
+                type="button"
+                onClick={onViewActiveOrder}
+                className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-slate-50 transition-colors"
+                aria-label={`Ver el estado de tu pedido: ${titulo}`}
               >
-                <div className="flex items-center gap-3 px-4 py-3">
-                  <div className="relative flex-shrink-0">
-                    <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
-                      {info.icon}
-                    </div>
-                    {!isCompleted && (
-                      <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75 will-change-transform" />
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white" />
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex-1 text-left min-w-0">
-                    <p className="text-sm font-semibold leading-tight text-white">
-                      {info.label}
-                    </p>
-                    <p className="text-xs mt-0.5 text-white/90">
-                      {info.sub}
-                    </p>
-                  </div>
-                  {!isCompleted && (
-                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
-                      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
+                <span className="relative w-11 h-11 rounded-full flex items-center justify-center text-white flex-shrink-0" style={{ backgroundColor: color }}>
+                  <Icono className="w-5 h-5" strokeWidth={2.2} />
+                  {!seg.cancelado && !seg.terminado && (
+                    <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60" style={{ backgroundColor: color }} />
+                      <span className="relative inline-flex rounded-full h-3 w-3 border-2 border-white" style={{ backgroundColor: color }} />
+                    </span>
                   )}
-                </div>
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-xs font-semibold text-slate-500">
+                    {activeOrderMeta?.numero ? `Pedido #${activeOrderMeta.numero}` : 'Tu pedido'}
+                    {TIPO_PEDIDO[activeOrderMeta?.tipo] ? ` · ${TIPO_PEDIDO[activeOrderMeta.tipo]}` : ''}
+                  </span>
+                  <span className="block text-[15px] font-black text-slate-900 leading-tight truncate">{titulo}</span>
+                  {!seg.cancelado && (
+                    <span className="flex items-center gap-1 mt-1.5" aria-hidden="true">
+                      {seg.pasos.map((p) => (
+                        <span
+                          key={p.clave}
+                          className={`h-1.5 rounded-full transition-all ${p.enCurso ? 'w-5' : 'w-1.5'}`}
+                          style={{ backgroundColor: p.hecho || p.enCurso ? color : '#e2e8f0' }}
+                        />
+                      ))}
+                    </span>
+                  )}
+                </span>
+                <span className="flex items-center gap-0.5 text-xs font-bold flex-shrink-0" style={{ color }}>
+                  Ver <ChevronRight className="w-4 h-4" />
+                </span>
               </button>
-              {isCompleted ? (
+              {(seg.terminado || seg.cancelado) && (
                 <button
+                  type="button"
                   onClick={onDismissCompletedOrder}
-                  className="w-full py-2 bg-white/20 text-white text-xs font-semibold tracking-wide active:bg-white/30 transition-colors"
+                  className="w-full py-2.5 border-t border-slate-100 text-sm font-bold active:bg-slate-50"
+                  style={{ color: seg.cancelado ? '#64748b' : color }}
                 >
-                  OK, ENTENDIDO
+                  {seg.cancelado ? 'Entendido' : '¡Llegó! Cuéntanos qué tal estuvo'}
                 </button>
-              ) : (
-                <div className="h-0.5 bg-white/20">
-                  <motion.div
-                    className="h-full bg-white/50 rounded-full w-full origin-left"
-                    animate={{ scaleX: [0, 1] }}
-                    transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
-                  />
-                </div>
               )}
             </motion.div>
           );
