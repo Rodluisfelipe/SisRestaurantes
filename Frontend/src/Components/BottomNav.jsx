@@ -71,9 +71,10 @@ export default function BottomNav({
       <div
         className="flex items-center rounded-full px-2"
         style={{
-          background: 'rgba(255,255,255,0.92)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
+          /* Casi opaco y sin desenfoque: la barra está siempre sobre lo que se
+             desplaza, y un desenfoque ahí se recalcula en cada fotograma del
+             scroll, lo más caro para la GPU de un Android de gama baja. */
+          background: 'rgba(255,255,255,0.97)',
           border: '1px solid var(--mb-line)',
           boxShadow: '0 10px 30px rgba(15,23,42,0.14)',
         }}

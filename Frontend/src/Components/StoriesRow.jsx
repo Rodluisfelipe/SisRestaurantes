@@ -4,6 +4,7 @@ import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { API_ENDPOINTS } from '../config';
 import { isPromoActive, getEffectivePrice } from '../utils/promo';
+import { imageAt } from '../utils/imageCdn';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import StoryViewer from './StoryViewer';
 
@@ -249,7 +250,7 @@ export default function StoriesRow({ products = [], categories = [], addToCart }
                     </span>
                     {s.cover ? (
                       <img
-                        src={s.cover}
+                        src={imageAt(s.cover, 160)}
                         alt=""
                         aria-hidden="true"
                         className="absolute inset-0 w-full h-full object-cover"

@@ -98,12 +98,9 @@ const FeaturedProducts = ({ businessId, products, onAddToCart, theme, onToppings
               />
             </div>
           ))}
-          {featuredToShow.map((product, index) => (
-            <motion.div
+          {featuredToShow.map((product) => (
+            <div
               key={product._id}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: index * 0.06 }}
               className="flex-shrink-0 snap-start"
               style={{ width: 'min(calc(50% - 6px), 260px)' }}
             >
@@ -119,7 +116,7 @@ const FeaturedProducts = ({ businessId, products, onAddToCart, theme, onToppings
                   </Insignia>
                 }
               />
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>

@@ -7,6 +7,7 @@ import { UserRound } from 'lucide-react';
 import { useCustomerData } from '../hooks/useCustomerData';
 import SonandoAhora from './SonandoAhora';
 import { enlaceWhatsApp } from '../utils/whatsapp';
+import { imageAt } from '../utils/imageCdn';
 
 /* ── Iconos SVG (mismo patrón que el resto del menú) ── */
 const PH = {
@@ -171,7 +172,9 @@ export default function ProfileHeader({
       <div className="relative h-32 md:h-56 overflow-hidden">
         {businessConfig?.coverImage ? (
           <>
-            <img src={businessConfig.coverImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
+            {/* Es lo primero grande que se pinta: a su tamaño y con prioridad.
+                Venía entera y era lo último en aparecer en un Android modesto. */}
+            <img src={imageAt(businessConfig.coverImage, 560, 55)} alt="" aria-hidden="true" fetchpriority="high" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
             <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.35)' }} />
           </>
         ) : (
@@ -215,7 +218,7 @@ export default function ProfileHeader({
           >
             <div className="w-full h-full rounded-full overflow-hidden" style={{ border: '3.5px solid var(--mb-surface)', background: 'var(--mb-card)' }}>
               <img
-                src={logoError ? DEFAULT_LOGO : logo}
+                src={logoError ? DEFAULT_LOGO : imageAt(logo, 200)}
                 alt={`Logo de ${name}`}
                 className="w-full h-full object-cover"
                 loading="eager"
@@ -337,14 +340,13 @@ export default function ProfileHeader({
             <div
               className="flex items-center gap-2.5 px-3 py-2 border-b"
               style={{
-                background: 'color-mix(in srgb, var(--mb-surface) 88%, transparent)',
-                backdropFilter: 'blur(14px)',
-                WebkitBackdropFilter: 'blur(14px)',
+                // Sin desenfoque: fija sobre el scroll, costaba GPU en cada fotograma.
+                background: 'color-mix(in srgb, var(--mb-surface) 97%, transparent)',
                 borderColor: 'var(--mb-line)',
               }}
             >
               <img
-                src={logoError ? DEFAULT_LOGO : logo}
+                src={logoError ? DEFAULT_LOGO : imageAt(logo, 200)}
                 alt=""
                 aria-hidden="true"
                 className="w-8 h-8 rounded-full object-cover shrink-0"

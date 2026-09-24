@@ -1,6 +1,16 @@
 // @charset UTF-8
 import React, { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
-import { motion } from 'framer-motion';
+import { motion, MotionConfig } from 'framer-motion';
+
+/* Celulares de gama baja (poca memoria o pocos núcleos): las animaciones de
+   movimiento de framer-motion se apagan en todo el menú y quedan solo los
+   fundidos. Ahí eran segundos de procesador que se notaban como trabas; en
+   los demás celulares todo se ve igual, y quien pidió "reducir movimiento" en
+   su teléfono lo sigue teniendo. */
+const GAMA_BAJA = typeof navigator !== 'undefined' && (
+  (navigator.deviceMemory && navigator.deviceMemory <= 3)
+  || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4)
+);
 const ReviewModal = lazy(() => import("../Components/ReviewModal"));
 const ReviewsSheet = lazy(() => import("../Components/ReviewsSheet"));
 import ProductCard from "../Components/Productcard";
@@ -1648,6 +1658,7 @@ export default function Menu() {
   };
 
   return (
+    <MotionConfig reducedMotion={GAMA_BAJA ? 'always' : 'user'}>
     <FlyToCartProvider>
     {/* Los tokens del menú se cuelgan UNA vez de aquí como CSS variables
         (--mb-accent, --mb-surface, …). Todo lo de adentro las consume con
@@ -2143,5 +2154,6 @@ export default function Menu() {
       </footer>
     </main>
     </FlyToCartProvider>
+    </MotionConfig>
   );
 }

@@ -102,6 +102,21 @@ export default {
           '0%': { backgroundPosition: '200% 0' },
           '100%': { backgroundPosition: '-200% 0' },
         },
+        /* "Entró al carrito": el círculo crece un poco de más y vuelve. En CSS
+           corre en la GPU; con framer-motion costaba procesador en cada tarjeta. */
+        agregado: {
+          '0%': { opacity: '0', transform: 'scale(0.4)' },
+          '60%': { opacity: '1', transform: 'scale(1.15)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        aparecer: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+      },
+      animation: {
+        agregado: 'agregado 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both',
+        aparecer: 'aparecer 180ms ease-out both',
       },
     },
   },

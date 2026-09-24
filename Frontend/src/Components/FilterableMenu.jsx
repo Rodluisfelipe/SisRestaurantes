@@ -144,29 +144,6 @@ const FilterableMenu = ({
   const pillRefs = useRef({});                              // { categoryId: HTMLButtonElement }
   const userTapTimer = useRef(null);
 
-  // Animation variants for stagger effect
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 100
-      }
-    }
-  };
-
   // Sort categories based on displayOrder from backend
   const getSortedCategories = (categories) => {
     // Validar que categories sea un array
@@ -927,20 +904,17 @@ const FilterableMenu = ({
               </div>
             ) : (
               // Group products by category
-              categoriesWithProducts.map((category, categoryIndex) => {
+              categoriesWithProducts.map((category) => {
               const categoryProducts = filteredProducts.filter(product => product.category === category._id);
               if (categoryProducts.length === 0) return null;
               const CategoryIcon = getCategoryIconForBusiness(category.name, businessConfig?.businessType);
 
               return (
-                  <motion.div
+                  <div
                     key={category._id}
                     ref={el => (sectionRefs.current[category._id] = el)}
                     data-category-id={category._id}
                     className="mb-6 sm:mb-8"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: categoryIndex * 0.06 }}
                   >
                     {/* Category Header */}
                     <div className="flex items-center gap-3 mb-3 sm:mb-4">
@@ -965,11 +939,8 @@ const FilterableMenu = ({
                         }}
                       />
                     </div>
-                    <motion.div 
+                    <div
                       className={`grid gap-3 sm:gap-4 ${tienda ? 'lg:gap-5 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4'}`}
-                      variants={containerVariants}
-                      initial="hidden"
-                      animate="visible"
                     >
                       {categoryProducts.map((product, productIndex) => {
                         // En tienda la rejilla es pareja: una card gigante rompe la comparación.
@@ -1000,8 +971,8 @@ const FilterableMenu = ({
                           />
                         );
                       })}
-                    </motion.div>
-                  </motion.div>
+                    </div>
+                  </div>
               );
             })
             )
@@ -1055,11 +1026,8 @@ const FilterableMenu = ({
                   );
                 })}
                 
-                <motion.div 
+                <div
                   className={`grid gap-3 sm:gap-4 ${tienda ? 'lg:gap-5 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4'}`}
-                  variants={containerVariants}
-                  initial="hidden"
-                  animate="visible"
                 >
                   {filteredProducts.map((product, productIndex) => {
                     const isFirstHero = !tienda && productIndex === 0 && product.image && filteredProducts.length !== 2;
@@ -1089,7 +1057,7 @@ const FilterableMenu = ({
                       />
                     );
                   })}
-                </motion.div>
+                </div>
               </motion.div>
             )}
           </motion.div>

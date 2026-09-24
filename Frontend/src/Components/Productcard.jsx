@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { imageAt, imageSrcSet, CARD_SIZES, HERO_SIZES } from '../utils/imageCdn';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import { isPromoActive, getEffectivePrice, promoMsLeft, formatCountdown } from '../utils/promo';
@@ -125,22 +124,24 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
 
   return (
     <ProductPeekWrapper product={product} buttonColor={buttonColor} buttonTextColor={buttonTextColor}>
-      <motion.div
+      {/* Hundirse al tocar y subir al pasar el mouse, en CSS: en un menú de
+          80 productos, 80 componentes animados de framer-motion eran segundos
+          de procesador en un Android de gama baja. */}
+      <div
         onClick={() => {
           if (isViewOnly || subscriptionStatus === 'suspended') return;
           handleShowToppings();
         }}
-        whileHover={!isDisabled ? { y: -3 } : {}}
-        whileTap={!isDisabled ? { scale: 0.98 } : {}}
-        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        className={`group relative h-full flex flex-col bg-superficie-tarjeta border border-linea rounded-tarjeta shadow-tarjeta overflow-hidden ${
+        className={`group relative h-full flex flex-col bg-superficie-tarjeta border border-linea rounded-tarjeta shadow-tarjeta overflow-hidden transition-transform duration-150 ${
+          isDisabled ? '' : 'active:scale-[0.98] md:hover:-translate-y-0.5'
+        } ${
           isOutOfStock ? 'opacity-50' : ''
         } ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
       >
         {/* La foto, limpia: nada que leer encima salvo las etiquetas. */}
         <div className={`relative overflow-hidden ${tienda ? 'bg-white aspect-square' : `bg-superficie-2 ${isHero ? 'aspect-[2/1]' : 'aspect-[4/3]'}`}`}>
           {product.image ? (
-            <motion.img
+            <img
               src={imageAt(product.image, isHero ? 800 : 400)}
               srcSet={imageSrcSet(product.image) || undefined}
               sizes={imageSrcSet(product.image) ? (isHero ? HERO_SIZES : CARD_SIZES) : undefined}
@@ -156,7 +157,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
             <div className="w-full h-full flex items-center justify-center bg-marca-suave">
               {businessConfig?.logo ? (
                 <img
-                  src={businessConfig.logo}
+                  src={imageAt(businessConfig.logo, 120)}
                   alt=""
                   aria-hidden="true"
                   loading="lazy"
@@ -211,26 +212,13 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
           ) : null}
 
           {/* La confirmación de que entró al carrito. */}
-          <AnimatePresence>
-            {justAdded && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-10 pointer-events-none"
-              >
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: [0, 1.3, 1] }}
-                  transition={{ duration: 0.5 }}
-                  className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl bg-marca text-sobre-marca"
-                >
-                  <Check className="w-6 h-6" strokeWidth={3} />
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {justAdded && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-10 pointer-events-none animate-aparecer">
+              <div className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl bg-marca text-sobre-marca animate-agregado">
+                <Check className="w-6 h-6" strokeWidth={3} />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Nombre, descripción, PRECIO y AGREGAR. Así lo hacen los menús que
@@ -280,7 +268,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
             )}
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {showToppings && (
         <div onClick={(e) => e.stopPropagation()}>

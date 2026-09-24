@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UtensilsCrossed } from 'lucide-react';
 import { derivePalette } from '../utils/menuTokens';
+import { imageAt } from '../utils/imageCdn';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -49,30 +50,26 @@ const SplashScreen = ({ businessConfig, visible }) => {
             transition={{ type: 'spring', stiffness: 260, damping: 22, delay: 0.1 }}
             className="relative z-10"
           >
-            <motion.div
-              className="p-[3px] rounded-full"
+            {/* Los giros van en CSS: corren en la GPU mientras el procesador,
+                que en un Android de gama baja es lo que falta, arma el menú. */}
+            <div
+              className="p-[3px] rounded-full animate-[spin_1.2s_linear_infinite]"
               style={{ background: `conic-gradient(from 0deg, ${palette.accent}, ${palette.ringPartner}, ${palette.accent})` }}
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1.2, ease: 'linear', repeat: Infinity }}
             >
               <div
                 className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden flex items-center justify-center"
                 style={{ background: '#fff', border: '3px solid #fff' }}
               >
                 {/* Contra-rotación: el logo se queda quieto mientras gira el anillo */}
-                <motion.div
-                  className="w-full h-full flex items-center justify-center"
-                  animate={{ rotate: -360 }}
-                  transition={{ duration: 1.2, ease: 'linear', repeat: Infinity }}
-                >
+                <div className="w-full h-full flex items-center justify-center animate-[spin_1.2s_linear_infinite_reverse]">
                   {logoUrl ? (
-                    <img src={logoUrl} alt={businessName} className="w-full h-full object-cover" />
+                    <img src={imageAt(logoUrl, 240)} alt={businessName} className="w-full h-full object-cover" />
                   ) : (
                     <UtensilsCrossed className="w-10 h-10 sm:w-12 sm:h-12" style={{ color: palette.accent }} />
                   )}
-                </motion.div>
+                </div>
               </div>
-            </motion.div>
+            </div>
           </motion.div>
 
           {/* Business name */}
@@ -99,10 +96,8 @@ const SplashScreen = ({ businessConfig, visible }) => {
               className="w-10 h-10 rounded-full border-[3px] border-gray-100"
               style={{ borderTopColor: themeColor }}
             >
-              <motion.div
-                className="w-full h-full"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 0.9, ease: 'linear', repeat: Infinity }}
+              <div
+                className="w-full h-full animate-[spin_0.9s_linear_infinite]"
                 style={{
                   width: '100%',
                   height: '100%',

@@ -78,7 +78,10 @@ const ProductPeekWrapper = ({ children, product, buttonColor, buttonTextColor })
         {children}
       </div>
 
-      {/* Peek overlay */}
+      {/* Vista previa: se monta solo al abrirla. Un AnimatePresence siempre
+          montado en cada tarjeta eran 80 componentes de framer-motion
+          vigilando en un menú grande, para algo que casi nunca se abre. */}
+      {peeking && (
       <AnimatePresence>
         {peeking && (
           <motion.div
@@ -199,6 +202,7 @@ const ProductPeekWrapper = ({ children, product, buttonColor, buttonTextColor })
           </motion.div>
         )}
       </AnimatePresence>
+      )}
     </>
   );
 };

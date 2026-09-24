@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, memo, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBusinessConfig } from "../Context/BusinessContext";
 import { esTienda, palabras } from '../utils/tienda';
@@ -16,7 +16,11 @@ import DeliveryZoneSelector from './DeliveryZoneSelector';
 import SuggestedProducts from './SuggestedProducts';
 import LoyaltyWidget from './LoyaltyWidget';
 import TimeSlotPicker from './TimeSlotPicker';
-import LocationPicker from './Catalog/LocationPicker';
+/* El selector de dirección trae el mapa entero (Leaflet, ~45 KB comprimido).
+   Solo lo necesita quien pide a domicilio: se carga entonces y no al abrir el
+   menú, que es lo que pagaban todos los clientes en un Android de gama baja. */
+const cargarLocationPicker = () => import('./Catalog/LocationPicker');
+const LocationPicker = lazy(cargarLocationPicker);
 import { Capa } from './ui';
 
 /* ── Checkout SVG Icon System (admin-style, no emojis) ── */
@@ -89,6 +93,10 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
   const deliveryAddressRef = useRef(null);
 
   const [showLocationPicker, setShowLocationPicker] = useState(false);
+  // Al elegir domicilio se pide el mapa en segundo plano: listo antes de tocarlo.
+  useEffect(() => {
+    if (orderType === 'delivery') cargarLocationPicker().catch(() => {});
+  }, [orderType]);
   // { coords: { lat, lng, lon }, address: string, city: string }
   const [deliverySelectedLocation, setDeliverySelectedLocation] = useState(null);
   const [step, setStep] = useState(1);
@@ -1476,13 +1484,17 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
       />
 
       {/* Location picker — opens above the cart modal */}
-      <LocationPicker
-        open={showLocationPicker}
-        onClose={() => setShowLocationPicker(false)}
-        onSelect={handleLocationSelected}
-        currentAddress={deliverySelectedLocation?.address}
-        currentCoords={deliverySelectedLocation?.coords}
-      />
+      {showLocationPicker && (
+        <Suspense fallback={null}>
+          <LocationPicker
+            open={showLocationPicker}
+            onClose={() => setShowLocationPicker(false)}
+            onSelect={handleLocationSelected}
+            currentAddress={deliverySelectedLocation?.address}
+            currentCoords={deliverySelectedLocation?.coords}
+          />
+        </Suspense>
+      )}
     </motion.div>
   );
 }

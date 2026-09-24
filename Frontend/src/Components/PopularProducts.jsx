@@ -127,11 +127,8 @@ const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, t
               </p>
             ) : null;
             return (
-              <motion.div
+              <div
                 key={product._id}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.06 }}
                 className="flex-shrink-0 snap-start"
                 style={{ width: 'min(calc(50% - 6px), 260px)' }}
               >
@@ -150,7 +147,7 @@ const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, t
                     <Insignia tono="marca" className="shadow-sm" icono={<Flame className="w-3 h-3" />}>Top</Insignia>
                   ) : null}
                 />
-              </motion.div>
+              </div>
             );
           })}
         </div>
