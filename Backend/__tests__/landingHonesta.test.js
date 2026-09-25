@@ -82,10 +82,18 @@ describe('la landing dice la verdad', () => {
     expect(features).toMatch(/Math\.floor\(n \/ paso\)/);
   });
 
-  it('no vuelven los testimonios inventados', () => {
-    // Se retiraron a proposito; solo vuelven con nombre, foto y link real.
+  it('los testimonios son reales: video grabado en el local y link a su menú', () => {
+    // Los inventados se retiraron; volvieron solo como videos de clientes
+    // reales, cada uno con el enlace a su menú en vivo para comprobarlo.
     const home = front('Pages', 'Landing', 'Home.jsx');
-    expect(home).toMatch(/los testimonios se retiraron a propósito/i);
+    const bloque = home.slice(home.indexOf('const TESTIMONIOS = ['), home.indexOf('];', home.indexOf('const TESTIMONIOS = [')));
+    const videos = [...bloque.matchAll(/video: '([^']+)'/g)].map((m) => m[1]);
+    const slugs = [...bloque.matchAll(/slug: '([^']+)'/g)].map((m) => m[1]);
+    expect(videos.length).toBeGreaterThan(0);
+    expect(slugs.length).toBe(videos.length);
+    for (const v of videos) {
+      expect(fs.existsSync(path.join(__dirname, '..', '..', 'Frontend', 'public', ...v.split('/').filter(Boolean)))).toBe(true);
+    }
   });
 });
 

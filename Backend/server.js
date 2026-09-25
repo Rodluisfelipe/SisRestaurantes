@@ -237,6 +237,7 @@ app.use("/api/credito", require("./Routes/credito")); // Cuentas por cobrar: cr�
 app.use("/api/compras", require("./Routes/compras")); // Proveedores, compras, por pagar y reposición
 app.use("/api/favorites", require("./Routes/favorites")); // Productos favoritos del cliente
 app.use("/api/cuenta", require("./Routes/cuenta")); // "Mi cuenta" del cliente en el menú (con la llave del celular)
+app.use("/api/asistencia", require("./Routes/asistencia")); // Entradas y salidas del equipo con QR, PIN y aviso por Telegram
 app.use("/api/delivery-zones", require("./Routes/deliveryZones")); // Zonas de entrega
 app.use("/api/delivery-admin", require("./Routes/deliveryAdmin")); // Gestión de domiciliarios (admin)
 app.use("/api/delivery-partners", require("./Routes/deliveryPartners")); // Empresas externas de reparto (partners)

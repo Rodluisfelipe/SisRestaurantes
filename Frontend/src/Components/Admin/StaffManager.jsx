@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaUserPlus, FaTrash, FaUsers, FaEye, FaEyeSlash, FaTimes, FaCamera, FaSave, FaToggleOn, FaToggleOff, FaClock, FaPercent, FaDollarSign, FaEdit, FaCheck } from 'react-icons/fa';
 import api from '../../services/api';
 import { Capa } from '../ui';
+import AsistenciaEquipo from './AsistenciaEquipo';
 
 const ROLE_LABELS = { staff: 'Cajero', manager: 'Gerente' };
 const DAYS = [
@@ -403,7 +404,7 @@ const EditProfileModal = ({ member, businessId, onClose, onSaved }) => {
 };
 
 // ── Main Component ──
-const StaffManager = ({ businessId }) => {
+const StaffManager = ({ businessId, businessName }) => {
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -682,6 +683,9 @@ const StaffManager = ({ businessId }) => {
           <li><strong>Perfil público:</strong> Haz clic en un miembro para editar su perfil, horario, comisión y servicios.</li>
         </ul>
       </div>
+
+      {/* Entradas y salidas del equipo con QR y PIN */}
+      <AsistenciaEquipo businessId={businessId} businessName={businessName} />
 
       {/* Edit Profile Modal */}
       <AnimatePresence>

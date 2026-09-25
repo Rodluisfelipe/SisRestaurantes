@@ -41,6 +41,8 @@ const LegalPrivacy = lazy(() => import("./Pages/Landing/Privacy"));
 const LegalTerms = lazy(() => import("./Pages/Landing/Terms"));
 const PrivacidadExtension = lazy(() => import("./Pages/Landing/PrivacidadExtension"));
 const WhatsAppConectado = lazy(() => import("./Pages/Landing/WhatsAppConectado"));
+const PantallaAsistencia = lazy(() => import("./Pages/Asistencia/PantallaAsistencia"));
+const MarcarAsistencia = lazy(() => import("./Pages/Asistencia/MarcarAsistencia"));
 const BlogIndex = lazy(() => import("./Pages/Blog/BlogIndex"));
 const BlogPost = lazy(() => import("./Pages/Blog/BlogPost"));
 const NichePage = lazy(() => import("./Pages/Landing/NichePage"));
@@ -186,6 +188,9 @@ function App() {
 
         {/* Redirección de rutas antiguas para compatibilidad */}
         {/* La vitrina de un dueño con varios negocios: menuby.tech/p/tura */}
+        {/* Asistencia del equipo: la pantalla con el QR del local y lo que abre el celular al escanearlo */}
+        <Route path="/asistencia/:clave" element={<Suspense fallback={null}><PantallaAsistencia /></Suspense>} />
+        <Route path="/marcar/:clave/:codigo" element={<Suspense fallback={null}><MarcarAsistencia /></Suspense>} />
         <Route path="/p/:slug" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-400"></div></div>}><PortafolioPublico /></Suspense>} />
         <Route path="/catalog" element={<Navigate to="/restaurantes" replace />} />
         <Route path="/catalog/*" element={<Navigate to="/restaurantes" replace />} />
