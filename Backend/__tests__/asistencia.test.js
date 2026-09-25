@@ -71,3 +71,38 @@ describe('asistencia: aviso y fechas', () => {
     expect(chatDelVinculo(updates, 'nada')).toBeNull();
   });
 });
+
+describe('asistencia: sedes y protección', () => {
+  const { coordsDeMaps, esLinkMaps, metrosEntre, puedeMarcarEn, candadoMarca } = require('../utils/asistencia');
+
+  test('lee las coordenadas de los links de Google Maps (el punto del lugar manda)', () => {
+    expect(coordsDeMaps('https://www.google.com/maps/place/Fraise/@4.7109,-74.0721,17z/data=!3d4.71123!4d-74.07199')).toEqual({ lat: 4.71123, lng: -74.07199 });
+    expect(coordsDeMaps('https://maps.google.com/?q=4.94030,-74.02448')).toEqual({ lat: 4.9403, lng: -74.02448 });
+    expect(coordsDeMaps('https://maps.app.goo.gl/abc')).toBeNull();
+  });
+
+  test('solo acepta links de Google Maps', () => {
+    expect(esLinkMaps('https://maps.app.goo.gl/xYz')).toBe(true);
+    expect(esLinkMaps('https://www.google.com/maps/place/X')).toBe(true);
+    expect(esLinkMaps('https://www.google.com/search?q=x')).toBe(false);
+    expect(esLinkMaps('https://evil.com/maps')).toBe(false);
+    expect(esLinkMaps('javascript:alert(1)')).toBe(false);
+  });
+
+  test('distancia en metros', () => {
+    expect(metrosEntre({ lat: 4.7109, lng: -74.0721 }, { lat: 4.7118, lng: -74.0721 })).toBe(100);
+    expect(metrosEntre({ lat: 4.7, lng: -74 }, null)).toBeNull();
+  });
+
+  test('sin sedes asignadas marca en cualquiera; con sedes, solo en esas', () => {
+    expect(puedeMarcarEn({ sedes: [] }, 'a')).toBe(true);
+    expect(puedeMarcarEn({ sedes: ['a'] }, 'a')).toBe(true);
+    expect(puedeMarcarEn({ sedes: ['a'] }, 'b')).toBe(false);
+  });
+
+  test('el candado es el mismo dentro del minuto y cambia al siguiente', () => {
+    const t = new Date('2026-09-24T12:00:10Z');
+    expect(candadoMarca('p', t)).toBe(candadoMarca('p', new Date('2026-09-24T12:00:50Z')));
+    expect(candadoMarca('p', t)).not.toBe(candadoMarca('p', new Date('2026-09-24T12:01:10Z')));
+  });
+});

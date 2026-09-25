@@ -9,7 +9,7 @@ import api from '../../services/api';
  * marcar entrada o salida. El QR cambia cada vez que alguien lo escanea, así
  * que una foto del QR no sirve para marcar después.
  */
-const CADA_MS = 2000;
+const CADA_MS = 1500;
 
 export default function PantallaAsistencia() {
   const { clave } = useParams();
@@ -30,7 +30,7 @@ export default function PantallaAsistencia() {
         setError('');
         if (codigoPrevio.current && codigoPrevio.current !== data.codigo) {
           setEscaneado(true);
-          setTimeout(() => vivo && setEscaneado(false), 1800);
+          setTimeout(() => vivo && setEscaneado(false), 1200);
         }
         codigoPrevio.current = data.codigo;
         setDatos(data);
@@ -83,7 +83,8 @@ export default function PantallaAsistencia() {
   const color = datos.negocio.color || '#E8002D';
   const url = `${window.location.origin}/marcar/${clave}/${datos.codigo}`;
   const horaTexto = ahora.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit', hour12: true });
-  const fechaTexto = ahora.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+  const fechaLarga = ahora.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+  const fechaTexto = fechaLarga.charAt(0).toUpperCase() + fechaLarga.slice(1);
 
   return (
     <div className="min-h-[100dvh] bg-slate-50 flex flex-col items-center justify-center p-6 select-none">
@@ -110,7 +111,7 @@ export default function PantallaAsistencia() {
 
       <p className="mt-6 text-xl font-bold text-slate-900 text-center">Escanea con tu celular para marcar entrada o salida</p>
       <p className="mt-4 text-5xl font-black tabular-nums text-slate-900">{horaTexto}</p>
-      <p className="mt-1 text-base text-slate-500 capitalize">{fechaTexto}</p>
+      <p className="mt-1 text-base text-slate-500">{fechaTexto}</p>
     </div>
   );
 }

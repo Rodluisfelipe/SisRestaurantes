@@ -55,39 +55,48 @@ function nombreHoja(nombre, usados) {
 
 const mapa = (u) => (typeof u?.lat === 'number' ? { text: 'Ver mapa', hyperlink: `https://maps.google.com/?q=${u.lat},${u.lng}` } : '');
 
-/** Descarga el Excel: una hoja de resumen y una por empleado. */
-export async function descargarExcel({ marcas, desde, hasta, negocio }) {
+const metros = (m) => (typeof m?.distancia === 'number' ? m.distancia : '');
+
+/**
+ * Descarga el Excel: una hoja de resumen y una por empleado.
+ * `personas` y `sedes` vienen del servidor para poner las sedes asignadas.
+ */
+export async function descargarExcel({ marcas, personas = [], sedes = [], desde, hasta, negocio, sedeFiltro = '' }) {
   const ExcelJS = (await import('exceljs')).default;
   const libro = new ExcelJS.Workbook();
   libro.creator = 'Menuby';
-  const personas = Object.values(armarJornadas(marcas)).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  const nombreSede = new Map(sedes.map((s) => [String(s._id), s.nombre]));
+  const asignadas = new Map(personas.map((p) => [String(p._id), (p.sedes || []).map((id) => nombreSede.get(String(id))).filter(Boolean).join(', ') || 'Todas']));
+  const porPersona = armarJornadas(marcas);
+  const lista = Object.entries(porPersona).map(([id, p]) => ({ id, ...p })).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   const usados = new Set();
-  const negrita = { bold: true };
+  const periodo = `Del ${desde} al ${hasta}${sedeFiltro ? ` · Sede: ${sedeFiltro}` : ''}`;
   const encabezado = (fila) => {
-    fila.font = negrita;
+    fila.font = { bold: true };
     fila.eachCell((c) => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }; });
   };
 
   // Resumen
   const resumen = libro.addWorksheet(nombreHoja('Resumen', usados));
   resumen.addRow([`Asistencia · ${negocio || ''}`]).font = { bold: true, size: 14 };
-  resumen.addRow([`Del ${desde} al ${hasta}`]);
+  resumen.addRow([periodo]);
   resumen.addRow([]);
-  encabezado(resumen.addRow(['Empleado', 'Jornadas completas', 'Horas trabajadas', 'Marcas incompletas']));
-  for (const p of personas) {
+  encabezado(resumen.addRow(['Empleado', 'Sedes asignadas', 'Sedes donde marcó', 'Jornadas completas', 'Horas trabajadas', 'Marcas incompletas']));
+  for (const p of lista) {
     const completas = p.jornadas.filter((j) => j.horas !== null);
     const horas = completas.reduce((s, j) => s + j.horas, 0);
-    resumen.addRow([p.nombre, completas.length, Math.round(horas * 100) / 100, p.jornadas.length - completas.length]);
+    const donde = [...new Set(p.jornadas.flatMap((j) => [j.entrada?.sedeNombre, j.salida?.sedeNombre]).filter(Boolean))].join(', ');
+    resumen.addRow([p.nombre, asignadas.get(p.id) || '', donde, completas.length, Math.round(horas * 100) / 100, p.jornadas.length - completas.length]);
   }
-  resumen.columns = [{ width: 30 }, { width: 20 }, { width: 18 }, { width: 20 }];
+  resumen.columns = [{ width: 28 }, { width: 26 }, { width: 26 }, { width: 18 }, { width: 16 }, { width: 18 }];
 
   // Una hoja por empleado
-  for (const p of personas) {
+  for (const p of lista) {
     const h = libro.addWorksheet(nombreHoja(p.nombre, usados));
     h.addRow([p.nombre]).font = { bold: true, size: 14 };
-    h.addRow([`Del ${desde} al ${hasta}`]);
+    h.addRow([`${periodo} · Sedes asignadas: ${asignadas.get(p.id) || ''}`]);
     h.addRow([]);
-    encabezado(h.addRow(['Fecha', 'Entrada', 'Sede entrada', 'Salida', 'Sede salida', 'Horas', 'Observación', 'Ubicación entrada', 'Ubicación salida']));
+    encabezado(h.addRow(['Fecha', 'Entrada', 'Sede entrada', 'Distancia entrada (m)', 'Salida', 'Sede salida', 'Distancia salida (m)', 'Horas', 'Observación', 'Ubicación entrada', 'Ubicación salida']));
     let total = 0;
     for (const j of p.jornadas) {
       const ref = j.entrada || j.salida;
@@ -96,25 +105,27 @@ export async function descargarExcel({ marcas, desde, hasta, negocio }) {
         fecha(ref.fecha),
         j.entrada ? hora(j.entrada.fecha) : '',
         j.entrada?.sedeNombre || '',
+        metros(j.entrada),
         j.salida ? hora(j.salida.fecha) : '',
         j.salida?.sedeNombre || '',
+        metros(j.salida),
         j.horas ?? '',
         j.nota,
         mapa(j.entrada?.ubicacion),
         mapa(j.salida?.ubicacion),
       ]);
     }
-    const fila = h.addRow(['Total', '', '', '', '', Math.round(total * 100) / 100]);
-    fila.font = negrita;
-    h.columns = [{ width: 18 }, { width: 12 }, { width: 18 }, { width: 12 }, { width: 18 }, { width: 10 }, { width: 34 }, { width: 18 }, { width: 18 }];
+    h.addRow(['Total', '', '', '', '', '', '', Math.round(total * 100) / 100]).font = { bold: true };
+    h.columns = [{ width: 18 }, { width: 12 }, { width: 18 }, { width: 12 }, { width: 12 }, { width: 18 }, { width: 12 }, { width: 10 }, { width: 34 }, { width: 16 }, { width: 16 }];
   }
 
   const buffer = await libro.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  const quien = personas.length === 1 ? `-${personas[0].nombre.replace(/\s+/g, '-')}` : '';
-  a.download = `asistencia${quien}-${desde}-a-${hasta}.xlsx`;
+  const quien = lista.length === 1 ? `-${lista[0].nombre.replace(/\s+/g, '-')}` : '';
+  const donde = sedeFiltro ? `-${sedeFiltro.replace(/\s+/g, '-')}` : '';
+  a.download = `asistencia${quien}${donde}-${desde}-a-${hasta}.xlsx`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }

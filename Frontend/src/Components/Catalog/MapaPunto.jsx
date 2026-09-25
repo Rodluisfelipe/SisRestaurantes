@@ -22,7 +22,7 @@ function cuadrosOsm(lat, lon) {
   return { tx, ty, dx: (x - tx) * 256, dy: (y - ty) * 256 };
 }
 
-export default function MapaPunto({ lat, lon, onAjustar, alto = 132 }) {
+export default function MapaPunto({ lat, lon, onAjustar, alto = 132, etiqueta = 'Ajustar punto de entrega' }) {
   if (typeof lat !== 'number' || typeof lon !== 'number') return null;
 
   let fondo;
@@ -56,7 +56,7 @@ export default function MapaPunto({ lat, lon, onAjustar, alto = 132 }) {
       onClick={onAjustar}
       className="relative w-full overflow-hidden rounded-2xl bg-slate-100 border border-slate-200 block"
       style={{ height: alto }}
-      aria-label="Ajustar el punto de entrega en el mapa"
+      aria-label={etiqueta}
     >
       {fondo}
       {/* El pin, con la punta en el centro exacto. */}
@@ -67,7 +67,7 @@ export default function MapaPunto({ lat, lon, onAjustar, alto = 132 }) {
         </svg>
       </span>
       <span className="absolute left-1/2 bottom-2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/95 px-3 py-1 text-xs font-bold text-slate-800 shadow">
-        Ajustar punto de entrega
+        {etiqueta}
       </span>
     </button>
   );
