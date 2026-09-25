@@ -5,7 +5,8 @@
       "Read(//c/Users/HP VICTUS GAMING/.ssh/**)",
       "Read(//c/Users/HP VICTUS GAMING/AppData/Roaming/Code/User/**)",
       "Bash(xargs grep -l \"remote.SSH\")",
-      "Read(//c/Users/HP VICTUS GAMING/**)"
+      "Read(//c/Users/HP VICTUS GAMING/**)",
+      "Bash(ssh menuby-prod:*)"
     ]
   }
 }

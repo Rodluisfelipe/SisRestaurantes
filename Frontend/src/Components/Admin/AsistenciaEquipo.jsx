@@ -61,7 +61,7 @@ export default function AsistenciaEquipo({ businessId, businessName }) {
 
   useEffect(() => { if (businessId) cargar(); }, [businessId, cargar]);
 
-  const avisar = (t) => { setAviso(t); setTimeout(() => setAviso(''), 3000); };
+  const avisar = useCallback((t) => { setAviso(t); setTimeout(() => setAviso(''), 3000); }, []);
 
   if (error) return <p className="mt-8 text-sm text-red-600">{error}</p>;
   if (!datos) return <div className="mt-10 space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-28 rounded-2xl bg-slate-100 animate-pulse" />)}</div>;
@@ -367,17 +367,36 @@ function Telegram({ businessId, telegram, onCambio, avisar }) {
       window.open(data.enlace, '_blank', 'noopener');
     } catch (err) { setError(err.response?.data?.message || 'No se pudo generar el enlace'); }
   };
-  const comprobar = async () => {
-    setComprobando(true);
-    setError('');
+  const comprobar = useCallback(async (solo = false) => {
+    if (!solo) { setComprobando(true); setError(''); }
     try {
       await api.post('/asistencia/telegram/comprobar', { businessId });
       setEnlace(null);
       avisar('Telegram conectado. Te llegó un mensaje de prueba.');
       onCambio();
-    } catch (err) { setError(err.response?.data?.message || 'No se pudo comprobar'); }
-    setComprobando(false);
-  };
+      return true;
+    } catch (err) {
+      if (!solo) setError(err.response?.data?.message || 'No se pudo comprobar');
+      return false;
+    } finally {
+      if (!solo) setComprobando(false);
+    }
+  }, [businessId, onCambio, avisar]);
+
+  /* Mientras el enlace está abierto, se comprueba solo cada 3 s (hasta 5 min):
+     en Fraise tocaron "Iniciar" en Telegram pero nunca volvieron a tocar
+     "comprobar", y el chat quedó sin conectar. */
+  useEffect(() => {
+    if (!enlace) return undefined;
+    let vivo = true;
+    let intentos = 0;
+    const t = setInterval(async () => {
+      intentos += 1;
+      if (!vivo || intentos > 100) { clearInterval(t); return; }
+      if (await comprobar(true)) clearInterval(t);
+    }, 3000);
+    return () => { vivo = false; clearInterval(t); };
+  }, [enlace, comprobar]);
   const quitar = async () => {
     if (!window.confirm('¿Dejar de enviar los avisos por Telegram?')) return;
     await api.delete('/asistencia/telegram', { params: { businessId } });
@@ -408,10 +427,10 @@ function Telegram({ businessId, telegram, onCambio, avisar }) {
           ) : (
             <div className="rounded-xl bg-sky-50 border border-sky-100 p-3 text-sm text-sky-900 space-y-1">
               <p>1. En Telegram toca <b>Iniciar</b> (se abrió en otra pestaña; si no, <a href={enlace} target="_blank" rel="noopener noreferrer" className="underline font-semibold">ábrelo aquí</a>).</p>
-              <p>2. Vuelve y toca comprobar.</p>
+              <p className="flex items-center gap-1.5">2. Vuelve aquí: lo detectamos solo <Loader2 className="w-3.5 h-3.5 animate-spin" /></p>
               <div className="flex gap-2 pt-2">
-                <button type="button" onClick={comprobar} disabled={comprobando} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-sky-500 text-white text-sm font-semibold disabled:opacity-60">
-                  {comprobando ? <><Loader2 className="w-4 h-4 animate-spin" /> Comprobando…</> : 'Ya toqué Iniciar, comprobar'}
+                <button type="button" onClick={() => comprobar()} disabled={comprobando} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-sky-500 text-white text-sm font-semibold disabled:opacity-60">
+                  {comprobando ? <><Loader2 className="w-4 h-4 animate-spin" /> Comprobando…</> : 'Comprobar ahora'}
                 </button>
                 <button type="button" onClick={() => setEnlace(null)} className={botonSec}>Cancelar</button>
               </div>
