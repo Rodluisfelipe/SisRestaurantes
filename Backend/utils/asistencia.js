@@ -92,6 +92,22 @@ function chatDelVinculo(updates, codigo) {
   return null;
 }
 
+const MAX_FOTO_BYTES = 400 * 1024;
+
+/**
+ * La foto del rostro llega como data URL JPEG desde la cámara en vivo.
+ * Devuelve el Buffer, o null si no es un JPEG válido o pesa demasiado.
+ */
+function fotoDeDataUrl(dataUrl) {
+  const m = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || ''));
+  if (!m) return null;
+  const buf = Buffer.from(m[1], 'base64');
+  if (buf.length < 2000 || buf.length > MAX_FOTO_BYTES) return null;
+  // Firma de JPEG (FF D8 FF): que sea una imagen de verdad.
+  if (buf[0] !== 0xff || buf[1] !== 0xd8 || buf[2] !== 0xff) return null;
+  return buf;
+}
+
 /** Candado de la marca: persona + minuto. */
 function candadoMarca(personaId, fecha = new Date()) {
   return `${personaId}:${Math.floor(new Date(fecha).getTime() / 60000)}`;
@@ -156,6 +172,7 @@ function puedeMarcarEn(persona, sedeId) {
 }
 
 module.exports = {
+  fotoDeDataUrl,
   candadoMarca,
   esLinkMaps,
   coordsValidas,

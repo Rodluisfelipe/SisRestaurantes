@@ -30,6 +30,25 @@ async function enviar(chatId, texto) {
   }
 }
 
+/** Foto con el texto como pie (la del rostro al marcar asistencia). */
+async function enviarFoto(chatId, jpeg, texto) {
+  if (!configurado()) return false;
+  try {
+    const form = new FormData();
+    form.append('chat_id', String(chatId));
+    form.append('caption', texto);
+    form.append('parse_mode', 'HTML');
+    form.append('photo', new Blob([jpeg], { type: 'image/jpeg' }), 'rostro.jpg');
+    const r = await fetch(url('sendPhoto'), { method: 'POST', body: form, signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).description || `HTTP ${r.status}`);
+    return true;
+  } catch (err) {
+    logger.warn('Telegram: no se pudo enviar la foto', { chatId, error: err.message });
+    // Que el aviso llegue aunque la foto falle.
+    return enviar(chatId, texto);
+  }
+}
+
 /** Mensajes que le han llegado al bot (se usa para vincular chats). */
 async function actualizaciones(offset) {
   const { data } = await axios.get(url('getUpdates'), {
@@ -39,4 +58,4 @@ async function actualizaciones(offset) {
   return data?.result || [];
 }
 
-module.exports = { configurado, usuarioBot, enviar, actualizaciones };
+module.exports = { configurado, usuarioBot, enviar, enviarFoto, actualizaciones };

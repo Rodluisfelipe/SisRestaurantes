@@ -106,3 +106,19 @@ describe('asistencia: sedes y protección', () => {
     expect(candadoMarca('p', t)).not.toBe(candadoMarca('p', new Date('2026-09-24T12:01:10Z')));
   });
 });
+
+describe('asistencia: foto del rostro', () => {
+  const { fotoDeDataUrl } = require('../utils/asistencia');
+  const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(20000, 3)]);
+
+  test('acepta el JPEG que sale de la cámara', () => {
+    expect(fotoDeDataUrl(`data:image/jpeg;base64,${jpeg.toString('base64')}`)).toBeInstanceOf(Buffer);
+  });
+
+  test('rechaza otros formatos, archivos disfrazados y fotos enormes', () => {
+    expect(fotoDeDataUrl(`data:image/png;base64,${jpeg.toString('base64')}`)).toBeNull();
+    expect(fotoDeDataUrl(`data:image/jpeg;base64,${Buffer.alloc(20000, 3).toString('base64')}`)).toBeNull();
+    expect(fotoDeDataUrl(`data:image/jpeg;base64,${Buffer.concat([jpeg, Buffer.alloc(500000)]).toString('base64')}`)).toBeNull();
+    expect(fotoDeDataUrl(undefined)).toBeNull();
+  });
+});

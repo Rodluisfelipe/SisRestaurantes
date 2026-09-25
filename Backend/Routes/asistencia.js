@@ -13,7 +13,7 @@ const logger = require('../utils/logger');
 const telegram = require('../utils/telegram');
 const {
   secreto, hashPin, pinValido, codigoAleatorio, siguienteTipo, hora, mensajeTelegram, inicioDelDia, chatDelVinculo,
-  candadoMarca, esLinkMaps, coordsValidas, coordsDeMaps, metrosEntre, puedeMarcarEn,
+  candadoMarca, esLinkMaps, coordsValidas, coordsDeMaps, metrosEntre, puedeMarcarEn, fotoDeDataUrl,
 } = require('../utils/asistencia');
 
 /**
@@ -134,7 +134,7 @@ router.post('/identificar', limiteMarcar, async (req, res) => {
     }
     const ultima = await AsistenciaMarca.findOne({ personaId: persona._id }).sort({ fecha: -1 }).select('tipo fecha').lean();
     const tipo = siguienteTipo(ultima, new Date());
-    if (!tipo) return res.status(409).json({ message: `Ya quedó registrada tu ${ultima.tipo} de las ${hora(ultima.fecha)}.` });
+    if (!tipo) return res.status(409).json({ message: `Ya quedó registrada tu ${ultima.tipo} de las ${hora(ultima.fecha)}` });
 
     const confirmacion = jwt.sign({ j: pase.j, b: pase.b, s: pase.s, p: String(persona._id) }, secreto('asistencia-confirmar'), { expiresIn: `${CONFIRMACION_MIN}m` });
     res.json({ confirmacion, nombre: persona.nombre, tipo, sede: sede?.nombre || '' });
@@ -154,6 +154,9 @@ router.post('/confirmar', limiteMarcar, async (req, res) => {
   const lat = Number(req.body.ubicacion?.lat);
   const lng = Number(req.body.ubicacion?.lng);
   if (!coordsValidas(lat, lng)) return res.status(400).json({ message: 'Necesitamos tu ubicación para registrar la marca.' });
+  // La foto del rostro, tomada en el momento con la cámara (no de la galería).
+  const foto = fotoDeDataUrl(req.body.foto);
+  if (!foto) return res.status(400).json({ message: 'Tómate la foto del rostro para registrar la marca.', sinFoto: true });
 
   estado.usado = true; // antes de ir a la base: un doble toque no pasa de aquí
   try {
@@ -166,7 +169,7 @@ router.post('/confirmar', limiteMarcar, async (req, res) => {
     const ahora = new Date();
     const ultima = await AsistenciaMarca.findOne({ personaId: persona._id }).sort({ fecha: -1 }).select('tipo fecha').lean();
     const tipo = siguienteTipo(ultima, ahora);
-    if (!tipo) return res.status(409).json({ message: `Ya quedó registrada tu ${ultima.tipo} de las ${hora(ultima.fecha)}.`, yaRegistrada: true });
+    if (!tipo) return res.status(409).json({ message: `Ya quedó registrada tu ${ultima.tipo} de las ${hora(ultima.fecha)}`, yaRegistrada: true });
 
     const ubicacion = { lat, lng, precision: Number(req.body.ubicacion?.precision) || undefined };
     const marca = await AsistenciaMarca.create({
@@ -182,10 +185,11 @@ router.post('/confirmar', limiteMarcar, async (req, res) => {
       candado: candadoMarca(persona._id, ahora),
     });
 
-    // Aviso inmediato por Telegram, sin hacer esperar al empleado.
+    // Aviso inmediato por Telegram con la foto del rostro, sin hacer esperar
+    // al empleado. La foto no se guarda en Menuby: solo viaja en el aviso.
     AsistenciaConfig.findOne({ businessId: c.b }).select('telegram.chats').lean().then((cfg) => {
       const texto = mensajeTelegram({ nombre: marca.nombre, tipo, sedeNombre: marca.sedeNombre, fecha: ahora });
-      for (const chat of cfg?.telegram?.chats || []) telegram.enviar(chat.chatId, texto);
+      for (const chat of cfg?.telegram?.chats || []) telegram.enviarFoto(chat.chatId, foto, texto);
     }).catch(() => {});
 
     res.status(201).json({ tipo, nombre: persona.nombre, hora: hora(ahora), sede: marca.sedeNombre });

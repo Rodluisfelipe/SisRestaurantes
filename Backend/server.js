@@ -166,6 +166,11 @@ app.use(compression());
    es un HMAC sobre los bytes originales, y el JSON ya parseado y vuelto a
    serializar da otro resultado. Se limita a esa ruta para no duplicar en
    memoria el cuerpo de todas las peticiones. */
+/* La confirmación de asistencia trae la foto del rostro (JPEG ~40-80 KB en
+   base64): su propio límite, antes del general. body-parser no vuelve a leer
+   un cuerpo ya leído, así que el de 100 KB no la toca. */
+app.use('/api/asistencia/confirmar', express.json({ limit: '600kb' }));
+
 app.use(express.json({
   limit: '100kb',
   verify: (req, res, buf) => {

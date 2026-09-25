@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { MapPin, Delete, LogIn, LogOut, RotateCcw, Loader2, Check } from 'lucide-react';
+import { MapPin, Delete, RotateCcw, Loader2, Check, Camera, CameraOff } from 'lucide-react';
 import api from '../../services/api';
 
 /**
@@ -10,6 +10,10 @@ import api from '../../services/api';
  * el teclado del PIN aparece de una vez. Con el PIN, el servidor dice quién es
  * y qué va a marcar ("Hola Ana · ENTRADA"); la marca solo se registra cuando
  * la persona confirma.
+ *
+ * Al confirmar se toma una foto del rostro con la cámara frontal EN VIVO
+ * (no deja escoger de la galería) y esa foto le llega al dueño por Telegram
+ * junto con el aviso.
  *
  * Protegido contra el doble escaneo: si el mismo celular abre el link dos
  * veces (dos pestañas, la cámara que abre dos veces) se reutiliza el mismo
@@ -59,6 +63,19 @@ function obtenerUbicacion() {
   });
 }
 
+/** Recorta el centro del video en cuadrado y lo baja a JPEG liviano. */
+function capturar(video) {
+  const w = video.videoWidth;
+  const h = video.videoHeight;
+  if (!w || !h) return null;
+  const lado = Math.min(w, h);
+  const canvas = document.createElement('canvas');
+  canvas.width = 480;
+  canvas.height = 480;
+  canvas.getContext('2d').drawImage(video, (w - lado) / 2, (h - lado) / 2, lado, lado, 0, 0, 480, 480);
+  return canvas.toDataURL('image/jpeg', 0.72);
+}
+
 export default function MarcarAsistencia() {
   const { clave, codigo } = useParams();
   const [paso, setPaso] = useState('escaneando'); // escaneando | pin | verificando | confirmar | registrando | listo | fallo
@@ -71,6 +88,44 @@ export default function MarcarAsistencia() {
   const [fallo, setFallo] = useState('');
   const promesaUbic = useRef(null);
   const ocupado = useRef(false);
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const [camara, setCamara] = useState({ estado: 'apagada' }); // apagada | iniciando | lista | error
+  const [foto, setFoto] = useState(null);
+
+  const apagarCamara = useCallback(() => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+  }, []);
+
+  const encenderCamara = useCallback(async () => {
+    if (streamRef.current) return;
+    setCamara({ estado: 'iniciando' });
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) throw Object.assign(new Error('sin-camara'), { name: 'NotSupportedError' });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 720 } }, audio: false });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => {});
+      }
+      setCamara({ estado: 'lista' });
+    } catch (err) {
+      setCamara({
+        estado: 'error',
+        mensaje: err.name === 'NotAllowedError'
+          ? 'Permite el uso de la cámara para tomarte la foto (en los ajustes del navegador, para este sitio).'
+          : 'No pudimos abrir la cámara frontal de tu celular.',
+      });
+    }
+  }, []);
+
+  // La cámara se abre al llegar a la confirmación y se apaga al salir de ella.
+  useEffect(() => {
+    if (paso === 'confirmar' || paso === 'registrando') encenderCamara();
+    else apagarCamara();
+  }, [paso, encenderCamara, apagarCamara]);
+  useEffect(() => apagarCamara, [apagarCamara]);
 
   const pedirUbicacion = useCallback(() => {
     setUbic({ estado: 'buscando' });
@@ -122,13 +177,18 @@ export default function MarcarAsistencia() {
   const confirmar = async () => {
     if (ocupado.current) return;
     ocupado.current = true;
+    const imagen = foto || (videoRef.current && capturar(videoRef.current));
+    if (!imagen) { ocupado.current = false; setAviso('No pudimos tomar la foto. Intenta de nuevo.'); return; }
+    setFoto(imagen);
+    setAviso('');
     setPaso('registrando');
     try {
       const u = ubic.estado === 'lista' ? ubic : await (promesaUbic.current || pedirUbicacion());
-      if (!u) { setPaso('confirmar'); return; }
+      if (!u) { setFoto(null); setPaso('confirmar'); return; }
       const { data } = await api.post('/asistencia/confirmar', {
         confirmacion: quien.confirmacion,
         ubicacion: { lat: u.lat, lng: u.lng, precision: u.precision },
+        foto: imagen,
       });
       borrarCache(codigo);
       setResultado(data);
@@ -138,7 +198,7 @@ export default function MarcarAsistencia() {
       const d = e.response?.data || {};
       if (d.yaRegistrada) { borrarCache(codigo); setResultado({ ...quien, hora: '', yaEstaba: true, mensaje: d.message }); setPaso('listo'); }
       else if (d.vencido) vencer(d.message);
-      else { setAviso(d.message || 'No se pudo registrar. Intenta de nuevo.'); setPaso('confirmar'); }
+      else { setFoto(null); setAviso(d.message || 'No se pudo registrar. Intenta de nuevo.'); setPaso('confirmar'); }
     } finally {
       ocupado.current = false;
     }
@@ -152,7 +212,7 @@ export default function MarcarAsistencia() {
     if (nuevo.length === LARGO_PIN) identificar(nuevo);
   };
 
-  const noSoyYo = () => { setQuien(null); setPin(''); setAviso(''); setPaso('pin'); };
+  const noSoyYo = () => { setQuien(null); setFoto(null); setPin(''); setAviso(''); setPaso('pin'); };
 
   const color = info?.negocio?.color || '#E8002D';
   const esEntrada = (quien || resultado)?.tipo === 'entrada';
@@ -233,28 +293,42 @@ export default function MarcarAsistencia() {
 
         {(paso === 'confirmar' || paso === 'registrando') && quien && (
           <div className="flex-1 flex flex-col justify-center animate-aparecer">
-            <div className="rounded-3xl bg-white border border-slate-200 p-6 text-center shadow-[0_12px_40px_rgba(15,23,42,0.08)]">
-              <span className="mx-auto w-16 h-16 rounded-full flex items-center justify-center text-2xl font-black text-white" style={{ background: colorTipo }}>
-                {quien.nombre.trim().charAt(0).toUpperCase()}
-              </span>
+            <div className="rounded-3xl bg-white border border-slate-200 p-5 text-center shadow-[0_12px_40px_rgba(15,23,42,0.08)]">
+              {/* Cámara frontal en vivo: la foto se toma aquí, nunca de la galería */}
+              <div className="relative mx-auto w-44 h-44 rounded-full overflow-hidden bg-slate-100" style={{ boxShadow: `0 0 0 5px ${colorTipo}26` }}>
+                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover -scale-x-100" />
+                {foto && <img src={foto} alt="Tu foto" className="absolute inset-0 w-full h-full object-cover -scale-x-100" />}
+                {camara.estado !== 'lista' && !foto && (
+                  <div className="absolute inset-0 flex items-center justify-center text-slate-400">
+                    {camara.estado === 'error' ? <CameraOff className="w-10 h-10" /> : <Loader2 className="w-9 h-9 animate-spin" />}
+                  </div>
+                )}
+              </div>
               <p className="mt-3 text-2xl font-black text-slate-900">Hola, {quien.nombre.split(' ')[0]}</p>
-              <p className="mt-1 text-[15px] text-slate-500">Vas a marcar tu</p>
-              <p className="mt-1 text-4xl font-black tracking-tight" style={{ color: colorTipo }}>{esEntrada ? 'ENTRADA' : 'SALIDA'}</p>
-              <p className="mt-2 text-[15px] font-semibold text-slate-700">
+              <p className="mt-0.5 text-3xl font-black tracking-tight" style={{ color: colorTipo }}>{esEntrada ? 'ENTRADA' : 'SALIDA'}</p>
+              <p className="mt-1 text-[15px] font-semibold text-slate-700">
                 {quien.sede} · {new Date().toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit', hour12: true })}
               </p>
+              {camara.estado === 'error' ? (
+                <div className="mt-3 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[13px] font-semibold text-amber-800">
+                  {camara.mensaje}{' '}
+                  <button type="button" onClick={() => { apagarCamara(); encenderCamara(); }} className="underline">Reintentar</button>
+                </div>
+              ) : (
+                <p className="mt-2 text-[13px] text-slate-500">Mira a la cámara: la foto se toma al confirmar.</p>
+              )}
             </div>
             <p className="mt-3 min-h-[20px] text-center text-[14px] font-semibold text-red-600" role="alert">{aviso}</p>
             <button
               type="button"
               onClick={confirmar}
-              disabled={paso === 'registrando' || ubic.estado === 'error'}
+              disabled={paso === 'registrando' || ubic.estado === 'error' || camara.estado !== 'lista'}
               className="mt-2 w-full h-16 rounded-2xl text-white text-[18px] font-black flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-60"
               style={{ background: colorTipo }}
             >
               {paso === 'registrando'
                 ? <><Loader2 className="w-5 h-5 animate-spin" /> {ubic.estado === 'buscando' ? 'Esperando tu ubicación…' : 'Registrando…'}</>
-                : <>{esEntrada ? <LogIn className="w-6 h-6" /> : <LogOut className="w-6 h-6" />} Confirmar {esEntrada ? 'entrada' : 'salida'}</>}
+                : <><Camera className="w-6 h-6" /> Tomar foto y confirmar {esEntrada ? 'entrada' : 'salida'}</>}
             </button>
             <button type="button" onClick={noSoyYo} disabled={paso === 'registrando'} className="mt-3 h-11 text-[15px] font-semibold text-slate-500 disabled:opacity-40">
               No soy yo
