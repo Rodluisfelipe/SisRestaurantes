@@ -246,6 +246,23 @@ function esPersonalDelNegocio(req) {
   }
 }
 
+/* ¿Quien hace la petición es personal de ESTE negocio (o superadmin)? Cargar a
+   crédito es prestar plata del negocio: no basta con cualquier token válido. */
+async function personalDeEsteNegocio(req, businessId) {
+  const cabecera = req.headers.authorization || '';
+  if (!cabecera.startsWith('Bearer ')) return false;
+  try {
+    const decoded = jwt.verify(cabecera.slice(7), process.env.JWT_SECRET);
+    if (decoded?.role === 'superadmin') return true;
+    if (!decoded?.id) return false;
+    const Admin = require('../Models/Admin');
+    const quien = await Admin.findById(decoded.id).select('businessId').lean();
+    return !!quien && String(quien.businessId) === String(businessId);
+  } catch {
+    return false;
+  }
+}
+
 // Create a new order — el personal autenticado no pasa por los límites del comensal
 router.post("/", (req, res, next) => {
   if (esPersonalDelNegocio(req)) return next();
@@ -484,6 +501,25 @@ router.post("/", (req, res, next) => {
     // Generate order number
     const orderNumber = await generateOrderNumber(businessObjectId);
     
+    /* Pedido rápido a crédito: solo el personal del negocio, a un cliente con
+       crédito habilitado y sin pasar su cupo. Se revisa antes de tocar nada;
+       el cargo se hace con el pedido ya guardado (más abajo). */
+    let clienteCredito = null;
+    if (req.body.usarCredito === true) {
+      if (!(await personalDeEsteNegocio(req, businessObjectId))) {
+        return res.status(403).json({ message: 'Solo el personal del negocio puede cargar un pedido a crédito.' });
+      }
+      clienteCredito = phone ? await Customer.findOne({ phone, businessId: businessObjectId }).select('name credito').lean() : null;
+      if (!clienteCredito?.credito?.habilitado) {
+        return res.status(400).json({ message: 'Este cliente no tiene crédito habilitado.' });
+      }
+      const valor = Math.round((Number(numericTotalAmount) || 0) + (orderType === 'delivery' ? Math.max(0, parseFloat(deliveryFee) || 0) : 0));
+      const disponible = Math.max(0, (clienteCredito.credito.cupo || 0) - (clienteCredito.credito.saldo || 0));
+      if (valor > disponible) {
+        return res.status(400).json({ message: `Supera el cupo: le quedan $${disponible.toLocaleString('es-CO')} disponibles.` });
+      }
+    }
+
     // Find or create customer
     let customer = null;
     if (phone) {
@@ -604,7 +640,8 @@ router.post("/", (req, res, next) => {
       /* De qué enlace vino el cliente. Se recorta y se limpia porque llega de
          la URL, que la escribe cualquiera. */
       source: source ? String(source).trim().slice(0, 40).replace(/[^\w.-]/g, '') || null : null,
-      paymentMethod: paymentMethod || null,
+      paymentMethod: clienteCredito ? 'credito' : (paymentMethod || null),
+      ...(clienteCredito ? { credito: { customerId: clienteCredito._id, cargado: 0, version: 0 } } : {}),
       customerToken,
       customerNotes: stripHtml(customerNotes || ''),
       // Gift order fields
@@ -644,6 +681,16 @@ router.post("/", (req, res, next) => {
     });
     
     const savedOrder = await newOrder.save();
+
+    // El cargo a la cuenta del cliente, con el pedido ya guardado.
+    if (clienteCredito) {
+      try {
+        const r = await sincronizarCreditoPedido(savedOrder.toObject(), { usuario: req.user?.name || '' });
+        if (r) savedOrder.credito.cargado = valorDelPedido(savedOrder);
+      } catch (errCredito) {
+        logger.error('No se pudo cargar el pedido al crédito', { error: errCredito.message, orderId: savedOrder._id });
+      }
+    }
 
     /* La venta descuenta del inventario y queda registrada en el historial.
        Antes esto se hacía con un updateOne suelto que no dejaba rastro: el
@@ -1340,6 +1387,12 @@ async function actualizarEstadoPedido(req, res) {
         userId: req.user?.id,
         note: 'Pedido cancelado',
       });
+      // Si era a crédito, se le devuelve al cliente.
+      try {
+        await sincronizarCreditoPedido(updatedOrder.toObject ? updatedOrder.toObject() : updatedOrder);
+      } catch (e) {
+        logger.error('No se pudo devolver el crédito del pedido cancelado', { error: e.message, orderId: id });
+      }
     }
 
     // Emit socket event
@@ -1669,6 +1722,7 @@ router.patch("/:id/add-items", tenantAuth, async (req, res) => {
     order.updatedAt = new Date();
 
     await order.save();
+    try { await sincronizarCreditoPedido(order.toObject()); } catch (e) { logger.error('No se pudo ajustar el crédito del pedido', { error: e.message, orderId: order._id }); }
 
     // Emit socket event so dashboards update in real time
     socketService.emitToBusiness(order.businessId.toString(), "order_updated", order);
@@ -1692,6 +1746,7 @@ router.patch("/:id/add-items", tenantAuth, async (req, res) => {
 /* El inventario se mueve en services/inventario.js: la misma operación la
    usan las ventas, las cancelaciones y las devoluciones. */
 const { moverStock } = require('../services/inventario');
+const { sincronizarCreditoPedido, valorDelPedido } = require('../services/credito');
 
 /* Precio de una línea con sus adiciones incluidas. Mismo criterio que usa
    add-items para no separarse con el tiempo. */
@@ -1832,6 +1887,7 @@ router.patch("/:id/items", tenantAuth, async (req, res) => {
     order.pendingKitchenChanges.push({ text: linea, qty: unidades, at: new Date() });
 
     await order.save();
+    try { await sincronizarCreditoPedido(order.toObject()); } catch (e) { logger.error('No se pudo ajustar el crédito del pedido', { error: e.message, orderId: order._id }); }
 
     logger.info('Pedido modificado', { orderId: order._id.toString(), orderNumber: order.orderNumber, cambio: nota });
 
@@ -2117,7 +2173,13 @@ router.delete("/:id", tenantAuth, validateDeleteOrder, async (req, res) => {
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
-    
+    // Un pedido a crédito que se elimina ya no se le cobra al cliente.
+    try {
+      await sincronizarCreditoPedido(order.toObject(), { anular: true });
+    } catch (e) {
+      logger.error('No se pudo devolver el crédito del pedido eliminado', { error: e.message, orderId: id });
+    }
+
     // Emit socket event
     socketService.emitToBusiness(order.businessId.toString(), "order_deleted", { _id: id });
     

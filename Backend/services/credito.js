@@ -69,4 +69,56 @@ async function clienteDeLaCaja(businessId, { clienteId, telefono }) {
   return null;
 }
 
-module.exports = { mover, clienteDeLaCaja };
+/** Lo que vale un pedido para el cliente (productos + envío − descuento + propina). */
+function valorDelPedido(o) {
+  if (typeof o.finalAmount === 'number' && o.finalAmount > 0) return Math.round(o.finalAmount);
+  return Math.max(0, Math.round((o.totalAmount || 0) + (o.deliveryFee || 0) - (o.discountAmount || 0) + (o.tipAmount || 0)));
+}
+
+/**
+ * Deja la deuda del cliente igual a lo que vale su pedido a crédito.
+ *
+ * El pedido guarda cuánto se le cargó (`credito.cargado`). Si el pedido cambia
+ * (se agregan o quitan productos) se carga o abona la diferencia; si se
+ * cancela o se elimina, se le devuelve todo. Cada ajuste lleva su propio
+ * `origenId` (pedido + versión), así un reintento no mueve el saldo dos veces.
+ *
+ * @param {object} pedido  El pedido tal como quedó (lean o documento).
+ * @param {{ anular?: boolean, usuario?: string }} [opciones]
+ */
+async function sincronizarCreditoPedido(pedido, { anular = false, usuario = '' } = {}) {
+  const Order = require('../Models/Order');
+  const credito = pedido?.credito;
+  if (!credito?.customerId) return null;
+
+  const objetivo = anular || pedido.status === 'cancelled' ? 0 : valorDelPedido(pedido);
+  const cargado = Math.round(credito.cargado || 0);
+  const diferencia = objetivo - cargado;
+  if (!diferencia) return null;
+
+  /* Reservar el ajuste: solo gana quien vea el mismo `cargado` y la misma
+     versión. Si el pedido ya se borró (anular), se usa la versión que traía. */
+  const version = (credito.version || 0) + 1;
+  if (!anular) {
+    const reservado = await Order.updateOne(
+      { _id: pedido._id, 'credito.cargado': cargado, 'credito.version': credito.version || 0 },
+      { $set: { 'credito.cargado': objetivo, 'credito.version': version } },
+    );
+    if (!reservado.modifiedCount) return null;
+  }
+
+  return mover({
+    businessId: pedido.businessId,
+    customerId: credito.customerId,
+    tipo: diferencia > 0 ? 'cargo' : 'abono',
+    monto: Math.abs(diferencia),
+    origenId: `pedido-${pedido._id}-${version}`,
+    origen: 'panel',
+    medio: 'pedido',
+    referencia: `Pedido #${pedido.orderNumber}`,
+    usuario,
+    nota: objetivo === 0 ? 'Pedido cancelado' : cargado === 0 ? 'Pedido rápido a crédito' : 'Ajuste del pedido',
+  });
+}
+
+module.exports = { mover, clienteDeLaCaja, valorDelPedido, sincronizarCreditoPedido };

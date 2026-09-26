@@ -72,6 +72,26 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
   const [error, setError] = useState('');
   const searchTimerRef = useRef(null);
 
+  /* Crédito del cliente: si el teléfono es de alguien con crédito habilitado,
+     en la revisión aparece la opción de cargarle el pedido (o no). */
+  const [credito, setCredito] = useState(null); // { cupo, saldo } | null
+  const [usarCredito, setUsarCredito] = useState(false);
+  useEffect(() => {
+    setCredito(null);
+    setUsarCredito(false);
+    const tel = customerPhone.trim();
+    if (!isOpen || tel.length < 7) return undefined;
+    let vivo = true;
+    const t = setTimeout(async () => {
+      try {
+        const { data } = await api.get('/credito', { params: { businessId, q: tel } });
+        const c = (data.clientes || []).find((x) => x.phone === tel);
+        if (vivo && c?.credito?.habilitado) setCredito({ cupo: c.credito.cupo || 0, saldo: c.credito.saldo || 0 });
+      } catch { /* sin permiso o sin red: el pedido sigue normal */ }
+    }, 350);
+    return () => { vivo = false; clearTimeout(t); };
+  }, [customerPhone, isOpen, businessId]);
+
   // Reset everything on open
   useEffect(() => {
     if (isOpen) {
@@ -222,6 +242,9 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
 
   const canProceedToProducts = customerName.trim().length > 0;
   const canSubmit = cart.length > 0 && customerName.trim().length > 0;
+  const disponibleCredito = credito ? Math.max(0, credito.cupo - credito.saldo) : 0;
+  const alcanzaCredito = !!credito && grandTotal <= disponibleCredito;
+  const cargarACredito = usarCredito && alcanzaCredito;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -235,7 +258,8 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
         orderType,
         tableNumber: orderType === 'inSite' ? tableNumber : undefined,
         address: orderType === 'delivery' ? address : undefined,
-        paymentMethod,
+        paymentMethod: cargarACredito ? 'credito' : paymentMethod,
+        ...(cargarACredito ? { usarCredito: true } : {}),
         customerNotes: customerNotes.trim() || undefined,
         orderChannel: channel,
         items: cart.map(item => ({
@@ -655,7 +679,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
                   {tableNumber && <span>· Mesa {tableNumber}</span>}
                   {address && <span>· {address}</span>}
                   {selectedZone && <span>· Zona: {selectedZone.name}</span>}
-                  <span>· {PAYMENT_METHODS.find(p => p.value === paymentMethod)?.label}</span>
+                  <span>· {cargarACredito ? 'A crédito' : PAYMENT_METHODS.find(p => p.value === paymentMethod)?.label}</span>
                 </div>
                 {customerNotes && <p className="text-[11px] text-amber-600">Nota: {customerNotes}</p>}
               </div>
@@ -715,6 +739,38 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
                 <span className="text-sm font-bold">Total</span>
                 <span className="text-lg font-bold">${grandTotal.toLocaleString()}</span>
               </div>
+
+              {/* Crédito: solo si el cliente lo tiene habilitado */}
+              {credito && (
+                <div className={`rounded-xl border p-3 ${cargarACredito ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-white'}`}>
+                  <label className={`flex items-start gap-3 ${alcanzaCredito ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 w-5 h-5 accent-blue-600 shrink-0"
+                      checked={cargarACredito}
+                      disabled={!alcanzaCredito}
+                      onChange={(e) => setUsarCredito(e.target.checked)}
+                    />
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[14px] font-bold text-slate-900">Cargar a su crédito</span>
+                      <span className="block text-[12px] text-slate-500">
+                        Disponible ${disponibleCredito.toLocaleString('es-CO')} de ${credito.cupo.toLocaleString('es-CO')}
+                        {credito.saldo > 0 && ` · debe $${credito.saldo.toLocaleString('es-CO')}`}
+                      </span>
+                      {!alcanzaCredito && (
+                        <span className="block mt-1 text-[12px] font-semibold text-amber-700">
+                          Supera el cupo: le faltan ${(grandTotal - disponibleCredito).toLocaleString('es-CO')}
+                        </span>
+                      )}
+                      {cargarACredito && (
+                        <span className="block mt-1 text-[12px] font-semibold text-blue-700">
+                          Después de este pedido debe ${(credito.saldo + grandTotal).toLocaleString('es-CO')}
+                        </span>
+                      )}
+                    </span>
+                  </label>
+                </div>
+              )}
 
               <p className="text-[11px] text-slate-400 text-center">
                 El pedido se creará en estado <strong>En preparación</strong>. No se envía mensaje al cliente.

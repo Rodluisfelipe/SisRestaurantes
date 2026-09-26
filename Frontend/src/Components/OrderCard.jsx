@@ -14,7 +14,7 @@ const PAYMENT_LABELS = {
   cash: 'Efectivo', efectivo: 'Efectivo',
   nequi: 'Nequi', daviplata: 'Daviplata',
   transfer: 'Transferencia', transferencia: 'Transferencia',
-  roomCharge: 'Cargo a habitación', other: 'Otro'
+  roomCharge: 'Cargo a habitación', credito: 'Crédito', other: 'Otro'
 };
 
 function OrderCard({

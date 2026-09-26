@@ -80,12 +80,20 @@ const orderSchema = new mongoose.Schema({
     type: String,
     /* 'bold' = tarjeta por la pasarela. Lo pone el webhook de Bold cuando
        el cobro pasa, nunca el navegador. */
-    enum: ['cash', 'efectivo', 'nequi', 'daviplata', 'transfer', 'transferencia', 'bold', 'other'],
+    enum: ['cash', 'efectivo', 'nequi', 'daviplata', 'transfer', 'transferencia', 'bold', 'credito', 'other'],
     default: null
   },
   paymentProof: {
     type: String,
     default: null
+  },
+  /* Pedido cargado al crédito del cliente (pedido rápido). `cargado` es lo
+     que hoy está en su deuda por este pedido; services/credito lo ajusta si
+     el pedido cambia o se cancela. */
+  credito: {
+    customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
+    cargado: { type: Number, default: 0 },
+    version: { type: Number, default: 0 },
   },
   paymentProofUploadedAt: {
     type: Date,
