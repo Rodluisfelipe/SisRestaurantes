@@ -97,6 +97,7 @@ router.post('/webhook', asyncHandler(async (req, res) => {
    objeto donde se espera una cadena podría convertirse en un operador y hacer
    que la búsqueda coincida con documentos que no son. */
 const aTexto = (v) => (v === null || v === undefined ? '' : String(v));
+const leads = require('../services/leads');
 
 async function procesarCambio(value) {
   const phoneNumberId = aTexto(value?.metadata?.phone_number_id);
@@ -124,6 +125,20 @@ async function procesarCambio(value) {
         contactPhone: guardado.contactPhone,
         direction: 'in',
       });
+
+      /* El WhatsApp de Menuby (cuenta de plataforma): lo que llega es un lead
+         para el CRM del superadmin. No hay asistente ni agente de pedidos. */
+      if (leads.esPlataforma(account.businessId)) {
+        await leads.registrarMensaje({
+          telefono: guardado.contactPhone,
+          nombre: guardado.contactName,
+          texto: guardado.text || `[${guardado.type}]`,
+          direccion: 'in',
+          fecha: guardado.sentAt,
+        });
+        continue;
+      }
+
       // Una nota de voz se pasa a texto antes de que nadie la lea.
       await quizaTranscribir(account, guardado);
 
@@ -1336,6 +1351,7 @@ router.delete('/consultas/numeros/:telefono', authMiddleware, requiereComplement
   res.json({ numeros: account.consultas.numeros });
 }));
 
+router.firmarNegocio = firmarNegocio;
 module.exports = router;
 // Expuesto solo para poder probarlo sin base de datos.
 module.exports.interpretarMensaje = interpretarMensaje;

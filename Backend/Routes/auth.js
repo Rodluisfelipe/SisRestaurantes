@@ -298,6 +298,11 @@ router.post('/register', registerLimiter, validateRegister, async (req, res) => 
     
     await initialSubscription.save();
 
+    // Entra al CRM de Menuby como lead (o se une al que ya escribió por WhatsApp).
+    require('../services/leads').registrarRegistro({
+      businessId: businessConfig._id, negocio: businessName, nombre: name, telefono: sanitizedPhone, email, tipoNegocio: businessType,
+    }).catch(() => {});
+
     // Correo de bienvenida (MenuBy → dueño), no bloquea el registro.
     try {
       const { sendWelcomeEmail } = require('../services/emailService');

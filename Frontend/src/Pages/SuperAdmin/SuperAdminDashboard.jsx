@@ -18,6 +18,7 @@ import BusinessHealth from "../../Components/SuperAdmin/BusinessHealth";
 import GlobalSearch from "../../Components/SuperAdmin/GlobalSearch";
 import ActivationFunnel from "../../Components/SuperAdmin/ActivationFunnel";
 import EmbudoPedidosGlobal from "../../Components/SuperAdmin/EmbudoPedidosGlobal";
+import CrmLeads from "../../Components/SuperAdmin/CrmLeads";
 import SystemStatus from "../../Components/SuperAdmin/SystemStatus";
 import TeamManagement from "../../Components/SuperAdmin/TeamManagement";
 import CrewKYCManagement from "../../Components/SuperAdmin/CrewKYCManagement";
@@ -43,6 +44,11 @@ const NAV_SECTIONS = [
       { id: 'home', label: 'Inicio', desc: 'Resumen y KPIs', icon: (
         <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12L12 2.25 21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+        </svg>
+      )},
+      { id: 'leads', label: 'Leads', desc: 'CRM: captación y seguimiento de prospectos', icon: (
+        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
         </svg>
       )},
       { id: 'businesses', label: 'Negocios', desc: 'Gestionar restaurantes registrados', icon: (
@@ -573,6 +579,12 @@ function SuperAdminDashboard() {
             {currentView === 'system' && (
               <motion.div key="system" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
                 <SystemStatus />
+              </motion.div>
+            )}
+
+            {currentView === 'leads' && (
+              <motion.div key="leads" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                <CrmLeads />
               </motion.div>
             )}
 

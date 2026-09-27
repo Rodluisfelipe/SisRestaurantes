@@ -396,6 +396,56 @@ const WA_NUMBER = '573028181520';
 const WA_CONCIERGE = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('Hola! Quiero que me monten mi menú en Menuby. Les envío mi carta.')}`;
 const WA_NFC = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('Hola! Quiero cotizar los soportes NFC + QR para mis mesas.')}`;
 
+/* ===== "Te escribimos": el que no quiere abrir WhatsApp deja sus datos =====
+   Entra como lead al CRM del superadmin (POST /leads). El campo `sitioWeb`
+   es una trampa para bots: las personas no lo ven. */
+function TeLlamamos() {
+  const [f, setF] = useState({ nombre: '', negocio: '', telefono: '', ciudad: '', sitioWeb: '' });
+  const [estado, setEstado] = useState('');
+  const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
+  const enviar = async (e) => {
+    e.preventDefault();
+    setEstado('enviando');
+    try {
+      const utm = new URLSearchParams(window.location.search).get('utm_source');
+      await api.post('/leads', { ...f, origen: `landing${utm ? ` · ${utm}` : ''}` });
+      setEstado('ok');
+    } catch (err) {
+      setEstado(err.response?.data?.message || 'No se pudo enviar. Escríbenos por WhatsApp.');
+    }
+  };
+  const campo = 'w-full h-12 px-4 rounded-xl text-[15px] outline-none transition-shadow focus:ring-2';
+  const estilo = { background: C.bg, border: '1px solid ' + C.border, color: C.text, '--tw-ring-color': C.accent + '33' };
+
+  if (estado === 'ok') {
+    return (
+      <div className="mt-4 rounded-[24px] p-6 sm:p-7 text-center" style={{ background: '#fff', border: '1px solid ' + C.border }}>
+        <p className="text-[18px] font-extrabold" style={{ color: C.text, fontFamily: DISPLAY }}>¡Listo, {f.nombre.split(' ')[0]}!</p>
+        <p className="mt-1 text-[14.5px]" style={{ color: C.textSecondary }}>Te escribimos por WhatsApp para ayudarte a arrancar.</p>
+      </div>
+    );
+  }
+  return (
+    <form onSubmit={enviar} className="mt-4 rounded-[24px] p-6 sm:p-7" style={{ background: '#fff', border: '1px solid ' + C.border }}>
+      <h3 className="text-[18px] font-extrabold leading-snug" style={{ color: C.text, fontFamily: DISPLAY, letterSpacing: '-0.02em' }}>¿Prefieres que te escribamos?</h3>
+      <p className="text-[14px] mb-4" style={{ color: C.textSecondary }}>Déjanos tus datos y alguien del equipo te contacta por WhatsApp.</p>
+      <div className="grid sm:grid-cols-2 gap-2.5">
+        <input className={campo} style={estilo} placeholder="Tu nombre" value={f.nombre} onChange={set('nombre')} required maxLength={120} aria-label="Tu nombre" autoComplete="name" />
+        <input className={campo} style={estilo} placeholder="Nombre del negocio" value={f.negocio} onChange={set('negocio')} maxLength={120} aria-label="Nombre del negocio" autoComplete="organization" />
+        <input className={campo} style={estilo} placeholder="WhatsApp (300 123 4567)" value={f.telefono} onChange={set('telefono')} required inputMode="tel" maxLength={20} aria-label="Tu WhatsApp" autoComplete="tel" />
+        <input className={campo} style={estilo} placeholder="Ciudad" value={f.ciudad} onChange={set('ciudad')} maxLength={80} aria-label="Ciudad" autoComplete="address-level2" />
+        <input type="text" tabIndex={-1} autoComplete="off" value={f.sitioWeb} onChange={set('sitioWeb')} className="hidden" aria-hidden="true" />
+      </div>
+      <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-3">
+        <button type="submit" disabled={estado === 'enviando'} className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-white text-[15px] font-bold transition-transform active:scale-[0.97] disabled:opacity-60" style={{ background: C.accent }}>
+          {estado === 'enviando' ? 'Enviando…' : 'Quiero que me escriban'} <ArrowRight size={17} />
+        </button>
+        {estado && estado !== 'enviando' && <p className="text-[13px] font-semibold" style={{ color: C.accentDeep }} role="alert">{estado}</p>}
+      </div>
+    </form>
+  );
+}
+
 /* ===== Métricas públicas agregadas (contador vivo) ===== */
 function usePublicStats() {
   const [stats, setStats] = useState(null);
@@ -978,6 +1028,10 @@ export default function Home() {
                 <MessageCircle size={17} /> Enviar mi carta
               </a>
             </div>
+          </FadeInWhenVisible>
+
+          <FadeInWhenVisible delay={0.15}>
+            <TeLlamamos />
           </FadeInWhenVisible>
         </Section>
       </div>
