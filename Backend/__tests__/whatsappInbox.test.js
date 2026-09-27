@@ -574,6 +574,13 @@ describe('registro integrado', () => {
     expect(fn.slice(0, 4000)).toMatch(/sincronizarAppBusiness/);
   });
 
+  it('un número nuevo se registra en la API con PIN; uno de Coexistencia no', () => {
+    // Meta: sin registro el número no envía; los de Coexistencia ya vienen registrados.
+    const fn = ruta.slice(ruta.indexOf('async function conectarConCodigo'), ruta.indexOf('function configRegistro'));
+    expect(fn).toMatch(/if \(!account\.coexistencia\) \{[\s\S]*registrarNumero/);
+    expect(fn).toMatch(/setPinRegistro/);
+  });
+
   it('un número no se puede conectar a dos negocios', () => {
     const fn = ruta.slice(ruta.indexOf('async function conectarConCodigo'));
     expect(fn).toMatch(/businessId: \{ \$ne: businessId \}/);

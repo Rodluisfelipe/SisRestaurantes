@@ -64,6 +64,10 @@ const whatsAppAccountSchema = new mongoose.Schema({
      además entra por la API. Meta exige sincronizar contactos e historial en
      las primeras 24 horas o lo desconecta. */
   coexistencia: { type: Boolean, default: false },
+  /* PIN de verificación en dos pasos con el que registramos el número en la
+     API (números nuevos, no de Coexistencia). Cifrado: Meta lo pide si el
+     número se vuelve a registrar. */
+  pinRegistroEnc: { type: String, default: '' },
   sincronizacion: {
     pedidaEn: { type: Date, default: null },
     contactosId: { type: String, default: '' },
@@ -131,6 +135,13 @@ whatsAppAccountSchema.methods.getAccessToken = function () {
 };
 
 /** Vista segura para el panel: sin token, ni cifrado ni en claro. */
+whatsAppAccountSchema.methods.setPinRegistro = function (pin) {
+  this.pinRegistroEnc = pin ? seal(String(pin)) : '';
+};
+whatsAppAccountSchema.methods.getPinRegistro = function () {
+  return this.pinRegistroEnc ? open(this.pinRegistroEnc) : '';
+};
+
 whatsAppAccountSchema.methods.toPanel = function () {
   return {
     _id: this._id,

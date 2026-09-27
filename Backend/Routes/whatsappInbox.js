@@ -693,6 +693,23 @@ async function conectarConCodigo(businessId, code, pista = {}) {
     logger.error('[WhatsApp] No se pudo pedir la sincronización de la app Business', { businessId: String(businessId), error: e.message });
     account.sincronizacion = { ...(account.sincronizacion || {}), error: e.message };
   }
+
+  /* Número nuevo (no Coexistencia): hay que registrarlo en la API con un PIN
+     o no podrá enviar mensajes. Si ya estaba registrado, se sigue igual. */
+  if (!account.coexistencia) {
+    const pin = account.getPinRegistro() || String(require('crypto').randomInt(100000, 1000000));
+    try {
+      await whatsappCloud.registrarNumero({ phoneNumberId: datos.phoneNumberId, accessToken: token, pin });
+      account.setPinRegistro(pin);
+    } catch (e) {
+      if (/already registered|ya est[aá] registrado/i.test(e.message)) {
+        account.setPinRegistro(pin);
+      } else {
+        logger.error('[WhatsApp] No se pudo registrar el número en la API', { businessId: String(businessId), error: e.message });
+        account.lastError = `El número quedó conectado, pero Meta no lo dejó registrar para enviar mensajes: ${e.message}`;
+      }
+    }
+  }
   await account.save();
   logger.info('[WhatsApp] Número conectado por registro integrado', { businessId: String(businessId), phoneNumberId: datos.phoneNumberId, coexistencia: account.coexistencia });
   return account;
