@@ -84,7 +84,7 @@ router.post('/webhook', asyncHandler(async (req, res) => {
   try {
     for (const entry of req.body?.entry || []) {
       for (const change of entry.changes || []) {
-        await procesarCambio(change.value || {});
+        await procesarCambio(change.value || {}, aTexto(change.field), aTexto(entry.id));
       }
     }
   } catch (e) {
@@ -99,7 +99,18 @@ router.post('/webhook', asyncHandler(async (req, res) => {
 const aTexto = (v) => (v === null || v === undefined ? '' : String(v));
 const leads = require('../services/leads');
 
-async function procesarCambio(value) {
+async function procesarCambio(value, campo = 'messages', wabaId = '') {
+  /* La cuenta se desconectó desde la app WhatsApp Business (Coexistencia) o
+     Meta la sacó: que el panel lo diga en vez de quedarse esperando mensajes. */
+  if (campo === 'account_update' && ['PARTNER_REMOVED', 'ACCOUNT_OFFBOARDED'].includes(aTexto(value?.event)) && wabaId) {
+    const motivo = aTexto(value?.disconnection_info?.reason);
+    await WhatsAppAccount.updateMany({ wabaId }, {
+      $set: { status: 'error', lastError: `El número se desconectó de Menuby${motivo ? ` (${motivo})` : ''}. Vuelve a conectarlo desde la bandeja.` },
+    });
+    logger.warn('[WhatsApp] Cuenta desconectada', { wabaId, evento: value.event, motivo });
+    return;
+  }
+
   const phoneNumberId = aTexto(value?.metadata?.phone_number_id);
   if (!phoneNumberId) return;
 
@@ -109,6 +120,11 @@ async function procesarCambio(value) {
     logger.warn('[WhatsApp] Llegó un mensaje de un número que nadie reclamó', { phoneNumberId });
     return;
   }
+
+  // Coexistencia: historial de la app y lo que el negocio responde desde el celular.
+  if (campo === 'history') return guardarHistorial(account, value);
+  if (campo === 'smb_message_echoes') return guardarEcos(account, value);
+  if (campo === 'smb_app_state_sync') return;
 
   const nombres = {};
   for (const c of value.contacts || []) {
@@ -255,6 +271,81 @@ function interpretarMensaje(msg) {
     errorMessage: motivoDeMeta(msg?.errors?.[0]),
     sentAt: msg?.timestamp ? new Date(Number(msg.timestamp) * 1000) : new Date()
   };
+}
+
+/* Estados del historial de la app → los nuestros. */
+const ESTADO_HISTORIAL = { DELIVERED: 'delivered', READ: 'read', PLAYED: 'read', SENT: 'sent', PENDING: 'pending', ERROR: 'failed' };
+
+/**
+ * Lo que el negocio escribe desde la app WhatsApp Business del celular
+ * (Coexistencia) llega como "eco": se guarda como mensaje saliente para que
+ * la conversación en la bandeja esté completa.
+ */
+async function guardarEcos(account, value) {
+  for (const eco of value.message_echoes || []) {
+    const datos = interpretarMensaje(eco);
+    try {
+      await WhatsAppMessage.create({
+        businessId: account.businessId, accountId: account._id, direction: 'out', status: 'sent',
+        ...datos, contactPhone: aTexto(eco.to),
+      });
+    } catch (e) {
+      if (e.code !== 11000) throw e;
+      continue;
+    }
+    avisarAlPanel(account.businessId, 'whatsapp:mensaje', { contactPhone: aTexto(eco.to), direction: 'out' });
+    if (leads.esPlataforma(account.businessId)) {
+      await leads.registrarMensaje({ telefono: aTexto(eco.to), texto: datos.text || `[${datos.type}]`, direccion: 'out', fecha: datos.sentAt });
+    }
+  }
+}
+
+/**
+ * Historial de la app WhatsApp Business (hasta 6 meses) que Meta manda al
+ * conectar un número en Coexistencia. Se guarda tal cual, sin avisar al
+ * agente: son conversaciones viejas, no clientes esperando respuesta.
+ */
+async function guardarHistorial(account, value) {
+  const filas = [];
+  for (const bloque of value.history || []) {
+    if (bloque.errors?.length) {
+      logger.info('[WhatsApp] El negocio no compartió su historial', { accountId: String(account._id), codigo: bloque.errors[0]?.code });
+      continue;
+    }
+    const progreso = Number(bloque.metadata?.progress);
+    if (Number.isFinite(progreso)) {
+      await WhatsAppAccount.updateOne({ _id: account._id }, { $max: { 'sincronizacion.progreso': progreso } });
+    }
+    for (const hilo of bloque.threads || []) {
+      const contacto = aTexto(hilo.id);
+      for (const msg of hilo.messages || []) {
+        const datos = interpretarMensaje(msg.type === 'media_placeholder' ? { ...msg, type: 'unsupported' } : msg);
+        filas.push({
+          businessId: account.businessId, accountId: account._id,
+          ...datos,
+          contactPhone: contacto,
+          direction: aTexto(msg.from) === contacto ? 'in' : 'out',
+          text: datos.text || (msg.type === 'media_placeholder' ? '[Archivo multimedia]' : ''),
+          status: ESTADO_HISTORIAL[aTexto(msg.history_context?.status)] || 'delivered',
+        });
+      }
+    }
+  }
+  // Los medios del historial llegan aparte, con el mismo formato que un mensaje.
+  for (const msg of value.messages || []) {
+    const datos = interpretarMensaje(msg);
+    await WhatsAppMessage.updateOne({ wamid: datos.wamid }, {
+      $set: { type: datos.type, mediaId: datos.mediaId, mediaMimeType: datos.mediaMimeType, ...(datos.text ? { text: datos.text } : {}) },
+    });
+  }
+  if (!filas.length) return;
+  try {
+    await WhatsAppMessage.insertMany(filas, { ordered: false });
+  } catch (e) {
+    // Mensajes que ya estaban (reintentos de Meta): se ignoran, el resto entra.
+    if (e.code !== 11000 && !e.writeErrors) throw e;
+  }
+  avisarAlPanel(account.businessId, 'whatsapp:mensaje', { direction: 'in' });
 }
 
 async function guardarEntrante(account, msg, contactName) {
@@ -593,6 +684,19 @@ router.get('/oauth/callback', asyncHandler(async (req, res) => {
     account.lastError = '';
     account.connectedVia = 'embedded_signup';
     account.connectedAt = new Date();
+
+    /* Coexistencia: Meta da 24 horas para pedir contactos e historial o
+       desconecta el número. Se pide apenas termina la conexión. */
+    try {
+      account.coexistencia = await whatsappCloud.esCoexistencia({ phoneNumberId: datos.phoneNumberId, accessToken: token });
+      if (account.coexistencia) {
+        const ids = await whatsappCloud.sincronizarAppBusiness({ phoneNumberId: datos.phoneNumberId, accessToken: token });
+        account.sincronizacion = { pedidaEn: new Date(), ...ids, progreso: 0, error: '' };
+      }
+    } catch (e) {
+      logger.error('[WhatsApp] No se pudo pedir la sincronización de la app Business', { businessId, error: e.message });
+      account.sincronizacion = { ...(account.sincronizacion || {}), error: e.message };
+    }
     await account.save();
 
     logger.info('[WhatsApp] Número conectado por registro integrado', {

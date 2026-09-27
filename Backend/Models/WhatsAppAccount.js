@@ -60,6 +60,17 @@ const whatsAppAccountSchema = new mongoose.Schema({
   },
   connectedBy: { type: mongoose.Schema.Types.ObjectId, default: null },
   connectedAt: { type: Date, default: null },
+  /* Coexistencia: el número sigue en la app WhatsApp Business del celular y
+     además entra por la API. Meta exige sincronizar contactos e historial en
+     las primeras 24 horas o lo desconecta. */
+  coexistencia: { type: Boolean, default: false },
+  sincronizacion: {
+    pedidaEn: { type: Date, default: null },
+    contactosId: { type: String, default: '' },
+    historialId: { type: String, default: '' },
+    progreso: { type: Number, default: 0 },
+    error: { type: String, default: '' },
+  },
 
   /* Agente de IA. Apagado por defecto a propósito: que un modelo conteste en
      nombre del negocio es una decisión del negocio, no algo que se active solo
@@ -135,6 +146,7 @@ whatsAppAccountSchema.methods.toPanel = function () {
     lastOutboundAt: this.lastOutboundAt,
     connectedVia: this.connectedVia,
     connectedAt: this.connectedAt,
+    coexistencia: !!this.coexistencia,
     tokenHint: this.tokenHint,
     agente: {
       activo: !!this.agente?.activo,

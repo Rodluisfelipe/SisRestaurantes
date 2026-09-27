@@ -242,6 +242,30 @@ async function cuentaDelToken(accessToken) {
   };
 }
 
+/**
+ * ¿El número sigue en la app WhatsApp Business además de la API (Coexistencia)?
+ */
+async function esCoexistencia({ phoneNumberId, accessToken }) {
+  const data = await graph(`${phoneNumberId}?fields=is_on_biz_app,platform_type`, { token: accessToken, method: 'GET' });
+  return data?.is_on_biz_app === true;
+}
+
+/**
+ * Pide a Meta los contactos y el historial de la app WhatsApp Business.
+ * Obligatorio en las primeras 24 horas de un número en Coexistencia; cada
+ * pedido solo se puede hacer una vez. Lo que llega después son webhooks
+ * `smb_app_state_sync` y `history`.
+ */
+async function sincronizarAppBusiness({ phoneNumberId, accessToken }) {
+  const pedir = (tipo) => graph(`${phoneNumberId}/smb_app_data`, {
+    token: accessToken,
+    body: { messaging_product: 'whatsapp', sync_type: tipo },
+  });
+  const contactos = await pedir('smb_app_state_sync');
+  const historial = await pedir('history');
+  return { contactosId: contactos?.request_id || '', historialId: historial?.request_id || '' };
+}
+
 /* ─────────────────────────────────────────────
  *  PLANTILLAS
  *
@@ -616,6 +640,8 @@ async function sendMedia({ account, to, buffer, mimeType, fileName, caption, sen
 }
 
 module.exports = {
+  esCoexistencia,
+  sincronizarAppBusiness,
   normalizePhone,
   isWithinServiceWindow,
   sendText,
