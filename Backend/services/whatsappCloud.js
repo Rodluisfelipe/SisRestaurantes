@@ -242,6 +242,12 @@ async function cuentaDelToken(accessToken) {
   };
 }
 
+/** Número visible, nombre y estado del nombre de un número de WhatsApp. */
+async function datosDelNumero({ phoneNumberId, accessToken }) {
+  const n = await graph(`${phoneNumberId}?fields=display_phone_number,verified_name,name_status`, { token: accessToken, method: 'GET' });
+  return { displayNumber: n?.display_phone_number || '', verifiedName: n?.verified_name || '', nameStatus: n?.name_status || '' };
+}
+
 /**
  * ¿El número sigue en la app WhatsApp Business además de la API (Coexistencia)?
  */
@@ -640,6 +646,7 @@ async function sendMedia({ account, to, buffer, mimeType, fileName, caption, sen
 }
 
 module.exports = {
+  datosDelNumero,
   esCoexistencia,
   sincronizarAppBusiness,
   normalizePhone,

@@ -718,6 +718,28 @@ function ConectarWhatsapp({ onCerrar, onConectado }) {
   const [modo, setModo] = useState('coexistencia');
   const [f, setF] = useState({ phoneNumberId: '', wabaId: '', accessToken: '' });
   const [estado, setEstado] = useState('');
+  /* Ventana emergente de Meta con registro de sesión: es la que ofrece
+     conectar el número de la app WhatsApp Business (Coexistencia). Se prepara
+     al abrir el modal para que el navegador no bloquee la ventana. */
+  const [configMeta, setConfigMeta] = useState(null);
+  useEffect(() => {
+    superadminApi.get('/crm/whatsapp/config')
+      .then(({ data }) => { setConfigMeta(data); import('../../utils/registroWhatsapp'); })
+      .catch(() => setConfigMeta(false));
+  }, []);
+  const conectarVentana = async () => {
+    setEstado('abriendo');
+    try {
+      const { registrarWhatsapp } = await import('../../utils/registroWhatsapp');
+      const r = await registrarWhatsapp(configMeta);
+      setEstado('sincronizando');
+      const { data } = await superadminApi.post('/crm/whatsapp/embedded', r);
+      setEstado(data.coexistencia ? 'coexistencia' : 'ok');
+      onConectado();
+    } catch (err) {
+      setEstado(err.cancelado ? '' : errorDe(err, err.message || 'No se pudo conectar'));
+    }
+  };
   const abrirEnlace = async () => {
     setEstado('');
     try {
@@ -746,11 +768,18 @@ function ConectarWhatsapp({ onCerrar, onConectado }) {
         <div className="space-y-3 text-sm text-slate-700">
           <p>El número sigue funcionando en la app de WhatsApp Business del celular y los chats también llegan aquí.</p>
           <ol className="list-decimal pl-5 space-y-1 text-[13px]">
-            <li>En <b>business.facebook.com</b> crea un portafolio nuevo, por ejemplo <b>"Menuby Ventas"</b> (no uses el que es dueño de la app).</li>
-            <li>Abre el enlace de Meta y, cuando pregunte el portafolio, elige <b>"Menuby Ventas"</b>.</li>
-            <li>Escanea el QR con la app de WhatsApp Business del número y acepta.</li>
+            <li>Toca <b>Conectar con Facebook</b> y, en la ventana de Meta, elige el portafolio <b>"Menuby Ventas"</b> (no el dueño de la app).</li>
+            <li>Elige <b>conectar tu cuenta existente de WhatsApp Business</b> y escribe el número.</li>
+            <li>En el celular, abre el mensaje de Meta en WhatsApp Business, toca <b>Conectar</b> y pega el código.</li>
           </ol>
-          <button type="button" onClick={abrirEnlace} className={btnPri}><ExternalLink className="w-4 h-4" /> Abrir el enlace de Meta</button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={conectarVentana} disabled={!configMeta || ['abriendo', 'sincronizando'].includes(estado)} className="inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-lg bg-[#1877F2] hover:bg-[#166fe0] text-white text-sm font-semibold disabled:opacity-50">
+              {estado === 'sincronizando' ? <><Loader2 className="w-4 h-4 animate-spin" /> Conectando y sincronizando…</> : estado === 'abriendo' ? <><Loader2 className="w-4 h-4 animate-spin" /> Abriendo Meta…</> : 'Conectar con Facebook'}
+            </button>
+            <button type="button" onClick={abrirEnlace} className={btnSec}><ExternalLink className="w-4 h-4" /> Usar el enlace</button>
+          </div>
+          {estado === 'sincronizando' && <p className="text-xs text-emerald-700">Deja la app WhatsApp Business abierta en el celular mientras traemos contactos y chats.</p>}
+          {estado === 'coexistencia' && <p className="text-xs text-emerald-700 font-semibold">Conectado. El número sigue en tu celular y los chats también llegan aquí.</p>}
           {estado === 'enlace' && <p className="text-xs text-emerald-700 font-semibold">Al terminar en Meta, vuelve y recarga esta página.</p>}
         </div>
       ) : (
@@ -762,7 +791,7 @@ function ConectarWhatsapp({ onCerrar, onConectado }) {
           <button type="submit" disabled={!f.phoneNumberId || !f.accessToken || estado === 'guardando'} className={btnPri}>{estado === 'guardando' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Conectar'}</button>
         </form>
       )}
-      {estado && !['enlace', 'guardando'].includes(estado) && <p className={`mt-3 text-xs font-semibold ${estado === 'ok' ? 'text-emerald-700' : 'text-red-600'}`}>{estado === 'ok' ? 'Conectado.' : estado}</p>}
+      {estado && !['enlace', 'guardando', 'abriendo', 'sincronizando', 'coexistencia'].includes(estado) && <p className={`mt-3 text-xs font-semibold ${estado === 'ok' ? 'text-emerald-700' : 'text-red-600'}`}>{estado === 'ok' ? 'Conectado.' : estado}</p>}
     </Modal>
   );
 }

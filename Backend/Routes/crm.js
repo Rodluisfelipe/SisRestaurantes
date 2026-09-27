@@ -254,6 +254,25 @@ router.get('/whatsapp/enlace', requireRole('admin'), (req, res) => {
   res.json({ enlace: `${base}${sep}state=${encodeURIComponent(firmarNegocio(PLATAFORMA_ID))}` });
 });
 
+// Ventana emergente de Meta (con registro de sesión: la que habilita la Coexistencia).
+router.get('/whatsapp/config', requireRole('admin'), (req, res) => {
+  const cfg = require('./whatsappInbox').configRegistro();
+  if (!cfg) return res.status(503).json({ message: 'Falta configurar el registro de Meta en el servidor.' });
+  res.json(cfg);
+});
+
+router.post('/whatsapp/embedded', requireRole('admin'), async (req, res) => {
+  const { code, wabaId, phoneNumberId, evento } = req.body || {};
+  if (!code) return res.status(400).json({ message: 'Meta no devolvió el código de autorización.' });
+  try {
+    const account = await require('./whatsappInbox').conectarConCodigo(PLATAFORMA_ID, code, { wabaId, phoneNumberId, evento });
+    res.json({ ok: true, coexistencia: !!account.coexistencia, numero: account.displayNumber });
+  } catch (e) {
+    logger.error('[CRM] Falló la conexión por la ventana de Meta', { error: e.message });
+    res.status(e.status || 400).json({ message: e.message });
+  }
+});
+
 // Conexión manual (Phone number ID + WABA ID + token permanente).
 router.post('/whatsapp/manual', requireRole('admin'), async (req, res) => {
   const phoneNumberId = limpio(req.body?.phoneNumberId, 40);

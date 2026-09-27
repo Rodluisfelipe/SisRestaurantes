@@ -559,20 +559,35 @@ describe('registro integrado', () => {
     expect(fn.slice(0, 600)).toMatch(/timingSafeEqual/);
   });
 
+  it('el enlace y la ventana emergente de Meta conectan por el mismo camino', () => {
+    // La ventana emergente (con registro de sesión) es la que habilita la Coexistencia.
+    const callback = ruta.slice(ruta.indexOf("router.get('/oauth/callback'"), ruta.indexOf("router.get('/oauth/config'"));
+    const ventana = ruta.slice(ruta.indexOf("router.post('/oauth/embedded'"));
+    expect(callback).toMatch(/conectarConCodigo\(businessId, req\.query\.code\)/);
+    expect(ventana.slice(0, 900)).toMatch(/conectarConCodigo\(req\.businessId, code/);
+    expect(ventana.slice(0, 300)).toMatch(/authMiddleware, requiereComplemento/);
+  });
+
+  it('un número conectado por Coexistencia pide sus contactos e historial', () => {
+    // Meta da 24 horas o lo desconecta.
+    const fn = ruta.slice(ruta.indexOf('async function conectarConCodigo'));
+    expect(fn.slice(0, 4000)).toMatch(/sincronizarAppBusiness/);
+  });
+
   it('un número no se puede conectar a dos negocios', () => {
-    const fn = ruta.slice(ruta.indexOf("router.get('/oauth/callback'"));
+    const fn = ruta.slice(ruta.indexOf('async function conectarConCodigo'));
     expect(fn).toMatch(/businessId: \{ \$ne: businessId \}/);
     expect(fn).toMatch(/ya está conectado a otro negocio/);
   });
 
   it('se autoriza la app en la cuenta del cliente', () => {
     // Sin esto Meta nunca manda los mensajes, por más que todo lo demás esté bien.
-    const fn = ruta.slice(ruta.indexOf("router.get('/oauth/callback'"));
+    const fn = ruta.slice(ruta.indexOf('async function conectarConCodigo'));
     expect(fn).toMatch(/subscribeAppToWaba/);
   });
 
   it('el token del cliente se guarda cifrado, como el manual', () => {
-    const fn = ruta.slice(ruta.indexOf("router.get('/oauth/callback'"));
+    const fn = ruta.slice(ruta.indexOf('async function conectarConCodigo'));
     expect(fn).toMatch(/account\.setAccessToken\(token\)/);
     expect(fn).toMatch(/connectedVia = 'embedded_signup'/);
   });

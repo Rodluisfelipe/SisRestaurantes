@@ -2276,17 +2276,46 @@ function ConectarNumero({ businessId, cuenta, onConectado }) {
   const [verManual, setVerManual] = useState(false);
   const [pidiendoEnlace, setPidiendoEnlace] = useState(false);
 
+  /* La ventana emergente de Meta (con registro de sesión) es la que ofrece
+     conectar el número que el negocio ya usa en la app WhatsApp Business
+     (Coexistencia). Los datos se piden al abrir la pantalla para que al tocar
+     el botón la ventana se abra de una vez y el navegador no la bloquee. */
+  const [configMeta, setConfigMeta] = useState(null);
+  const [sincronizando, setSincronizando] = useState(false);
+  useEffect(() => {
+    api.get(`/whatsapp-inbox/oauth/config?businessId=${businessId}`)
+      .then(({ data }) => { setConfigMeta(data); import('../../utils/registroWhatsapp'); })
+      .catch(() => setConfigMeta(false));
+  }, [businessId]);
+
+  async function conectarPorEnlace() {
+    const { data } = await api.get(`/whatsapp-inbox/oauth/enlace?businessId=${businessId}`);
+    // Se sale del panel: Meta pide la sesión de Facebook del dueño.
+    window.location.href = data.enlace;
+  }
+
   async function conectarConMeta() {
     setPidiendoEnlace(true);
     setError('');
     try {
-      const { data } = await api.get(`/whatsapp-inbox/oauth/enlace?businessId=${businessId}`);
-      // Se sale del panel: Meta pide la sesión de Facebook del dueño.
-      window.location.href = data.enlace;
+      if (!configMeta) { await conectarPorEnlace(); return; }
+      const { registrarWhatsapp } = await import('../../utils/registroWhatsapp');
+      let resultado;
+      try {
+        resultado = await registrarWhatsapp(configMeta);
+      } catch (e) {
+        if (e.cancelado) { setPidiendoEnlace(false); return; }
+        throw e;
+      }
+      setSincronizando(true);
+      await api.post('/whatsapp-inbox/oauth/embedded', { businessId, ...resultado });
+      await onConectado();
     } catch (e) {
-      setError(e?.response?.data?.message || 'No se pudo abrir la conexión con Meta');
-      setPidiendoEnlace(false);
+      setError(e?.response?.data?.message || e?.message || 'No se pudo abrir la conexión con Meta');
       setVerManual(true);   // si falla, al menos queda el camino manual a la vista
+    } finally {
+      setPidiendoEnlace(false);
+      setSincronizando(false);
     }
   }
 
@@ -2332,12 +2361,19 @@ function ConectarNumero({ businessId, cuenta, onConectado }) {
         disabled={pidiendoEnlace}
         className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-[#1877F2] hover:bg-[#166fe0] disabled:bg-slate-200 text-white font-bold text-sm transition-colors active:scale-[0.98]"
       >
-        {pidiendoEnlace ? <><FaSpinner className="animate-spin" /> Abriendo…</> : 'Conectar con Facebook'}
+        {sincronizando
+          ? <><FaSpinner className="animate-spin" /> Conectando y sincronizando tus chats…</>
+          : pidiendoEnlace ? <><FaSpinner className="animate-spin" /> Abriendo Meta…</> : 'Conectar con Facebook'}
       </button>
       <p className="text-[11.5px] text-slate-400 mt-2 leading-relaxed">
-        Te lleva a Meta para que autorices tu número. Vuelves acá conectado, sin
-        copiar ni pegar nada.
+        Se abre una ventana de Meta. Elige <b className="text-slate-500">conectar tu cuenta existente de WhatsApp Business</b> y
+        sigues usando tu número en el celular como siempre: los chats llegan también acá.
       </p>
+      {sincronizando && (
+        <p className="text-[11.5px] text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2 mt-2 leading-relaxed">
+          Deja la app WhatsApp Business abierta en tu celular mientras traemos tus contactos y chats.
+        </p>
+      )}
 
       {!verManual && (
         <button

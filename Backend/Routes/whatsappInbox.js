@@ -641,6 +641,75 @@ router.get('/oauth/enlace', authMiddleware, requiereComplemento, asyncHandler(as
  * Es público porque lo llama el navegador del cliente tras pasar por Meta; la
  * autenticación la da el `state` firmado, no una sesión nuestra.
  */
+/**
+ * Termina la conexión de un número por el registro integrado de Meta, venga
+ * del enlace (callback) o de la ventana emergente del SDK (con registro de
+ * sesión, que es la que Meta exige para la Coexistencia).
+ *
+ * `pista` trae lo que avisó la ventana emergente (waba_id, phone_number_id);
+ * si no viene, se averigua desde el token.
+ */
+async function conectarConCodigo(businessId, code, pista = {}) {
+  const token = await whatsappCloud.canjearCodigo(String(code));
+  let datos;
+  if (pista.wabaId && pista.phoneNumberId) {
+    const n = await whatsappCloud.datosDelNumero({ phoneNumberId: pista.phoneNumberId, accessToken: token });
+    datos = { wabaId: String(pista.wabaId), phoneNumberId: String(pista.phoneNumberId), ...n };
+  } else {
+    datos = await whatsappCloud.cuentaDelToken(token);
+  }
+
+  /* Un número pertenece a un solo negocio: sin esto, alguien podría conectar
+     el número de otro y quedarse con sus conversaciones. */
+  const ajeno = await WhatsAppAccount.findOne({ phoneNumberId: datos.phoneNumberId, businessId: { $ne: businessId } });
+  if (ajeno) throw Object.assign(new Error('Ese número ya está conectado a otro negocio'), { status: 409 });
+
+  /* El paso invisible: sin autorizar la app en la cuenta, Meta nunca manda
+     los mensajes por más que todo lo demás esté bien. */
+  await whatsappCloud.subscribeAppToWaba({ wabaId: datos.wabaId, accessToken: token });
+
+  const account = await WhatsAppAccount.findOne({ businessId }) || new WhatsAppAccount({ businessId });
+  account.phoneNumberId = datos.phoneNumberId;
+  account.wabaId = datos.wabaId;
+  account.displayNumber = datos.displayNumber || '';
+  account.verifiedName = datos.verifiedName || '';
+  account.nameStatus = datos.nameStatus || '';
+  account.setAccessToken(token);
+  account.status = 'active';
+  account.lastError = '';
+  account.connectedVia = 'embedded_signup';
+  account.connectedAt = new Date();
+
+  /* Coexistencia: Meta da 24 horas para pedir contactos e historial o
+     desconecta el número. Se pide apenas termina la conexión. */
+  try {
+    account.coexistencia = pista.evento === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING'
+      || await whatsappCloud.esCoexistencia({ phoneNumberId: datos.phoneNumberId, accessToken: token });
+    if (account.coexistencia) {
+      const ids = await whatsappCloud.sincronizarAppBusiness({ phoneNumberId: datos.phoneNumberId, accessToken: token });
+      account.sincronizacion = { pedidaEn: new Date(), ...ids, progreso: 0, error: '' };
+    }
+  } catch (e) {
+    logger.error('[WhatsApp] No se pudo pedir la sincronización de la app Business', { businessId: String(businessId), error: e.message });
+    account.sincronizacion = { ...(account.sincronizacion || {}), error: e.message };
+  }
+  await account.save();
+  logger.info('[WhatsApp] Número conectado por registro integrado', { businessId: String(businessId), phoneNumberId: datos.phoneNumberId, coexistencia: account.coexistencia });
+  return account;
+}
+
+/** Los identificadores públicos que necesita la ventana emergente de Meta. */
+function configRegistro() {
+  let appId = process.env.WHATSAPP_APP_ID || '';
+  let configId = process.env.WHATSAPP_CONFIG_ID || '';
+  try {
+    const u = new URL(process.env.WHATSAPP_SIGNUP_URL || '');
+    appId = appId || u.searchParams.get('app_id') || '';
+    configId = configId || u.searchParams.get('config_id') || '';
+  } catch { /* sin enlace configurado */ }
+  return appId && configId ? { appId, configId } : null;
+}
+
 router.get('/oauth/callback', asyncHandler(async (req, res) => {
   const panel = process.env.FRONTEND_URL || 'https://menuby.tech';
   const volver = (estado, detalle) => res.redirect(
@@ -658,54 +727,35 @@ router.get('/oauth/callback', asyncHandler(async (req, res) => {
   }
 
   try {
-    const token = await whatsappCloud.canjearCodigo(String(req.query.code));
-    const datos = await whatsappCloud.cuentaDelToken(token);
-
-    /* Un número pertenece a un solo negocio: sin esto, alguien podría conectar
-       el número de otro y quedarse con sus conversaciones. */
-    const ajeno = await WhatsAppAccount.findOne({
-      phoneNumberId: datos.phoneNumberId, businessId: { $ne: businessId },
-    });
-    if (ajeno) return volver('error', 'Ese número ya está conectado a otro negocio');
-
-    /* El paso invisible: sin autorizar la app en la cuenta, Meta nunca manda
-       los mensajes por más que todo lo demás esté bien. */
-    await whatsappCloud.subscribeAppToWaba({ wabaId: datos.wabaId, accessToken: token });
-
-    const account = await WhatsAppAccount.findOne({ businessId })
-      || new WhatsAppAccount({ businessId });
-    account.phoneNumberId = datos.phoneNumberId;
-    account.wabaId = datos.wabaId;
-    account.displayNumber = datos.displayNumber;
-    account.verifiedName = datos.verifiedName;
-  account.nameStatus = datos.nameStatus || '';
-    account.setAccessToken(token);
-    account.status = 'active';
-    account.lastError = '';
-    account.connectedVia = 'embedded_signup';
-    account.connectedAt = new Date();
-
-    /* Coexistencia: Meta da 24 horas para pedir contactos e historial o
-       desconecta el número. Se pide apenas termina la conexión. */
-    try {
-      account.coexistencia = await whatsappCloud.esCoexistencia({ phoneNumberId: datos.phoneNumberId, accessToken: token });
-      if (account.coexistencia) {
-        const ids = await whatsappCloud.sincronizarAppBusiness({ phoneNumberId: datos.phoneNumberId, accessToken: token });
-        account.sincronizacion = { pedidaEn: new Date(), ...ids, progreso: 0, error: '' };
-      }
-    } catch (e) {
-      logger.error('[WhatsApp] No se pudo pedir la sincronización de la app Business', { businessId, error: e.message });
-      account.sincronizacion = { ...(account.sincronizacion || {}), error: e.message };
-    }
-    await account.save();
-
-    logger.info('[WhatsApp] Número conectado por registro integrado', {
-      businessId, phoneNumberId: datos.phoneNumberId,
-    });
+    await conectarConCodigo(businessId, req.query.code);
     return volver('ok');
   } catch (e) {
     logger.error('[WhatsApp] Falló el registro integrado', { businessId, error: e.message });
     return volver('error', e.message);
+  }
+}));
+
+/** GET /api/whatsapp-inbox/oauth/config — app y configuración para la ventana de Meta. */
+router.get('/oauth/config', authMiddleware, requiereComplemento, (req, res) => {
+  const cfg = configRegistro();
+  if (!cfg) return res.status(503).json({ message: 'Falta configurar el registro de Meta en el servidor.' });
+  res.json(cfg);
+});
+
+/**
+ * POST /api/whatsapp-inbox/oauth/embedded — lo que devuelve la ventana
+ * emergente de Meta: el código y, por el registro de sesión, la cuenta y el
+ * número elegidos.
+ */
+router.post('/oauth/embedded', authMiddleware, requiereComplemento, asyncHandler(async (req, res) => {
+  const { code, wabaId, phoneNumberId, evento } = req.body || {};
+  if (!code) return res.status(400).json({ message: 'Meta no devolvió el código de autorización.' });
+  try {
+    const account = await conectarConCodigo(req.businessId, code, { wabaId, phoneNumberId, evento });
+    res.json({ account: account.toPanel() });
+  } catch (e) {
+    logger.error('[WhatsApp] Falló la conexión por la ventana de Meta', { businessId: String(req.businessId), error: e.message });
+    res.status(e.status || 400).json({ message: e.message });
   }
 }));
 
@@ -1456,6 +1506,8 @@ router.delete('/consultas/numeros/:telefono', authMiddleware, requiereComplement
 }));
 
 router.firmarNegocio = firmarNegocio;
+router.conectarConCodigo = conectarConCodigo;
+router.configRegistro = configRegistro;
 module.exports = router;
 // Expuesto solo para poder probarlo sin base de datos.
 module.exports.interpretarMensaje = interpretarMensaje;
