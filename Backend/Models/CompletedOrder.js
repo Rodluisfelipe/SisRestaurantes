@@ -177,6 +177,21 @@ const completedOrderSchema = new mongoose.Schema({
      el dueño revisa el mes. */
   discountReason: { type: String, trim: true, maxlength: 120, default: '' },
 
+  /* Premio de la tarjeta de sellos usado en este pedido. El descuento ya va
+     en discountAmount; esto dice de dónde salió y permite devolverlo si el
+     pedido se cancela. */
+  premioSellos: {
+    type: {
+      nombre: { type: String, trim: true, maxlength: 100 },
+      tipo: { type: String, trim: true, maxlength: 30 },
+      descuento: { type: Number, default: 0 },
+      telefono: { type: String, trim: true, maxlength: 30 },
+      devuelto: { type: Boolean, default: false }
+    },
+    default: undefined
+  },
+
+
   /* La propina de las ventas de caja.
 
      `tipAmount` ya existía para los pedidos del menú y significa lo mismo, así

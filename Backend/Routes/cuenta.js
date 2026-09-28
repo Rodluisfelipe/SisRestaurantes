@@ -101,6 +101,11 @@ async function puntosDe(businessId, telefono) {
   const { planConfig } = await getSubscriptionForBusiness(businessId);
   const conRecompensas = isFeatureEnabledForPlan(planConfig, 'loyaltyRewards');
   const saldo = await CustomerLoyalty.findOne({ businessId, phone: telefono }).lean();
+  // Tarjeta de sellos: lo que el cliente ve es su tarjeta, no puntos
+  if (programa.mode === 'stamps') {
+    const t = require('../services/sellos').estadoTarjeta(programa, saldo);
+    return { modo: 'sellos', sellos: t.sellos, requeridos: t.requeridos, premiosDisponibles: t.premiosDisponibles, premio: t.premio.nombre, puntos: 0, recompensas: [] };
+  }
   const puntos = saldo?.points || 0;
   const recompensas = conRecompensas ? (programa.rewards || []).filter((r) => r.isActive) : [];
   return {

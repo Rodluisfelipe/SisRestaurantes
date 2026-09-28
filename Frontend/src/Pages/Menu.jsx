@@ -1310,6 +1310,8 @@ export default function Menu() {
         /* De qué enlace llegó el cliente (?source=). `orderChannel` dice cómo
            se tomó el pedido; esto dice qué canal lo trajo. */
         source: origenActual(),
+        // Premio de la tarjeta de sellos: el servidor lo verifica y lo descuenta
+        ...(orderDetails.usarPremioSellos && { usarPremioSellos: true }),
         // Información del cupón si está aplicado
         ...(appliedCoupon && {
           couponCode: appliedCoupon.coupon.code,

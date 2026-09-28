@@ -1,4 +1,5 @@
 const express = require('express');
+const sellos = require('../services/sellos');
 const router = express.Router();
 const LoyaltyProgram = require('../Models/LoyaltyProgram');
 const CustomerLoyalty = require('../Models/CustomerLoyalty');
@@ -61,7 +62,9 @@ router.get('/program', tenantAuth, async (req, res) => {
         pointsExpiryDays: 90,
         tiersEnabled: false,
         tiers: [],
-        rewards: []
+        rewards: [],
+        mode: 'points',
+        stampCard: { required: 10, minAmount: 0, reward: { type: 'free_product', name: '', discountValue: 0, maxDiscount: 0, productId: null, productName: '' } }
       };
     }
     res.json(program);
@@ -79,7 +82,7 @@ router.put('/program', tenantAuth, validateUpdateProgram, async (req, res) => {
     const {
       isActive, pointsPerAmount, amountPerPoints,
       firstOrderBonus, referralBonus, pointsExpiryDays,
-      tiersEnabled, tiers, rewards
+      tiersEnabled, tiers, rewards, mode, stampCard
     } = req.body;
 
     const planGate = await getPlanGateInfo(businessId);
@@ -99,7 +102,8 @@ router.put('/program', tenantAuth, validateUpdateProgram, async (req, res) => {
       }
     }
 
-    const wantsRewards = Array.isArray(rewards) && rewards.length > 0;
+    // La tarjeta de sellos siempre entrega un premio: va con el mismo permiso del plan
+    const wantsRewards = (Array.isArray(rewards) && rewards.length > 0) || mode === 'stamps';
     if (wantsRewards && !planGate.hasLoyaltyRewards) {
       return res.status(403).json({
         message: 'Tu plan actual no incluye recompensas canjeables.',
@@ -118,6 +122,38 @@ router.put('/program', tenantAuth, validateUpdateProgram, async (req, res) => {
       pointsExpiryDays: Math.max(0, Number(pointsExpiryDays) || 0),
       tiersEnabled: !!tiersEnabled
     };
+
+    if (mode === 'points' || mode === 'stamps') update.mode = mode;
+    if (stampCard && typeof stampCard === 'object') {
+      const premio = stampCard.reward || {};
+      const tipos = ['free_product', 'discount_fixed', 'discount_percent'];
+      update.stampCard = {
+        required: Math.min(Math.max(parseInt(stampCard.required, 10) || 10, 2), 30),
+        minAmount: Math.max(0, Number(stampCard.minAmount) || 0),
+        reward: {
+          type: tipos.includes(premio.type) ? premio.type : 'free_product',
+          name: String(premio.name || '').trim().slice(0, 100),
+          discountValue: Math.max(0, Number(premio.discountValue) || 0),
+          maxDiscount: Math.max(0, Number(premio.maxDiscount) || 0),
+          productId: premio.productId && String(premio.productId).length === 24 ? premio.productId : null,
+          productName: String(premio.productName || '').slice(0, 100),
+        },
+      };
+      if (update.stampCard.reward.type === 'discount_percent') {
+        update.stampCard.reward.discountValue = Math.min(update.stampCard.reward.discountValue, 100);
+      }
+    }
+    // Con sellos, la tarjeta tiene que decir qué se gana
+    const tarjetaFinal = update.stampCard;
+    if ((update.mode === 'stamps') && tarjetaFinal) {
+      const r = tarjetaFinal.reward;
+      if (r.type === 'free_product' && !r.productId) {
+        return res.status(400).json({ message: 'Elige el producto que se gana al llenar la tarjeta.' });
+      }
+      if (r.type !== 'free_product' && !r.discountValue) {
+        return res.status(400).json({ message: 'Escribe el valor del descuento que se gana al llenar la tarjeta.' });
+      }
+    }
 
     if (Array.isArray(tiers) && (planGate.hasLoyaltyTiers || tiers.length === 0)) {
       update.tiers = tiers.map(t => ({
@@ -245,6 +281,22 @@ router.get('/top-customers', tenantAuth, async (req, res) => {
   }
 });
 
+// ─── ADMIN: la tarjeta de sellos de un cliente (pedido rápido y caja) ───
+router.get('/sellos', tenantAuth, async (req, res) => {
+  try {
+    const businessId = await getAdminBusinessId(req);
+    const phone = String(req.query.phone || '').trim();
+    if (!businessId || !phone) return res.status(400).json({ message: 'businessId y phone son requeridos' });
+    const program = await sellos.programaDeSellos(businessId);
+    if (!program) return res.json({ active: false });
+    const loyalty = await CustomerLoyalty.findOne({ businessId, phone }).lean();
+    res.json({ active: true, tarjeta: sellos.estadoTarjeta(program, loyalty) });
+  } catch (error) {
+    logger.error('Error consultando la tarjeta de sellos:', error);
+    res.status(500).json({ message: 'Error al consultar la tarjeta' });
+  }
+});
+
 // ─── PUBLIC: Get customer loyalty balance (by phone + businessId) ───
 router.get('/balance', publicLimiter, async (req, res) => {
   try {
@@ -272,6 +324,13 @@ router.get('/balance', publicLimiter, async (req, res) => {
     const { hasLoyaltyRewards } = await getPlanGateInfo(businessId);
 
     const loyalty = await CustomerLoyalty.findOne({ businessId, phone }).lean();
+    if (program.mode === 'stamps') {
+      return res.json({
+        active: true,
+        mode: 'stamps',
+        tarjeta: sellos.estadoTarjeta(program, loyalty),
+      });
+    }
     if (!loyalty) {
       return res.json({
         active: true,

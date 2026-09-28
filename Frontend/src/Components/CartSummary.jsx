@@ -316,7 +316,10 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
     }
 
     const selection = loyaltyRewardRef.current;
-    if (selection) {
+    if (selection?.sellos) {
+      // Tarjeta de sellos: no hay canje aparte, el premio va dentro del pedido
+      enriched = { ...enriched, usarPremioSellos: true };
+    } else if (selection) {
       enriched = {
         ...enriched,
         loyaltyReward: selection.reward,
@@ -812,6 +815,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                   theme={businessConfig?.theme}
                   onRewardSelected={handleRewardSelected}
                   orderMode={orderInfo?.orderType}
+                  cart={cart}
                 />
               )}
             </div>

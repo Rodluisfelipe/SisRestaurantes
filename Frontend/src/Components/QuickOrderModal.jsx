@@ -95,6 +95,25 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
     return () => { vivo = false; clearTimeout(t); };
   }, [customerPhone, isOpen, businessId]);
 
+  /* Tarjeta de sellos del cliente: cuántos lleva y si tiene premio para usar
+     en este pedido. El servidor es quien lo verifica y lo descuenta. */
+  const [tarjetaSellos, setTarjetaSellos] = useState(null);
+  const [usarPremio, setUsarPremio] = useState(false);
+  useEffect(() => {
+    setTarjetaSellos(null);
+    setUsarPremio(false);
+    const tel = customerPhone.trim();
+    if (!isOpen || tel.length < 7) return undefined;
+    let vivo = true;
+    const t = setTimeout(async () => {
+      try {
+        const { data } = await api.get('/loyalty/sellos', { params: { businessId, phone: tel } });
+        if (vivo && data?.active) setTarjetaSellos(data.tarjeta);
+      } catch { /* sin tarjeta o sin red: el pedido sigue normal */ }
+    }, 350);
+    return () => { vivo = false; clearTimeout(t); };
+  }, [customerPhone, isOpen, businessId]);
+
   // Reset everything on open
   useEffect(() => {
     if (isOpen) {
@@ -255,6 +274,16 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
   const alcanzaCredito = !!credito && grandTotal <= disponibleCredito;
   const cargarACredito = usarCredito && alcanzaCredito;
 
+  // Cuánto descuenta el premio de la tarjeta en este pedido (mismo cálculo que el servidor)
+  const premioT = tarjetaSellos?.premio;
+  const itemDelPremio = premioT?.tipo === 'free_product' ? cart.find((i) => String(i.productId) === String(premioT.productId)) : null;
+  const descuentoPremio = !premioT || !tarjetaSellos?.premiosDisponibles ? 0
+    : premioT.tipo === 'discount_fixed' ? Math.min(premioT.valor, cartTotal)
+      : premioT.tipo === 'discount_percent' ? Math.min(Math.round(cartTotal * premioT.valor / 100), premioT.tope > 0 ? premioT.tope : Infinity)
+        : itemDelPremio ? Math.min(Number(itemDelPremio.price) || 0, cartTotal) : 0;
+  const aplicaPremio = usarPremio && descuentoPremio > 0;
+  const totalAPagar = grandTotal - (aplicaPremio ? descuentoPremio : 0);
+
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
@@ -269,6 +298,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
         address: orderType === 'delivery' ? address : undefined,
         paymentMethod: cargarACredito ? 'credito' : paymentMethod,
         ...(cargarACredito ? { usarCredito: true } : {}),
+        ...(aplicaPremio ? { usarPremioSellos: true } : {}),
         customerNotes: customerNotes.trim() || undefined,
         orderChannel: channel,
         items: cart.map(item => ({
@@ -783,9 +813,44 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
                   <span className="font-medium text-slate-700">{pesos(deliveryFee)}</span>
                 </div>
               )}
+              {/* Tarjeta de sellos del cliente */}
+              {tarjetaSellos && (
+                <div className={`rounded-xl border p-3 ${aplicaPremio ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
+                  <p className="text-sm font-semibold text-slate-800">
+                    Tarjeta de sellos: {tarjetaSellos.sellos} de {tarjetaSellos.requeridos}
+                    {cartTotal >= (tarjetaSellos.montoMinimo || 0)
+                      ? <span className="font-normal text-slate-500"> · este pedido suma 1 sello al completarlo</span>
+                      : <span className="font-normal text-slate-500"> · suma sello desde {pesos(tarjetaSellos.montoMinimo)}</span>}
+                  </p>
+                  {tarjetaSellos.premiosDisponibles > 0 && (
+                    <label className={`mt-2 flex items-start gap-3 ${descuentoPremio > 0 ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 w-5 h-5 accent-emerald-600 shrink-0"
+                        checked={aplicaPremio}
+                        disabled={descuentoPremio <= 0}
+                        onChange={(e) => setUsarPremio(e.target.checked)}
+                      />
+                      <span className="text-sm text-slate-700">
+                        <b>Usar su premio: {premioT.nombre}</b>
+                        {descuentoPremio > 0
+                          ? <> (−{pesos(descuentoPremio)})</>
+                          : <span className="block text-xs text-amber-700">Agrega {premioT.productName || 'el producto del premio'} al pedido para usarlo.</span>}
+                      </span>
+                    </label>
+                  )}
+                </div>
+              )}
+
+              {aplicaPremio && (
+                <div className="flex justify-between items-center px-4 py-2 bg-emerald-50 rounded-lg text-sm">
+                  <span className="text-emerald-700">Premio de la tarjeta</span>
+                  <span className="font-medium text-emerald-700">−{pesos(descuentoPremio)}</span>
+                </div>
+              )}
               <div className="bg-slate-50 border border-slate-200 text-slate-900 rounded-lg px-4 py-3 flex justify-between items-center">
                 <span className="text-sm font-bold">Total</span>
-                <span className="text-lg font-bold">{pesos(grandTotal)}</span>
+                <span className="text-lg font-bold">{pesos(totalAPagar)}</span>
               </div>
 
               {/* Crédito: solo si el cliente lo tiene habilitado */}

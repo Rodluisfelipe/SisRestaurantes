@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const pointsTransactionSchema = new mongoose.Schema({
   type: {
     type: String,
-    enum: ['earn', 'redeem', 'bonus', 'expire', 'adjust'],
+    enum: ['earn', 'redeem', 'bonus', 'expire', 'adjust', 'stamp', 'stamp_redeem', 'stamp_return'],
     required: true
   },
   points: { type: Number, required: true },    // positive = earned, negative = spent
@@ -42,6 +42,13 @@ const customerLoyaltySchema = new mongoose.Schema({
   totalEarned: { type: Number, default: 0 },
   totalRedeemed: { type: Number, default: 0 },
   totalOrders: { type: Number, default: 0 },
+
+  // Tarjeta de sellos (cuando el programa funciona por sellos)
+  stamps: { type: Number, default: 0 },           // sellos en la tarjeta actual
+  stampRewards: { type: Number, default: 0 },     // premios ganados sin usar
+  stampRewardsUsed: { type: Number, default: 0 },
+  cardsCompleted: { type: Number, default: 0 },
+  totalStamps: { type: Number, default: 0 },
 
   // Current tier name (computed from program tiers)
   currentTier: { type: String, default: '' },

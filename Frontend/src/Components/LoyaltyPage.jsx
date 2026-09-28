@@ -6,6 +6,7 @@ import { useBusinessConfig } from '../Context/BusinessContext';
 import { esSinCuenta } from '../utils/cuentaCliente';
 import MenuScreen from './MenuScreen';
 import { Boton, Insignia, formatearPesos } from './ui';
+import TarjetaSellos from './TarjetaSellos';
 
 const EMPTY_ARRAY = [];
 
@@ -122,7 +123,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, products 
   }, [phone, businessId, redeeming, puntos, productoDe, addToCart, fetchBalance, onClose]);
 
   return (
-    <MenuScreen open={show} onClose={onClose} title="Mis puntos" subtitle={businessName || undefined}>
+    <MenuScreen open={show} onClose={onClose} title={data?.mode === 'stamps' ? 'Mi tarjeta' : 'Mis puntos'} subtitle={businessName || undefined}>
       <div className="px-4 py-5 space-y-6 pb-10">
         {loading ? (
           <div className="space-y-3" aria-busy="true">
@@ -141,6 +142,8 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, products 
             titulo="Sin programa de puntos"
             texto="Este negocio todavía no tiene un programa de puntos."
           />
+        ) : data.mode === 'stamps' && data.tarjeta ? (
+          <SeccionSellos tarjeta={data.tarjeta} products={products} addToCart={addToCart} onClose={onClose} />
         ) : (
           <>
             {/* 1. Cuántos puntos tengo */}
@@ -276,6 +279,50 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, products 
     </MenuScreen>
   );
 };
+
+/* Tarjeta de sellos: cuántos lleva, cuánto le falta y, si la llenó, cómo
+   usar el premio (se elige al pagar el siguiente pedido). */
+function SeccionSellos({ tarjeta, products, addToCart, onClose }) {
+  const { premio } = tarjeta;
+  const producto = premio.tipo === 'free_product'
+    ? products.find((p) => String(p._id) === String(premio.productId)) || null
+    : null;
+  return (
+    <>
+      <section className="rounded-2xl border border-linea bg-superficie-tarjeta p-4">
+        <p className="text-xs font-bold uppercase tracking-wide text-tinta-2 mb-3">
+          {tarjeta.sellos} de {tarjeta.requeridos} sellos
+        </p>
+        <TarjetaSellos requeridos={tarjeta.requeridos} sellos={tarjeta.sellos} premio={premio.nombre} color="var(--mb-accent, #2563eb)" />
+        <p className="mt-3 text-sm text-tinta-2">
+          {tarjeta.montoMinimo > 0
+            ? `Cada pedido de ${formatearPesos(tarjeta.montoMinimo)} o más te suma un sello.`
+            : 'Cada pedido te suma un sello.'}
+        </p>
+      </section>
+
+      {tarjeta.premiosDisponibles > 0 && (
+        <section className="rounded-2xl border border-exito bg-emerald-50 p-4">
+          <p className="text-lg font-black text-tinta">
+            {tarjeta.premiosDisponibles === 1 ? '¡Tienes un premio!' : `¡Tienes ${tarjeta.premiosDisponibles} premios!`}
+          </p>
+          <p className="mt-1 text-sm text-tinta-2">
+            {premio.nombre}. Úsalo en tu próximo pedido: al pagar, toca <b>Usar</b> en tu tarjeta.
+            {premio.tipo === 'free_product' && ` Solo agrega ${premio.productName || 'el producto'} al pedido.`}
+          </p>
+          {producto && addToCart && (
+            <Boton className="mt-3" onClick={() => {
+              addToCart({ ...producto, quantity: 1, selectedToppings: [] });
+              onClose();
+            }}>
+              Agregar {producto.name} al pedido
+            </Boton>
+          )}
+        </section>
+      )}
+    </>
+  );
+}
 
 function Aviso({ icono, titulo, texto, accion = null }) {
   return (

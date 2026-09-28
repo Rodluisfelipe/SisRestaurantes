@@ -305,7 +305,23 @@ function Encabezado({ perfil, nombre, puntos, onVerPuntos }) {
 
       {(puntos || perfil.saldoFavor > 0 || perfil.credito) && (
         <div className="mt-4 grid grid-cols-2 gap-2">
-          {puntos && (
+          {puntos?.modo === 'sellos' && (
+            <button
+              type="button"
+              onClick={onVerPuntos}
+              className="col-span-2 text-left rounded-2xl bg-marca-suave p-3.5 active:scale-[0.99] transition-transform"
+            >
+              <div className="flex items-center justify-between">
+                <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-tinta-2"><Star className="w-4 h-4 text-marca" /> Mi tarjeta</p>
+                {puntos.premiosDisponibles > 0 && <Insignia tono="marca">¡Premio listo!</Insignia>}
+              </div>
+              <p className="mt-1 text-2xl font-black text-tinta tabular-nums">{puntos.sellos} de {puntos.requeridos} sellos</p>
+              <p className="mt-1 text-xs text-tinta-2">
+                {puntos.premiosDisponibles > 0 ? <>Tienes <b>{puntos.premio}</b> para usar</> : <>Te faltan {puntos.requeridos - puntos.sellos} para <b>{puntos.premio}</b></>}
+              </p>
+            </button>
+          )}
+          {puntos && puntos.modo !== 'sellos' && (
             <button
               type="button"
               onClick={onVerPuntos}

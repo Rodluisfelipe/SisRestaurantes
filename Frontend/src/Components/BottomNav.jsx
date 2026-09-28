@@ -90,7 +90,9 @@ export default function BottomNav({
             disabled={disabled}
             whileTap={reduceMotion || disabled ? undefined : { scale: 0.92 }}
             animate={pop && !reduceMotion ? { scale: [1, 1.16, 1] } : { scale: 1 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            /* Tres pasos (1 → 1.16 → 1) no se pueden animar con 'spring': lanzaba un
+               error en cada producto agregado al carrito. */
+            transition={{ duration: 0.35, ease: 'easeOut' }}
             className="relative w-[54px] h-[54px] rounded-full flex items-center justify-center disabled:opacity-50"
             /* Píldora clara: el acento del negocio se usa tal cual, que ya
                tiene contraste AA garantizado contra su propio texto. */
@@ -138,7 +140,11 @@ function ItemMas({ onClick }) {
   const reduceMotion = useReducedMotion();
 
   const vistas = [{ clave: 'mas', Icono: Star, texto: 'Más' }, { clave: 'cuenta', Icono: UserRound, texto: 'Cuenta' }];
-  if (resumen?.puntos) vistas.push({ clave: 'puntos', Icono: Gift, texto: `${compacto(resumen.puntos.puntos)} pts` });
+  if (resumen?.puntos) {
+    vistas.push(resumen.puntos.modo === 'sellos'
+      ? { clave: 'puntos', Icono: Gift, texto: `${resumen.puntos.sellos}/${resumen.puntos.requeridos}` }
+      : { clave: 'puntos', Icono: Gift, texto: `${compacto(resumen.puntos.puntos)} pts` });
+  }
   if (businessConfig?.wifi?.enabled && businessConfig?.wifi?.ssid) vistas.push({ clave: 'wifi', Icono: Wifi, texto: 'Wi-Fi' });
   if (businessConfig?.enableBookings) vistas.push({ clave: 'reservar', Icono: CalendarCheck, texto: 'Reservar' });
   const social = businessConfig?.socialMedia || {};

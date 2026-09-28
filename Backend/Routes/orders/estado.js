@@ -138,6 +138,25 @@ async function actualizarEstadoPedido(req, res) {
         userId: req.user?.id,
         note: 'Pedido cancelado',
       });
+      // Si usó el premio de su tarjeta de sellos, vuelve a quedar disponible
+      if (updatedOrder.premioSellos && !updatedOrder.premioSellos.devuelto && updatedOrder.premioSellos.telefono) {
+        try {
+          const marcado = await Order.updateOne(
+            { _id: updatedOrder._id, 'premioSellos.devuelto': false },
+            { $set: { 'premioSellos.devuelto': true } },
+          );
+          if (marcado.modifiedCount) {
+            await require('../../services/sellos').devolverPremio({
+              businessId: updatedOrder.businessId,
+              telefono: updatedOrder.premioSellos.telefono,
+              motivo: `Pedido #${updatedOrder.orderNumber} cancelado`,
+              orderId: updatedOrder._id,
+            });
+          }
+        } catch (e) {
+          logger.error('No se pudo devolver el premio de sellos', { error: e.message, orderId: id });
+        }
+      }
       // Si era a crédito, se le devuelve al cliente.
       try {
         await sincronizarCreditoPedido(updatedOrder.toObject ? updatedOrder.toObject() : updatedOrder);
@@ -337,7 +356,10 @@ async function actualizarEstadoPedido(req, res) {
         if (updatedOrder.customerId) {
           try {
             const loyaltyProgram = await LoyaltyProgram.findOne({ businessId: updatedOrder.businessId, isActive: true }).lean();
-            if (loyaltyProgram) {
+            if (loyaltyProgram?.mode === 'stamps') {
+              // Tarjeta de sellos: un sello por pedido (si alcanza el mínimo), no puntos
+              await require('../../services/sellos').sumarSello(updatedOrder, loyaltyProgram);
+            } else if (loyaltyProgram) {
               const amountForPoints = updatedOrder.finalAmount || updatedOrder.totalAmount;
               let pointsToAward = Math.floor(amountForPoints / loyaltyProgram.amountPerPoints) * loyaltyProgram.pointsPerAmount;
 

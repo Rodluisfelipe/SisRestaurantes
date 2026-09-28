@@ -150,7 +150,9 @@ export default function MoreSheet({ open, onClose, onRate, onShowLoyalty }) {
 
   const rapidos = [];
   if (puntos && onShowLoyalty) {
-    rapidos.push({ clave: 'puntos', icono: <Gift className="w-5 h-5" />, titulo: 'Mis puntos', detalle: `${puntos.puntos.toLocaleString('es-CO')} acumulados`, onClick: cerrarY(onShowLoyalty) });
+    rapidos.push(puntos.modo === 'sellos'
+      ? { clave: 'puntos', icono: <Gift className="w-5 h-5" />, titulo: 'Mi tarjeta', detalle: puntos.premiosDisponibles > 0 ? '¡Tienes un premio!' : `${puntos.sellos} de ${puntos.requeridos} sellos`, onClick: cerrarY(onShowLoyalty) }
+      : { clave: 'puntos', icono: <Gift className="w-5 h-5" />, titulo: 'Mis puntos', detalle: `${puntos.puntos.toLocaleString('es-CO')} acumulados`, onClick: cerrarY(onShowLoyalty) });
   }
   if (businessConfig?.enableBookings) {
     rapidos.push({ clave: 'reservar', icono: <CalendarCheck className="w-5 h-5" />, titulo: 'Reservar', detalle: 'Aparta tu mesa', onClick: cerrarY(() => window.dispatchEvent(new CustomEvent('mb:open-booking'))) });

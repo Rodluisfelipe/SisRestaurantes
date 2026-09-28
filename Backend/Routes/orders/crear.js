@@ -10,7 +10,8 @@ const router = express.Router();
 const Order = require("../../Models/Order");
 const CompletedOrder = require("../../Models/CompletedOrder");
 const Customer = require("../../Models/Customer");
-const { emitirLlave } = require("../../utils/cuentaCliente");
+const { emitirLlave, abreCuenta } = require("../../utils/cuentaCliente");
+const sellos = require('../../services/sellos');
 const BusinessConfig = require("../../Models/BusinessConfig");
 const socketService = require("../../services/socketService");
 const { validateAndResolveBusinessId } = require("../../utils/businessValidator");
@@ -342,6 +343,34 @@ router.post("/", (req, res, next) => {
       finalAmount = finalAmount + tipAmount;
     }
 
+    /* Premio de la tarjeta de sellos. Se calcula y se aparta aquí, en el
+       servidor: el descuento queda en el pedido que ve el negocio y el mismo
+       premio no se puede usar dos veces. */
+    let premioSellos = null;
+    if (req.body.usarPremioSellos === true) {
+      if (!phone) {
+        return res.status(400).json({ message: 'Para usar el premio de la tarjeta se necesita el teléfono del cliente.' });
+      }
+      if (couponCode) {
+        return res.status(400).json({ message: 'Usa el cupón o el premio de la tarjeta, no los dos en el mismo pedido.' });
+      }
+      // Desde el menú, solo el dueño del teléfono (con la llave de su cuenta); en caja, el personal
+      const esPersonal = await personalDeEsteNegocio(req, businessObjectId);
+      if (!esPersonal && !abreCuenta(req, businessObjectId, phone)) {
+        return res.status(401).json({ codigo: 'SIN_CUENTA', message: 'Para usar tu premio, pide desde el celular con el que acumulas sellos.' });
+      }
+      const programaSellos = await sellos.programaDeSellos(businessObjectId);
+      if (!programaSellos) {
+        return res.status(400).json({ message: 'La tarjeta de sellos no está activa.' });
+      }
+      const tarjeta = sellos.tarjetaDe(programaSellos);
+      const calculo = await sellos.descuentoDelPremio(tarjeta, items, numericTotalAmount);
+      if (!calculo.ok) return res.status(400).json({ message: calculo.message });
+      premioSellos = { nombre: tarjeta.premio.nombre, tipo: tarjeta.premio.tipo, descuento: calculo.descuento, telefono: phone, devuelto: false };
+      discountAmount += calculo.descuento;
+      finalAmount = Math.max(0, finalAmount - calculo.descuento);
+    }
+
     /* El domicilio se suma AL FINAL, después de cupones y descuentos: no se
        descuenta sobre el envío. Va aparte de totalAmount, que por convención
        (y porque así lo valida orderPricing) contiene solo los productos.
@@ -407,6 +436,7 @@ router.post("/", (req, res, next) => {
       couponCode: coupon ? coupon.code : null,
       couponId: coupon ? coupon._id : null,
       discountAmount,
+      premioSellos: premioSellos || undefined,
       tipAmount,
       posOpenTab: isOpenTab,
       finalAmount,
@@ -455,7 +485,19 @@ router.post("/", (req, res, next) => {
       deliveryNeedsConfirmation
     });
     
-    const savedOrder = await newOrder.save();
+    if (premioSellos && !(await sellos.apartarPremio({ businessId: businessObjectId, telefono: phone, nombre: premioSellos.nombre }))) {
+      return res.status(400).json({ message: 'Este cliente no tiene premios disponibles en su tarjeta.' });
+    }
+    let savedOrder;
+    try {
+      savedOrder = await newOrder.save();
+    } catch (errGuardar) {
+      // El pedido no quedó: el premio vuelve a la tarjeta
+      if (premioSellos) {
+        await sellos.devolverPremio({ businessId: businessObjectId, telefono: phone, motivo: 'El pedido no se pudo crear' }).catch(() => {});
+      }
+      throw errGuardar;
+    }
 
     // El cargo a la cuenta del cliente, con el pedido ya guardado.
     if (clienteCredito) {

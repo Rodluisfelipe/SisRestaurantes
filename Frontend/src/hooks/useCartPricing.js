@@ -32,6 +32,10 @@ export default function useCartPricing(cart, appliedCoupon, loyaltyReward) {
     } else if (r.type === 'discount_percent') {
       loyaltyDiscountAmount = Math.round(finalAmount * r.discountValue / 100);
       if (r.maxDiscount > 0) loyaltyDiscountAmount = Math.min(loyaltyDiscountAmount, r.maxDiscount);
+    } else if (r.type === 'free_product' && loyaltyReward.sellos) {
+      // Premio de la tarjeta de sellos: sale gratis una unidad del producto
+      const item = cart.find((i) => String(i._id || i.productId) === String(r.productId));
+      loyaltyDiscountAmount = item ? Math.min(parseFloat(item.price) || 0, finalAmount) : 0;
     } else if (r.type === 'free_delivery') {
       // Delivery discount handled separately
       loyaltyDiscountAmount = 0;

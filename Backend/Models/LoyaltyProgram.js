@@ -63,7 +63,24 @@ const loyaltyProgramSchema = new mongoose.Schema({
   tiers: [tierSchema],
 
   // Rewards catalog
-  rewards: [rewardSchema]
+  rewards: [rewardSchema],
+
+  /* Cómo funciona el programa: por puntos (según lo que se gasta) o por
+     sellos (cada pedido suma uno; al llenar la tarjeta hay premio). El
+     negocio elige uno: los dos a la vez confunden al cliente. */
+  mode: { type: String, enum: ['points', 'stamps'], default: 'points' },
+  stampCard: {
+    required: { type: Number, default: 10, min: 2, max: 30 },   // sellos para llenar la tarjeta
+    minAmount: { type: Number, default: 0, min: 0 },            // pedido mínimo para ganar sello
+    reward: {
+      type: { type: String, enum: ['free_product', 'discount_fixed', 'discount_percent'], default: 'free_product' },
+      name: { type: String, trim: true, maxlength: 100, default: '' },
+      discountValue: { type: Number, default: 0, min: 0 },
+      maxDiscount: { type: Number, default: 0, min: 0 },
+      productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', default: null },
+      productName: { type: String, trim: true, maxlength: 100, default: '' }
+    }
+  }
 }, {
   timestamps: true
 });

@@ -59,6 +59,11 @@ async function redimir(opts) {
     };
   }
 
+  // Con tarjeta de sellos no hay puntos que canjear: el premio va en el pedido
+  if (program.mode === 'stamps') {
+    return { ok: false, estado: 400, cuerpo: { message: 'Este negocio usa tarjeta de sellos: el premio se aplica al hacer el pedido.' } };
+  }
+
   const reward = program.rewards.id(rewardId);
   if (!reward || !reward.isActive) {
     return { ok: false, estado: 404, cuerpo: { message: 'Recompensa no encontrada o inactiva' } };

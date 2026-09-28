@@ -15,6 +15,14 @@ import AI from './Admin/AdminIcons';
 import { enlaceWhatsApp } from '../utils/whatsapp';
 import { Capa } from './ui';
 import { pesos } from '../utils/pedidos';
+import TarjetaSellos from './TarjetaSellos';
+
+// Nombre del premio de la tarjeta, armado solo: el negocio no tiene que escribirlo
+const nombrePremioSellos = (r = {}) => {
+  if (r.type === 'discount_fixed') return `${pesos(r.discountValue)} de descuento`;
+  if (r.type === 'discount_percent') return `${Number(r.discountValue) || 0}% de descuento`;
+  return r.productName ? `${r.productName} gratis` : 'Producto gratis';
+};
 
 /* Campos numéricos: se guarda lo que se escribe (texto). Antes cada tecla
    pasaba por Number(...) || 1: al borrar quedaba 1 y escribir 5000 daba 15000.
@@ -451,6 +459,18 @@ const LoyaltyManager = () => {
     if (!(await guardar(nuevo))) setProgram(p => ({ ...p, isActive: antes }));
   };
 
+  /* ── Tarjeta de sellos ── */
+  const esSellos = program.mode === 'stamps';
+  const tarjeta = program.stampCard || { required: 10, minAmount: 0, reward: { type: 'free_product' } };
+  const premioTarjeta = tarjeta.reward || { type: 'free_product' };
+  const setTarjeta = (cambios) => setProgram(p => ({ ...p, stampCard: { ...(p.stampCard || {}), ...cambios } }));
+  const setPremioTarjeta = (cambios) => setProgram(p => {
+    const reward = { ...(p.stampCard?.reward || { type: 'free_product' }), ...cambios };
+    reward.name = nombrePremioSellos(reward);
+    return { ...p, stampCard: { ...(p.stampCard || {}), reward } };
+  });
+  useEffect(() => { if (esSellos && products.length === 0) fetchProducts(); }, [esSellos]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const hayCambios = !loading && guardadoRef.current !== '' && JSON.stringify(program) !== guardadoRef.current;
 
   const handleToggleTiers = () => {
@@ -555,24 +575,30 @@ const LoyaltyManager = () => {
 
   /* ═══ COMPUTED ═══ */
 
-  const completionSteps = useMemo(() => [
+  const completionSteps = useMemo(() => (program.mode === 'stamps' ? [
+    { done: program.isActive, label: 'Programa activado' },
+    { done: !!(program.stampCard?.reward?.productId || Number(program.stampCard?.reward?.discountValue) > 0), label: 'Premio de la tarjeta elegido' },
+  ] : [
     { done: program.isActive, label: 'Programa activado' },
     { done: program.pointsPerAmount > 0 && program.amountPerPoints > 0, label: 'Reglas configuradas' },
     { done: program.rewards.length > 0, label: 'Al menos 1 premio creado' },
-  ], [program]);
+  ]), [program]);
 
   const completionPercent = useMemo(() => {
     const done = completionSteps.filter(s => s.done).length;
     return Math.round((done / completionSteps.length) * 100);
   }, [completionSteps]);
 
-  const TABS = [
-    { id: 'rules', label: 'Reglas', emoji: AI.cog('w-4 h-4'), desc: '¿Cómo ganan puntos?' },
+  const TODAS_LAS_PESTANAS = [
+    { id: 'rules', label: esSellos ? 'Tarjeta' : 'Reglas', emoji: AI.cog('w-4 h-4'), desc: esSellos ? 'Sellos y premio' : '¿Cómo ganan puntos?' },
     { id: 'rewards', label: 'Premios', emoji: AI.gift('w-4 h-4'), desc: '¿Qué se llevan?', tourId: 'rewards-tab' },
     { id: 'tiers', label: 'Niveles', emoji: AI.trophy('w-4 h-4'), desc: 'Bronce → Oro → VIP' },
     { id: 'stats', label: 'Stats', emoji: AI.chartBar('w-4 h-4'), desc: 'Rendimiento' },
-    { id: 'customers', label: 'Clientes', emoji: AI.users('w-4 h-4'), desc: 'Todos los puntos' },
+    { id: 'customers', label: 'Clientes', emoji: AI.users('w-4 h-4'), desc: esSellos ? 'Sus tarjetas' : 'Todos los puntos' },
   ];
+  // Con sellos no hay catálogo de premios, niveles ni puntos que medir
+  const TABS = esSellos ? TODAS_LAS_PESTANAS.filter(t => ['rules', 'customers'].includes(t.id)) : TODAS_LAS_PESTANAS;
+  useEffect(() => { if (esSellos && !['rules', 'customers'].includes(activeTab)) setActiveTab('rules'); }, [esSellos, activeTab]);
 
   const buildRewardWhatsApp = (customer, reward) => {
     const telefono = customer.phone || customer.customerId?.phone || '';
@@ -735,6 +761,117 @@ const LoyaltyManager = () => {
           {/* TAB: Rules */}
           {activeTab === 'rules' && (
             <div className="space-y-4" data-tour="points-config">
+              {/* Puntos o sellos: el negocio elige uno */}
+              <div className="bg-white rounded-2xl border border-slate-100 lg:border-slate-200 p-4 lg:p-6">
+                <h3 className="text-base font-bold text-slate-800 mb-3">¿Cómo premias a tus clientes?</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {[
+                    { id: 'points', titulo: 'Por puntos', desc: 'Ganan puntos según lo que gastan y los cambian por premios.' },
+                    { id: 'stamps', titulo: 'Por sellos', desc: 'Cada pedido suma un sello. Al llenar la tarjeta, se llevan un premio.' },
+                  ].map(op => {
+                    const activo = (program.mode || 'points') === op.id;
+                    return (
+                      <button key={op.id} type="button" onClick={() => setProgram(p => ({ ...p, mode: op.id }))}
+                        className={`text-left p-3 rounded-xl border-2 transition-all ${activo ? '' : 'border-slate-200 hover:border-slate-300'}`}
+                        style={activo ? { borderColor: themeColor, backgroundColor: themeColor + '12' } : undefined}
+                      >
+                        <p className="text-sm font-bold text-slate-800">{op.titulo}</p>
+                        <p className="text-xs text-slate-500 mt-0.5 leading-snug">{op.desc}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {esSellos && (
+                <div className="bg-white rounded-2xl border border-slate-100 lg:border-slate-200 p-4 lg:p-6 space-y-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">¿Cuántos sellos llenan la tarjeta?</label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {[5, 6, 8, 10, 12].map(n => (
+                        <button key={n} type="button" onClick={() => setTarjeta({ required: n })}
+                          className={`w-11 h-11 rounded-xl text-sm font-bold border-2 ${Number(tarjeta.required) === n ? 'text-white' : 'bg-white text-slate-600 border-slate-200'}`}
+                          style={Number(tarjeta.required) === n ? { backgroundColor: themeColor, borderColor: themeColor } : undefined}
+                        >{n}</button>
+                      ))}
+                      <input type="text" inputMode="numeric" aria-label="Otra cantidad de sellos"
+                        value={[5, 6, 8, 10, 12].includes(Number(tarjeta.required)) ? '' : (tarjeta.required ?? '')}
+                        onChange={e => setTarjeta({ required: soloDigitos(e.target.value).slice(0, 2) })}
+                        placeholder="Otro" className="w-20 h-11 px-2 rounded-xl border border-slate-200 text-center text-sm font-semibold outline-none focus:ring-2 focus:ring-orange-100" />
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1.5">Entre 2 y 30. El último sello es el premio.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">Pedido mínimo para ganar un sello</label>
+                    <div className="flex items-center gap-2 max-w-xs">
+                      <span className="text-slate-400">$</span>
+                      <input type="text" inputMode="numeric" value={Number(tarjeta.minAmount) ? conMiles(tarjeta.minAmount) : ''}
+                        onChange={e => setTarjeta({ minAmount: soloDigitos(e.target.value) })}
+                        placeholder="0" className="flex-1 h-11 px-3 rounded-xl border border-slate-200 text-sm font-semibold outline-none focus:ring-2 focus:ring-orange-100" />
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1.5">
+                      {Number(tarjeta.minAmount) > 0
+                        ? `Solo los pedidos de ${pesos(tarjeta.minAmount)} o más suman sello (sin contar el domicilio).`
+                        : 'Déjalo vacío para que cualquier pedido sume sello.'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">¿Qué se ganan al llenar la tarjeta?</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+                      {[
+                        { id: 'free_product', label: 'Un producto gratis' },
+                        { id: 'discount_fixed', label: 'Descuento en pesos' },
+                        { id: 'discount_percent', label: 'Descuento en %' },
+                      ].map(t => (
+                        <button key={t.id} type="button" onClick={() => setPremioTarjeta({ type: t.id })}
+                          className={`h-11 px-3 rounded-xl text-sm font-semibold border-2 ${premioTarjeta.type === t.id ? '' : 'border-slate-200 text-slate-600'}`}
+                          style={premioTarjeta.type === t.id ? { borderColor: themeColor, backgroundColor: themeColor + '12', color: '#0f172a' } : undefined}
+                        >{t.label}</button>
+                      ))}
+                    </div>
+                    {premioTarjeta.type === 'free_product' ? (
+                      <select value={premioTarjeta.productId || ''}
+                        onChange={e => { const prod = products.find(p => p._id === e.target.value); setPremioTarjeta({ productId: prod?._id || null, productName: prod?.name || '' }); }}
+                        className="w-full h-11 px-3 rounded-xl border border-slate-200 text-sm bg-white outline-none focus:ring-2 focus:ring-orange-100"
+                      >
+                        <option value="">Elige el producto de regalo…</option>
+                        {products.map(p => <option key={p._id} value={p._id}>{p.name} · {pesos(p.price)}</option>)}
+                      </select>
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {premioTarjeta.type === 'discount_fixed' && <span className="text-slate-400">$</span>}
+                        <input type="text" inputMode="numeric"
+                          value={premioTarjeta.type === 'discount_fixed' ? (Number(premioTarjeta.discountValue) ? conMiles(premioTarjeta.discountValue) : '') : (premioTarjeta.discountValue || '')}
+                          onChange={e => setPremioTarjeta({ discountValue: soloDigitos(e.target.value) })}
+                          placeholder={premioTarjeta.type === 'discount_fixed' ? '10.000' : '20'}
+                          className="w-32 h-11 px-3 rounded-xl border border-slate-200 text-sm font-semibold outline-none focus:ring-2 focus:ring-orange-100" />
+                        {premioTarjeta.type === 'discount_percent' && (
+                          <>
+                            <span className="text-sm text-slate-500">% · máximo $</span>
+                            <input type="text" inputMode="numeric" aria-label="Descuento máximo"
+                              value={Number(premioTarjeta.maxDiscount) ? conMiles(premioTarjeta.maxDiscount) : ''}
+                              onChange={e => setPremioTarjeta({ maxDiscount: soloDigitos(e.target.value) })}
+                              placeholder="sin tope"
+                              className="w-28 h-11 px-3 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-orange-100" />
+                          </>
+                        )}
+                      </div>
+                    )}
+                    {premioTarjeta.type === 'free_product' && (
+                      <p className="text-xs text-slate-500 mt-1.5">Para usarlo, el cliente agrega ese producto al pedido y sale gratis.</p>
+                    )}
+                  </div>
+
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
+                    <p className="text-xs font-semibold text-slate-500 mb-2">Así la ve tu cliente</p>
+                    <TarjetaSellos requeridos={tarjeta.required} sellos={Math.max(0, (Number(tarjeta.required) || 10) - 3)} premio={nombrePremioSellos(premioTarjeta)} color={themeColor} />
+                  </div>
+                </div>
+              )}
+
+              {!esSellos && (<>
               <div className="bg-white rounded-2xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4 lg:p-6">
                 <div className="flex items-center gap-2 mb-5">
                   {AI.circleStack('w-5 h-5 text-slate-500')}
@@ -811,6 +948,7 @@ const LoyaltyManager = () => {
                   </div>
                 </div>
               </div>
+              </>)}
             </div>
           )}
 
@@ -1107,14 +1245,27 @@ const LoyaltyManager = () => {
                               {c.currentTier && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-semibold">{c.currentTier}</span>}
                             </p>
                           </div>
-                          <div className="text-right">
-                            <p className="text-base font-black text-slate-800">{Number(c.points || 0).toLocaleString('es-CO')}</p>
-                            <p className="text-2xs text-slate-400">puntos</p>
-                          </div>
+                          {esSellos ? (
+                            <div className="text-right">
+                              <p className="text-base font-black text-slate-800">{c.stamps || 0}/{Number(tarjeta.required) || 10}</p>
+                              <p className="text-xs text-slate-500">sellos</p>
+                            </div>
+                          ) : (
+                            <div className="text-right">
+                              <p className="text-base font-black text-slate-800">{Number(c.points || 0).toLocaleString('es-CO')}</p>
+                              <p className="text-2xs text-slate-400">puntos</p>
+                            </div>
+                          )}
                         </div>
 
+                        {esSellos && c.stampRewards > 0 && (
+                          <p className="mt-3 pt-3 border-t border-slate-100 text-sm font-semibold text-emerald-700">
+                            Tiene {c.stampRewards} {c.stampRewards === 1 ? 'premio' : 'premios'} por usar: {premioTarjeta.name || nombrePremioSellos(premioTarjeta)}
+                          </p>
+                        )}
+
                         {/* Claimable rewards */}
-                        {claimable.length > 0 && (
+                        {!esSellos && claimable.length > 0 && (
                           <div className="mt-3 pt-3 border-t border-slate-100">
                             <p className="text-2xs font-semibold text-emerald-600 mb-2 flex items-center gap-0.5">{AI.gift('w-3 h-3')} Puede reclamar:</p>
                             <div className="flex flex-wrap gap-1.5">
