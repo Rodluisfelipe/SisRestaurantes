@@ -26,11 +26,13 @@ import { esTienda } from '../utils/tienda';
 import AddItemsModal from './AddItemsModal';
 import QuickOrderModal from './QuickOrderModal';
 import OrderCard from './OrderCard';
+import ComprobanteImagen from './ComprobanteImagen';
 import DeliveryLocationMap from './DeliveryLocationMap';
 import useOrdersDashboard from '../hooks/useOrdersDashboard';
 import api from '../services/api';
 import { enlaceWhatsApp } from '../utils/whatsapp';
 import { Capa, Boton } from './ui';
+import { pasosDelPedido, TONOS_PASO, totalDelPedido, pesos, precioConOpciones, totalDeLinea } from '../utils/pedidos';
 
 // Inline admin chat for order details
 const AdminOrderChat = ({ orderId, messages: initialMessages, isOpen, onClose }) => {
@@ -186,35 +188,6 @@ const ExtrasDelItem = ({ toppings }) => {
   );
 };
 
-/* Qué puede pasar ahora con el pedido, en el orden en que se hace. El primero
-   es el paso normal (va lleno: azul avanza, verde cierra); los demás son
-   atajos y van claros. Mismos saltos que acepta VALID_TRANSITIONS. */
-const pasosDelDetalle = (o) => {
-  const S = ORDER_STATUS;
-  const entregar = {
-    to: S.COMPLETED,
-    label: o.orderType === 'inSite' ? 'Marcar como servido' : o.orderType === 'delivery' ? 'Entregado al cliente' : 'Entregado',
-    Icon: FaCheck,
-    tono: 'verde',
-  };
-  const iniciar = { to: S.IN_PROGRESS, label: 'Iniciar preparación', Icon: FaPlay, tono: 'azul' };
-  if (o.status === S.PENDING_PAYMENT) return [{ to: S.PAYMENT_CONFIRMED, label: 'Confirmar pago', Icon: FaCheckCircle, tono: 'verde' }];
-  if (o.status === S.PENDING || o.status === S.PAYMENT_CONFIRMED) return [iniciar];
-  if (o.status === S.CONFIRMED) return [iniciar, { ...entregar, tono: 'claro' }];
-  if (o.status === S.IN_PROGRESS || o.status === S.PREPARING) {
-    if (o.orderType === 'delivery') return [{ to: S.READY, label: 'Salió · En camino', Icon: FaMotorcycle, tono: 'azul' }, { ...entregar, label: 'Entregado', tono: 'claro' }];
-    if (o.orderType === 'takeaway') return [{ to: S.READY, label: 'Listo para recoger', Icon: FaCheck, tono: 'azul' }, { ...entregar, tono: 'claro' }];
-    return [entregar];
-  }
-  if (o.status === S.READY) return [entregar];
-  return [];
-};
-const TONOS_PASO = {
-  azul: 'bg-blue-600 hover:bg-blue-700 text-white',
-  verde: 'bg-emerald-600 hover:bg-emerald-700 text-white',
-  claro: 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200',
-};
-
 const GiftPanel = ({ order, businessName }) => {
   const [copied, setCopied] = useState(false);
   if (!order?.isGift || !order?.gift) return null;
@@ -280,7 +253,7 @@ function ModernOrdersDashboard() {
     handlePrintOrder, calculateTimeElapsed, getOrderTypeInfo, getStatusInfo,
     fetchOrders, updateOrderStatus, sendToKitchen,
     confirmPayment, rejectPayment,
-    getProofUrl, goToKitchenScreen, showOrderDetails,
+    goToKitchenScreen, showOrderDetails,
   } = useOrdersDashboard();
 
   const [assignDomiOrder, setAssignDomiOrder] = useState(null);
@@ -294,7 +267,8 @@ function ModernOrdersDashboard() {
   const [showCompletedOrders, setShowCompletedOrders] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
   const [showProofModal, setShowProofModal] = useState(false);
-  const [proofImageUrl, setProofImageUrl] = useState('');
+  // Ruta del comprobante abierto; la imagen se pide con la sesión en la cabecera.
+  const [proofRuta, setProofRuta] = useState('');
 
   // Stable callbacks for memoized modals — prevents re-renders from socket updates
   const closeAddItems = useCallback(() => setAddItemsOrder(null), []);
@@ -349,8 +323,9 @@ function ModernOrdersDashboard() {
   const filteredOrders = orders.filter(order => {
     if (!order) return false;
     if (!VISIBLE_STATUSES.includes(order.status)) return false;
-    const name = (order.customerName || '').toLowerCase();
-    const number = (order.orderNumber || '').toLowerCase();
+    // String(): un solo valor que no sea texto no puede tumbar la pantalla entera.
+    const name = String(order.customerName ?? '').toLowerCase();
+    const number = String(order.orderNumber ?? '').toLowerCase();
     const search = searchTerm.toLowerCase();
     const matchesSearch = name.includes(search) || number.includes(search);
     
@@ -442,13 +417,15 @@ function ModernOrdersDashboard() {
   const statusFilters = [
     { value: 'all', label: 'Todos', icon: FaClipboardList },
     { value: ORDER_STATUS.PENDING, label: 'Pendientes', icon: FaClock },
-    { value: ORDER_STATUS.PAYMENT_UPLOADED, label: 'Por cobrar', icon: FaImage },
+    { value: ORDER_STATUS.PAYMENT_UPLOADED, label: 'Pagos', icon: FaImage },
     { value: ORDER_STATUS.IN_PROGRESS, label: 'En curso', icon: FaUtensils },
     { value: ORDER_STATUS.COMPLETED, label: 'Listos', icon: FaCheck },
   ];
 
   const orderCounts = {
-    all: filteredOrders.length,
+    // Todos los visibles, sin importar qué filtro esté elegido: antes, con
+    // "Pendientes" seleccionado, "Todos" mostraba solo los pendientes.
+    all: orders.filter(o => o && VISIBLE_STATUSES.includes(o.status)).length,
     [ORDER_STATUS.PENDING]: orders.filter(o => o?.status === ORDER_STATUS.PENDING || o?.status === ORDER_STATUS.PENDING_PAYMENT).length,
     [ORDER_STATUS.PAYMENT_UPLOADED]: orders.filter(o => o?.status === ORDER_STATUS.PAYMENT_UPLOADED || o?.status === ORDER_STATUS.PAYMENT_CONFIRMED).length,
     /* `confirmed` cuenta acá porque el filtro de esta pestaña ya lo incluía:
@@ -476,21 +453,9 @@ function ModernOrdersDashboard() {
       {/* Top Bar — Actions */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          {/* Pending badge */}
-          {pendingNotifications.length > 0 && (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="flex items-center gap-1.5 bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-full"
-            >
-              <motion.div
-                animate={{ scale: [1, 1.3, 1] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-                className="w-2 h-2 rounded-full bg-red-500"
-              />
-              <span className="text-xs font-bold">{pendingNotifications.length} pendiente{pendingNotifications.length > 1 ? 's' : ''}</span>
-            </motion.div>
-          )}
+          {/* Sin etiqueta de "N pendientes": contaba otra cosa que el filtro
+              "Pendientes" de abajo (3 contra 5) y confundía. Los números de
+              los filtros y del menú ya lo dicen. */}
         </div>
 
         <div className="flex items-center gap-2">
@@ -521,13 +486,15 @@ function ModernOrdersDashboard() {
             </button>
           )}
 
-          {/* Quick Order */}
+          {/* Nuevo pedido: es de donde sale casi todo (89 % de los pedidos), así
+              que es el botón más visible de la pantalla y dice lo que hace
+              también en el celular. */}
           <button
             onClick={() => setShowQuickOrder(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100 transition-colors"
+            className="flex items-center gap-1.5 px-4 h-10 rounded-xl text-sm font-bold bg-red-600 text-white shadow-sm hover:bg-red-700 active:scale-[0.97] transition"
           >
-            <FaPlus className="text-2xs" />
-            <span className="hidden sm:inline">Pedido</span>
+            <FaPlus className="text-xs" />
+            Nuevo pedido
           </button>
 
           {/* Refresh */}
@@ -707,7 +674,7 @@ function ModernOrdersDashboard() {
                     isPending={isPending}
                     onShowDetails={showOrderDetails}
                     onPrint={handlePrintOrder}
-                    onShowProof={(proofPath) => { setProofImageUrl(getProofUrl(proofPath)); setShowProofModal(true); }}
+                    onShowProof={(proofPath) => { setProofRuta(proofPath); setShowProofModal(true); }}
                     onUpdateStatus={updateOrderStatus}
                     onConfirmPayment={confirmPayment}
                     onRejectPayment={rejectPayment}
@@ -736,12 +703,10 @@ function ModernOrdersDashboard() {
           const abierto = ![ORDER_STATUS.COMPLETED, ORDER_STATUS.CANCELLED, ORDER_STATUS.DELIVERED].includes(o.status);
           const mensajesCliente = (o.messages || []).filter((m) => m.sender === 'customer').length;
           const unidades = (o.items || []).reduce((n, it) => n + (Number(it.quantity) || 1), 0);
-          const total = o.couponCode
-            ? (o.totalAmount || 0) + (o.deliveryFee || 0) - (o.discountAmount || 0)
-            : (o.totalAmount || 0) + (o.deliveryFee || 0);
+          const total = totalDelPedido(o);
           const envioPendiente = o.deliveryNeedsConfirmation && !o.deliveryFee;
           const whatsapp = o.phone ? enlaceWhatsApp(o.phone) : '';
-          const pasos = pasosDelDetalle(o);
+          const pasos = pasosDelPedido(o);
           const chip = 'inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border text-xs font-semibold whitespace-nowrap shrink-0 transition-colors active:scale-[0.97]';
           return (
           <motion.div
@@ -811,7 +776,7 @@ function ModernOrdersDashboard() {
                         {(o.customerName || '?').trim().charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[15px] font-bold text-slate-900 truncate">{o.customerName || 'Cliente'}</p>
+                        <p className="text-[15px] font-bold text-slate-900 break-words">{o.customerName || 'Cliente'}</p>
                         {o.phone && <p className="text-[12px] text-slate-500 tabular-nums">{o.phone}</p>}
                       </div>
                     </div>
@@ -854,7 +819,7 @@ function ModernOrdersDashboard() {
                             )}
                             {o.deliveryFee > 0 && (
                               <span className="inline-flex items-center gap-1 h-6 px-2 rounded-md bg-slate-100 text-[11px] font-medium text-slate-600">
-                                <FaTruck className="text-2xs text-slate-400" /> Envío ${o.deliveryFee.toLocaleString()}
+                                <FaTruck className="text-2xs text-slate-400" /> Envío {pesos(o.deliveryFee)}
                               </span>
                             )}
                           </div>
@@ -889,11 +854,11 @@ function ModernOrdersDashboard() {
                       </div>
                       {o.paymentProof && (
                         <button
-                          onClick={() => { setProofImageUrl(getProofUrl(o.paymentProof)); setShowProofModal(true); }}
+                          onClick={() => { setProofRuta(o.paymentProof); setShowProofModal(true); }}
                           className="flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 pl-1 pr-2.5 py-1 transition-colors"
                           title="Ver comprobante"
                         >
-                          <img src={getProofUrl(o.paymentProof)} alt="" className="w-8 h-8 rounded-md object-cover" />
+                          <ComprobanteImagen ruta={o.paymentProof} alt="" className="w-8 h-8 rounded-md object-cover" />
                           <span className="text-[11px] font-semibold text-purple-700">Comprobante</span>
                         </button>
                       )}
@@ -951,8 +916,8 @@ function ModernOrdersDashboard() {
                           {item.selectedToppings?.length > 0 && <ExtrasDelItem toppings={item.selectedToppings} />}
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-[14px] font-bold text-slate-900 tabular-nums">${(item.price * item.quantity).toLocaleString()}</p>
-                          {item.quantity > 1 && <p className="text-2xs text-slate-400 tabular-nums">${item.price.toLocaleString()} c/u</p>}
+                          <p className="text-[14px] font-bold text-slate-900 tabular-nums">{pesos(totalDeLinea(item))}</p>
+                          {item.quantity > 1 && <p className="text-2xs text-slate-400 tabular-nums">{pesos(precioConOpciones(item))} c/u</p>}
 
                           {puedeEditarItems(o) && item._id && (
                             <div className="flex items-center justify-end gap-1 mt-1.5">
@@ -998,22 +963,28 @@ function ModernOrdersDashboard() {
 
                   {/* Totales */}
                   <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 space-y-1 text-[13px]">
-                    {(o.deliveryFee > 0 || o.couponCode || o.deliveryNeedsConfirmation) && (
-                      <div className="flex justify-between text-slate-500"><span>Subtotal</span><span className="tabular-nums">${(o.totalAmount || 0).toLocaleString()}</span></div>
+                    {(o.deliveryFee > 0 || o.discountAmount > 0 || o.tipAmount > 0 || o.deliveryNeedsConfirmation) && (
+                      <div className="flex justify-between text-slate-500"><span>Subtotal</span><span className="tabular-nums">{pesos(o.totalAmount)}</span></div>
                     )}
                     {o.deliveryFee > 0 && (
-                      <div className="flex justify-between text-slate-500"><span>Envío</span><span className="tabular-nums">${o.deliveryFee.toLocaleString()}</span></div>
+                      <div className="flex justify-between text-slate-500"><span>Envío</span><span className="tabular-nums">{pesos(o.deliveryFee)}</span></div>
                     )}
                     {envioPendiente && (
                       <div className="flex justify-between text-amber-600"><span>Envío</span><span>Por confirmar</span></div>
                     )}
-                    {o.couponCode && (
-                      <div className="flex justify-between text-emerald-700"><span>Cupón ({o.couponCode})</span><span className="tabular-nums">-${(o.discountAmount || 0).toLocaleString()}</span></div>
+                    {o.discountAmount > 0 && (
+                      <div className="flex justify-between text-emerald-700">
+                        <span>{o.couponCode ? `Cupón (${o.couponCode})` : 'Descuento'}</span>
+                        <span className="tabular-nums">−{pesos(o.discountAmount)}</span>
+                      </div>
+                    )}
+                    {o.tipAmount > 0 && (
+                      <div className="flex justify-between text-slate-500"><span>Propina</span><span className="tabular-nums">{pesos(o.tipAmount)}</span></div>
                     )}
                     <div className="flex justify-between items-baseline pt-2 mt-1 border-t border-slate-200">
                       <span className="text-sm font-bold text-slate-900">Total</span>
                       <span className="text-xl font-black text-slate-900 tabular-nums">
-                        ${(envioPendiente ? (o.totalAmount || 0) : total).toLocaleString()}{envioPendiente ? ' + envío' : ''}
+                        {pesos(total)}{envioPendiente ? ' + envío' : ''}
                       </span>
                     </div>
                   </div>
@@ -1130,10 +1101,9 @@ function ModernOrdersDashboard() {
               >
                 <FaTimes className="text-slate-500 text-xs" />
               </button>
-              <img
-                src={proofImageUrl}
-                alt="Comprobante de pago"
-                className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"
+              <ComprobanteImagen
+                ruta={proofRuta}
+                className="max-w-full max-h-[85vh] min-w-[200px] min-h-[200px] object-contain rounded-xl shadow-2xl"
               />
             </motion.div>
           </motion.div>

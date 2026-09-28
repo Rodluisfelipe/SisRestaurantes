@@ -6,6 +6,7 @@ import AnnouncementInlineBar from './AnnouncementInlineBar';
 import api from '../../services/api';
 import { getCurrencySymbol } from '../../utils/currency';
 import { esTienda } from '../../utils/tienda';
+import { Plus, ClipboardList, Ban, Store, CheckCircle2, Users, Zap } from 'lucide-react';
 
 /* ═══ Icon System ═══ */
 const I = {
@@ -212,32 +213,8 @@ function StatusBadge({ businessConfig }) {
   );
 }
 
-/* ═══ Mobile Quick Action Card ═══ */
-function MobileActionCard({ tab, gradient, icon, label, sublabel, badge, onClick }) {
-  return (
-    <motion.button
-      whileTap={{ scale: 0.92 }}
-      onClick={onClick}
-      className="relative flex flex-col items-center gap-2 py-4 px-1 bg-white rounded-2xl border border-slate-100 shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
-    >
-      {badge > 0 && (
-        <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-red-500 text-white text-2xs font-black rounded-full flex items-center justify-center shadow-sm ring-2 ring-white z-10">
-          {badge > 99 ? '99+' : badge}
-        </span>
-      )}
-      <div className={`w-[52px] h-[52px] bg-gradient-to-br ${gradient} rounded-[16px] flex items-center justify-center shadow-sm`}>
-        {icon}
-      </div>
-      <div className="text-center px-0.5">
-        <p className="text-[12.5px] font-bold text-slate-800 leading-tight">{label}</p>
-        <p className="text-2xs text-slate-400 font-medium mt-0.5 leading-tight">{sublabel}</p>
-      </div>
-    </motion.button>
-  );
-}
-
 /* ═══ MAIN COMPONENT ═══ */
-export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, onboarding, onOpenModoOp, products, categories, toppingGroups }) {
+export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, onboarding, onOpenModoOp, onNuevoPedido, onDisponibilidad, products, categories, toppingGroups }) {
   const { businessConfig, updateConfig } = useBusinessConfig();
   const [search, setSearch] = useState('');
   const [toggling, setToggling] = useState(false);
@@ -305,39 +282,55 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
   ];
   const nextStep = STEPS.find(s => s.level > (onboarding?.level || 0));
 
-  /* Mobile quick actions */
-  const mobileActions = [
-    {
-      tab: 'orders', label: isService ? 'Citas' : 'Pedidos', sublabel: pendingOrdersCount > 0 ? `${pendingOrdersCount} nueva${pendingOrdersCount !== 1 ? 's' : ''}` : 'Ver todos',
-      gradient: 'from-blue-500 to-blue-600', badge: pendingOrdersCount,
-      icon: <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>,
-    },
-    {
-      tab: 'products', label: isService ? 'Servicios' : 'Menú', sublabel: 'Tu carta',
-      gradient: 'from-orange-500 to-orange-600',
-      icon: <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 01-8 0"/></svg>,
-    },
-    {
-      tab: 'completed_orders', label: 'Completados', sublabel: 'Historial',
-      gradient: 'from-emerald-500 to-emerald-600',
-      icon: <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>,
-    },
-    {
-      tab: 'reviews', label: 'Reseñas', sublabel: 'Calificaciones',
-      gradient: 'from-amber-500 to-amber-600',
-      icon: <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
-    },
-    {
-      tab: 'customers', label: 'Clientes', sublabel: 'Base de datos',
-      gradient: 'from-cyan-500 to-cyan-600',
-      icon: <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>,
-    },
-    {
-      tab: 'whatsapp', label: 'WhatsApp', sublabel: 'Mensajería',
-      gradient: 'from-green-500 to-green-600',
-      icon: <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>,
-    },
+  /* Lo de todos los días, en el orden en que se usa (datos reales de uso).
+     Solo en el celular: en la PC "Nuevo pedido" y "Se acabó" ya están
+     arriba del menú lateral. */
+  const pausados = (products || []).filter(p => p.active === false).length;
+  const accionesDelDia = [
+    { id: 'orders', label: isService ? 'Citas' : 'Pedidos', sub: pendingOrdersCount > 0 ? `${pendingOrdersCount} por atender` : 'Ver todos', Icon: ClipboardList, color: 'bg-blue-600', badge: pendingOrdersCount, onClick: () => handleNav('orders') },
+    ...(onDisponibilidad ? [{ id: 'agotar', label: 'Se acabó', sub: pausados > 0 ? `${pausados} no disponible${pausados !== 1 ? 's' : ''}` : 'Pausar un producto', Icon: Ban, color: 'bg-orange-500', onClick: onDisponibilidad }] : []),
+    { id: 'cajas', label: 'Caja', sub: 'Cómo va hoy', Icon: Store, color: 'bg-violet-600', onClick: () => handleNav('cajas') },
+    { id: 'completed_orders', label: 'Terminados', sub: 'Ventas del día', Icon: CheckCircle2, color: 'bg-emerald-600', onClick: () => handleNav('completed_orders') },
+    { id: 'customers', label: 'Clientes', sub: 'Buscar y ver', Icon: Users, color: 'bg-cyan-600', onClick: () => handleNav('customers') },
+    ...(onOpenModoOp ? [{ id: 'servicio', label: 'Modo servicio', sub: 'Pantalla de pedidos', Icon: Zap, color: 'bg-slate-700', onClick: onOpenModoOp }] : []),
   ];
+
+  const botonNuevoPedido = onNuevoPedido && (
+    <motion.button
+      whileTap={{ scale: 0.98 }}
+      onClick={onNuevoPedido}
+      className="w-full flex items-center justify-center gap-3 h-16 rounded-2xl bg-red-600 text-white text-lg font-extrabold shadow-lg shadow-red-600/25 hover:bg-red-700 transition-colors"
+    >
+      <Plus className="w-6 h-6" strokeWidth={3} />
+      {isService ? 'Nueva cita' : 'Nuevo pedido'}
+    </motion.button>
+  );
+
+  const rejillaAcciones = (columnas) => (
+    <div className={`grid ${columnas} gap-2.5`}>
+      {accionesDelDia.map(a => (
+        <motion.button
+          key={a.id}
+          whileTap={{ scale: 0.95 }}
+          onClick={a.onClick}
+          className="relative flex flex-col items-center justify-center gap-2 py-4 px-2 bg-white rounded-2xl border border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)] hover:border-slate-300 transition-colors"
+        >
+          {a.badge > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] px-1 bg-red-500 text-white text-xs font-black rounded-full flex items-center justify-center ring-2 ring-white">
+              {a.badge > 99 ? '99+' : a.badge}
+            </span>
+          )}
+          <span className={`w-12 h-12 ${a.color} rounded-2xl flex items-center justify-center`}>
+            <a.Icon className="w-6 h-6 text-white" />
+          </span>
+          <span className="text-center">
+            <span className="block text-sm font-bold text-slate-900 leading-tight">{a.label}</span>
+            <span className="block text-xs text-slate-500 mt-0.5 leading-tight">{a.sub}</span>
+          </span>
+        </motion.button>
+      ))}
+    </div>
+  );
 
   return (
     <div className="pb-6">
@@ -399,7 +392,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
               exit={{ opacity: 0, scale: 0.97 }}
               whileTap={{ scale: 0.97 }}
               onClick={onOpenModoOp}
-              className="w-full relative overflow-hidden flex items-center gap-4 px-5 py-5 bg-gradient-to-r from-red-500 to-rose-600 rounded-2xl shadow-lg shadow-red-500/25"
+              className="w-full relative overflow-hidden flex items-center gap-4 px-5 py-5 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl shadow-lg shadow-orange-500/25"
             >
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/[0.07] rounded-full blur-2xl translate-x-12 -translate-y-12 pointer-events-none" />
               <motion.div
@@ -444,24 +437,9 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
           )}
         </AnimatePresence>
 
-        {/* Quick actions 3×2 grid */}
-        <div>
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Acciones rápidas</p>
-          <div className="grid grid-cols-3 gap-2.5">
-            {mobileActions.map(item => (
-              <MobileActionCard
-                key={item.tab}
-                tab={item.tab}
-                gradient={item.gradient}
-                icon={item.icon}
-                label={item.label}
-                sublabel={item.sublabel}
-                badge={item.badge}
-                onClick={() => handleNav(item.tab)}
-              />
-            ))}
-          </div>
-        </div>
+        {/* Lo de todos los días */}
+        {botonNuevoPedido}
+        {rejillaAcciones('grid-cols-3')}
 
         {/* Share link */}
         {slug && (

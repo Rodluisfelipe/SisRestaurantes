@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useMemo, useRef, useCallback, Suspense } from "react";
 import { lazyConReintento } from "../utils/chunkReload";
+import { PESTANAS_PERSONAL } from "../utils/navegacionAdmin";
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useBusinessConfig } from "../Context/BusinessContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -75,6 +76,9 @@ const ExtensionChrome = lazyConReintento(() => import("../Components/Admin/Exten
 const BranchManager = lazyConReintento(() => import("../Components/Admin/BranchManager"));
 const LinkPageSettings = lazyConReintento(() => import("../Components/Admin/LinkPageSettings"));
 const PortafolioManager = lazyConReintento(() => import("../Components/Admin/PortafolioManager"));
+// Lo que más se usa, a mano desde cualquier pantalla (ver utils/navegacionAdmin).
+const QuickOrderModal = lazyConReintento(() => import("../Components/QuickOrderModal"));
+const DisponibilidadRapida = lazyConReintento(() => import("../Components/Admin/DisponibilidadRapida"));
 
 // Custom hooks
 import useAdminAuth from "../hooks/useAdminAuth";
@@ -157,7 +161,9 @@ function Admin() {
   const setActiveTab = useCallback((newTab) => {
     directionRef.current = newTab === 'dashboard' ? -1 : 1;
     setActiveTabRaw(newTab);
-    if (window.innerWidth < 1024) window.scrollTo({ top: 0, behavior: 'instant' });
+    // Cada sección abre desde arriba, también en la PC: antes, al elegir algo
+    // de abajo del menú, la pantalla nueva quedaba abierta a media altura.
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
   /* Pantallas que se comen todo el espacio a la derecha del menú, sin relleno
      ni tarjeta: son herramientas de trabajo, no una sección más. */
@@ -179,6 +185,14 @@ function Admin() {
   /* Menú lateral plegado. Se recuerda entre sesiones: quien lo pliega para
      trabajar los chats a pantalla ancha no quiere volver a plegarlo cada vez
      que entra. */
+  /* Nuevo pedido y "se acabó": se abren encima de la pantalla en la que se
+     esté, sin cambiar de sección. */
+  const [nuevoPedidoAbierto, setNuevoPedidoAbierto] = useState(false);
+  const [disponibilidadAbierta, setDisponibilidadAbierta] = useState(false);
+  const abrirNuevoPedido = useCallback(() => setNuevoPedidoAbierto(true), []);
+  const cerrarNuevoPedido = useCallback(() => setNuevoPedidoAbierto(false), []);
+  const abrirDisponibilidad = useCallback(() => setDisponibilidadAbierta(true), []);
+
   const [sidebarColapsado, setSidebarColapsado] = useState(
     () => localStorage.getItem('menuby.sidebarColapsado') === '1'
   );
@@ -201,9 +215,8 @@ function Admin() {
   }, []);
 
   // Staff role tab guard — restrict to allowed tabs only
-  const STAFF_ALLOWED_TABS = ['orders', 'completed_orders', 'cash-closings', 'change-password'];
   useEffect(() => {
-    if (user?.role === 'staff' && !STAFF_ALLOWED_TABS.includes(activeTab)) {
+    if (user?.role === 'staff' && !PESTANAS_PERSONAL.includes(activeTab)) {
       setActiveTab('orders');
     }
     // Staff also blocked from team tab
@@ -367,6 +380,7 @@ function Admin() {
           userRole={user?.role}
           colapsado={sidebarColapsado}
           onAlternar={alternarSidebar}
+          onNuevoPedido={abrirNuevoPedido}
         />
 
         {/* Main Content */}
@@ -452,6 +466,8 @@ function Admin() {
           whatsappSinLeer={whatsappSinLeer}
                     onboarding={onboardingData}
                     onOpenModoOp={() => setModoOpOpen(true)}
+                    onNuevoPedido={abrirNuevoPedido}
+                    onDisponibilidad={abrirDisponibilidad}
                     products={products}
                     categories={categories}
                     toppingGroups={toppingGroups}
@@ -838,8 +854,23 @@ function Admin() {
         businessConfig={businessConfig}
         handleLogout={logout}
         userRole={user?.role}
-        onOpenModoOp={() => setModoOpOpen(true)}
+        onNuevoPedido={abrirNuevoPedido}
       />
+
+      <Suspense fallback={null}>
+        {nuevoPedidoAbierto && (
+          <QuickOrderModal isOpen={nuevoPedidoAbierto} onClose={cerrarNuevoPedido} onOrderCreated={() => {}} />
+        )}
+        {disponibilidadAbierta && (
+          <DisponibilidadRapida
+            abierta={disponibilidadAbierta}
+            onCerrar={() => setDisponibilidadAbierta(false)}
+            productos={products}
+            categorias={categories}
+            onCambiar={handleToggleProduct}
+          />
+        )}
+      </Suspense>
 
       {/* Varios negocios estaban usando la calculadora de Windows encima del
           panel. Esta vive dentro y responde al teclado (Alt+C para abrirla). */}

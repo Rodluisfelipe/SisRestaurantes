@@ -21,10 +21,10 @@ const logger = require('../utils/logger');
 function extractToken(req) {
   const header = req.headers.authorization;
   if (header && header.startsWith('Bearer ')) return header.split(' ')[1];
-  /* También por query: el visor abre el comprobante en una pestaña nueva y
-     ahí no hay forma de mandar cabeceras. Queda registrado en los logs del
-     proxy, que es el precio de que se pueda ver desde el navegador. */
-  if (req.query.token) return String(req.query.token);
+  /* Ya no por query (?token=…): el token quedaba en el historial del
+     navegador y en los registros del proxy. El panel ahora descarga el
+     comprobante con la cabecera y lo muestra desde memoria
+     (Frontend/src/utils/comprobantes.js). */
   return null;
 }
 

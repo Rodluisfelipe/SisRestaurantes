@@ -375,7 +375,16 @@ router.post("/", (req, res, next) => {
     // Cuenta abierta de mesa: solo para POS. No cobra al crear; acumula hasta pay-tab.
     const isOpenTab = isPOS && !!req.body.posOpenTab;
     const isAdmin = orderChannel === 'admin';
-    const initialStatus = isPOS ? ORDER_STATUS.CONFIRMED : isAdmin ? ORDER_STATUS.CONFIRMED : isInApp ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.PENDING;
+    /* Pedido del menú en efectivo: se paga al recibir, no hay nada que
+       confirmar antes de prepararlo. Antes entraba en "pago pendiente", el
+       negocio tenía que tocar "Confirmar pago" para poder empezar y el cliente
+       leía "sube tu comprobante" por un pago que no existe. Nequi, Daviplata,
+       transferencia y tarjeta (Bold) sí esperan el pago. */
+    const pagaAlRecibir = ['efectivo', 'cash'].includes(String(paymentMethod || '').toLowerCase());
+    const initialStatus = isPOS ? ORDER_STATUS.CONFIRMED
+      : isAdmin ? ORDER_STATUS.CONFIRMED
+        : isInApp && !pagaAlRecibir ? ORDER_STATUS.PENDING_PAYMENT
+          : ORDER_STATUS.PENDING;
     /* Seguimiento para todo pedido que hace un cliente desde el menú, también
        los que se mandan por WhatsApp: así puede volver y ver cómo va. El POS,
        el pedido rápido y el personal no lo necesitan. */

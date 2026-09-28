@@ -5,6 +5,7 @@ import { socket, joinBusiness, socketDiagnostic } from '../services/socket';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { useNavigate } from 'react-router-dom';
 import { TIME_INTERVALS, SOCKET_EVENTS, ORDER_STATUS } from '../utils/constants';
+import { totalDelPedido, totalDeLinea, escaparHtml as e } from '../utils/pedidos';
 import {
   FaClipboardList, FaClock, FaMoneyBillWave, FaImage, FaCheckCircle,
   FaUtensils, FaCheck, FaChair, FaShoppingBag, FaTruck
@@ -41,27 +42,29 @@ export default function useOrdersDashboard() {
     const isFromMenuBy = order.source === 'menuby' || order.source === 'inapp' || !order._posExtra;
     const date = new Date(order.createdAt || Date.now());
     const items = order.items || [];
-    const total = order.totalAmount || order.finalAmount || 0;
+    /* Todo lo que viene del cliente o del negocio pasa por e(): esta ventana es
+       del mismo sitio que el panel, y un nombre con HTML se ejecutaría con la
+       sesión del dueño. */
 
     const orderTypeLabels = { inSite: businessConfig?.businessType === 'hotel' ? 'En habitación' : 'En mesa', takeaway: 'Para llevar', delivery: 'Delivery' };
     const orderTypeLabel = orderTypeLabels[order.orderType] || order.orderType || '';
 
     let itemsHtml = '';
     items.forEach(item => {
-      const lineTotal = ((item.totalPrice || item.price || 0) * (item.quantity || 1));
+      const lineTotal = totalDeLinea(item);
       const loyaltyTag = item.isLoyaltyReward ? ' 🎁' : '';
-      itemsHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:16px;color:#000"><span style="font-weight:900;font-size:16px;color:#000">${item.quantity}x ${item.name}${loyaltyTag}</span><span style="font-weight:900;font-size:15px">${item.isLoyaltyReward ? 'GRATIS' : '$' + lineTotal.toLocaleString()}</span></div>`;
+      itemsHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:16px;color:#000"><span style="font-weight:900;font-size:16px;color:#000">${e(item.quantity)}x ${e(item.name)}${loyaltyTag}</span><span style="font-weight:900;font-size:15px">${item.isLoyaltyReward ? 'GRATIS' : '$' + lineTotal.toLocaleString()}</span></div>`;
       if (item.selectedToppings) {
         item.selectedToppings.forEach(t => {
           const tName = t.optionName || t.name || '';
           const tPrice = t.price > 0 ? ` ($${t.price.toLocaleString()})` : '';
           const tGroup = t.groupName ? `${t.groupName}: ` : '';
-          if (tName) itemsHtml += `<div style="padding-left:8px;font-size:14px;font-weight:900;color:#000">+ ${tGroup}${tName}${tPrice}</div>`;
+          if (tName) itemsHtml += `<div style="padding-left:8px;font-size:14px;font-weight:900;color:#000">+ ${e(tGroup)}${e(tName)}${tPrice}</div>`;
           if (t.subGroups) {
             t.subGroups.forEach(sg => {
               const sgPrice = sg.price > 0 ? ` ($${sg.price.toLocaleString()})` : '';
               const sgTitle = sg.subGroupTitle ? `${sg.subGroupTitle}: ` : '';
-              itemsHtml += `<div style="padding-left:16px;font-size:13px;font-weight:900;color:#000">+ ${sgTitle}${sg.optionName}${sgPrice}</div>`;
+              itemsHtml += `<div style="padding-left:16px;font-size:13px;font-weight:900;color:#000">+ ${e(sgTitle)}${e(sg.optionName)}${sgPrice}</div>`;
             });
           }
         });
@@ -69,14 +72,14 @@ export default function useOrdersDashboard() {
     });
 
     let customerHtml = '';
-    if (order.customerName) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Cliente:</span><span>${order.customerName}</span></div>`;
-    if (order.phone) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Tel:</span><span>${order.phone}</span></div>`;
-    if (orderTypeLabel) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Tipo:</span><span>${orderTypeLabel}</span></div>`;
-    if (order.tableNumber) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:16px;color:#000"><span>${businessConfig?.businessType === 'hotel' ? 'Hab.:' : 'Mesa:'}</span><span>${order.tableNumber}</span></div>`;
-    if (order.orderType === 'delivery' && order.address) customerHtml += `<div style="padding:2px 0;font-weight:900;font-size:14px;color:#000">Dir: ${order.address}</div>`;
-    if (order.orderType === 'delivery' && order.deliveryZoneName) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:14px;color:#000"><span>Zona:</span><span>${order.deliveryZoneName}</span></div>`;
-    const pmLabels = { cash: 'Efectivo', efectivo: 'Efectivo', nequi: 'Nequi', daviplata: 'Daviplata', transfer: 'Transferencia', transferencia: 'Transferencia', roomCharge: 'Cargo a hab.', other: 'Otro' };
-    if (order.paymentMethod) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Pago:</span><span>${pmLabels[order.paymentMethod] || order.paymentMethod}</span></div>`;
+    if (order.customerName) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Cliente:</span><span>${e(order.customerName)}</span></div>`;
+    if (order.phone) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Tel:</span><span>${e(order.phone)}</span></div>`;
+    if (orderTypeLabel) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Tipo:</span><span>${e(orderTypeLabel)}</span></div>`;
+    if (order.tableNumber) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:16px;color:#000"><span>${businessConfig?.businessType === 'hotel' ? 'Hab.:' : 'Mesa:'}</span><span>${e(order.tableNumber)}</span></div>`;
+    if (order.orderType === 'delivery' && order.address) customerHtml += `<div style="padding:2px 0;font-weight:900;font-size:14px;color:#000">Dir: ${e(order.address)}</div>`;
+    if (order.orderType === 'delivery' && order.deliveryZoneName) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:14px;color:#000"><span>Zona:</span><span>${e(order.deliveryZoneName)}</span></div>`;
+    const pmLabels = { cash: 'Efectivo', efectivo: 'Efectivo', nequi: 'Nequi', daviplata: 'Daviplata', transfer: 'Transferencia', transferencia: 'Transferencia', roomCharge: 'Cargo a hab.', credito: 'Crédito', other: 'Otro' };
+    if (order.paymentMethod) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Pago:</span><span>${e(pmLabels[order.paymentMethod] || order.paymentMethod)}</span></div>`;
 
     let deliveryFeeHtml = '';
     if (order.deliveryFee) {
@@ -92,21 +95,21 @@ export default function useOrdersDashboard() {
       </div>
     ` : '';
 
-    const finalTotal = total + (order.deliveryFee || 0) - (order.discountAmount || 0);
+    const finalTotal = totalDelPedido(order);
 
     const printWindow = window.open('', '_blank', 'width=260,height=700');
     if (!printWindow) return;
 
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>Pedido #${order.orderNumber || ''}</title>
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Pedido #${e(order.orderNumber || '')}</title>
       <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:15px;font-weight:900;width:${paperSize}mm;padding:2mm;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}img{display:block;margin:0 auto}@media print{body{width:${paperSize}mm}@page{margin:0;size:${paperSize}mm auto}}</style>
     </head><body>
       <div style="height:20px"></div>
-      <div style="text-align:center;font-weight:900;font-size:20px;color:#000;margin-bottom:2px">${bName}</div>
-      ${bAddr ? `<div style="text-align:center;font-weight:900;font-size:12px;color:#000">${bAddr}</div>` : ''}
-      ${bPhone ? `<div style="text-align:center;font-weight:900;font-size:12px;color:#000">Tel: ${bPhone}</div>` : ''}
-      ${bNit ? `<div style="text-align:center;font-weight:900;font-size:12px;color:#000">NIT: ${bNit}</div>` : ''}
+      <div style="text-align:center;font-weight:900;font-size:20px;color:#000;margin-bottom:2px">${e(bName)}</div>
+      ${bAddr ? `<div style="text-align:center;font-weight:900;font-size:12px;color:#000">${e(bAddr)}</div>` : ''}
+      ${bPhone ? `<div style="text-align:center;font-weight:900;font-size:12px;color:#000">Tel: ${e(bPhone)}</div>` : ''}
+      ${bNit ? `<div style="text-align:center;font-weight:900;font-size:12px;color:#000">NIT: ${e(bNit)}</div>` : ''}
       <div style="border-top:2px dashed #000;margin:8px 0"></div>
-      <div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Orden:</span><span style="font-weight:900;font-size:16px">  #${order.orderNumber}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Orden:</span><span style="font-weight:900;font-size:16px">  #${e(order.orderNumber)}</span></div>
       <div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Fecha:</span><span>${date.toLocaleDateString('es-CO')}</span></div>
       <div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Hora:</span><span>${date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span></div>
       ${customerHtml}
@@ -115,6 +118,7 @@ export default function useOrdersDashboard() {
       <div style="border-top:2px dashed #000;margin:8px 0"></div>
       ${deliveryFeeHtml}
       ${order.discountAmount ? `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Descuento:</span><span>-$${order.discountAmount.toLocaleString()}</span></div>` : ''}
+      ${order.tipAmount ? `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Propina:</span><span>$${order.tipAmount.toLocaleString()}</span></div>` : ''}
       <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:20px;font-weight:900;color:#000"><span>TOTAL</span><span style="font-size:22px;font-weight:900">$${parseFloat(finalTotal).toLocaleString()}</span></div>
       <div style="border-top:2px dashed #000;margin:8px 0"></div>
       <div style="text-align:center;font-weight:900;font-size:14px;color:#000;margin-top:6px">¡Gracias por su compra!</div>
@@ -186,9 +190,10 @@ export default function useOrdersDashboard() {
       const pendingOrders = response.data.filter(order =>
         order.status === ORDER_STATUS.PENDING || order.status === ORDER_STATUS.PAYMENT_UPLOADED
       );
-      if (pendingOrders.length > 0) {
-        setPendingNotifications(pendingOrders.map(order => order._id));
-      }
+      /* Siempre, también cuando no queda ninguno: antes solo se escribía si
+         había pendientes, y si se atendían desde otro equipo la alarma seguía
+         sonando sin nada que atender. */
+      setPendingNotifications(pendingOrders.map(order => order._id));
       setError(null);
     } catch (err) {
       console.error('Error fetching orders:', err);
@@ -281,65 +286,85 @@ export default function useOrdersDashboard() {
     };
   }, [pendingNotifications]);
 
-  const updateOrderStatus = async (orderId, newStatus) => {
+  /* Lo que dice el servidor ("ese pedido ya fue entregado"…) le sirve más a
+     quien atiende que un "Error al actualizar" genérico. */
+  const avisarError = (error, porDefecto) => {
+    const msg = error?.response?.data?.message;
+    alert(msg || (error?.response ? porDefecto : 'Sin conexión. Revisa el internet y vuelve a intentarlo.'));
+  };
+
+  /* Un toque por pedido a la vez: el doble toque mandaba dos cambios y el
+     segundo volvía con error aunque el primero hubiera funcionado. */
+  const enCurso = useRef(new Set());
+  const unaVez = async (orderId, fn) => {
+    if (enCurso.current.has(orderId)) return;
+    enCurso.current.add(orderId);
+    try { await fn(); } finally { enCurso.current.delete(orderId); }
+  };
+
+  const TERMINALES = [ORDER_STATUS.COMPLETED, ORDER_STATUS.CANCELLED, ORDER_STATUS.DELIVERED];
+
+  const updateOrderStatus = (orderId, newStatus) => unaVez(orderId, async () => {
     try {
       const response = await api.patch(`/orders/${orderId}/status`, { status: newStatus });
-      const removeStatuses = [ORDER_STATUS.COMPLETED, ORDER_STATUS.CANCELLED, ORDER_STATUS.DELIVERED];
-      if (removeStatuses.includes(newStatus)) {
+      if (TERMINALES.includes(newStatus)) {
         setOrders(prevOrders => prevOrders.filter(order => order._id !== orderId));
+        // Cerrado el pedido, su detalle ya no tiene nada que hacer abierto.
+        if (selectedOrderRef.current === orderId) { setSelectedOrder(null); setOrderDetails(null); }
       } else {
         setOrders(prevOrders => prevOrders.map(order => order._id === orderId ? response.data : order));
+        if (selectedOrderRef.current === orderId) setOrderDetails(response.data);
       }
       if (newStatus !== ORDER_STATUS.PENDING) {
         setPendingNotifications(prev => prev.filter(id => id !== orderId));
       }
-      if (selectedOrder === orderId) {
-        setOrderDetails(response.data);
-      }
     } catch (error) {
       console.error('Error updating order status:', error);
-      alert('Error al actualizar el estado del pedido');
+      avisarError(error, 'No se pudo cambiar el estado del pedido');
+      fetchOrders(true); // por si otro equipo ya lo había movido
     }
-  };
+  });
 
-  const sendToKitchen = async (orderId) => {
+  const sendToKitchen = (orderId) => unaVez(orderId, async () => {
     try {
       await api.patch(`/orders/${orderId}/send-to-kitchen`);
       setOrders(prevOrders => prevOrders.map(order => order._id === orderId ? { ...order, sentToKitchen: true } : order));
+      if (selectedOrderRef.current === orderId) setOrderDetails(prev => prev ? { ...prev, sentToKitchen: true } : prev);
     } catch (error) {
       console.error('Error sending order to kitchen:', error);
-      alert('Error al enviar pedido a cocina');
+      avisarError(error, 'No se pudo enviar el pedido a cocina');
     }
-  };
+  });
 
-  const confirmPayment = async (orderId) => {
+  const confirmPayment = (orderId) => unaVez(orderId, async () => {
     try {
       const response = await api.patch(`/orders/${orderId}/confirm-payment`);
       const updatedOrder = response.data.order || response.data;
       setOrders(prevOrders => prevOrders.map(order => order._id === orderId ? updatedOrder : order));
-      if (selectedOrder === orderId) setOrderDetails(updatedOrder);
+      setPendingNotifications(prev => prev.filter(id => id !== orderId));
+      if (selectedOrderRef.current === orderId) setOrderDetails(updatedOrder);
     } catch (error) {
       console.error('Error confirming payment:', error);
-      alert('Error al confirmar el pago');
+      avisarError(error, 'No se pudo confirmar el pago');
     }
-  };
+  });
 
-  const rejectPayment = async (orderId) => {
-    const reason = prompt('Razón del rechazo (opcional):');
-    try {
-      const response = await api.patch(`/orders/${orderId}/reject-payment`, { reason: reason || '' });
-      const updatedOrder = response.data.order || response.data;
-      setOrders(prevOrders => prevOrders.map(order => order._id === orderId ? updatedOrder : order));
-      if (selectedOrder === orderId) setOrderDetails(updatedOrder);
-    } catch (error) {
-      console.error('Error rejecting payment:', error);
-      alert('Error al rechazar el pago');
-    }
-  };
-
-  const getProofUrl = (proofPath) => {
-    const token = localStorage.getItem('accessToken') || localStorage.getItem('superadmin_token');
-    return `${BACKEND_URL}${proofPath}${token ? `?token=${token}` : ''}`;
+  const rejectPayment = (orderId) => {
+    const reason = prompt('¿Por qué se rechaza el pago? (opcional)');
+    // "Cancelar" en la ventanita es arrepentirse, no rechazar sin motivo.
+    if (reason === null) return;
+    return unaVez(orderId, async () => {
+      try {
+        const response = await api.patch(`/orders/${orderId}/reject-payment`, { reason: reason || '' });
+        const updatedOrder = response.data.order || response.data;
+        setOrders(prevOrders => prevOrders.map(order => order._id === orderId ? updatedOrder : order));
+        setPendingNotifications(prev => prev.filter(id => id !== orderId));
+        if (selectedOrderRef.current === orderId) setOrderDetails(updatedOrder);
+      } catch (error) {
+        console.error('Error rejecting payment:', error);
+        avisarError(error, 'No se pudo rechazar el pago');
+      }
+    });
   };
 
   const goToKitchenScreen = () => {
@@ -369,16 +394,22 @@ export default function useOrdersDashboard() {
     if (socket) {
       socket.on(SOCKET_EVENTS.ORDER_CREATED, (newOrder) => {
         console.log('New order received:', newOrder);
-        setOrders(prevOrders => [newOrder, ...prevOrders]);
+        if (!newOrder?._id) return;
+        // Puede llegar dos veces (socket y recarga): nunca duplicado en la lista.
+        setOrders(prevOrders => [newOrder, ...prevOrders.filter(o => o?._id !== newOrder._id)]);
         if (newOrder.status === ORDER_STATUS.PENDING) {
-          setPendingNotifications(prev => [...prev, newOrder._id]);
+          setPendingNotifications(prev => prev.includes(newOrder._id) ? prev : [...prev, newOrder._id]);
         }
       });
 
       socket.on(SOCKET_EVENTS.ORDER_UPDATED, (updatedOrder) => {
         console.log('Order updated:', updatedOrder);
         if (!updatedOrder?._id) return;
-        setOrders(prevOrders => prevOrders.filter(Boolean).map(order => order?._id === updatedOrder._id ? updatedOrder : order));
+        /* Terminado o cancelado en otro equipo (la caja, la cocina): sale de
+           la lista ya, no a los 30 segundos. */
+        setOrders(prevOrders => prevOrders.filter(Boolean)
+          .filter(order => !(order._id === updatedOrder._id && [ORDER_STATUS.COMPLETED, ORDER_STATUS.CANCELLED, ORDER_STATUS.DELIVERED].includes(updatedOrder.status)))
+          .map(order => order?._id === updatedOrder._id ? updatedOrder : order));
         if (updatedOrder.status !== ORDER_STATUS.PENDING) {
           setPendingNotifications(prev => prev.filter(id => id !== updatedOrder._id));
         }
@@ -405,7 +436,7 @@ export default function useOrdersDashboard() {
           const freshOrder = res.data;
           setOrders(prevOrders => prevOrders.filter(Boolean).map(order => order?._id === freshOrder._id ? freshOrder : order));
           if (selectedOrderRef.current === freshOrder._id) setOrderDetails(freshOrder);
-          setPendingNotifications(prev => [...prev, freshOrder._id]);
+          setPendingNotifications(prev => prev.includes(freshOrder._id) ? prev : [...prev, freshOrder._id]);
         }).catch(err => console.error('Error fetching updated order after payment proof:', err));
       });
     }
@@ -444,6 +475,6 @@ export default function useOrdersDashboard() {
     handlePrintOrder, calculateTimeElapsed, getOrderTypeInfo, getStatusInfo,
     fetchOrders, updateOrderStatus, sendToKitchen,
     confirmPayment, rejectPayment,
-    getProofUrl, goToKitchenScreen, showOrderDetails,
+    goToKitchenScreen, showOrderDetails,
   };
 }

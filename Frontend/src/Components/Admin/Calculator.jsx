@@ -147,7 +147,7 @@ export default function Calculator({ open, onClose }) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 12, scale: 0.97 }}
       transition={{ duration: 0.15 }}
-      className="fixed bottom-24 right-6 z-[110] w-[280px] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
+      className="fixed bottom-40 lg:bottom-24 right-4 lg:right-6 z-[110] w-[280px] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
     >
       <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 bg-slate-50">
         <span className="text-[12px] font-bold text-slate-600">Calculadora</span>
@@ -236,7 +236,7 @@ export function CalculatorLauncher() {
       <button
         onClick={() => setOpen((o) => !o)}
         title="Calculadora (Alt+C)"
-        className={`fixed bottom-6 right-6 z-[105] w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all active:scale-90 ${
+        className={`hidden lg:flex fixed bottom-6 right-6 z-[105] w-12 h-12 rounded-full shadow-lg items-center justify-center transition-all active:scale-90 ${
           open ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:text-slate-900'
         }`}
       >

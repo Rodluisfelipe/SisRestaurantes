@@ -764,8 +764,8 @@ function EnhancedCompletedOrders() {
     if (viewMode === 'all') return allTimeOrders;
     return completedOrders.filter(order => 
       searchTerm 
-        ? (order.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-          order.orderNumber.toString().includes(searchTerm)
+        ? String(order.customerName ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+          String(order.orderNumber ?? '').includes(searchTerm)
         : true
     );
   };

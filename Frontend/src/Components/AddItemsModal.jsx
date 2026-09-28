@@ -4,7 +4,8 @@ import { FaTimes, FaSearch, FaPlus, FaMinus, FaShoppingCart } from 'react-icons/
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { Capa } from './ui';
-
+import ProductToppingsSelector from './ProductToppingsSelector';
+import { pesos } from '../utils/pedidos';
 function AddItemsModal({ isOpen, onClose, order, onItemsAdded }) {
   const { businessId } = useBusinessConfig();
   const [products, setProducts] = useState([]);
@@ -15,6 +16,10 @@ function AddItemsModal({ isOpen, onClose, order, onItemsAdded }) {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [cart, setCart] = useState([]);
   const [error, setError] = useState('');
+  /* Producto con opciones (término, salsas, adiciones): antes se agregaba sin
+     elegirlas y a cocina le llegaba "Hamburguesa" sin saber cómo. Ahora se
+     abre el mismo selector del pedido rápido, que exige las obligatorias. */
+  const [conOpciones, setConOpciones] = useState(null);
 
   // Load products and categories when modal opens
   useEffect(() => {
@@ -38,6 +43,7 @@ function AddItemsModal({ isOpen, onClose, order, onItemsAdded }) {
       setSearch('');
       setSelectedCategory('all');
       setError('');
+      setConOpciones(null);
     }
   }, [isOpen]);
 
@@ -49,6 +55,24 @@ function AddItemsModal({ isOpen, onClose, order, onItemsAdded }) {
       return matchesSearch && matchesCategory;
     });
   }, [products, search, selectedCategory]);
+
+  const tieneOpciones = (p) => Array.isArray(p?.toppingGroups) && p.toppingGroups.length > 0;
+
+  // Lo que devuelve el selector: price es el base (el servidor suma las
+  // opciones), totalPrice el unitario con opciones, para mostrar.
+  const agregarConOpciones = (p) => {
+    setCart(prev => [...prev, {
+      productId: p._id,
+      name: p.name,
+      price: p.price,
+      totalPrice: p.totalPrice || p.price,
+      quantity: p.quantity || 1,
+      selectedToppings: p.selectedToppings || [],
+    }]);
+    setConOpciones(null);
+  };
+
+  const elegir = (product) => (tieneOpciones(product) ? setConOpciones(product) : addToCart(product));
 
   const addToCart = (product) => {
     setCart(prev => {
@@ -78,7 +102,7 @@ function AddItemsModal({ isOpen, onClose, order, onItemsAdded }) {
     });
   };
 
-  const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const cartTotal = cart.reduce((sum, item) => sum + (item.totalPrice || item.price) * item.quantity, 0);
 
   const handleSubmit = async () => {
     if (cart.length === 0) return;
@@ -86,7 +110,7 @@ function AddItemsModal({ isOpen, onClose, order, onItemsAdded }) {
     setError('');
     try {
       const res = await api.patch(`/orders/${order._id}/add-items`, {
-        items: cart,
+        items: cart.map((it) => ({ productId: it.productId, name: it.name, price: it.price, quantity: it.quantity, selectedToppings: it.selectedToppings })),
         businessId,
       });
       onItemsAdded(res.data);
@@ -116,7 +140,7 @@ function AddItemsModal({ isOpen, onClose, order, onItemsAdded }) {
           exit={{ opacity: 0, y: 100 }}
           transition={{ type: 'spring', damping: 28, stiffness: 300 }}
           onClick={(e) => e.stopPropagation()}
-          className="bg-white rounded-t-2xl lg:rounded-xl w-full lg:max-w-lg max-h-[85vh] flex flex-col"
+          className="relative bg-white rounded-t-2xl lg:rounded-xl w-full lg:max-w-lg max-h-[85vh] flex flex-col"
         >
           {/* Header */}
           <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between shrink-0">
@@ -171,39 +195,55 @@ function AddItemsModal({ isOpen, onClose, order, onItemsAdded }) {
             ) : (
               <div className="space-y-1">
                 {filteredProducts.map(product => {
-                  const inCart = cart.find(c => c.productId === product._id);
+                  const opciones = tieneOpciones(product);
+                  // Con opciones cada combinación es una línea aparte: se cuentan todas.
+                  const inCart = opciones ? null : cart.find(c => c.productId === product._id);
+                  const cuantos = cart.filter(c => c.productId === product._id).reduce((n, c) => n + c.quantity, 0);
                   return (
                     <div
                       key={product._id}
-                      className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-slate-50 transition-colors"
+                      className={`flex items-center gap-2 rounded-xl transition-colors ${inCart ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}
                     >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-medium text-slate-800 truncate">{product.name}</p>
-                        <p className="text-[11px] text-slate-500">${product.price?.toLocaleString()}</p>
-                      </div>
-                      <div className="flex items-center gap-1.5">
+                      {/* Toda la fila agrega, no solo el botón chico. */}
+                      <button
+                        type="button"
+                        onClick={() => (inCart ? updateCartQty(cart.indexOf(inCart), 1) : elegir(product))}
+                        className="flex-1 min-w-0 flex items-center gap-2 px-3 py-2.5 text-left"
+                      >
+                        {cuantos > 0 && (
+                          <span className="shrink-0 min-w-[24px] h-6 px-1.5 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">{cuantos}</span>
+                        )}
+                        <span className="flex-1 min-w-0">
+                          <span className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[14px] font-medium text-slate-800 break-words">{product.name}</span>
+                            {opciones && <span className="text-2xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold shrink-0">Con opciones</span>}
+                          </span>
+                          <span className="block text-[12px] text-slate-500">{pesos(product.price)}</span>
+                        </span>
+                      </button>
+                      <div className="flex items-center gap-1.5 pr-2">
                         {inCart ? (
                           <>
                             <button
                               onClick={() => updateCartQty(cart.indexOf(inCart), -1)}
-                              className="w-7 h-7 bg-slate-200 hover:bg-slate-300 rounded-md flex items-center justify-center"
+                              className="w-9 h-9 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg flex items-center justify-center" aria-label="Quitar uno"
                             >
                               <FaMinus className="text-2xs text-slate-600" />
                             </button>
                             <span className="text-xs font-bold text-slate-800 w-5 text-center">{inCart.quantity}</span>
                             <button
                               onClick={() => updateCartQty(cart.indexOf(inCart), 1)}
-                              className="w-7 h-7 bg-slate-800 hover:bg-slate-700 rounded-md flex items-center justify-center"
+                              className="w-9 h-9 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center justify-center" aria-label="Agregar uno"
                             >
                               <FaPlus className="text-2xs text-white" />
                             </button>
                           </>
                         ) : (
                           <button
-                            onClick={() => addToCart(product)}
-                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-[11px] font-semibold rounded-lg transition-colors"
+                            onClick={() => elegir(product)}
+                            className="px-3.5 h-9 bg-slate-800 hover:bg-slate-700 text-white text-[12px] font-semibold rounded-lg transition-colors"
                           >
-                            Agregar
+                            {opciones ? 'Elegir' : 'Agregar'}
                           </button>
                         )}
                       </div>
@@ -214,14 +254,37 @@ function AddItemsModal({ isOpen, onClose, order, onItemsAdded }) {
             )}
           </div>
 
+          {conOpciones && (
+            <div className="absolute inset-0 z-10 bg-white rounded-t-2xl lg:rounded-xl overflow-y-auto">
+              <ProductToppingsSelector
+                product={conOpciones}
+                onAddToCart={agregarConOpciones}
+                onClose={() => setConOpciones(null)}
+                compact
+              />
+            </div>
+          )}
+
           {/* Cart summary + submit */}
           {cart.length > 0 && (
             <div className="border-t border-slate-200 px-4 py-3 space-y-2 shrink-0">
               <div className="max-h-24 overflow-y-auto space-y-1">
                 {cart.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between text-[12px]">
-                    <span className="text-slate-600">{item.quantity}x {item.name}</span>
-                    <span className="text-slate-800 font-semibold">${(item.price * item.quantity).toLocaleString()}</span>
+                  <div key={i} className="flex items-start justify-between gap-2 text-[12px]">
+                    <span className="text-slate-600 min-w-0 break-words">
+                      {item.quantity}x {item.name}
+                      {item.selectedToppings?.length > 0 && (
+                        <span className="block text-2xs text-amber-700">
+                          {item.selectedToppings.map((t) => [t.optionName, ...(t.subGroups || []).map((sg) => sg.optionName)].filter(Boolean).join(' / ')).join(', ')}
+                        </span>
+                      )}
+                    </span>
+                    <span className="flex items-center gap-2 shrink-0">
+                      <span className="text-slate-800 font-semibold">{pesos((item.totalPrice || item.price) * item.quantity)}</span>
+                      <button onClick={() => updateCartQty(i, -item.quantity)} aria-label="Quitar" className="text-red-400 hover:text-red-600 px-1">
+                        <FaTimes className="text-2xs" />
+                      </button>
+                    </span>
                   </div>
                 ))}
               </div>
@@ -232,7 +295,7 @@ function AddItemsModal({ isOpen, onClose, order, onItemsAdded }) {
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-50"
               >
                 <FaShoppingCart className="text-xs" />
-                {submitting ? 'Agregando...' : `Agregar al pedido · $${cartTotal.toLocaleString()}`}
+                {submitting ? 'Agregando...' : `Agregar al pedido · ${pesos(cartTotal)}`}
               </button>
             </div>
           )}

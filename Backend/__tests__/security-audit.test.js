@@ -1261,7 +1261,11 @@ describe('L2 — stripHtml utility', () => {
 
   test('decodes HTML entities', () => {
     expect(stripHtml('a &amp; b')).toBe('a & b');
-    expect(stripHtml('&lt;div&gt;')).toBe('<div>');
+    // Una etiqueta escrita con entidades tampoco pasa: se decodifica y se quita.
+    expect(stripHtml('&lt;div&gt;')).toBe('');
+    expect(stripHtml('&lt;img src=x onerror=alert(1)&gt;Ana')).toBe('Ana');
+    expect(stripHtml('<<b>img src=x onerror=alert(1)>Ana')).not.toContain('<');
+    expect(stripHtml('Papas < 2 porciones')).toBe('Papas < 2 porciones');
     expect(stripHtml('&quot;test&quot;')).toBe('"test"');
   });
 
@@ -2212,8 +2216,10 @@ describe('BL-6 — Order channel determines initial status correctly', () => {
     const fs = require('fs');
     const path = require('path');
     const src = fuenteOrders();
-    // Full line: isPOS ? ORDER_STATUS.CONFIRMED : isInApp ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.PENDING
-    expect(src).toContain('isInApp ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.PENDING');
+    // Menú con pago previo (Nequi, transferencia, tarjeta) espera el pago;
+    // en efectivo se paga al recibir y entra directo como pendiente.
+    expect(src).toContain('isInApp && !pagaAlRecibir ? ORDER_STATUS.PENDING_PAYMENT');
+    expect(src).toMatch(/pagaAlRecibir = \['efectivo', 'cash'\]/);
   });
 });
 

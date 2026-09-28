@@ -82,8 +82,15 @@ router.patch("/:id/add-items", tenantAuth, async (req, res) => {
 
     /* Se acumula para la comanda de cambios en vez de imprimir aquí: el admin
        suele agregar varias cosas seguidas y saldría un papel por cada una. */
+    /* Con sus opciones: "AGREGAR: Hamburguesa" no le dice a cocina el
+       término ni qué quitar. */
+    const opcionesDe = (it) => (it.selectedToppings || [])
+      .flatMap((t) => [t.optionName, ...(t.subGroups || []).map((sg) => sg.optionName)])
+      .filter(Boolean)
+      .map((o) => stripHtml(String(o)));
     for (const it of newItems) {
-      order.pendingKitchenChanges.push({ text: `AGREGAR: ${it.name}`, qty: it.quantity, at: new Date() });
+      const ops = opcionesDe(it);
+      order.pendingKitchenChanges.push({ text: `AGREGAR: ${it.name}${ops.length ? ` (${ops.join(', ')})` : ''}`, qty: it.quantity, at: new Date() });
     }
 
     // Lo agregado también sale del inventario: antes solo descontaba al crear
@@ -100,8 +107,9 @@ router.patch("/:id/add-items", tenantAuth, async (req, res) => {
     order.items.push(...newItems);
     order.totalAmount = (order.totalAmount || 0) + addedTotal;
 
-    // Recalculate finalAmount (total + delivery - discount)
-    order.finalAmount = order.totalAmount + (order.deliveryFee || 0) - (order.discountAmount || 0);
+    // Mismo cálculo que al editar cantidades: la propina no se puede perder
+    // por agregar un producto.
+    order.finalAmount = order.totalAmount + (order.deliveryFee || 0) - (order.discountAmount || 0) + (order.tipAmount || 0);
     order.updatedAt = new Date();
 
     await order.save();

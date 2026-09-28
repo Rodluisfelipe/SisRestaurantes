@@ -6,6 +6,7 @@ import { useBusinessConfig } from '../Context/BusinessContext';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import { Capa } from './ui';
 
+import { pesos } from '../utils/pedidos';
 const ORDER_TYPES = [
   { value: 'inSite', label: 'En sitio', Icon: FaChair, color: 'bg-blue-50 text-blue-600 border-blue-200' },
   { value: 'takeaway', label: 'Para llevar', Icon: FaShoppingCart, color: 'bg-orange-50 text-orange-600 border-orange-200' },
@@ -69,6 +70,8 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
 
   // UI
   const [submitting, setSubmitting] = useState(false);
+  // Pedido recién creado: se muestra la confirmación antes de cerrar.
+  const [creado, setCreado] = useState(null);
   const [error, setError] = useState('');
   const searchTimerRef = useRef(null);
 
@@ -116,6 +119,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
       setProductSearch('');
       setSelectedCategory('all');
       setError('');
+      setCreado(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, prefill?.name, prefill?.phone, prefill?.address, prefill?.orderType]);
@@ -240,8 +244,13 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
 
   const grandTotal = cartTotal + (orderType === 'delivery' ? deliveryFee : 0);
 
-  const canProceedToProducts = customerName.trim().length > 0;
-  const canSubmit = cart.length > 0 && customerName.trim().length > 0;
+  /* El nombre es opcional: en una venta de mostrador o una mesa pedirlo solo
+     frena. Si queda vacío se usa algo que sirva para reconocer el pedido. */
+  const nombreDelPedido = customerName.trim()
+    || (orderType === 'inSite' ? (tableNumber.trim() ? `${businessConfig?.businessType === 'hotel' ? 'Habitación' : 'Mesa'} ${tableNumber.trim()}` : 'En el local')
+      : orderType === 'takeaway' ? 'Para llevar' : 'Cliente');
+  const canProceedToProducts = true;
+  const canSubmit = cart.length > 0;
   const disponibleCredito = credito ? Math.max(0, credito.cupo - credito.saldo) : 0;
   const alcanzaCredito = !!credito && grandTotal <= disponibleCredito;
   const cargarACredito = usarCredito && alcanzaCredito;
@@ -253,7 +262,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
     try {
       const orderData = {
         businessId,
-        customerName: customerName.trim(),
+        customerName: nombreDelPedido,
         phone: customerPhone.trim() || undefined,
         orderType,
         tableNumber: orderType === 'inSite' ? tableNumber : undefined,
@@ -287,12 +296,22 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
       }
 
       onOrderCreated?.(res.data);
-      onClose();
+      setCreado(res.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Error creando pedido');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const otroPedido = () => {
+    setCreado(null);
+    setStep('customer');
+    setCustomerSearch(''); setCustomerResults([]); setSelectedCustomer(null);
+    setCustomerName(''); setCustomerPhone('');
+    setTableNumber(''); setAddress(''); setCustomerNotes('');
+    setPaymentMethod('cash'); setCart([]); setSelectedZone(null); setDeliveryFee(0);
+    setProductSearch(''); setSelectedCategory('all'); setError('');
   };
 
   if (!isOpen) return null;
@@ -324,11 +343,11 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
               <div>
                 <h3 className="text-sm font-bold text-slate-800">Pedido rápido</h3>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  {['customer', 'products', 'review'].map((s, i) => (
+                  {[['customer', 'Cliente'], ['products', 'Productos'], ['review', 'Confirmar']].map(([s, nombre], i) => (
                     <div key={s} className="flex items-center gap-1">
-                      <div className={`w-5 h-5 rounded-full text-2xs font-bold flex items-center justify-center ${
-                        step === s ? 'bg-slate-800 text-white' : i < ['customer', 'products', 'review'].indexOf(step) ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'
-                      }`}>{i + 1}</div>
+                      <div className={`h-5 px-2 rounded-full text-2xs font-bold flex items-center justify-center gap-1 ${
+                        step === s && !creado ? 'bg-slate-800 text-white' : creado || i < ['customer', 'products', 'review'].indexOf(step) ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
+                      }`}>{i + 1} {nombre}</div>
                       {i < 2 && <div className="w-4 h-[1px] bg-slate-200" />}
                     </div>
                   ))}
@@ -340,8 +359,31 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
             </button>
           </div>
 
+          {/* Hecho: que quien atiende SEPA que el pedido quedó, sobre todo si lo
+              creó desde Inicio y no está viendo la lista de pedidos. */}
+          {creado && (
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center text-center">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
+                <FaCheck className="text-2xl text-emerald-600" />
+              </div>
+              <h3 className="text-xl font-black text-slate-900">Pedido #{creado.orderNumber} creado</h3>
+              <p className="text-sm text-slate-500 mt-1 break-words">
+                {creado.customerName} · {pesos(creado.finalAmount || grandTotal)}
+              </p>
+              <p className="text-sm text-slate-500 mt-0.5">Ya está en preparación.</p>
+              <div className="w-full grid grid-cols-2 gap-2 mt-6">
+                <button onClick={onClose} className="h-12 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold">
+                  Cerrar
+                </button>
+                <button onClick={otroPedido} className="h-12 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold">
+                  Otro pedido
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Step 1: Customer + Order Info */}
-          {step === 'customer' && (
+          {!creado && step === 'customer' && (
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {/* Customer search */}
               <div>
@@ -401,7 +443,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
                       <p className="text-[11px] font-semibold text-slate-500">O ingresa manualmente:</p>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="text-2xs text-slate-400 mb-0.5 block">Nombre *</label>
+                          <label className="text-2xs text-slate-400 mb-0.5 block">Nombre (opcional)</label>
                           <input
                             type="text"
                             value={customerName}
@@ -434,12 +476,12 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
                     <button
                       key={t.value}
                       onClick={() => { setOrderType(t.value); if (t.value !== 'delivery') { setSelectedZone(null); setDeliveryFee(0); } }}
-                      className={`flex flex-col items-center gap-1 px-2 py-2.5 rounded-lg text-center transition-all border ${
+                      className={`flex flex-col items-center gap-1 px-2 py-3 rounded-xl text-center transition-all border ${
                         orderType === t.value ? t.color + ' shadow-sm' : 'bg-transparent border-transparent hover:bg-slate-50'
                       }`}
                     >
-                      <t.Icon className="text-xs" />
-                      <span className="text-[11px] font-semibold">{t.label}</span>
+                      <t.Icon className="text-sm" />
+                      <span className="text-[13px] font-semibold">{t.label}</span>
                     </button>
                   ))}
                 </div>
@@ -504,7 +546,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
                                 )}
                               </div>
                               <span className={`text-[13px] font-bold ${selectedZone?.id === zone.id ? 'text-emerald-600' : 'text-slate-700'}`}>
-                                ${zone.pricing?.displayPrice?.toLocaleString() || 0}
+                                {pesos(zone.pricing?.displayPrice)}
                               </span>
                             </div>
                           </button>
@@ -523,7 +565,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
                     <button
                       key={pm.value}
                       onClick={() => setPaymentMethod(pm.value)}
-                      className={`px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all border ${
+                      className={`px-4 h-10 rounded-full text-[13px] font-semibold transition-all border ${
                         paymentMethod === pm.value
                           ? 'bg-slate-800 text-white border-slate-800'
                           : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
@@ -559,7 +601,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
           )}
 
           {/* Step 2: Products */}
-          {step === 'products' && (
+          {!creado && step === 'products' && (
             <div className="flex-1 flex flex-col overflow-hidden relative">
               {/* Search + categories */}
               <div className="px-4 pt-3 pb-2 space-y-2 shrink-0">
@@ -597,33 +639,39 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
                       const totalInCart = cart.filter(c => c.productId === product._id).reduce((sum, c) => sum + c.quantity, 0);
                       const hasToppings = product.toppingGroups && product.toppingGroups.length > 0;
                       return (
-                        <div key={product._id} className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <p className="text-[13px] font-medium text-slate-800 truncate">{product.name}</p>
-                              {hasToppings && <span className="text-2xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold shrink-0">Extras</span>}
-                            </div>
-                            <p className="text-[11px] text-slate-500">${product.price?.toLocaleString()}</p>
-                          </div>
+                        <div key={product._id} className={`flex items-center gap-2 rounded-xl transition-colors ${totalInCart > 0 ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}>
+                          {/* Toda la fila agrega: el botón chico de la derecha era lo
+                              único que respondía, y el dedo va al nombre. */}
+                          <button
+                            type="button"
+                            onClick={() => (inCart && !hasToppings ? updateCartQty(cart.indexOf(inCart), 1) : handleProductClick(product))}
+                            className="flex-1 min-w-0 flex items-center gap-2 px-3 py-2.5 text-left"
+                          >
+                            {totalInCart > 0 && (
+                              <span className="shrink-0 min-w-[24px] h-6 px-1.5 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">{totalInCart}</span>
+                            )}
+                            <span className="flex-1 min-w-0">
+                              <span className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[14px] font-medium text-slate-800 break-words">{product.name}</span>
+                                {hasToppings && <span className="text-2xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold shrink-0">Con opciones</span>}
+                              </span>
+                              <span className="block text-[12px] text-slate-500">{pesos(product.price)}</span>
+                            </span>
+                          </button>
                           {inCart && !hasToppings ? (
-                            <div className="flex items-center gap-1.5">
-                              <button onClick={() => updateCartQty(cart.indexOf(inCart), -1)} className="w-7 h-7 bg-slate-200 hover:bg-slate-300 rounded-md flex items-center justify-center">
+                            <div className="flex items-center gap-1.5 pr-2">
+                              <button onClick={() => updateCartQty(cart.indexOf(inCart), -1)} aria-label="Quitar uno" className="w-9 h-9 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg flex items-center justify-center">
                                 <FaMinus className="text-2xs text-slate-600" />
                               </button>
-                              <span className="text-xs font-bold text-slate-800 w-5 text-center">{inCart.quantity}</span>
-                              <button onClick={() => updateCartQty(cart.indexOf(inCart), 1)} className="w-7 h-7 bg-slate-800 hover:bg-slate-700 rounded-md flex items-center justify-center">
+                              <span className="text-sm font-bold text-slate-800 w-6 text-center">{inCart.quantity}</span>
+                              <button onClick={() => updateCartQty(cart.indexOf(inCart), 1)} aria-label="Agregar uno" className="w-9 h-9 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center justify-center">
                                 <FaPlus className="text-2xs text-white" />
                               </button>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-1.5">
-                              {totalInCart > 0 && (
-                                <span className="text-2xs bg-slate-800 text-white w-5 h-5 rounded-full flex items-center justify-center font-bold">{totalInCart}</span>
-                              )}
-                              <button onClick={() => handleProductClick(product)} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-[11px] font-semibold rounded-lg transition-colors">
-                                {hasToppings ? 'Elegir' : 'Agregar'}
-                              </button>
-                            </div>
+                            <button onClick={() => handleProductClick(product)} className="mr-2 px-3.5 h-9 bg-slate-800 hover:bg-slate-700 text-white text-[12px] font-semibold rounded-lg transition-colors shrink-0">
+                              {hasToppings ? 'Elegir' : 'Agregar'}
+                            </button>
                           )}
                         </div>
                       );
@@ -646,7 +694,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
                   className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
                 >
                   <FaShoppingCart className="text-xs" />
-                  Revisar ({cart.length}) · ${grandTotal.toLocaleString()}
+                  Revisar ({cart.reduce((n, c) => n + c.quantity, 0)}) · {pesos(grandTotal)}
                 </button>
               </div>
 
@@ -665,13 +713,13 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
           )}
 
           {/* Step 3: Review & Confirm */}
-          {step === 'review' && (
+          {!creado && step === 'review' && (
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {/* Customer summary */}
               <div className="bg-slate-50 rounded-lg p-3 space-y-1.5">
                 <div className="flex items-center gap-2">
                   <FaUser className="text-xs text-slate-400" />
-                  <span className="text-[13px] font-medium text-slate-800">{customerName}</span>
+                  <span className="text-[13px] font-medium text-slate-800 break-words">{nombreDelPedido}</span>
                   {customerPhone && <span className="text-[11px] text-slate-500">· {customerPhone}</span>}
                 </div>
                 <div className="flex items-center gap-2 text-[12px] text-slate-500">
@@ -698,7 +746,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-[13px] font-semibold text-slate-800">${((item.totalPrice || item.price) * item.quantity).toLocaleString()}</span>
+                          <span className="text-[13px] font-semibold text-slate-800">{pesos((item.totalPrice || item.price) * item.quantity)}</span>
                           <button onClick={() => removeFromCart(i)} className="text-red-400 hover:text-red-600">
                             <FaTrash className="text-2xs" />
                           </button>
@@ -712,7 +760,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
                               {t.subGroups?.map((sg, si) => (
                                 <span key={si}> / {sg.optionName}</span>
                               ))}
-                              {(t.price > 0 || t.basePrice > 0) && ` ($${((t.price || 0) + (t.basePrice || 0)).toLocaleString()})`}
+                              {(t.price > 0 || t.basePrice > 0) && ` (${pesos((t.price || 0) + (t.basePrice || 0))})`}
                             </p>
                           ))}
                         </div>
@@ -726,18 +774,18 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
               {orderType === 'delivery' && deliveryFee > 0 && (
                 <div className="flex justify-between items-center px-4 py-2 bg-slate-50 rounded-lg text-sm">
                   <span className="text-slate-500">Subtotal</span>
-                  <span className="font-medium text-slate-700">${cartTotal.toLocaleString()}</span>
+                  <span className="font-medium text-slate-700">{pesos(cartTotal)}</span>
                 </div>
               )}
               {orderType === 'delivery' && deliveryFee > 0 && (
                 <div className="flex justify-between items-center px-4 py-2 bg-slate-50 rounded-lg text-sm">
                   <span className="text-slate-500">Domicilio ({selectedZone?.name})</span>
-                  <span className="font-medium text-slate-700">${deliveryFee.toLocaleString()}</span>
+                  <span className="font-medium text-slate-700">{pesos(deliveryFee)}</span>
                 </div>
               )}
               <div className="bg-slate-50 border border-slate-200 text-slate-900 rounded-lg px-4 py-3 flex justify-between items-center">
                 <span className="text-sm font-bold">Total</span>
-                <span className="text-lg font-bold">${grandTotal.toLocaleString()}</span>
+                <span className="text-lg font-bold">{pesos(grandTotal)}</span>
               </div>
 
               {/* Crédito: solo si el cliente lo tiene habilitado */}
@@ -754,17 +802,17 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
                     <span className="flex-1 min-w-0">
                       <span className="block text-[14px] font-bold text-slate-900">Cargar a su crédito</span>
                       <span className="block text-[12px] text-slate-500">
-                        Disponible ${disponibleCredito.toLocaleString('es-CO')} de ${credito.cupo.toLocaleString('es-CO')}
-                        {credito.saldo > 0 && ` · debe $${credito.saldo.toLocaleString('es-CO')}`}
+                        Disponible {pesos(disponibleCredito)} de {pesos(credito.cupo)}
+                        {credito.saldo > 0 && ` · debe ${pesos(credito.saldo)}`}
                       </span>
                       {!alcanzaCredito && (
                         <span className="block mt-1 text-[12px] font-semibold text-amber-700">
-                          Supera el cupo: le faltan ${(grandTotal - disponibleCredito).toLocaleString('es-CO')}
+                          Supera el cupo: le faltan {pesos(grandTotal - disponibleCredito)}
                         </span>
                       )}
                       {cargarACredito && (
                         <span className="block mt-1 text-[12px] font-semibold text-blue-700">
-                          Después de este pedido debe ${(credito.saldo + grandTotal).toLocaleString('es-CO')}
+                          Después de este pedido debe {pesos(credito.saldo + grandTotal)}
                         </span>
                       )}
                     </span>

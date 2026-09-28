@@ -2,29 +2,20 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
-import { esTienda } from '../utils/tienda';
 import SubscriptionStatus from './SubscriptionStatus';
 import GuideOverlay from './Admin/GuideOverlay';
 import BranchSwitcher from './Admin/BranchSwitcher';
 import {
-  FaClipboardList, FaHamburger, FaSortAmountDown, FaFolderOpen,
-  FaCheese, FaUsers, FaTicketAlt, FaChair, FaMapMarkedAlt, FaMotorcycle, FaUndo,
-  FaCheckCircle, FaBullhorn, FaWhatsapp, FaCreditCard,
-  FaPalette, FaMapMarkerAlt, FaLock, FaSignOutAlt, FaChevronDown,
-  FaShoppingBag, FaStore, FaTools, FaCog, FaMoneyBillWave, FaStar, FaGift,
-  FaQuestionCircle, FaExternalLinkAlt, FaChartBar, FaPrint, FaCashRegister,
-  FaCalendarAlt, FaShareAlt, FaCodeBranch, FaLink, FaCalculator, FaBoxOpen,
-  FaChevronLeft, FaChrome, FaChartLine, FaHandHoldingUsd, FaTruck
+  FaHamburger, FaTools, FaSignOutAlt, FaChevronDown, FaQuestionCircle, FaExternalLinkAlt,
+  FaMotorcycle, FaShoppingBag, FaChevronLeft, FaPlus,
 } from 'react-icons/fa';
-import { SECCIONES_OCULTAS } from '../utils/seccionesOcultas';
+import { seccionesDelPanel } from '../utils/navegacionAdmin';
 
-const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, whatsappSinLeer, subscriptionData, onboarding, userRole, colapsado = false, onAlternar }) => {
+const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, whatsappSinLeer, subscriptionData, onboarding, userRole, colapsado = false, onAlternar, onNuevoPedido }) => {
   const navigate = useNavigate();
   const isStaff = userRole === 'staff';
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const isHotel = businessConfig?.businessType === 'hotel';
-  // Una tienda devuelve todos los días y no tiene mesas que numerar.
-  const tienda = esTienda(businessConfig);
   // Guide overlay state
   const [guideSection, setGuideSection] = useState(null);
 
@@ -49,129 +40,16 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 1500);
   };
-  // Grouped menu sections — same items as original sidebar
-  const menuSections = [
-    {
-      id: 'operations',
-      label: 'Operaciones',
-      // Orden por qué tan a diario se usa: pedidos y caja son constantes,
-      // el cierre mensual es lo menos frecuente de la sección.
-      items: [
-        { id: 'orders', label: isService ? 'Citas' : 'Pedidos', Icon: isService ? FaCalendarAlt : FaClipboardList, badge: pendingOrdersCount },
-        ...(businessConfig?.features?.posBetaEnabled ? [{ id: 'cash-closings', label: 'Cierres de Caja', Icon: FaCashRegister, badge: null }] : []),
-        { id: 'cajas', label: 'Punto de venta', Icon: FaCashRegister, badge: null },
-        { id: 'completed_orders', label: 'Completados', Icon: FaCheckCircle, badge: null },
-        { id: 'rentabilidad', label: 'Rentabilidad', Icon: FaChartLine, badge: null },
-        ...(tienda ? [{ id: 'devoluciones', label: 'Devoluciones', Icon: FaUndo, badge: null }] : []),
-        ...(businessConfig?.enableBookings ? [{ id: 'bookings', label: 'Agenda', Icon: FaCalendarAlt, badge: null }] : []),
-        /* El cierre mensual no depende del POS: todo negocio cierra su mes,
-           tenga o no punto de venta. Va al final: es mensual, no diario. */
-        { id: 'monthly-closing', label: 'Cierre Mensual', Icon: FaCalendarAlt, badge: null },
-      ]
-    },
-    {
-      id: 'clients',
-      label: 'Clientes y Servicio',
-      // Chats y domiciliarios se tocan todo el día; mesas y zonas se
-      // configuran una vez y casi no se vuelven a abrir.
-      items: [
-        /* Se muestra aunque el negocio no lo tenga contratado: la pantalla
-           explica de qué se trata en vez de fallar, y así el complemento se
-           descubre solo en lugar de quedar escondido. */
-        /* Abre la bandeja DENTRO del panel, con el resumen del canal debajo.
-           Desde ahí hay un botón para pasarla a pantalla completa, que es su
-           propia dirección —como el POS— y sirve para dejarla en una pestaña
-           del navegador toda la jornada. */
-        { id: 'whatsapp-inbox', label: 'Chats WhatsApp', Icon: FaWhatsapp, badge: whatsappSinLeer || null },
-        ...(!isService && !isHotel ? [{ id: 'delivery', label: 'Domiciliarios', Icon: FaMotorcycle, badge: null }] : []),
-        { id: 'reviews', label: 'Reseñas', Icon: FaStar, badge: null },
-        { id: 'customers', label: 'Clientes', Icon: FaUsers, badge: null },
-        { id: 'credito', label: 'Cuentas por cobrar', Icon: FaHandHoldingUsd, badge: null },
-        { id: 'coupons', label: 'Cupones', Icon: FaTicketAlt, badge: null },
-        { id: 'loyalty', label: 'Fidelidad', Icon: FaGift, badge: null, beta: true },
-        ...(!isService && !isHotel ? [{ id: 'delivery-zones', label: 'Zonas', Icon: FaMapMarkedAlt, badge: null }] : []),
-        ...(!isService && !tienda ? [{ id: 'tables', label: isHotel ? 'Habitaciones' : 'Mesas', Icon: FaChair, badge: null }] : []),
-      ]
-    },
-    {
-      id: 'menu',
-      label: isService ? 'Servicios' : 'Menú',
-      // Productos e inventario cambian seguido; el orden de despliegue se
-      // configura una vez y casi no se vuelve a tocar.
-      items: [
-        { id: 'products', label: isService ? 'Servicios' : 'Productos', Icon: isService ? FaTools : FaHamburger, badge: null },
-        { id: 'inventory', label: 'Inventario', Icon: FaBoxOpen, badge: null },
-        { id: 'compras', label: 'Compras', Icon: FaTruck, badge: null },
-        { id: 'toppings', label: isService ? 'Opciones' : 'Extras', Icon: isService ? FaCog : FaCheese, badge: null },
-        { id: 'categories', label: 'Categorías', Icon: FaFolderOpen, badge: null },
-        { id: 'product-order', label: 'Orden', Icon: FaSortAmountDown, badge: null },
-      ]
-    },
-    {
-      id: 'marketing',
-      label: 'Marketing',
-      items: [
-        { id: 'sales-tracking', label: 'Sigue tus ventas', Icon: FaChartLine, badge: null },
-        { id: 'wa-campaign', label: 'Campaña WA', Icon: FaWhatsapp, badge: null },
-        { id: 'referrals', label: 'Referidos', Icon: FaShareAlt, badge: null },
-        { id: 'popups', label: 'Anuncios', Icon: FaBullhorn, badge: null },
-        /* Este personaliza el mensaje del enlace wa.me del menú; no confundir
-           con "Chats WhatsApp", que es la bandeja del número propio. */
-        { id: 'whatsapp', label: 'Mensaje del menú', Icon: FaWhatsapp, badge: null },
-        { id: 'catalog', label: 'Catálogo', Icon: FaBullhorn, badge: null },
-        { id: 'payment-config', label: 'Pagos', Icon: FaMoneyBillWave, badge: null },
-      ]
-    },
-    {
-      id: 'suppliers',
-      label: 'Proveedores',
-      items: [
-        { id: 'supplier-orders', label: businessConfig?.isSupplier ? 'Pedidos B2B' : 'Mis pedidos', Icon: FaClipboardList, badge: null },
-        { id: 'marketplace', label: 'Marketplace', Icon: FaShoppingBag, badge: null },
-      ]
-    },
-    {
-      id: 'tools-section',
-      label: 'Herramientas',
-      items: [
-        { id: 'tools', label: 'Calculadoras', Icon: FaCalculator, badge: null },
-        { id: 'extension', label: 'Extensión Chrome', Icon: FaChrome, badge: null },
-      ]
-    },
-    {
-      id: 'settings',
-      label: 'Configuración',
-      items: [
-        { id: 'subscription', label: 'Suscripción', Icon: FaCreditCard, badge: null },
-        ...(!isStaff ? [{ id: 'branches', label: 'Sucursales', Icon: FaCodeBranch, badge: null }] : []),
-        ...(!isStaff ? [{ id: 'milink', label: 'Mi Link', Icon: FaLink, badge: null }] : []),
-        ...(!isStaff ? [{ id: 'portafolio', label: 'Mi página de negocios', Icon: FaLink, badge: null }] : []),
-        { id: 'team', label: 'Equipo', Icon: FaUsers, badge: null },
-        { id: 'business', label: 'Negocio', Icon: FaStore, badge: null },
-        { id: 'printer', label: 'Impresoras', Icon: FaPrint, badge: null },
-        { id: 'theme', label: 'Tema', Icon: FaPalette, badge: null },
-        { id: 'location', label: 'Ubicación', Icon: FaMapMarkerAlt, badge: null },
-        { id: 'change-password', label: 'Contraseña', Icon: FaLock, badge: null },
-      ]
-    },
-  ];
+  // Mismo menú que el celular (utils/navegacionAdmin), ordenado por uso real.
+  const filteredSections = seccionesDelPanel({
+    businessConfig,
+    esPersonal: isStaff,
+    pedidosPendientes: pendingOrdersCount,
+    whatsappSinLeer,
+  });
 
-  // Staff tabs whitelist
-  const STAFF_ALLOWED_TABS = ['orders', 'completed_orders', 'cash-closings', 'change-password'];
-  // Las secciones que hoy no se usan no salen (ver utils/seccionesOcultas).
-  const seccionesVisibles = menuSections
-    .map(section => ({ ...section, items: section.items.filter(item => !SECCIONES_OCULTAS.has(item.id)) }))
-    .filter(section => section.items.length > 0);
-  const filteredSections = isStaff
-    ? seccionesVisibles
-        .map(section => ({
-          ...section,
-          items: section.items.filter(item => STAFF_ALLOWED_TABS.includes(item.id))
-        }))
-        .filter(section => section.items.length > 0)
-    : seccionesVisibles;
-
-  const [collapsedSections, setCollapsedSections] = useState({});
+  // "Más herramientas" arranca plegada: es lo que casi nadie usa.
+  const [collapsedSections, setCollapsedSections] = useState({ mas: true });
 
   const getActiveSectionId = useCallback(() => {
     for (const section of filteredSections) {
@@ -179,7 +57,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
         return section.id;
       }
     }
-    return 'operations';
+    return 'dia';
   }, [activeTab, filteredSections]);
 
   const toggleSection = (sectionId) => {
@@ -198,7 +76,12 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
     <div className="h-full flex flex-col bg-white">
       {/* Header */}
       <div className="p-5 pb-4">
-        <div className="flex items-center gap-3">
+        {/* El logo y el nombre llevan a Inicio. */}
+        <button
+          type="button"
+          onClick={() => !isStaff && setActiveTab('dashboard')}
+          title={isStaff ? undefined : 'Ir a Inicio'}
+          className="w-full flex items-center gap-3 text-left rounded-xl -m-1 p-1 hover:bg-slate-50 transition-colors">
           <div className="relative">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center shadow-md">
               {businessConfig?.logo ? (
@@ -215,7 +98,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1">
-              <h1 className="text-sm font-bold text-slate-800 truncate leading-tight">
+              <h1 className="text-sm font-bold text-slate-800 break-words leading-tight">
                 {businessConfig?.businessName || 'Mi Negocio'}
               </h1>
               {subscriptionData?.subscription?.planType === 'annual' && subscriptionData?.isActive && (
@@ -229,7 +112,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
             </div>
             <p className="text-[11px] text-slate-400 font-medium">Sistema de gestión</p>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Branch Switcher (brand_admin only) */}
@@ -246,58 +129,18 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
         </div>
       )}
 
-      {/* Dashboard Button */}
-      {!isStaff && (
-      <div className="px-4 pb-2">
-        <button
-          onClick={() => setActiveTab('dashboard')}
-          className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg border transition-all duration-200 ${
-            activeTab === 'dashboard'
-              ? 'bg-blue-50 border-blue-200/80 shadow-sm'
-              : 'bg-white border-slate-200/80 hover:bg-slate-50'
-          }`}
-        >
-          <FaChartBar className={`text-sm shrink-0 ${
-            activeTab === 'dashboard' ? 'text-blue-600' : 'text-slate-400'
-          }`} />
-          <span className={`text-xs font-bold ${
-            activeTab === 'dashboard' ? 'text-blue-700' : 'text-slate-600'
-          }`}>Dashboard</span>
-        </button>
-      </div>
-      )}
-
-      {/* Orders Indicator Card */}
-      <div className="px-4 pb-3">
-        <button
-          onClick={() => setActiveTab('orders')}
-          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 ${
-            pendingOrdersCount > 0
-              ? 'bg-red-50 border-red-200/80 hover:bg-red-100'
-              : activeTab === 'orders'
-                ? 'bg-blue-50 border-blue-200/80'
-                : 'bg-slate-50 border-slate-200/80 hover:bg-slate-100'
-          }`}
-        >
-          <FaClipboardList className={`text-sm shrink-0 ${
-            pendingOrdersCount > 0 ? 'text-red-500' : 'text-slate-400'
-          }`} />
-          <span className="text-[11px] font-semibold text-slate-700 flex-1 text-left">
-            {isService ? 'Citas' : 'Pedidos'}
-          </span>
-          {pendingOrdersCount > 0 ? (
-            <motion.span
-              key={pendingOrdersCount}
-              initial={{ scale: 0.5 }}
-              animate={{ scale: 1 }}
-              className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-2xs font-bold bg-red-500 text-white"
-            >
-              {pendingOrdersCount > 99 ? '99+' : pendingOrdersCount}
-            </motion.span>
-          ) : (
-            <span className="text-2xs font-medium text-slate-400">0</span>
-          )}
-        </button>
+      {/* Lo que más se hace en el panel, siempre a la vista: el 89 % de los
+          pedidos se crean acá, a mano. */}
+      <div className="px-4 pb-3 space-y-2">
+        {onNuevoPedido && (
+          <button
+            onClick={onNuevoPedido}
+            className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-red-600 text-white text-sm font-bold shadow-sm hover:bg-red-700 active:scale-[0.98] transition"
+          >
+            <FaPlus className="text-xs" />
+            {isService ? 'Nueva cita' : 'Nuevo pedido'}
+          </button>
+        )}
       </div>
 
       {/* Daily pickup code — restaurant gives it to the domi on arrival */}
@@ -317,39 +160,31 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
         </div>
       )}
 
-      {/* Ver Menú Button */}
-      {businessConfig?.slug && !isStaff && (
-        <div className="px-4 pb-3">
-          <a
-            href={`https://menuby.tech/${businessConfig.slug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-200/80 bg-emerald-50 hover:bg-emerald-100 transition-all duration-200 group"
-          >
-            <FaExternalLinkAlt className="text-[11px] shrink-0 text-emerald-500" />
-            <span className="text-[11px] font-semibold text-emerald-700 flex-1 text-left">
-              {isService ? 'Ver Servicios' : isHotel ? 'Ver Room Service' : 'Ver Menú'}
-            </span>
-            <span className="text-2xs text-emerald-400 font-medium truncate max-w-[80px]">
-              /{businessConfig.slug}
-            </span>
-          </a>
-        </div>
-      )}
-
-      {/* Punto de Venta Button */}
-      {businessConfig?._id && businessConfig?.features?.posBetaEnabled && (
-        <div className="px-4 pb-3">
-          <a
-            href={`/${businessConfig.slug || businessConfig._id}/pos`}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-purple-200/80 bg-purple-50 hover:bg-purple-100 transition-all duration-200 group"
-          >
-            <FaShoppingBag className="text-[11px] shrink-0 text-purple-500" />
-            <span className="text-[11px] font-semibold text-purple-700 flex-1 text-left">
-              Punto de Venta
-            </span>
-            <FaExternalLinkAlt className="text-2xs text-purple-300" />
-          </a>
+      {/* Ver el menú como lo ve el cliente y abrir el POS, en una sola fila. */}
+      {!isStaff && (businessConfig?.slug || businessConfig?.features?.posBetaEnabled) && (
+        <div className="px-4 pb-3 grid grid-cols-2 gap-2">
+          {businessConfig?.slug && (
+            <a
+              href={`https://menuby.tech/${businessConfig.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`menuby.tech/${businessConfig.slug}`}
+              className="h-9 flex items-center justify-center gap-1.5 rounded-lg border border-emerald-200/80 bg-emerald-50 hover:bg-emerald-100 text-xs font-semibold text-emerald-700 transition-colors"
+            >
+              <FaExternalLinkAlt className="text-2xs" />
+              {isService ? 'Ver servicios' : 'Ver menú'}
+            </a>
+          )}
+          {businessConfig?._id && businessConfig?.features?.posBetaEnabled && (
+            <a
+              href={`/${businessConfig.slug || businessConfig._id}/pos`}
+              title="Abrir el punto de venta para cobrar"
+              className="h-9 flex items-center justify-center gap-1.5 rounded-lg border border-purple-200/80 bg-purple-50 hover:bg-purple-100 text-xs font-semibold text-purple-700 transition-colors"
+            >
+              <FaShoppingBag className="text-2xs" />
+              Abrir POS
+            </a>
+          )}
         </div>
       )}
 
@@ -509,7 +344,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
         initial={{ x: -300 }}
         animate={{ x: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className={`hidden lg:block bg-white min-h-screen sticky top-0 shadow-sm overflow-hidden transition-[width] duration-300 ease-out ${
+        className={`hidden lg:block bg-white h-screen sticky top-0 shadow-sm overflow-hidden transition-[width] duration-300 ease-out ${
           colapsado ? 'w-0 border-r-0' : 'w-64 border-r border-slate-200'
         }`}
         aria-hidden={colapsado}

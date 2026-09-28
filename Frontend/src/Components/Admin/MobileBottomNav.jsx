@@ -29,9 +29,9 @@ const NavIcons = {
       }
     </svg>
   ),
-  servicio: (active, hasPending) => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M13 10V3L4 14h7v7l9-11h-7z" fill={active ? 'currentColor' : 'none'} />
+  nuevo: () => (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+      <path d="M12 5v14M5 12h14"/>
     </svg>
   ),
   more: () => (
@@ -62,42 +62,46 @@ const NavIcons = {
 };
 
 /**
- * MobileBottomNav v4 — Native iOS tab bar.
- * Tab 4: "Servicio" (lightning bolt) opens ModoOperacion overlay directly.
- * Pulsing ring when pending orders exist.
+ * MobileBottomNav — barra de abajo del celular.
+ *
+ * El botón del centro es "Nuevo": el 89 % de los pedidos se crean a mano
+ * desde el panel, y antes eso era un "+" chiquito dentro de Pedidos. El modo
+ * servicio sigue en Inicio (y en el aviso de pedidos nuevos).
  */
-export default function MobileBottomNav({ activeTab, setActiveTab, pendingOrdersCount, businessConfig, handleLogout, userRole, onOpenModoOp }) {
+export default function MobileBottomNav({ activeTab, setActiveTab, pendingOrdersCount, businessConfig, handleLogout, userRole, onNuevoPedido, whatsappSinLeer = 0 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const navigate = useNavigate();
   const { businessId } = useParams();
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const isStaff = userRole === 'staff';
 
-  const pinnedTabs = [
-    { id: 'dashboard',  label: 'Inicio',                         icon: NavIcons.home },
-    { id: 'orders',     label: isService ? 'Citas' : 'Pedidos',  icon: isService ? NavIcons.calendar : NavIcons.orders, badge: pendingOrdersCount },
-    { id: 'products',   label: isService ? 'Servicios' : 'Menú', icon: isService ? NavIcons.tools : NavIcons.menu },
-    { id: '_servicio',  label: 'Servicio',                       icon: NavIcons.servicio },
-  ];
+  const nuevo = { id: '_nuevo', label: 'Nuevo', icon: NavIcons.nuevo };
+  const pedidos = { id: 'orders', label: isService ? 'Citas' : 'Pedidos', icon: isService ? NavIcons.calendar : NavIcons.orders, badge: pendingOrdersCount };
 
   const visibleTabs = isStaff
     ? [
-        ...pinnedTabs.filter(t => ['orders'].includes(t.id)),
+        pedidos,
+        ...(onNuevoPedido ? [nuevo] : []),
         { id: 'completed_orders', label: 'Listos', icon: NavIcons.orders },
         { id: '_waiter', label: 'Comanda', icon: NavIcons.waiter },
       ]
-    : pinnedTabs;
+    : [
+        { id: 'dashboard', label: 'Inicio', icon: NavIcons.home },
+        pedidos,
+        ...(onNuevoPedido ? [nuevo] : []),
+        { id: 'products', label: isService ? 'Servicios' : 'Menú', icon: isService ? NavIcons.tools : NavIcons.menu },
+      ];
 
   const pinnedIds = new Set(visibleTabs.map(t => t.id).filter(id => !id.startsWith('_')));
-  const isMoreActive = !pinnedIds.has(activeTab) && activeTab !== '_servicio';
+  const isMoreActive = !pinnedIds.has(activeTab);
 
   const handleTabPress = (tabId) => {
     if (tabId === '_waiter') {
       navigate(`/${businessId}/waiter`);
       return;
     }
-    if (tabId === '_servicio') {
-      onOpenModoOp?.();
+    if (tabId === '_nuevo') {
+      onNuevoPedido?.();
       return;
     }
     setActiveTab(tabId);
@@ -114,7 +118,7 @@ export default function MobileBottomNav({ activeTab, setActiveTab, pendingOrders
 
         <div className="relative flex items-center justify-around h-[58px] max-w-lg mx-auto px-1">
           {visibleTabs.map((tab) => {
-            const isServicioTab = tab.id === '_servicio';
+            const isServicioTab = tab.id === '_nuevo';
             const isActive = !isServicioTab && activeTab === tab.id;
 
             return (
@@ -141,21 +145,13 @@ export default function MobileBottomNav({ activeTab, setActiveTab, pendingOrders
                   </AnimatePresence>
                 )}
 
-                {/* Servicio tab: special pill with gradient */}
+                {/* "Nuevo": el botón que más se usa, en rojo y al centro. */}
                 {isServicioTab && (
-                  <div className={`absolute inset-x-1.5 top-1.5 bottom-1.5 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-md shadow-indigo-500/30`} />
+                  <div className="absolute inset-x-1.5 top-1.5 bottom-1.5 rounded-2xl bg-red-600 shadow-md shadow-red-600/30" />
                 )}
 
                 <div className={`relative z-10 flex flex-col items-center gap-[3px]`}>
                   <div className="relative">
-                    {/* Pulsing ring for Servicio when pending orders */}
-                    {isServicioTab && pendingOrdersCount > 0 && (
-                      <motion.div
-                        animate={{ scale: [1, 1.6, 1], opacity: [0.7, 0, 0.7] }}
-                        transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-                        className="absolute inset-0 rounded-full bg-white/50 -m-1"
-                      />
-                    )}
                     <div className={`transition-colors duration-200 ${
                       isServicioTab ? 'text-white' : isActive ? 'text-red-500' : 'text-slate-400'
                     }`}>
@@ -172,12 +168,6 @@ export default function MobileBottomNav({ activeTab, setActiveTab, pendingOrders
                       >
                         {tab.badge > 99 ? '99+' : tab.badge}
                       </motion.span>
-                    )}
-                    {/* Servicio pending dot */}
-                    {isServicioTab && pendingOrdersCount > 0 && (
-                      <span className="absolute -top-1 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-2xs font-black rounded-full flex items-center justify-center ring-1 ring-white">
-                        {pendingOrdersCount > 9 ? '9+' : pendingOrdersCount}
-                      </span>
                     )}
                   </div>
                   <span className={`text-2xs font-semibold leading-none transition-colors duration-200 ${
@@ -231,6 +221,7 @@ export default function MobileBottomNav({ activeTab, setActiveTab, pendingOrders
         handleLogout={handleLogout}
         userRole={userRole}
         pinnedIds={pinnedIds}
+        whatsappSinLeer={whatsappSinLeer}
       />
     </>
   );

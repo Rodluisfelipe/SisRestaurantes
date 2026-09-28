@@ -1,12 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import {
-  FaUser, FaPhone, FaMapMarkerAlt, FaTruck, FaEye, FaPlay, FaCheck,
+  FaUser, FaMapMarkerAlt, FaTruck, FaEye,
   FaChair, FaHome, FaExclamationTriangle, FaTimes,
   FaMoneyBillWave, FaImage, FaTimesCircle, FaCheckCircle, FaPrint, FaMotorcycle,
-  FaCreditCard, FaCommentDots, FaPlus
+  FaCreditCard, FaCommentDots,
 } from 'react-icons/fa';
 import { ORDER_STATUS } from '../utils/constants';
+import { pasosDelPedido, TONOS_PASO, totalDelPedido, pesos } from '../utils/pedidos';
 import api from '../services/api';
 import { SECCIONES_OCULTAS } from '../utils/seccionesOcultas';
 
@@ -30,35 +31,11 @@ function OrderCard({
   const hasChat = order.orderChannel === 'inapp';
   const isTerminal = ['completed', 'delivered', 'cancelled'].includes(order.status);
 
-  /* Los pasos siguientes se definen una sola vez para las dos vistas (tarjeta y
-     fila). Antes cada layout repetía las mismas condiciones y solo cubría
-     cuatro de los once estados, así que los pedidos en `confirmed` —todo lo que
-     entra por POS y por pedido rápido— se quedaban sin botón para avanzar en
-     ambas: solo se podían cancelar. Igual pasaba con `preparing` y `ready`.
-
-     Los saltos son los que acepta VALID_TRANSITIONS en el backend; ofrecer otro
-     solo devolvería 400. */
+  /* Los pasos siguientes, los mismos del detalle (utils/pedidos). El primero
+     es el normal (lleno); los demás, atajos claros. */
   const S = ORDER_STATUS;
-  const START = { to: S.IN_PROGRESS, label: 'Iniciar preparación', Icon: FaPlay, primary: false };
-  const FINISH = { to: S.COMPLETED, label: 'Completar', Icon: FaCheck, primary: true };
-  /* "Listo" dice cosas distintas según el pedido: en un domicilio es que
-     salió (el cliente ve "En camino"), en uno para llevar que ya puede pasar.
-     En la mesa no hace falta: de la cocina va directo a servido. */
-  const LISTO = order.orderType === 'delivery'
-    ? { to: S.READY, label: 'En camino', Icon: FaMotorcycle, primary: false }
-    : order.orderType === 'takeaway'
-      ? { to: S.READY, label: 'Listo para recoger', Icon: FaCheck, primary: false }
-      : null;
-  const ENTREGADO = order.orderType === 'inSite' ? FINISH : { ...FINISH, label: 'Entregado' };
-  const NEXT_STEPS = {
-    [S.PENDING]: [START],
-    [S.PAYMENT_CONFIRMED]: [START],
-    [S.CONFIRMED]: [START, FINISH],
-    [S.PREPARING]: [LISTO, ENTREGADO].filter(Boolean),
-    [S.IN_PROGRESS]: [LISTO, ENTREGADO].filter(Boolean),
-    [S.READY]: [ENTREGADO],
-  };
-  const nextSteps = NEXT_STEPS[order.status] || [];
+  const nextSteps = pasosDelPedido(order);
+  const total = totalDelPedido(order);
 
   /* Un domicilio también necesita repartidor mientras está confirmado o en
      preparación, no solo en `inProgress`, que era el único estado que lo
@@ -72,9 +49,6 @@ function OrderCard({
      es la acción que falta; cuando lo tiene, lo que importa es verlo. */
   const despachado = !!order.envio?.guia;
 
-  const tonoPaso = (primary, i) => (i > 0
-    ? 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'
-    : primary ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white');
 
   // Qué pidió, de un vistazo (cocina no tiene que abrir el detalle).
   const items = order.items || [];
@@ -118,7 +92,7 @@ function OrderCard({
                     {order.source && (
                       <span
                         title={`Llegó por: ${order.source}`}
-                        className="text-2xs font-bold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 max-w-[110px] truncate"
+                        className="text-2xs font-bold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 break-all"
                       >
                         {order.source}
                       </span>
@@ -133,12 +107,13 @@ function OrderCard({
                 {hasChat && !isTerminal && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onOpenChat?.(order); }}
-                    className="relative w-6 h-6 bg-blue-100 hover:bg-blue-200 rounded-full flex items-center justify-center transition-colors"
-                    title="Abrir chat"
+                    className="relative w-8 h-8 bg-blue-100 hover:bg-blue-200 rounded-full flex items-center justify-center transition-colors"
+                    title="Abrir chat con el cliente"
+                    aria-label="Abrir chat con el cliente"
                   >
-                    <FaCommentDots className="text-2xs text-blue-500" />
+                    <FaCommentDots className="text-xs text-blue-600" />
                     {customerMsgCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 text-white text-[7px] font-bold rounded-full flex items-center justify-center">{customerMsgCount}</span>
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-2xs font-bold rounded-full flex items-center justify-center">{customerMsgCount}</span>
                     )}
                   </button>
                 )}
@@ -147,7 +122,7 @@ function OrderCard({
                     ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
                     : statusInfo.bgColor + ' ' + statusInfo.textColor
                 }`}>
-                  <StatusIcon className="text-[7px]" /> {statusInfo.label}
+                  <StatusIcon className="text-2xs" /> {statusInfo.label}
                 </span>
                 <span className={`text-2xs font-medium tabular-nums ${
                   isPending ? 'text-yellow-600' : 'text-slate-400'
@@ -163,7 +138,7 @@ function OrderCard({
             {/* Cliente */}
             <div className="flex items-center gap-1.5">
               <FaUser className="text-2xs text-slate-300 shrink-0" />
-              <span className="text-[13px] font-semibold text-slate-800 truncate">{order.customerName}</span>
+              <span className="text-[13px] font-semibold text-slate-800 break-words min-w-0">{order.customerName}</span>
               {order.phone && (
                 <a href={`tel:${order.phone}`} className="ml-auto text-[11px] text-slate-400 hover:text-blue-500 shrink-0 tabular-nums">
                   {order.phone}
@@ -206,7 +181,7 @@ function OrderCard({
                 )}
                 {order.orderType === 'delivery' && order.deliveryFee > 0 && (
                   <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded-md bg-slate-50 border border-slate-100 text-2xs font-medium text-slate-600">
-                    <FaTruck className="text-2xs text-slate-400" /> Envío ${order.deliveryFee.toLocaleString()}
+                    <FaTruck className="text-2xs text-slate-400" /> Envío {pesos(order.deliveryFee)}
                   </span>
                 )}
                 {order.paymentMethod && (
@@ -257,20 +232,20 @@ function OrderCard({
             }`}>
               <span className="text-[11px] text-slate-400">{unidades} {isService ? (unidades === 1 ? 'servicio' : 'servicios') : (unidades === 1 ? 'producto' : 'productos')}</span>
               <div className="text-right">
-                {order.couponCode ? (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] text-slate-400 line-through">${((order.totalAmount || 0) + (order.deliveryFee || 0)).toLocaleString()}</span>
-                    <span className="text-sm font-bold text-emerald-600">${((order.totalAmount || 0) + (order.deliveryFee || 0) - (order.discountAmount || 0)).toLocaleString()}</span>
-                  </div>
-                ) : order.deliveryNeedsConfirmation ? (
+                {order.deliveryNeedsConfirmation && !order.deliveryFee ? (
                   <div className="flex items-baseline gap-1">
-                    <span className="text-sm font-bold text-slate-800">${order.totalAmount.toLocaleString()}</span>
+                    <span className="text-sm font-bold text-slate-800">{pesos(total)}</span>
                     <span className="text-2xs text-amber-600 font-semibold">+ envío</span>
                   </div>
                 ) : (
-                  <span className="text-sm font-bold text-slate-800">
-                    ${((order.totalAmount || 0) + (order.deliveryFee || 0)).toLocaleString()}
-                  </span>
+                  <span className="text-sm font-bold text-slate-800 tabular-nums">{pesos(total)}</span>
+                )}
+                {(order.discountAmount > 0 || order.tipAmount > 0) && (
+                  <p className="text-2xs text-slate-400">
+                    {order.discountAmount > 0 && `−${pesos(order.discountAmount)} desc.`}
+                    {order.discountAmount > 0 && order.tipAmount > 0 && ' · '}
+                    {order.tipAmount > 0 && `+${pesos(order.tipAmount)} propina`}
+                  </p>
                 )}
               </div>
             </div>
@@ -309,11 +284,11 @@ function OrderCard({
 
               {nextSteps.length > 0 && (
                 <div className={`grid gap-1.5 ${nextSteps.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                  {nextSteps.map(({ to, label, Icon, primary }, i) => (
+                  {nextSteps.map(({ to, label, Icon, tono }) => (
                     <button
                       key={to}
                       onClick={() => onUpdateStatus(order._id, to)}
-                      className={`flex items-center justify-center gap-1.5 min-h-10 py-2 px-2 rounded-xl text-xs font-bold leading-tight text-center transition-colors active:scale-[0.97] ${tonoPaso(primary, i)}`}
+                      className={`flex items-center justify-center gap-1.5 min-h-11 py-2 px-2 rounded-xl text-[13px] font-bold leading-tight text-center transition-colors active:scale-[0.97] ${TONOS_PASO[tono]}`}
                     >
                       <Icon className="text-2xs shrink-0" /> <span>{label}</span>
                     </button>
@@ -359,7 +334,7 @@ function OrderCard({
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-slate-800 text-sm">#{order.orderNumber}</h3>
                 <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-2xs font-bold ${statusInfo.textColor} ${statusInfo.bgColor}`}>
-                  <StatusIcon className="text-[7px]" /> {statusInfo.label}
+                  <StatusIcon className="text-2xs" /> {statusInfo.label}
                 </span>
                 {order.isGift && (
                   <span className="text-2xs font-bold px-1.5 py-0.5 rounded-full bg-pink-100 text-pink-700 border border-pink-200">🎁</span>
@@ -367,17 +342,18 @@ function OrderCard({
                 {hasChat && !isTerminal && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onOpenChat?.(order); }}
-                    className="relative w-5 h-5 bg-blue-100 hover:bg-blue-200 rounded-full flex items-center justify-center transition-colors"
-                    title="Abrir chat"
+                    className="relative w-7 h-7 bg-blue-100 hover:bg-blue-200 rounded-full flex items-center justify-center transition-colors"
+                    title="Abrir chat con el cliente"
+                    aria-label="Abrir chat con el cliente"
                   >
-                    <FaCommentDots className="text-[7px] text-blue-500" />
+                    <FaCommentDots className="text-xs text-blue-600" />
                     {customerMsgCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 text-white text-[6px] font-bold rounded-full flex items-center justify-center">{customerMsgCount}</span>
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-2xs font-bold rounded-full flex items-center justify-center">{customerMsgCount}</span>
                     )}
                   </button>
                 )}
               </div>
-              <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+              <p className="text-[12px] text-slate-500 mt-0.5 break-words">
                 {order.customerName} · {orderTypeInfo.label} · {timeElapsed}{order.paymentMethod ? ` · ${PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod}` : ''}
               </p>
             </div>
@@ -385,8 +361,8 @@ function OrderCard({
 
           <div className="flex items-center gap-3 shrink-0">
             <div className="text-right">
-              <p className="text-sm font-bold text-slate-800">${((order.totalAmount || 0) + (order.deliveryFee || 0)).toLocaleString()}</p>
-              <p className="text-2xs text-slate-400">{order.items?.length || 0} items</p>
+              <p className="text-sm font-bold text-slate-800 tabular-nums">{pesos(total)}</p>
+              <p className="text-2xs text-slate-400">{unidades} {unidades === 1 ? 'producto' : 'productos'}</p>
             </div>
 
             <div className="flex gap-1">
@@ -423,14 +399,17 @@ function OrderCard({
                 </button>
               )}
 
-              {nextSteps.map(({ to, label, Icon, primary }, i) => (
+              {/* El paso normal lleva su nombre escrito: con solo un ícono no se
+                  sabe qué hace; los atajos quedan como ícono. */}
+              {nextSteps.map(({ to, label, Icon, tono }, i) => (
                 <button
                   key={to}
                   onClick={() => onUpdateStatus(order._id, to)}
-                  className={`p-2 rounded-lg transition-colors ${tonoPaso(primary, i)}`}
+                  className={`h-9 rounded-lg transition-colors inline-flex items-center gap-1.5 text-xs font-bold ${i === 0 ? 'px-3' : 'px-2.5'} ${TONOS_PASO[tono]}`}
                   title={label}
+                  aria-label={label}
                 >
-                  <Icon className="text-xs" />
+                  <Icon className="text-xs" />{i === 0 && <span>{label}</span>}
                 </button>
               ))}
 

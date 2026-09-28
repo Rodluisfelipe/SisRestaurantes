@@ -11,15 +11,23 @@
  */
 function stripHtml(str) {
   if (!str || typeof str !== 'string') return str || '';
-  return str
-    .replace(/<[^>]*>/g, '')        // Remove HTML tags
+  /* Primero se decodifican las entidades y DESPUÉS se quitan las etiquetas.
+     Al revés (como estaba), "&lt;img onerror=…&gt;" pasaba la limpieza y
+     salía convertido en una etiqueta real. Se repite hasta que no quede
+     nada que quitar, por si vienen anidadas ("<<b>img …>"). */
+  let texto = str
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
-    .replace(/&amp;/gi, '&')
     .replace(/&quot;/gi, '"')
-    .replace(/&#039;/gi, "'")
+    .replace(/&#0*39;/gi, "'")
     .replace(/&nbsp;/gi, ' ')
-    .trim();
+    .replace(/&amp;/gi, '&');
+  let antes;
+  do {
+    antes = texto;
+    texto = texto.replace(/<[^>]*>/g, '');
+  } while (texto !== antes);
+  return texto.trim();
 }
 
 /**

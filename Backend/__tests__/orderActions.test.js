@@ -41,17 +41,24 @@ const VALID_TRANSITIONS = new Function('FIN', `return ${bloqueDespuesDe(srcOrder
 const srcConst = leer('Frontend', 'src', 'utils', 'constants.js');
 const ORDER_STATUS = new Function(`return ${bloqueDespuesDe(srcConst, 'export const ORDER_STATUS = {')}`)();
 
-const srcCard = leer('Frontend', 'src', 'Components', 'OrderCard.jsx');
+/* Los botones de la tarjeta y del detalle salen de una sola función,
+   `pasosDelPedido` en utils/pedidos.js. Se evalúa esa función para cada
+   estado y cada tipo de pedido (en un domicilio "Listo" es "Salió a
+   domicilio"; en la mesa no existe). */
+const srcPedidos = leer('Frontend', 'src', 'utils', 'pedidos.js');
+const inicioFn = srcPedidos.indexOf('export function pasosDelPedido(o) {');
+if (inicioFn === -1) throw new Error('no se encontró pasosDelPedido');
+const cuerpoFn = recortarLiteral(srcPedidos, srcPedidos.indexOf('{', inicioFn + 'export function pasosDelPedido(o)'.length));
 const icono = () => null;
-/* Los pasos dependen del tipo de pedido (en un domicilio "Listo" es "En
-   camino"; en la mesa no existe): se evalúa el bloque del panel, de
-   `const S =` a `const nextSteps`, para cada tipo. */
-const bloquePasos = srcCard.slice(srcCard.indexOf('const S = ORDER_STATUS;'), srcCard.indexOf('const nextSteps ='));
-const pasosPara = (orderType) => new Function(
-  'ORDER_STATUS', 'order', 'FaPlay', 'FaCheck', 'FaMotorcycle',
-  `${bloquePasos}
-return NEXT_STEPS;`,
-)(ORDER_STATUS, { orderType }, icono, icono, icono);
+const pasosDelPedido = new Function(
+  'ORDER_STATUS', 'FaPlay', 'FaCheck', 'FaCheckCircle', 'FaMotorcycle',
+  `return function pasosDelPedido(o) ${cuerpoFn};`,
+)(ORDER_STATUS, icono, icono, icono, icono);
+const pasosPara = (orderType) => Object.fromEntries(
+  Object.keys(VALID_TRANSITIONS)
+    .map((status) => [status, pasosDelPedido({ orderType, status })])
+    .filter(([, pasos]) => pasos.length),
+);
 const TIPOS = ['delivery', 'takeaway', 'inSite'];
 const NEXT_STEPS = pasosPara('delivery');
 

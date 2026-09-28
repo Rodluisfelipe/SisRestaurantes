@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../services/api';
 import { subscriptionApi } from '../../services/superadminApi';
 import { SAModal, SAButton, SABadge } from '../../Components/SuperAdmin/ui';
+import { abrirComprobante } from '../../utils/comprobantes';
 
 // Helper: attach superadmin_token to requests (since these endpoints require protectSuperAdmin)
 const saAuthHeader = () => {
@@ -165,32 +166,17 @@ const PaymentRequestsReview = () => {
     }
   };
 
-  const openProofInNewTab = async (proofUrl) => {
+  /* /uploads/proofs está protegido. Se descarga con la sesión en la cabecera
+     y se abre desde memoria: antes iba el token en la dirección (?token=…) y
+     quedaba en el historial y en los registros. Los alojados fuera (Spaces)
+     se abren tal cual. Sin esperas antes de abrir: el navegador bloquea la
+     pestaña si no se abre en el mismo clic. */
+  const openProofInNewTab = (proofUrl) => {
     if (!proofUrl) {
       alert('No hay comprobante disponible');
       return;
     }
-    
-    // Construir URL completa del comprobante
-    const apiUrl = import.meta.env.VITE_API_URL || (await import('../../config')).BACKEND_URL;
-
-    // Comprobante alojado fuera (ej. Spaces): se abre tal cual
-    if (proofUrl.startsWith('http')) {
-      window.open(proofUrl, '_blank', 'noopener,noreferrer');
-      return;
-    }
-
-    /* /uploads/proofs está protegido: sin credenciales el backend responde
-       "No token" y no se veía nada. Al abrirse en una pestaña nueva no se
-       pueden mandar cabeceras, así que se usa el ?token= que el propio
-       middleware admite para este caso. */
-    const path = proofUrl.startsWith('/') ? proofUrl : `/${proofUrl}`;
-    const token = localStorage.getItem('superadmin_token');
-    const fullUrl = token
-      ? `${apiUrl}${path}${path.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
-      : `${apiUrl}${path}`;
-
-    window.open(fullUrl, '_blank', 'noopener,noreferrer');
+    abrirComprobante(proofUrl, localStorage.getItem('superadmin_token'));
   };
 
   if (loading) {

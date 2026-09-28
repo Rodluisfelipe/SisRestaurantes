@@ -208,7 +208,8 @@ describe('la sección del panel está cableada', () => {
   const ID = 'whatsapp-inbox';
 
   it('el menú lateral ofrece la sección', () => {
-    expect(front('Components', 'ModernAdminSidebar.jsx')).toContain(`id: '${ID}'`);
+    // El menú (escritorio y celular) vive en utils/navegacionAdmin.js.
+    expect(front('utils', 'navegacionAdmin.js')).toContain(`id: '${ID}'`);
   });
 
   it('Admin.jsx renderiza algo para ese id', () => {
