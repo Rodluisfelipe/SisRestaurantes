@@ -167,6 +167,10 @@ export default function StoriesRow({ products = [], categories = [], addToCart, 
       });
     }
 
+    /* Máximo 3 historias (las primeras, en orden de prioridad): con 4 no queda
+       espacio para la tarjeta de sellos a la derecha y se comprime. */
+    out.splice(3);
+
     /* Dos anillos con la misma foto se ven como un error. Si una portada ya se
        usó, se busca la siguiente imagen distinta dentro de la propia historia;
        si no hay ninguna, se cae al logo del negocio. */
