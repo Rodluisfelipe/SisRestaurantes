@@ -5,6 +5,7 @@ import MenuScreen from './MenuScreen';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { enlaceWhatsApp } from '../utils/whatsapp';
 import useResumenCuenta from '../hooks/useResumenCuenta';
+import useTarjetaSellos from '../hooks/useTarjetaSellos';
 
 /* Íconos de marca: los genéricos hacen que todo parezca el mismo enlace. */
 const BRAND = {
@@ -123,8 +124,10 @@ function Enlace({ href, icono, titulo, detalle, color }) {
 }
 
 export default function MoreSheet({ open, onClose, onRate, onShowLoyalty }) {
-  const { businessConfig } = useBusinessConfig();
+  const { businessConfig, businessId } = useBusinessConfig();
   const { resumen } = useResumenCuenta();
+  // Con tarjeta de sellos, "Mi tarjeta" sale siempre (también a quien aún no ha pedido)
+  const tarjeta = useTarjetaSellos(businessId);
   const wifi = businessConfig?.wifi;
   const hayWifi = !!(wifi?.enabled && wifi?.ssid);
 
@@ -149,10 +152,10 @@ export default function MoreSheet({ open, onClose, onRate, onShowLoyalty }) {
   const cerrarY = (fn) => () => { onClose(); fn?.(); };
 
   const rapidos = [];
-  if (puntos && onShowLoyalty) {
-    rapidos.push(puntos.modo === 'sellos'
-      ? { clave: 'puntos', icono: <Gift className="w-5 h-5" />, titulo: 'Mi tarjeta', detalle: puntos.premiosDisponibles > 0 ? '¡Tienes un premio!' : `${puntos.sellos} de ${puntos.requeridos} sellos`, onClick: cerrarY(onShowLoyalty) }
-      : { clave: 'puntos', icono: <Gift className="w-5 h-5" />, titulo: 'Mis puntos', detalle: `${puntos.puntos.toLocaleString('es-CO')} acumulados`, onClick: cerrarY(onShowLoyalty) });
+  if (tarjeta && onShowLoyalty) {
+    rapidos.push({ clave: 'puntos', icono: <Gift className="w-5 h-5" />, titulo: 'Mi tarjeta', detalle: tarjeta.premiosDisponibles > 0 ? '¡Tienes un premio!' : `${tarjeta.sellos} de ${tarjeta.requeridos} sellos`, onClick: cerrarY(onShowLoyalty) });
+  } else if (puntos && puntos.modo !== 'sellos' && onShowLoyalty) {
+    rapidos.push({ clave: 'puntos', icono: <Gift className="w-5 h-5" />, titulo: 'Mis puntos', detalle: `${puntos.puntos.toLocaleString('es-CO')} acumulados`, onClick: cerrarY(onShowLoyalty) });
   }
   if (businessConfig?.enableBookings) {
     rapidos.push({ clave: 'reservar', icono: <CalendarCheck className="w-5 h-5" />, titulo: 'Reservar', detalle: 'Aparta tu mesa', onClick: cerrarY(() => window.dispatchEvent(new CustomEvent('mb:open-booking'))) });

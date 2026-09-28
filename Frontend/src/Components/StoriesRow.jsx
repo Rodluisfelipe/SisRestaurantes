@@ -7,6 +7,8 @@ import { isPromoActive, getEffectivePrice } from '../utils/promo';
 import { imageAt } from '../utils/imageCdn';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import StoryViewer from './StoryViewer';
+import IndicadorSellos from './IndicadorSellos';
+import useTarjetaSellos from '../hooks/useTarjetaSellos';
 
 const seenKey = (bid) => `mb_stories_seen_${bid}`;
 
@@ -46,8 +48,10 @@ const productSlide = (p, kicker) => ({
  * existen (anuncios, destacados, más pedidos y reseñas). No crea endpoints:
  * reutiliza los mismos que alimentan el resto del menú.
  */
-export default function StoriesRow({ products = [], categories = [], addToCart }) {
+export default function StoriesRow({ products = [], categories = [], addToCart, onVerTarjeta }) {
   const { businessId, businessConfig } = useBusinessConfig();
+  // Tarjeta de sellos: va de primera en la fila, como un círculo más
+  const tarjeta = useTarjetaSellos(businessId);
   const [popups, setPopups] = useState([]);
   const [popularIds, setPopularIds] = useState([]);
   const [openIdx, setOpenIdx] = useState(null);
@@ -218,12 +222,13 @@ export default function StoriesRow({ products = [], categories = [], addToCart }
   }, [addToCart]);
 
   // Sin contenido, no se dibuja una fila vacía
-  if (!stories.length) return null;
+  if (!stories.length && !tarjeta) return null;
 
   return (
     <>
       <div className="overflow-x-auto scrollbar-hide px-4 pt-4 pb-1 max-w-[880px] mx-auto w-full">
-        <div className="flex gap-3.5 min-w-max">
+        {/* Ancho completo para que los sellos queden a la derecha de las historias */}
+        <div className="flex gap-3.5 w-max min-w-full">
           {stories.map((s, i) => {
             const isSeen = seen.has(s.key);
             return (
@@ -271,6 +276,15 @@ export default function StoriesRow({ products = [], categories = [], addToCart }
               </motion.button>
             );
           })}
+          {tarjeta && (
+            <div className="ml-auto">
+              <IndicadorSellos
+                tarjeta={tarjeta}
+                fotoPremio={products.find((p) => String(p._id) === String(tarjeta.premioProductId))?.image || null}
+                onAbrir={onVerTarjeta}
+              />
+            </div>
+          )}
         </div>
       </div>
 

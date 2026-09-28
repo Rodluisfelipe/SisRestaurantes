@@ -297,6 +297,22 @@ router.get('/sellos', tenantAuth, async (req, res) => {
   }
 });
 
+// ─── PUBLIC: la tarjeta de sellos del negocio (sin datos de nadie) ───
+// Para que quien aún no ha pedido vea que existe y qué se gana.
+router.get('/tarjeta', publicLimiter, async (req, res) => {
+  try {
+    let businessId;
+    try { businessId = await resolveBusinessId(req.query.businessId); } catch { return res.json({ active: false }); }
+    const program = await sellos.programaDeSellos(businessId);
+    if (!program) return res.json({ active: false });
+    const t = sellos.estadoTarjeta(program, null);
+    res.json({ active: true, tarjeta: { requeridos: t.requeridos, montoMinimo: t.montoMinimo, premio: t.premio, sellos: 0, premiosDisponibles: 0 } });
+  } catch (error) {
+    logger.error('Error consultando la tarjeta pública:', error);
+    res.status(500).json({ message: 'Error al consultar la tarjeta' });
+  }
+});
+
 // ─── PUBLIC: Get customer loyalty balance (by phone + businessId) ───
 router.get('/balance', publicLimiter, async (req, res) => {
   try {

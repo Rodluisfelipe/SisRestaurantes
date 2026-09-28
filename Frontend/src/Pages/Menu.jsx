@@ -1753,6 +1753,7 @@ export default function Menu() {
             products={products}
             categories={categories}
             addToCart={isViewOnly ? null : addToCart}
+            onVerTarjeta={() => setShowLoyalty(true)}
           />
         </Suspense>
 

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs><linearGradient id="f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fde68a"/><stop offset="1" stop-color="#f59e0b"/></linearGradient></defs>
+  <rect width="400" height="400" fill="#fff7ed"/>
+  <g fill="url(#f)" stroke="#b45309" stroke-width="4">
+    <rect x="95" y="80" width="26" height="200" rx="8" transform="rotate(-8 108 180)"/>
+    <rect x="135" y="60" width="26" height="220" rx="8" transform="rotate(-3 148 170)"/>
+    <rect x="175" y="50" width="26" height="230" rx="8"/>
+    <rect x="215" y="62" width="26" height="220" rx="8" transform="rotate(4 228 170)"/>
+    <rect x="255" y="85" width="26" height="200" rx="8" transform="rotate(9 268 185)"/>
+  </g>
+  <path d="M80 220 H320 L290 370 H110 Z" fill="#dc2626"/>
+  <path d="M80 220 H320 L316 240 H84 Z" fill="#b91c1c"/>
+  <circle cx="200" cy="300" r="34" fill="#fff"/>
+  <text x="200" y="312" font-family="Arial Black, Arial" font-size="30" font-weight="900" text-anchor="middle" fill="#dc2626">GB</text>
+</svg>

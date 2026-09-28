@@ -38,11 +38,16 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, products 
   const [sinCuenta, setSinCuenta] = useState(false);
   const [redeeming, setRedeeming] = useState(null);
   const [error, setError] = useState('');
+  const [tarjetaPublica, setTarjetaPublica] = useState(null);
   const { businessConfig } = useBusinessConfig();
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
 
   const fetchBalance = useCallback(async () => {
-    if (!phone || !businessId) { setLoading(false); setSinCuenta(true); return; }
+    // Sin cuenta: si el negocio usa sellos, se muestra su tarjeta en cero
+    const verTarjetaPublica = () => api.get('/loyalty/tarjeta', { params: { businessId: businessId || getBusinessSlug() } })
+      .then(({ data }) => setTarjetaPublica(data?.active ? data.tarjeta : null))
+      .catch(() => setTarjetaPublica(null));
+    if (!phone || !businessId) { await verTarjetaPublica(); setLoading(false); setSinCuenta(true); return; }
     try {
       setLoading(true);
       setSinCuenta(false);
@@ -50,7 +55,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, products 
       const { data: res } = await api.get('/loyalty/balance', { params: { businessId: bid, phone } });
       setData(res.active ? res : null);
     } catch (e) {
-      if (esSinCuenta(e)) setSinCuenta(true);
+      if (esSinCuenta(e)) { setSinCuenta(true); await verTarjetaPublica(); }
       setData(null);
     } finally {
       setLoading(false);
@@ -123,12 +128,14 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, products 
   }, [phone, businessId, redeeming, puntos, productoDe, addToCart, fetchBalance, onClose]);
 
   return (
-    <MenuScreen open={show} onClose={onClose} title={data?.mode === 'stamps' ? 'Mi tarjeta' : 'Mis puntos'} subtitle={businessName || undefined}>
+    <MenuScreen open={show} onClose={onClose} title={data?.mode === 'stamps' || (sinCuenta && tarjetaPublica) ? 'Mi tarjeta' : 'Mis puntos'} subtitle={businessName || undefined}>
       <div className="px-4 py-5 space-y-6 pb-10">
         {loading ? (
           <div className="space-y-3" aria-busy="true">
             {[96, 72, 64, 64].map((h, i) => <div key={i} className="rounded-2xl bg-superficie-2 animate-pulse" style={{ height: h }} />)}
           </div>
+        ) : sinCuenta && tarjetaPublica ? (
+          <SeccionSellos tarjeta={tarjetaPublica} products={products} addToCart={addToCart} onClose={onClose} visitante />
         ) : sinCuenta ? (
           <Aviso
             icono={<Receipt className="w-7 h-7" />}
@@ -280,38 +287,39 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, products 
   );
 };
 
-/* Tarjeta de sellos: cuántos lleva, cuánto le falta y, si la llenó, cómo
-   usar el premio (se elige al pagar el siguiente pedido). */
-function SeccionSellos({ tarjeta, products, addToCart, onClose }) {
+/* Tarjeta de sellos: la tarjeta grande, el premio si ya lo ganó y cómo
+   funciona en tres pasos. `visitante`: aún no ha pedido desde este celular. */
+function SeccionSellos({ tarjeta, products, addToCart, onClose, visitante = false }) {
   const { premio } = tarjeta;
   const producto = premio.tipo === 'free_product'
     ? products.find((p) => String(p._id) === String(premio.productId)) || null
     : null;
+  const pasos = [
+    tarjeta.montoMinimo > 0 ? `Haz un pedido de ${formatearPesos(tarjeta.montoMinimo)} o más.` : 'Haz tu pedido.',
+    'Cuando lo recibes, ganas un sello.',
+    `Con ${tarjeta.requeridos} sellos, tu siguiente pedido lleva ${premio.nombre}.`,
+  ];
   return (
     <>
-      <section className="rounded-2xl border border-linea bg-superficie-tarjeta p-4">
-        <p className="text-xs font-bold uppercase tracking-wide text-tinta-2 mb-3">
-          {tarjeta.sellos} de {tarjeta.requeridos} sellos
-        </p>
-        <TarjetaSellos requeridos={tarjeta.requeridos} sellos={tarjeta.sellos} premio={premio.nombre} color="var(--mb-accent, #2563eb)" />
-        <p className="mt-3 text-sm text-tinta-2">
-          {tarjeta.montoMinimo > 0
-            ? `Cada pedido de ${formatearPesos(tarjeta.montoMinimo)} o más te suma un sello.`
-            : 'Cada pedido te suma un sello.'}
-        </p>
-      </section>
-
       {tarjeta.premiosDisponibles > 0 && (
-        <section className="rounded-2xl border border-exito bg-emerald-50 p-4">
-          <p className="text-lg font-black text-tinta">
-            {tarjeta.premiosDisponibles === 1 ? '¡Tienes un premio!' : `¡Tienes ${tarjeta.premiosDisponibles} premios!`}
+        <section className="rounded-3xl border-2 border-exito bg-emerald-50 p-4 text-center">
+          {producto?.image ? (
+            <img src={producto.image} alt="" className="mx-auto w-28 h-28 rounded-2xl object-cover shadow-sm" />
+          ) : (
+            <span className="mx-auto w-14 h-14 rounded-full bg-exito text-white flex items-center justify-center">
+              <Gift className="w-7 h-7" />
+            </span>
+          )}
+          <p className="mt-3 text-xl font-black text-tinta">
+            {tarjeta.premiosDisponibles === 1 ? '¡Ganaste tu premio!' : `¡Tienes ${tarjeta.premiosDisponibles} premios!`}
           </p>
-          <p className="mt-1 text-sm text-tinta-2">
-            {premio.nombre}. Úsalo en tu próximo pedido: al pagar, toca <b>Usar</b> en tu tarjeta.
+          <p className="mt-1 text-base font-bold text-tinta">{premio.nombre}</p>
+          <p className="mt-2 text-sm text-tinta-2">
+            Úsalo en tu próximo pedido: al pagar, toca <b>Usar</b> en tu tarjeta.
             {premio.tipo === 'free_product' && ` Solo agrega ${premio.productName || 'el producto'} al pedido.`}
           </p>
           {producto && addToCart && (
-            <Boton className="mt-3" onClick={() => {
+            <Boton className="mt-4 w-full" onClick={() => {
               addToCart({ ...producto, quantity: 1, selectedToppings: [] });
               onClose();
             }}>
@@ -320,6 +328,27 @@ function SeccionSellos({ tarjeta, products, addToCart, onClose }) {
           )}
         </section>
       )}
+
+      <TarjetaSellos requeridos={tarjeta.requeridos} sellos={tarjeta.sellos} premio={premio.nombre}
+        color="var(--mb-accent, #2563eb)" animarUltimo fotoPremio={producto?.image || null} />
+
+      {visitante && (
+        <p className="text-sm text-tinta-2 text-center -mt-2">
+          Tu tarjeta empieza con tu primer pedido desde este celular.
+        </p>
+      )}
+
+      <section>
+        <h3 className="text-xs font-black uppercase tracking-wide text-tinta-2 mb-2">Cómo funciona</h3>
+        <ol className="rounded-2xl border border-linea bg-superficie-tarjeta divide-y divide-linea">
+          {pasos.map((texto, i) => (
+            <li key={i} className="flex items-center gap-3 px-4 py-3">
+              <span className="w-7 h-7 rounded-full bg-marca-suave text-marca text-sm font-black flex items-center justify-center shrink-0">{i + 1}</span>
+              <span className="text-sm text-tinta">{texto}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
     </>
   );
 }

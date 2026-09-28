@@ -104,7 +104,7 @@ async function puntosDe(businessId, telefono) {
   // Tarjeta de sellos: lo que el cliente ve es su tarjeta, no puntos
   if (programa.mode === 'stamps') {
     const t = require('../services/sellos').estadoTarjeta(programa, saldo);
-    return { modo: 'sellos', sellos: t.sellos, requeridos: t.requeridos, premiosDisponibles: t.premiosDisponibles, premio: t.premio.nombre, puntos: 0, recompensas: [] };
+    return { modo: 'sellos', sellos: t.sellos, requeridos: t.requeridos, premiosDisponibles: t.premiosDisponibles, premio: t.premio.nombre, premioTipo: t.premio.tipo, premioProductId: t.premio.productId, puntos: 0, recompensas: [] };
   }
   const puntos = saldo?.points || 0;
   const recompensas = conRecompensas ? (programa.rewards || []).filter((r) => r.isActive) : [];
