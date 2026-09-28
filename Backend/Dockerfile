@@ -35,6 +35,7 @@ ENV NODE_ENV=production
 ENV PORT=5000
 
 # Comando para iniciar la aplicación
-CMD ["node", "server.js"]
+# tsx deja correr los .ts (migración a TypeScript por partes) junto a los .js.
+CMD ["node", "--import", "tsx", "server.js"]
 
 

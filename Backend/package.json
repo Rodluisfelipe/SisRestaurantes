@@ -5,11 +5,12 @@
   "scripts": {
     "test": "jest --forceExit --detectOpenHandles",
     "test:watch": "jest --watch --forceExit --detectOpenHandles",
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "node --import tsx server.js",
+    "dev": "nodemon --ext js,ts,json --exec \"node --import tsx\" server.js",
     "docker:build": "docker build -t sisrestaurantes-backend .",
     "docker:run": "docker run -p 5000:5000 --env-file .env sisrestaurantes-backend",
-    "docker:compose": "docker-compose up -d"
+    "docker:compose": "docker-compose up -d",
+    "typecheck": "tsc --noEmit -p ."
   },
   "keywords": [],
   "author": "",
@@ -43,12 +44,29 @@
     "qrcode": "^1.5.4",
     "sharp": "^0.34.5",
     "socket.io": "^4.6.1",
+    "tsx": "^4.23.15",
     "uuid": "^13.0.0",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@types/express": "^4.17.25",
+    "@types/node": "^20.19.43",
     "cross-env": "^7.0.3",
     "jest": "^29.7.0",
-    "supertest": "^6.3.4"
+    "supertest": "^6.3.4",
+    "typescript": "^5.9.3"
+  },
+  "jest": {
+    "transform": {
+      ".[cm]?jsx?$": "babel-jest",
+      ".tsx?$": "<rootDir>/jest.transform-ts.js"
+    },
+    "moduleFileExtensions": [
+      "js",
+      "ts",
+      "tsx",
+      "json",
+      "node"
+    ]
   }
 }

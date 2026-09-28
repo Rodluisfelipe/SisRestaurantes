@@ -6,6 +6,7 @@
  * vuelven los pedidos con el total equivocado, pero esta vez sin nadie
  * revisándolos antes de que salgan.
  */
+const { fuenteOrders } = require('../test-utils/fuente');
 const fs = require('fs');
 const path = require('path');
 const acciones = require('../services/whatsappAgent/acciones');
@@ -435,7 +436,7 @@ describe('en qué va mi pedido', () => {
   });
 
   it('cubre todos los estados en que puede estar un pedido', () => {
-    const orders = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+    const orders = fuenteOrders();
     const bloque = orders.slice(orders.indexOf('const VALID_TRANSITIONS = {'));
     const estados = [...bloque.slice(0, 900).matchAll(/^\s*'([a-z_A-Z]+)':/gm)].map((m) => m[1]);
     expect(estados.length).toBeGreaterThan(5);
@@ -469,7 +470,7 @@ describe('en qué va mi pedido', () => {
 
 describe('de qué enlace vino el cliente', () => {
   const modelo = fs.readFileSync(path.join(__dirname, '..', 'Models', 'Order.js'), 'utf8');
-  const ruta = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+  const ruta = fuenteOrders();
 
   it('el pedido guarda el origen aparte del canal', () => {
     // orderChannel dice CÓMO se tomó; source dice qué enlace lo trajo.

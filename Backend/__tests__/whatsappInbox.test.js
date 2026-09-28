@@ -5,6 +5,7 @@
  * caro: el cifrado del token, la firma del webhook, la deduplicación de
  * mensajes y el aislamiento entre negocios.
  */
+const { fuenteOrders } = require('../test-utils/fuente');
 const crypto = require('crypto');
 
 // La llave tiene que existir antes de cargar el módulo que la usa.
@@ -328,7 +329,7 @@ describe('tomar el pedido desde el chat', () => {
   const fs = require('fs');
   const path = require('path');
   const front = (...p) => fs.readFileSync(path.join(__dirname, '..', '..', 'Frontend', 'src', ...p), 'utf8');
-  const srcOrders = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+  const srcOrders = fuenteOrders();
 
   /* El salto de los límites dependía de `orderChannel` del cuerpo, un dato que
      escribe quien llama, y POST /orders es público: bastaba mandar

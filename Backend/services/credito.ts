@@ -5,20 +5,33 @@
  * idempotente por `origenId`: la cola de la caja reintenta hasta que le
  * confirmamos, y un reintento no puede fiar ni abonar dos veces.
  */
-const Customer = require('../Models/Customer');
-const CreditoMovimiento = require('../Models/CreditoMovimiento');
+import mongoose = require('mongoose');
+import Customer = require('../Models/Customer');
+import CreditoMovimiento = require('../Models/CreditoMovimiento');
+import type {
+  Id,
+  MontosPedido,
+  Movimiento,
+  ResultadoMovimiento,
+  ClienteBasico,
+  PedidoConCredito,
+} from '../types/dominio';
+
+const saldoDe = (c: { credito?: { saldo?: number } } | null | undefined): number => c?.credito?.saldo || 0;
 
 /**
  * Registra un cargo o un abono y mueve el saldo del cliente.
- *
- * @returns {{ duplicado: boolean, saldo: number }}
  */
-async function mover({ businessId, customerId, tipo, monto, origenId, origen = 'caja', medio = '', referencia = '', usuario = '', nota = '', fecha }) {
+async function mover({
+  businessId, customerId, tipo, monto, origenId,
+  origen = 'caja', medio = '', referencia = '', usuario = '', nota = '', fecha,
+}: Movimiento): Promise<ResultadoMovimiento> {
+  // Validación de ejecución: el JS que llama a esto no pasa por el compilador.
   if (!['cargo', 'abono'].includes(tipo)) throw new Error('Tipo de movimiento inválido');
   const valor = Math.round(Number(monto) || 0);
   if (valor <= 0) throw new Error('Monto inválido');
 
-  const ya = await CreditoMovimiento.findOne({ businessId, origenId }).select('saldoDespues').lean();
+  const ya = await CreditoMovimiento.findOne({ businessId, origenId }).select('saldoDespues').lean<{ saldoDespues: number }>();
   if (ya) return { duplicado: true, saldo: ya.saldoDespues };
 
   const delta = tipo === 'cargo' ? valor : -valor;
@@ -36,41 +49,43 @@ async function mover({ businessId, customerId, tipo, monto, origenId, origen = '
       },
     }],
     { new: true },
-  ).select('credito').lean();
+  ).select('credito').lean<{ credito?: { saldo?: number } }>();
   if (!cliente) throw new Error('Cliente no encontrado');
 
   try {
     await CreditoMovimiento.create({
       businessId, customerId, tipo, monto: valor, origenId, origen, medio, referencia, usuario, nota,
-      saldoDespues: cliente.credito?.saldo || 0,
+      saldoDespues: saldoDe(cliente),
       fecha: fecha ? new Date(fecha) : new Date(),
     });
   } catch (e) {
     /* Dos reintentos simultáneos: el segundo choca contra el índice único.
        Se deshace su movimiento del saldo y se responde como duplicado. */
-    if (e?.code === 11000) {
+    if ((e as { code?: number })?.code === 11000) {
       await Customer.updateOne({ _id: customerId, businessId }, { $inc: { 'credito.saldo': -delta } });
-      return { duplicado: true, saldo: (cliente.credito?.saldo || 0) - delta };
+      return { duplicado: true, saldo: saldoDe(cliente) - delta };
     }
     throw e;
   }
-  return { duplicado: false, saldo: cliente.credito?.saldo || 0 };
+  return { duplicado: false, saldo: saldoDe(cliente) };
 }
 
 /** El cliente de una venta o abono de la caja: por id si es de la nube, si no por teléfono. */
-async function clienteDeLaCaja(businessId, { clienteId, telefono }) {
-  const mongoose = require('mongoose');
+async function clienteDeLaCaja(
+  businessId: Id,
+  { clienteId, telefono }: { clienteId?: string | null; telefono?: string | number | null },
+): Promise<ClienteBasico | null> {
   if (clienteId && mongoose.isValidObjectId(clienteId)) {
-    const c = await Customer.findOne({ _id: clienteId, businessId }).select('_id name phone').lean();
+    const c = await Customer.findOne({ _id: clienteId, businessId }).select('_id name phone').lean<ClienteBasico>();
     if (c) return c;
   }
   const tel = String(telefono || '').trim();
-  if (tel) return Customer.findOne({ businessId, phone: tel }).select('_id name phone').lean();
+  if (tel) return Customer.findOne({ businessId, phone: tel }).select('_id name phone').lean<ClienteBasico>();
   return null;
 }
 
 /** Lo que vale un pedido para el cliente (productos + envío − descuento + propina). */
-function valorDelPedido(o) {
+function valorDelPedido(o: MontosPedido): number {
   if (typeof o.finalAmount === 'number' && o.finalAmount > 0) return Math.round(o.finalAmount);
   return Math.max(0, Math.round((o.totalAmount || 0) + (o.deliveryFee || 0) - (o.discountAmount || 0) + (o.tipAmount || 0)));
 }
@@ -82,14 +97,15 @@ function valorDelPedido(o) {
  * (se agregan o quitan productos) se carga o abona la diferencia; si se
  * cancela o se elimina, se le devuelve todo. Cada ajuste lleva su propio
  * `origenId` (pedido + versión), así un reintento no mueve el saldo dos veces.
- *
- * @param {object} pedido  El pedido tal como quedó (lean o documento).
- * @param {{ anular?: boolean, usuario?: string }} [opciones]
  */
-async function sincronizarCreditoPedido(pedido, { anular = false, usuario = '' } = {}) {
-  const Order = require('../Models/Order');
+async function sincronizarCreditoPedido(
+  pedido: PedidoConCredito | null | undefined,
+  { anular = false, usuario = '' }: { anular?: boolean; usuario?: string } = {},
+): Promise<ResultadoMovimiento | null> {
+  // Perezoso: Order importa cosas que a su vez usan este servicio.
+  const Order: typeof import('../Models/Order') = require('../Models/Order');
   const credito = pedido?.credito;
-  if (!credito?.customerId) return null;
+  if (!pedido || !credito?.customerId) return null;
 
   const objetivo = anular || pedido.status === 'cancelled' ? 0 : valorDelPedido(pedido);
   const cargado = Math.round(credito.cargado || 0);
@@ -121,4 +137,4 @@ async function sincronizarCreditoPedido(pedido, { anular = false, usuario = '' }
   });
 }
 
-module.exports = { mover, clienteDeLaCaja, valorDelPedido, sincronizarCreditoPedido };
+export = { mover, clienteDeLaCaja, valorDelPedido, sincronizarCreditoPedido };

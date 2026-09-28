@@ -31,7 +31,7 @@ describe('la venta de caja trae a su cliente', () => {
 });
 
 describe('la cuenta del cliente', () => {
-  const servicio = fuente('services/credito.js');
+  const servicio = fuente('services/credito.ts');
   const modelo = fuente('Models/CreditoMovimiento.js');
   const pos = fuente('Routes/pos.js');
   const panel = fuente('Routes/credito.js');

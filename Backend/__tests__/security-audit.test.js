@@ -7,6 +7,7 @@
  * F3: Order state machine (valid transitions)
  * F4: Global exception handlers
  */
+const { fuenteOrders } = require('../test-utils/fuente');
 
 // ═══════════════════════════════════════════════════════
 // F1.1 — tenantAuth on bookings
@@ -118,9 +119,7 @@ describe('F1.3 — Blocking price validation in orders', () => {
     pricingSource = fs.readFileSync(
       path.join(__dirname, '..', 'utils', 'orderPricing.js'), 'utf8'
     );
-    ordersSource = fs.readFileSync(
-      path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8'
-    );
+    ordersSource = fuenteOrders();
   });
 
   test('returns PRICE_MISMATCH error code on mismatch', () => {
@@ -129,7 +128,7 @@ describe('F1.3 — Blocking price validation in orders', () => {
 
   test('orders.js delegates to validateOrderPrices', () => {
     expect(ordersSource).toContain('validateOrderPrices');
-    expect(ordersSource).toContain("require('../utils/orderPricing')");
+    expect(ordersSource).toContain("require('../../utils/orderPricing')");
   });
 
   test('logs as BLOCKING (not just warning)', () => {
@@ -213,12 +212,10 @@ describe('F2.1 — Atomic generateOrderNumber with Counter model', () => {
   test('orders.js uses Counter model for atomic increment', () => {
     const fs = require('fs');
     const path = require('path');
-    const source = fs.readFileSync(
-      path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8'
-    );
+    const source = fuenteOrders();
     
     // Uses Counter model
-    expect(source).toContain("require('../Models/Counter')");
+    expect(source).toContain("require('../../Models/Counter')");
     
     // Uses atomic $inc
     expect(source).toContain("{ $inc: { seq: 1 } }");
@@ -244,9 +241,7 @@ describe('F2.2 — Atomic coupon usage', () => {
     couponSource = fs.readFileSync(
       path.join(__dirname, '..', 'utils', 'orderCoupon.js'), 'utf8'
     );
-    ordersSource = fs.readFileSync(
-      path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8'
-    );
+    ordersSource = fuenteOrders();
   });
 
   test('uses atomic findOneAndUpdate for coupon reservation', () => {
@@ -274,7 +269,7 @@ describe('F2.2 — Atomic coupon usage', () => {
 
   test('orders.js delegates to applyCoupon', () => {
     expect(ordersSource).toContain('applyCoupon');
-    expect(ordersSource).toContain("require('../utils/orderCoupon')");
+    expect(ordersSource).toContain("require('../../utils/orderCoupon')");
   });
 });
 
@@ -300,9 +295,7 @@ describe('F3 — Order state machine transitions', () => {
   test('orders.js contains VALID_TRANSITIONS map', () => {
     const fs = require('fs');
     const path = require('path');
-    const source = fs.readFileSync(
-      path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8'
-    );
+    const source = fuenteOrders();
     expect(source).toContain('VALID_TRANSITIONS');
     expect(source).toContain('INVALID_TRANSITION');
   });
@@ -686,9 +679,7 @@ describe('F4b — Tenant isolation in proof uploads', () => {
   beforeAll(() => {
     const fs = require('fs');
     const path = require('path');
-    ordersSource = fs.readFileSync(
-      path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8'
-    );
+    ordersSource = fuenteOrders();
   });
 
   test('proof upload destination uses order ID for scoping', () => {
@@ -799,9 +790,7 @@ describe('C2 — Transactional move to CompletedOrder', () => {
   beforeAll(() => {
     const fs = require('fs');
     const path = require('path');
-    ordersSource = fs.readFileSync(
-      path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8'
-    );
+    ordersSource = fuenteOrders();
   });
 
   test('uses mongoose.startSession() for transactions', () => {
@@ -870,9 +859,7 @@ describe('C4 — Idempotency key (offlineId) for POS', () => {
   beforeAll(() => {
     const fs = require('fs');
     const path = require('path');
-    ordersSource = fs.readFileSync(
-      path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8'
-    );
+    ordersSource = fuenteOrders();
   });
 
   test('checks for duplicate offlineId before creating order', () => {
@@ -951,9 +938,7 @@ describe('A2 — Phone+businessId rate limiter', () => {
   beforeAll(() => {
     const fs = require('fs');
     const path = require('path');
-    ordersSource = fs.readFileSync(
-      path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8'
-    );
+    ordersSource = fuenteOrders();
   });
 
   test('defines orderPhoneLimiter with phone+businessId key', () => {
@@ -1063,9 +1048,7 @@ describe('A4 — Atomic cash register $push', () => {
   beforeAll(() => {
     const fs = require('fs');
     const path = require('path');
-    ordersSource = fs.readFileSync(
-      path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8'
-    );
+    ordersSource = fuenteOrders();
   });
 
   test('POS sale uses findOneAndUpdate with $push (not find+push+save)', () => {
@@ -1304,7 +1287,7 @@ describe('L2 — stripHtml utility', () => {
   test('orders.js uses stripHtml for user text', () => {
     const fs = require('fs');
     const path = require('path');
-    const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+    const src = fuenteOrders();
     expect(src).toContain("stripHtml");
     expect(src).toContain("stripHtml(customerName)");
     expect(src).toContain("stripHtml(customerNotes");
@@ -1966,7 +1949,7 @@ describe('SRE — All public route files have rate limiters', () => {
     { file: 'Routes/subscriptions.js', keyword: 'rateLimit' },
     { file: 'Routes/loyalty.js', keyword: 'rateLimit' },
     { file: 'Routes/deliveryPublic.js', keyword: 'rateLimit' },
-    { file: 'Routes/orders.js', keyword: 'rateLimit' },
+    { file: 'Routes/orders/compartido.js', keyword: 'rateLimit' },
     { file: 'Routes/helpChat.js', keyword: 'rateLimit' },
     { file: 'Routes/aiTools.js', keyword: 'rateLimit' }
   ];
@@ -2032,7 +2015,7 @@ describe('BL-1 — Order status state machine is complete and correct', () => {
   test('VALID_TRANSITIONS covers all ORDER_STATUS values', () => {
     const fs = require('fs');
     const path = require('path');
-    const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+    const src = fuenteOrders();
     const constantsSrc = fs.readFileSync(path.join(__dirname, '..', 'utils', 'constants.js'), 'utf8');
     // All statuses from constants
     const statuses = ['pending', 'pending_payment', 'payment_uploaded', 'payment_confirmed',
@@ -2045,7 +2028,7 @@ describe('BL-1 — Order status state machine is complete and correct', () => {
   test('terminal states have empty transition arrays', () => {
     const fs = require('fs');
     const path = require('path');
-    const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+    const src = fuenteOrders();
     expect(src).toMatch(/'delivered':\s*\[\]/);
     expect(src).toMatch(/'cancelled':\s*\[\]/);
   });
@@ -2053,7 +2036,7 @@ describe('BL-1 — Order status state machine is complete and correct', () => {
   test('completed es terminal', () => {
     const fs = require('fs');
     const path = require('path');
-    const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+    const src = fuenteOrders();
     /* Antes se exigía que 'completed' pudiera pasar a 'delivered', pero
        completar archiva el pedido a otra colección y el endpoint de cambio de
        estado busca en la de activos: esa transición devolvía 404. Por eso
@@ -2068,7 +2051,7 @@ describe('BL-1 — Order status state machine is complete and correct', () => {
   test('se puede completar desde los estados iniciales de cada canal', () => {
     const fs = require('fs');
     const path = require('path');
-    const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+    const src = fuenteOrders();
     /* El POS y el pedido rápido nacen en 'confirmed' y WhatsApp en 'pending'.
        Si desde ahí no se puede completar, el botón de completar falla en la
        cara del cajero — que es como estaba. */
@@ -2088,7 +2071,7 @@ describe('BL-1 — Order status state machine is complete and correct', () => {
   test('no se puede completar sin haber confirmado el pago', () => {
     const fs = require('fs');
     const path = require('path');
-    const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+    const src = fuenteOrders();
     /* En estos dos estados nadie verificó que el cliente pagó: completar
        sería dar por cobrado algo que no lo está. */
     for (const estado of ['pending_payment', 'payment_uploaded']) {
@@ -2102,7 +2085,7 @@ describe('BL-1 — Order status state machine is complete and correct', () => {
   test('INVALID_TRANSITION error code is returned for bad transitions', () => {
     const fs = require('fs');
     const path = require('path');
-    const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+    const src = fuenteOrders();
     expect(src).toContain("'INVALID_TRANSITION'");
     expect(src).toContain('allowedTransitions');
   });
@@ -2148,7 +2131,7 @@ describe('BL-3 — Order number generation is atomic', () => {
   test('uses Counter model with findOneAndUpdate $inc', () => {
     const fs = require('fs');
     const path = require('path');
-    const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+    const src = fuenteOrders();
     expect(src).toContain('Counter.findOneAndUpdate');
     expect(src).toContain('$inc: { seq: 1 }');
   });
@@ -2156,7 +2139,7 @@ describe('BL-3 — Order number generation is atomic', () => {
   test('el contador se siembra con el maximo NUMERICO de las tres colecciones', () => {
     const fs = require('fs');
     const path = require('path');
-    const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+    const src = fuenteOrders();
     expect(src).toContain('Promise.all');
     expect(src).toContain('$max: { seq: highest }');
 
@@ -2177,7 +2160,7 @@ describe('BL-3 — Order number generation is atomic', () => {
   test('has fallback to timestamp if counter fails', () => {
     const fs = require('fs');
     const path = require('path');
-    const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+    const src = fuenteOrders();
     expect(src).toContain('Date.now().toString()');
   });
 });
@@ -2203,7 +2186,7 @@ describe('BL-5 — Subscription check blocks orders when suspended', () => {
   test('checks subscription status before order creation', () => {
     const fs = require('fs');
     const path = require('path');
-    const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+    const src = fuenteOrders();
     expect(src).toContain('getSubscriptionForBusiness');
     expect(src).toContain('isSuspended');
   });
@@ -2211,7 +2194,7 @@ describe('BL-5 — Subscription check blocks orders when suspended', () => {
   test('returns 403 SUBSCRIPTION_SUSPENDED when business is suspended', () => {
     const fs = require('fs');
     const path = require('path');
-    const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+    const src = fuenteOrders();
     expect(src).toContain("'SUBSCRIPTION_SUSPENDED'");
     expect(src).toContain('res.status(403)');
   });
@@ -2221,14 +2204,14 @@ describe('BL-6 — Order channel determines initial status correctly', () => {
   test('POS orders start as confirmed', () => {
     const fs = require('fs');
     const path = require('path');
-    const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+    const src = fuenteOrders();
     expect(src).toContain('isPOS ? ORDER_STATUS.CONFIRMED');
   });
 
   test('channel-based initial status is a ternary with all three branches', () => {
     const fs = require('fs');
     const path = require('path');
-    const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+    const src = fuenteOrders();
     // Full line: isPOS ? ORDER_STATUS.CONFIRMED : isInApp ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.PENDING
     expect(src).toContain('isInApp ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.PENDING');
   });
@@ -2327,8 +2310,8 @@ describe('VAL-2 — Order validators wired', () => {
   });
 
   test('orders.js imports and uses order validators', () => {
-    const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
-    expect(src).toContain("require('../middleware/validators/orderValidators')");
+    const src = fuenteOrders();
+    expect(src).toContain("require('../../middleware/validators/orderValidators')");
     expect(src).toContain('validateUpdateOrderStatus');
     expect(src).toContain('validateSendToKitchen');
     expect(src).toContain('validateDailyClosing');

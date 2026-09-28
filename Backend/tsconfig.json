@@ -1,0 +1,27 @@
+{
+  // TypeScript por partes: los .js siguen funcionando tal cual (allowJs) y no
+  // se revisan (checkJs: false); los .ts se revisan en modo estricto. Cada
+  // archivo que se migra pasa de "sin revisar" a "revisado".
+  //
+  // No genera archivos: en producción `tsx` ejecuta los .ts directo
+  // (ver "start" en package.json y el CMD del Dockerfile). `npm run typecheck`
+  // solo revisa.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules", "uploads", "coverage"]
+}

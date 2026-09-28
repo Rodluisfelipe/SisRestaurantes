@@ -7,6 +7,7 @@
  * frontend y las transiciones válidas en el backend, y nada obligaba a que
  * coincidieran. Estas pruebas leen ambos archivos y los cruzan.
  */
+const { fuenteOrders } = require('../test-utils/fuente');
 const fs = require('fs');
 const path = require('path');
 
@@ -32,7 +33,7 @@ function bloqueDespuesDe(src, marca) {
 }
 
 // ── Backend: transiciones permitidas ──
-const srcOrders = leer('Backend', 'Routes', 'orders.js');
+const srcOrders = fuenteOrders();
 const FIN = new Function(`return ${bloqueDespuesDe(srcOrders, 'const FIN = [')}`)();
 const VALID_TRANSITIONS = new Function('FIN', `return ${bloqueDespuesDe(srcOrders, 'const VALID_TRANSITIONS = {')}`)(FIN);
 

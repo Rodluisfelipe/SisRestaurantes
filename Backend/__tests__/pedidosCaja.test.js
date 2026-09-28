@@ -4,6 +4,7 @@
  * El POS web los mostraba y la caja nativa no: quien atendía el mostrador
  * tenía que tener el panel abierto aparte para enterarse de un domicilio.
  */
+const { fuenteOrders } = require('../test-utils/fuente');
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'secreto-de-prueba';
 process.env.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresco-de-prueba';
 
@@ -81,7 +82,7 @@ describe('pedidoParaCaja', () => {
 
 describe('las rutas de la caja', () => {
   const pos = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'pos.js'), 'utf8');
-  const orders = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'orders.js'), 'utf8');
+  const orders = fuenteOrders();
 
   it('exigen el token de una caja vigente', () => {
     expect(pos).toMatch(/router\.get\('\/pedidos', tenantAuth, cajaVigente/);
