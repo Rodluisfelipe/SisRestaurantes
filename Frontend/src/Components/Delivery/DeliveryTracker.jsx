@@ -7,6 +7,7 @@ import { FaPhone, FaMotorcycle, FaCheck, FaMapMarkerAlt, FaWhatsapp, FaLocationA
 import 'leaflet/dist/leaflet.css';
 import { MAP_TILE_URL, MAP_ATTRIBUTION } from '../../utils/mapTiles';
 import { enlaceWhatsApp } from '../../utils/whatsapp';
+import { importarConReintento } from '../../utils/chunkReload';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || API_URL.replace('/api', '');
 const API_BASE = API_URL;
@@ -102,7 +103,7 @@ const DeliveryTracker = () => {
       if (!mapContainerRef.current) return;
 
       if (!leafletRef.current) {
-        const mod = await import('leaflet');
+        const mod = await importarConReintento(() => import('leaflet'));
         leafletRef.current = mod.default || mod;
       }
       const L = leafletRef.current;

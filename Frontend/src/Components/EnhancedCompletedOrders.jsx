@@ -22,6 +22,7 @@ import {
   FaCalendarWeek
 } from 'react-icons/fa';
 import { Capa } from './ui';
+import { importarConReintento } from '../utils/chunkReload';
 
 // Estilo premium por tipo de insight de IA
 const AI_INSIGHT_STYLES = {
@@ -183,7 +184,7 @@ function EnhancedCompletedOrders() {
       /* Se arranca la descarga de la librería ya, sin esperarla: mientras
          llega, abajo se traen los pedidos por lotes. Así los ~275 KB no se
          suman al tiempo de espera, se solapan con la consulta. */
-      const excelPromise = import('exceljs');
+      const excelPromise = importarConReintento(() => import('exceljs'));
       /* Si no hay pedidos se sale antes de usarla y nadie la esperaría: sin
          esto, un fallo de red al traerla saldría como promesa no manejada.
          El await de más abajo sigue propagando el error normalmente. */

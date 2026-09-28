@@ -308,6 +308,18 @@
                 .catch(function () {}));
             }
           } catch (e) {}
+          // Caché del navegador dañada: los /assets se guardan "immutable" por un
+          // año, así que recargar volvía a usar el archivo roto (en incógnito
+          // funcionaba). cache:'reload' los baja de nuevo y los reemplaza.
+          try {
+            var els = document.querySelectorAll('script[type="module"][src], link[rel="modulepreload"][href], link[rel="stylesheet"][href]');
+            for (var i = 0; i < els.length; i++) {
+              var u = els[i].src || els[i].href;
+              if (u && u.indexOf('/assets/') !== -1) {
+                jobs.push(fetch(u, { cache: 'reload', credentials: 'same-origin' }).catch(function () {}));
+              }
+            }
+          } catch (e) {}
           if (jobs.length) { Promise.all(jobs).then(go, go); } else { go(); }
         }
         // Solo el bundle de ENTRADA de Vite: <script type=module src=/assets/index-*.js>.

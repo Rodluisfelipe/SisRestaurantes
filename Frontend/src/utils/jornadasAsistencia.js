@@ -3,6 +3,8 @@
  * por persona, y arma el Excel del reporte.
  */
 
+import { importarConReintento } from './chunkReload';
+
 const ZONA = 'America/Bogota';
 const MAX_JORNADA_MS = 20 * 60 * 60 * 1000; // igual que en el servidor
 
@@ -62,7 +64,7 @@ const metros = (m) => (typeof m?.distancia === 'number' ? m.distancia : '');
  * `personas` y `sedes` vienen del servidor para poner las sedes asignadas.
  */
 export async function descargarExcel({ marcas, personas = [], sedes = [], desde, hasta, negocio, sedeFiltro = '' }) {
-  const ExcelJS = (await import('exceljs')).default;
+  const ExcelJS = (await importarConReintento(() => import('exceljs'))).default;
   const libro = new ExcelJS.Workbook();
   libro.creator = 'Menuby';
   const nombreSede = new Map(sedes.map((s) => [String(s._id), s.nombre]));

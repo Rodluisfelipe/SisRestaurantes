@@ -1,4 +1,5 @@
-﻿import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
+﻿import { useState, useEffect, useMemo, useRef, useCallback, Suspense } from "react";
+import { lazyConReintento } from "../utils/chunkReload";
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useBusinessConfig } from "../Context/BusinessContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -25,55 +26,55 @@ import { CalculatorLauncher } from "../Components/Admin/Calculator";
 import DesktopNudge from "../Components/Admin/DesktopNudge";
 
 // ── LAZY: cada pestaña carga su código bajo demanda (code-split del Admin) ──
-const BusinessSettings = lazy(() => import("../Components/BusinessSettings"));
-const CategorySettings = lazy(() => import("../Components/CategorySettings"));
-const ToppingGroupsManager = lazy(() => import("../Components/ToppingGroupsManager"));
-const WhatsAppCustomizer = lazy(() => import("../Components/WhatsAppCustomizer"));
-const ThemeSettings = lazy(() => import("../Components/ThemeSettings"));
-const LocationSettings = lazy(() => import("../Components/LocationSettings"));
-const BannerUpload = lazy(() => import("../Components/Catalog/BannerUpload"));
-const RestaurantBannerView = lazy(() => import("../Components/Catalog/RestaurantBannerView"));
-const ChangePassword = lazy(() => import("../Components/ChangePassword"));
-const TableSettings = lazy(() => import("../Components/TableSettings"));
-const ModernOrdersDashboard = lazy(() => import("../Components/ModernOrdersDashboard"));
-const EnhancedCompletedOrders = lazy(() => import("../Components/EnhancedCompletedOrders"));
-const CustomersManager = lazy(() => import("../Components/CustomersManager"));
-const CouponsManager = lazy(() => import("../Components/CouponsManager"));
-const LoyaltyManager = lazy(() => import("../Components/LoyaltyManager"));
-const DeliveryZoneManager = lazy(() => import("../Components/DeliveryZoneManager"));
-const PaymentConfig = lazy(() => import("../Components/Admin/PaymentConfig"));
-const PrinterSettings = lazy(() => import("../Components/PrinterSettings"));
-const PrintAgentConfig = lazy(() => import("../Components/Admin/PrintAgentConfig"));
-const DomiStats = lazy(() => import("../Components/Delivery/DomiStats"));
-const ProductManager = lazy(() => import("../Components/Admin/ProductManager"));
-const InventoryManager = lazy(() => import("../Components/Admin/InventoryManager"));
-const Devoluciones = lazy(() => import("../Components/Admin/Devoluciones"));
+const BusinessSettings = lazyConReintento(() => import("../Components/BusinessSettings"));
+const CategorySettings = lazyConReintento(() => import("../Components/CategorySettings"));
+const ToppingGroupsManager = lazyConReintento(() => import("../Components/ToppingGroupsManager"));
+const WhatsAppCustomizer = lazyConReintento(() => import("../Components/WhatsAppCustomizer"));
+const ThemeSettings = lazyConReintento(() => import("../Components/ThemeSettings"));
+const LocationSettings = lazyConReintento(() => import("../Components/LocationSettings"));
+const BannerUpload = lazyConReintento(() => import("../Components/Catalog/BannerUpload"));
+const RestaurantBannerView = lazyConReintento(() => import("../Components/Catalog/RestaurantBannerView"));
+const ChangePassword = lazyConReintento(() => import("../Components/ChangePassword"));
+const TableSettings = lazyConReintento(() => import("../Components/TableSettings"));
+const ModernOrdersDashboard = lazyConReintento(() => import("../Components/ModernOrdersDashboard"));
+const EnhancedCompletedOrders = lazyConReintento(() => import("../Components/EnhancedCompletedOrders"));
+const CustomersManager = lazyConReintento(() => import("../Components/CustomersManager"));
+const CouponsManager = lazyConReintento(() => import("../Components/CouponsManager"));
+const LoyaltyManager = lazyConReintento(() => import("../Components/LoyaltyManager"));
+const DeliveryZoneManager = lazyConReintento(() => import("../Components/DeliveryZoneManager"));
+const PaymentConfig = lazyConReintento(() => import("../Components/Admin/PaymentConfig"));
+const PrinterSettings = lazyConReintento(() => import("../Components/PrinterSettings"));
+const PrintAgentConfig = lazyConReintento(() => import("../Components/Admin/PrintAgentConfig"));
+const DomiStats = lazyConReintento(() => import("../Components/Delivery/DomiStats"));
+const ProductManager = lazyConReintento(() => import("../Components/Admin/ProductManager"));
+const InventoryManager = lazyConReintento(() => import("../Components/Admin/InventoryManager"));
+const Devoluciones = lazyConReintento(() => import("../Components/Admin/Devoluciones"));
 /* "cajas" abre la sección Punto de venta: las cajas son una de sus pestañas. */
-const PuntoDeVenta = lazy(() => import("../Components/Admin/PuntoDeVenta"));
-const Rentabilidad = lazy(() => import("../Components/Admin/Rentabilidad"));
-const CuentasPorCobrar = lazy(() => import("../Components/Admin/CuentasPorCobrar"));
-const Compras = lazy(() => import("../Components/Admin/Compras"));
-const WhatsAppInbox = lazy(() => import("../Components/Admin/WhatsAppInbox"));
-const FeaturedProductsManager = lazy(() => import("../Components/Admin/FeaturedProductsManager"));
-const SubscriptionPayment = lazy(() => import("./SubscriptionPayment"));
-const AdminReviews = lazy(() => import("../Components/Admin/AdminReviews"));
-const AdminPopups = lazy(() => import("../Components/Admin/AdminPopups"));
-const StaffManager = lazy(() => import("../Components/Admin/StaffManager"));
-const BookingsManager = lazy(() => import("../Components/Admin/BookingsManager"));
-const CashClosings = lazy(() => import("../Components/Admin/CashClosings"));
-const MonthlyClosing = lazy(() => import("../Components/Admin/MonthlyClosing"));
-const ReferralsPanel = lazy(() => import("../Components/Admin/ReferralsPanel"));
-const SalesTracking = lazy(() => import("../Components/Admin/SalesTracking"));
-const CrewPanel = lazy(() => import("../Components/Admin/CrewPanel"));
-const DashboardMetrics = lazy(() => import("../Components/Admin/DashboardMetrics"));
-const Marketplace = lazy(() => import("../Components/Admin/Marketplace"));
-const SupplierOrders = lazy(() => import("../Components/Admin/SupplierOrders"));
-const WhatsAppCampaign = lazy(() => import("../Components/Admin/WhatsAppCampaign"));
-const ToolsPanel = lazy(() => import("../Components/Admin/ToolsPanel"));
-const ExtensionChrome = lazy(() => import("../Components/Admin/ExtensionChrome"));
-const BranchManager = lazy(() => import("../Components/Admin/BranchManager"));
-const LinkPageSettings = lazy(() => import("../Components/Admin/LinkPageSettings"));
-const PortafolioManager = lazy(() => import("../Components/Admin/PortafolioManager"));
+const PuntoDeVenta = lazyConReintento(() => import("../Components/Admin/PuntoDeVenta"));
+const Rentabilidad = lazyConReintento(() => import("../Components/Admin/Rentabilidad"));
+const CuentasPorCobrar = lazyConReintento(() => import("../Components/Admin/CuentasPorCobrar"));
+const Compras = lazyConReintento(() => import("../Components/Admin/Compras"));
+const WhatsAppInbox = lazyConReintento(() => import("../Components/Admin/WhatsAppInbox"));
+const FeaturedProductsManager = lazyConReintento(() => import("../Components/Admin/FeaturedProductsManager"));
+const SubscriptionPayment = lazyConReintento(() => import("./SubscriptionPayment"));
+const AdminReviews = lazyConReintento(() => import("../Components/Admin/AdminReviews"));
+const AdminPopups = lazyConReintento(() => import("../Components/Admin/AdminPopups"));
+const StaffManager = lazyConReintento(() => import("../Components/Admin/StaffManager"));
+const BookingsManager = lazyConReintento(() => import("../Components/Admin/BookingsManager"));
+const CashClosings = lazyConReintento(() => import("../Components/Admin/CashClosings"));
+const MonthlyClosing = lazyConReintento(() => import("../Components/Admin/MonthlyClosing"));
+const ReferralsPanel = lazyConReintento(() => import("../Components/Admin/ReferralsPanel"));
+const SalesTracking = lazyConReintento(() => import("../Components/Admin/SalesTracking"));
+const CrewPanel = lazyConReintento(() => import("../Components/Admin/CrewPanel"));
+const DashboardMetrics = lazyConReintento(() => import("../Components/Admin/DashboardMetrics"));
+const Marketplace = lazyConReintento(() => import("../Components/Admin/Marketplace"));
+const SupplierOrders = lazyConReintento(() => import("../Components/Admin/SupplierOrders"));
+const WhatsAppCampaign = lazyConReintento(() => import("../Components/Admin/WhatsAppCampaign"));
+const ToolsPanel = lazyConReintento(() => import("../Components/Admin/ToolsPanel"));
+const ExtensionChrome = lazyConReintento(() => import("../Components/Admin/ExtensionChrome"));
+const BranchManager = lazyConReintento(() => import("../Components/Admin/BranchManager"));
+const LinkPageSettings = lazyConReintento(() => import("../Components/Admin/LinkPageSettings"));
+const PortafolioManager = lazyConReintento(() => import("../Components/Admin/PortafolioManager"));
 
 // Custom hooks
 import useAdminAuth from "../hooks/useAdminAuth";
@@ -441,6 +442,8 @@ function Admin() {
                 transition={{ duration: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
                 className={anchoCompleto ? 'w-full h-full' : 'w-full'}
               >
+                {/* Red de seguridad de toda pestaña: si una falla, cae solo esa, no el panel. */}
+                <AdminSectionErrorBoundary onGoBack={() => setActiveTab('dashboard')}>
                 <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" /></div>}>
                 {activeTab === 'dashboard' && (
                   <AdminDashboard
@@ -791,6 +794,7 @@ function Admin() {
                   </AdminTabWrapper>
                 )}
                 </Suspense>
+                </AdminSectionErrorBoundary>
               </motion.div>
             </AnimatePresence>
           </div>

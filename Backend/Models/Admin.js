@@ -124,8 +124,11 @@ adminSchema.pre('save', async function(next) {
 });
 
 // Method to add a refresh token (hashed) and enforce max device limit
-adminSchema.methods.addRefreshToken = function(plainToken, maxDevices = 10) {
+adminSchema.methods.addRefreshToken = function(plainToken, maxDevices = 40) {
   const hashed = crypto.createHash('sha256').update(plainToken).digest('hex');
+  // Los vencidos (30 días, igual que el token) ya no sirven: fuera.
+  const limite = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  this.refreshTokens = this.refreshTokens.filter((rt) => rt.createdAt && rt.createdAt.getTime() > limite);
   this.refreshTokens.push({ token: hashed, createdAt: new Date() });
   // Keep only the most recent tokens if over limit
   if (this.refreshTokens.length > maxDevices) {

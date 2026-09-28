@@ -4,7 +4,10 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 const JWT_EXPIRE = '24h';
-const JWT_REFRESH_EXPIRE = '7d';
+/* 30 días SIN usar el panel. Mientras se use, /auth/refresh entrega uno
+   nuevo cada semana: una caja o tablet abierta todos los días nunca se cae en
+   pleno servicio (antes caía a los 7 días exactos del login). */
+const JWT_REFRESH_EXPIRE = '30d';
 
 if (!JWT_SECRET || !JWT_REFRESH_SECRET) {
   throw new Error('JWT secrets missing: set JWT_SECRET and JWT_REFRESH_SECRET in environment variables.');

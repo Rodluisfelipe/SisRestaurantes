@@ -18,8 +18,10 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  // Agregar timeout
-  timeout: 5000,
+  /* 5 s cortaba peticiones buenas en el wifi de un local o con datos: el
+     pedido o el producto se guardaba en el servidor pero la pantalla decía
+     error, y al reintentar quedaba duplicado. */
+  timeout: 20000,
   // Incluir credenciales en solicitudes cross-origin
   withCredentials: true
 });
@@ -67,6 +69,28 @@ export const refreshClient = axios.create({
   timeout: 10000,
   withCredentials: true,
 });
+
+/**
+ * Guarda lo que devolvió /auth/refresh donde vive esta sesión. Si el servidor
+ * mandó un refresh token nuevo (la sesión se extiende con el uso), también.
+ * localStorage solo se toca si es de ESTA misma sesión: puede ser de otra
+ * cuenta abierta en otra pestaña.
+ */
+export function guardarRenovacion(usado, data) {
+  sessionStorage.setItem('accessToken', data.token);
+  if (sessionStorage.getItem('refreshToken') === usado && data.refreshToken) {
+    sessionStorage.setItem('refreshToken', data.refreshToken);
+  }
+  if (localStorage.getItem('refreshToken') === usado) {
+    localStorage.setItem('accessToken', data.token);
+    if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
+  }
+}
+
+/* ¿El servidor dijo que la sesión ya no vale? Solo eso cierra la sesión. Un
+   corte de red, un tiempo agotado, un 429 o un 5xx NO: antes cualquiera de
+   esos sacaba al usuario del panel en pleno servicio. */
+export const sesionRechazada = (err) => [401, 403].includes(err?.response?.status);
 
 // Interceptor para las respuestas
 let isRefreshing = false;
@@ -120,7 +144,6 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
       try {
-        const enSession = !!sessionStorage.getItem('refreshToken');
         const refreshToken = sessionStorage.getItem('refreshToken') || localStorage.getItem('refreshToken');
         if (!refreshToken) throw new Error('No refresh token');
 
@@ -128,20 +151,17 @@ api.interceptors.response.use(
         // catch de abajo en vez de encolarse esperándose a sí mismo.
         const res = await refreshClient.post('/auth/refresh', { refreshToken });
         const newToken = res.data.token;
-
-        /* El token se guarda donde estaba el refresh token que se uso. Antes se
-           escribia siempre en los dos sitios, y eso pisaba el token de otras
-           pestañas: sessionStorage existe justamente para aislarlas. */
-        sessionStorage.setItem('accessToken', newToken);
-        if (!enSession) localStorage.setItem('accessToken', newToken);
+        guardarRenovacion(refreshToken, res.data);
 
         api.defaults.headers.common['Authorization'] = 'Bearer ' + newToken;
         onRefreshed(newToken);
         originalRequest.headers['Authorization'] = 'Bearer ' + newToken;
         return api(originalRequest);
       } catch (refreshError) {
-        // If refresh fails, reject all queued requests, clean up and redirect to login
         onRefreshFailed(refreshError);
+        // Sin red o servidor ocupado: la sesión sigue; la petición falla y se
+        // puede reintentar. Solo un rechazo real del servidor manda al login.
+        if (!sesionRechazada(refreshError)) return Promise.reject(error);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         sessionStorage.removeItem('accessToken');

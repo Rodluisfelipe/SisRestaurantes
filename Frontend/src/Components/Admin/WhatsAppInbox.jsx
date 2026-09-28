@@ -23,6 +23,7 @@ import { socket, joinBusiness } from '../../services/socket';
 import { useBusinessConfig } from '../../Context/BusinessContext';
 import { esTienda } from '../../utils/tienda';
 import QuickOrderModal from '../QuickOrderModal';
+import { importarConReintento } from '../../utils/chunkReload';
 
 const ICONO_TIPO = {
   image: FaImage, video: FaVideo, audio: FaMicrophone,
@@ -2284,7 +2285,7 @@ function ConectarNumero({ businessId, cuenta, onConectado }) {
   const [sincronizando, setSincronizando] = useState(false);
   useEffect(() => {
     api.get(`/whatsapp-inbox/oauth/config?businessId=${businessId}`)
-      .then(({ data }) => { setConfigMeta(data); import('../../utils/registroWhatsapp'); })
+      .then(({ data }) => { setConfigMeta(data); import('../../utils/registroWhatsapp').catch(() => {}); })
       .catch(() => setConfigMeta(false));
   }, [businessId]);
 
@@ -2299,7 +2300,7 @@ function ConectarNumero({ businessId, cuenta, onConectado }) {
     setError('');
     try {
       if (!configMeta) { await conectarPorEnlace(); return; }
-      const { registrarWhatsapp } = await import('../../utils/registroWhatsapp');
+      const { registrarWhatsapp } = await importarConReintento(() => import('../../utils/registroWhatsapp'));
       let resultado;
       try {
         resultado = await registrarWhatsapp(configMeta);

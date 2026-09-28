@@ -23,6 +23,14 @@ export default defineConfig(({ mode }) => ({
     outDir: 'dist',
     rollupOptions: {
       output: {
+        /* Nombres sin palabras: los bloqueadores de anuncios cortan archivos
+           como "AdminPopups", "SalesTracking" o "pushNotifications", y en ese
+           navegador la pantalla nunca carga (en incógnito, sin extensiones,
+           sí). El de entrada conserva "index-" porque el rescate de
+           index.html lo busca por ese nombre. */
+        entryFileNames: 'assets/index-[hash].js',
+        chunkFileNames: 'assets/c-[hash].js',
+        assetFileNames: 'assets/a-[hash][extname]',
         manualChunks: {
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
           'vendor-motion': ['framer-motion'],

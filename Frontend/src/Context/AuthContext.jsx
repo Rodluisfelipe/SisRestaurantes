@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
-import { getBusinessBySlug, refreshClient } from "../services/api";
+import { getBusinessBySlug, refreshClient, guardarRenovacion } from "../services/api";
 
 const AuthContext = createContext(null);
 
@@ -175,7 +175,6 @@ export function AuthProvider({ children }) {
 
   // Refrescar access token
   const refreshToken = useCallback(async () => {
-    const enSession = !!sessionStorage.getItem('refreshToken');
     const refreshToken = sessionStorage.getItem('refreshToken') || localStorage.getItem('refreshToken');
     if (!refreshToken) throw new Error('No refresh token');
 
@@ -187,9 +186,7 @@ export function AuthProvider({ children }) {
     /* Se guarda donde vive esta sesion. Escribir siempre en localStorage pisaba
        el token de las demas pestañas, que es la mitad del problema cuando hay
        dos sesiones abiertas. */
-    sessionStorage.setItem('accessToken', res.data.token);
-    if (!enSession) localStorage.setItem('accessToken', res.data.token);
-
+    guardarRenovacion(refreshToken, res.data);
     setIsAuthenticated(true);
     return res.data.token;
   }, []);

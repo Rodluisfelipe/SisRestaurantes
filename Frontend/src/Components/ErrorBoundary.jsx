@@ -1,17 +1,22 @@
-import React, { Component } from 'react';
-import { isChunkLoadError, recoverFromChunkError, chunkReloadAlreadyAttempted } from '../utils/chunkReload';
+import { Component } from "react";
+import { isChunkLoadError, recoverFromChunkError, chunkReloadAlreadyAttempted, resetChunkReload } from '../utils/chunkReload';
+import { reportarError } from '../utils/reportarError';
 
+/**
+ * Última línea de defensa de toda la app.
+ *
+ * - Archivo de pantalla que no bajó (deploy, conexión, caché dañada): se
+ *   repara y recarga solo; si no se puede, pantalla de "sin conexión".
+ * - Cualquier otro error: mensaje claro y un código corto. El detalle técnico
+ *   va al servidor (buscable por ese código), no a la cara del usuario.
+ */
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null, errorInfo: null, recovering: false };
+    this.state = { hasError: false, error: null, recovering: false, codigo: '', copiado: false };
   }
 
   static getDerivedStateFromError(error) {
-    // Un chunk viejo tras un deploy (React.lazy/Suspense traga la promesa y el
-    // error llega aquí como render error). No es un bug de la app: mostramos
-    // spinner y disparamos la auto-recuperación (limpiar SW/cachés + reload)
-    // en vez de la pantalla roja de "¡Oops!".
     if (isChunkLoadError(error) && !chunkReloadAlreadyAttempted()) {
       return { hasError: true, error, recovering: true };
     }
@@ -20,45 +25,43 @@ class ErrorBoundary extends Component {
 
   componentDidCatch(error, errorInfo) {
     if (isChunkLoadError(error)) {
-      // Intentar recuperarse (no-op si ya se intentó en esta sesión).
-      const triggered = recoverFromChunkError('errorboundary');
-      if (triggered) return; // reload en camino; no es un fallo real de la app
+      const triggered = recoverFromChunkError('errorboundary', error);
+      if (triggered) return; // reparación y recarga en camino
+      // Sin conexión: apenas vuelva el internet, se intenta de nuevo solo.
+      window.addEventListener('online', this.reintentar, { once: true });
     }
-    /* Sin Sentry, el error solo queda en la consola del navegador: si un
-       usuario reporta la pantalla de "¡Oops!", hay que pedirle la consola
-       porque ya no llega a ningún panel. */
-    console.error("Error capturado por ErrorBoundary:", error, errorInfo);
-    this.setState({ errorInfo });
+    const codigo = reportarError(error, {
+      tipo: isChunkLoadError(error) ? 'carga' : 'pantalla',
+      componente: errorInfo?.componentStack || '',
+    });
+    this.setState({ codigo, recovering: false });
   }
 
-  handleRedirect = () => {
-    // Si hay token, redirigir al admin
-    const hasToken = localStorage.getItem('accessToken');
-    const businessSlug = localStorage.getItem('businessSlug');
-    const userStr = localStorage.getItem('user');
-    
-    if (hasToken && businessSlug) {
-      window.location.href = `/${businessSlug}/admin`;
-    } else if (hasToken && userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        if (user.businessId) {
-          window.location.href = `/${user.businessId}/admin`;
-        } else {
-          window.location.href = '/';
-        }
-      } catch (e) {
-        window.location.href = '/';
-      }
-    } else {
-      window.location.href = '/';
-    }
+  componentWillUnmount() {
+    window.removeEventListener('online', this.reintentar);
+  }
+
+  reintentar = () => {
+    resetChunkReload();
+    window.location.reload();
+  };
+
+  irAlInicio = () => {
+    const slug = localStorage.getItem('businessSlug');
+    window.location.href = localStorage.getItem('accessToken') && slug ? `/${slug}/admin` : '/';
+  };
+
+  copiarCodigo = () => {
+    navigator.clipboard?.writeText(this.state.codigo).then(() => {
+      this.setState({ copiado: true });
+      setTimeout(() => this.setState({ copiado: false }), 2000);
+    }).catch(() => {});
   };
 
   render() {
-    // Chunk viejo tras deploy: mostramos un spinner neutro mientras la
-    // auto-recuperación limpia SW/cachés y recarga con cache-bust.
-    if (this.state.hasError && this.state.recovering) {
+    if (!this.state.hasError) return this.props.children;
+
+    if (this.state.recovering) {
       return (
         <div className="min-h-screen bg-white flex items-center justify-center">
           <div className="text-center">
@@ -66,73 +69,59 @@ class ErrorBoundary extends Component {
               <div className="absolute inset-0 rounded-full border-4 border-red-100" />
               <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-red-500 animate-spin" style={{ animationDuration: '0.8s' }} />
             </div>
-            <p className="text-slate-500 text-sm">Actualizando a la última versión...</p>
+            <p className="text-slate-500 text-sm">Cargando la última versión…</p>
           </div>
         </div>
       );
     }
 
-    if (this.state.hasError) {
-      const err = this.state.error;
-      const stack = this.state.errorInfo?.componentStack || err?.stack || '';
-      return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-          <div className="bg-white p-6 sm:p-8 rounded-lg shadow-lg max-w-2xl w-full">
-            <h1 className="text-2xl font-bold text-red-600 mb-2">¡Oops! Algo salió mal</h1>
-            <p className="text-gray-600 mb-4">Ha ocurrido un error inesperado. El equipo técnico ha sido notificado.</p>
+    const deConexion = isChunkLoadError(this.state.error);
+    const { codigo, copiado } = this.state;
 
-            {/* Debug panel — mostrar el error real para que se pueda diagnosticar */}
-            {err && (
-              <details open className="mb-4 bg-red-50 border border-red-200 rounded-lg overflow-hidden">
-                <summary className="px-4 py-2 text-sm font-semibold text-red-700 cursor-pointer select-none">
-                  Detalles del error (click para expandir/colapsar)
-                </summary>
-                <div className="px-4 py-3 border-t border-red-200 space-y-3">
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-red-700 mb-1">Mensaje</p>
-                    <p className="text-sm text-red-900 font-mono break-all">{err.message || String(err)}</p>
-                  </div>
-                  {stack && (
-                    <div>
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-red-700 mb-1">Stack</p>
-                      <pre className="text-[11px] text-red-900 font-mono whitespace-pre-wrap break-all max-h-80 overflow-y-auto bg-white/60 p-2 rounded">{stack}</pre>
-                    </div>
-                  )}
-                  <button
-                    onClick={() => {
-                      const text = `${err.message || String(err)}\n\n${stack}`;
-                      navigator.clipboard?.writeText(text).then(() => alert('Copiado'));
-                    }}
-                    className="text-xs font-semibold text-red-700 underline hover:text-red-900"
-                  >
-                    Copiar al portapapeles
-                  </button>
-                </div>
-              </details>
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-200 max-w-md w-full text-center">
+          <h1 className="text-xl font-bold text-slate-900 mb-2">
+            {deConexion ? 'No se pudo cargar esta pantalla' : 'Esta pantalla tuvo un problema'}
+          </h1>
+          <p className="text-slate-600 mb-5">
+            {deConexion
+              ? 'La conexión a internet falló mientras cargaba. Revisa el wifi o los datos; en cuanto vuelva la conexión se carga sola.'
+              : 'Tus datos están a salvo. Vuelve a intentarlo; si se repite, envíanos este código.'}
+          </p>
+
+          {codigo && (
+            <button
+              type="button"
+              onClick={this.copiarCodigo}
+              className="mb-5 inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 font-mono text-sm text-slate-700 hover:bg-slate-200"
+              title="Copiar código"
+            >
+              {codigo}
+              <span className="font-sans text-xs text-slate-500">{copiado ? 'Copiado' : 'Copiar'}</span>
+            </button>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              onClick={this.reintentar}
+              className="flex-1 bg-red-600 text-white py-3 px-4 rounded-xl hover:bg-red-700 transition-colors font-semibold"
+            >
+              Reintentar
+            </button>
+            {!deConexion && (
+              <button
+                onClick={this.irAlInicio}
+                className="flex-1 bg-slate-100 text-slate-800 py-3 px-4 rounded-xl hover:bg-slate-200 transition-colors font-semibold"
+              >
+                Ir al inicio
+              </button>
             )}
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => window.location.reload()}
-                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold"
-              >
-                Recargar
-              </button>
-              <button
-                onClick={this.handleRedirect}
-                className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors text-sm font-semibold"
-              >
-                Volver al inicio
-              </button>
-            </div>
           </div>
         </div>
-      );
-    }
-
-    // Si no hay error, renderizar los children normalmente
-    return this.props.children;
+      </div>
+    );
   }
 }
 
-export default ErrorBoundary; 
+export default ErrorBoundary;

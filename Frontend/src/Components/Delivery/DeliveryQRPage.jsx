@@ -7,6 +7,7 @@ import { FaMapMarkerAlt, FaPhone, FaCheck, FaBoxOpen, FaLocationArrow, FaMotorcy
 import 'leaflet/dist/leaflet.css';
 import { MAP_TILE_URL, MAP_ATTRIBUTION } from '../../utils/mapTiles';
 import { enlaceWhatsApp } from '../../utils/whatsapp';
+import { importarConReintento } from '../../utils/chunkReload';
 
 const API_BASE = API_URL;
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || API_URL.replace('/api', '');
@@ -60,7 +61,7 @@ const DeliveryQRPage = () => {
   useEffect(() => {
     if (!order?.deliveryCoordinates?.lat || !mapRef.current) return;
     const initMap = async () => {
-      const L = (await import('leaflet')).default || (await import('leaflet'));
+      const L = await importarConReintento(() => import('leaflet')).then((m) => m.default || m);
       if (mapInstanceRef.current) return;
       const { lat, lon } = order.deliveryCoordinates;
       const map = L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([lat, lon], 16);

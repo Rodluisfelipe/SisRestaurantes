@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef, memo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, memo, Suspense } from 'react';
+import { lazyConReintento } from "../utils/chunkReload";
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBusinessConfig } from "../Context/BusinessContext";
 import { esTienda, palabras } from '../utils/tienda';
@@ -20,7 +21,7 @@ import TimeSlotPicker from './TimeSlotPicker';
    Solo lo necesita quien pide a domicilio: se carga entonces y no al abrir el
    menú, que es lo que pagaban todos los clientes en un Android de gama baja. */
 const cargarLocationPicker = () => import('./Catalog/LocationPicker');
-const LocationPicker = lazy(cargarLocationPicker);
+const LocationPicker = lazyConReintento(cargarLocationPicker);
 import { Capa } from './ui';
 import MapaPunto from './Catalog/MapaPunto';
 import { marcarEtapa, ETAPA } from '../utils/embudo';

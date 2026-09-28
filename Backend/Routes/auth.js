@@ -566,7 +566,9 @@ router.get('/verify', async (req, res) => {
 // Rate limiter for token refresh
 const refreshLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  /* Un local tiene varios equipos detrás del mismo internet (cajas, tablets,
+     meseros): con 20 se agotaba y la app los sacaba a todos. */
+  max: 100,
   message: { message: 'Demasiadas solicitudes de refresh. Intente nuevamente más tarde.' }
 });
 
@@ -586,6 +588,18 @@ router.post('/refresh', refreshLimiter, async (req, res) => {
     const admin = await Admin.findByRefreshToken(decoded.id, refreshToken);
     if (admin) {
       const token = generateToken(admin._id, admin.businessId, admin.role, admin.brandId);
+      /* Sesión que se extiende con el uso: pasada una semana, uno nuevo. El
+         anterior sigue valiendo hasta que venza, así otra pestaña que aún lo
+         tenga no se cae. */
+      const semana = 7 * 24 * 60 * 60;
+      if (decoded.iat && Date.now() / 1000 - decoded.iat > semana) {
+        const nuevo = generateRefreshToken(admin._id);
+        admin.addRefreshToken(nuevo);
+        // Solo la lista de sesiones: un save() completo podía fallar por
+        // validaciones de cuentas viejas y tumbar la renovación.
+        await Admin.updateOne({ _id: admin._id }, { $set: { refreshTokens: admin.refreshTokens } });
+        return res.json({ token, refreshToken: nuevo });
+      }
       return res.json({ token });
     }
 

@@ -36,6 +36,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTeamPermissions } from "./useTeamPermissions";
 import { ROLE_INFO } from "./permissions";
 import { Capa } from '../../Components/ui';
+import { importarConReintento } from '../../utils/chunkReload';
 
 const NAV_SECTIONS = [
   {
@@ -204,7 +205,7 @@ function SuperAdminDashboard() {
       const adminToken = localStorage.getItem("superadmin_token");
       if (!adminToken) return;
       try {
-        const { default: superadminApi } = await import('../../services/superadminApi');
+        const { default: superadminApi } = await importarConReintento(() => import('../../services/superadminApi'));
         await superadminApi.get('/auth/me');
         setIsLogged(true);
       } catch (error) {

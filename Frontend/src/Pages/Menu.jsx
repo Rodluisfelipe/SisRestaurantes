@@ -1,5 +1,6 @@
 // @charset UTF-8
-import React, { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo, Suspense } from 'react';
+import { lazyConReintento } from "../utils/chunkReload";
 import { motion, MotionConfig } from 'framer-motion';
 
 /* Celulares de gama baja (poca memoria o pocos núcleos): las animaciones de
@@ -11,8 +12,8 @@ const GAMA_BAJA = typeof navigator !== 'undefined' && (
   (navigator.deviceMemory && navigator.deviceMemory <= 3)
   || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4)
 );
-const ReviewModal = lazy(() => import("../Components/ReviewModal"));
-const ReviewsSheet = lazy(() => import("../Components/ReviewsSheet"));
+const ReviewModal = lazyConReintento(() => import("../Components/ReviewModal"));
+const ReviewsSheet = lazyConReintento(() => import("../Components/ReviewsSheet"));
 import ProductCard from "../Components/Productcard";
 import { registrarOrigen, origenActual } from "../utils/origenVisita";
 // Import directo (no lazy): es el primer render del menú, un chunk aparte
@@ -28,11 +29,11 @@ import OrderTypeSelector from "../Components/OrderTypeSelector";
 import FilterableMenu from "../Components/FilterableMenu";
 import PedidoConfirmado from "../Components/PedidoConfirmado";
 import BottomNav from "../Components/BottomNav";
-const MoreSheet = lazy(() => import("../Components/MoreSheet"));
-const MenuScreen = lazy(() => import("../Components/MenuScreen"));
-const TableTab = lazy(() => import("../Components/TableTab"));
-const DiscoverSheet = lazy(() => import("../Components/DiscoverSheet"));
-const StoriesRow = lazy(() => import("../Components/StoriesRow"));
+const MoreSheet = lazyConReintento(() => import("../Components/MoreSheet"));
+const MenuScreen = lazyConReintento(() => import("../Components/MenuScreen"));
+const TableTab = lazyConReintento(() => import("../Components/TableTab"));
+const DiscoverSheet = lazyConReintento(() => import("../Components/DiscoverSheet"));
+const StoriesRow = lazyConReintento(() => import("../Components/StoriesRow"));
 import FavoritesModal from "../Components/FavoritesModal";
 import OrderHistoryModal from "../Components/OrderHistoryModal";
 import LoyaltyPage from "../Components/LoyaltyPage";

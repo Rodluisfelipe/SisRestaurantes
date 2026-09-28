@@ -4,6 +4,7 @@ import {
   Loader2, Link2, StickyNote, PhoneCall, Users, Pencil, ExternalLink, Inbox,
 } from 'lucide-react';
 import superadminApi from '../../services/superadminApi';
+import { importarConReintento } from '../../utils/chunkReload';
 
 /**
  * CRM de leads de Menuby.
@@ -724,13 +725,13 @@ function ConectarWhatsapp({ onCerrar, onConectado }) {
   const [configMeta, setConfigMeta] = useState(null);
   useEffect(() => {
     superadminApi.get('/crm/whatsapp/config')
-      .then(({ data }) => { setConfigMeta(data); import('../../utils/registroWhatsapp'); })
+      .then(({ data }) => { setConfigMeta(data); import('../../utils/registroWhatsapp').catch(() => {}); })
       .catch(() => setConfigMeta(false));
   }, []);
   const conectarVentana = async () => {
     setEstado('abriendo');
     try {
-      const { registrarWhatsapp } = await import('../../utils/registroWhatsapp');
+      const { registrarWhatsapp } = await importarConReintento(() => import('../../utils/registroWhatsapp'));
       const r = await registrarWhatsapp(configMeta);
       setEstado('sincronizando');
       const { data } = await superadminApi.post('/crm/whatsapp/embedded', r);

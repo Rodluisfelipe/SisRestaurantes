@@ -215,7 +215,7 @@ describe('la sección del panel está cableada', () => {
     expect(src).toContain(`activeTab === '${ID}'`);
     // Sin atarse a qué props lleve: lo que se comprueba es que esté montado.
     expect(src).toMatch(/<WhatsAppInbox[\s/>]/);
-    expect(src).toMatch(/const WhatsAppInbox = lazy\(/);
+    expect(src).toMatch(/const WhatsAppInbox = lazyConReintento\(/);
   });
 
   it('la cabecera móvil sabe cómo se llama', () => {

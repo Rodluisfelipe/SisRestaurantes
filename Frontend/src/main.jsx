@@ -70,38 +70,43 @@ import { isChunkLoadError, recoverFromChunkError } from "./utils/chunkReload";
 // sesión y dejamos un flag en sessionStorage. Tras 5s OK, reseteamos el flag.
 // ─────────────────────────────────────────────
 if (typeof window !== 'undefined') {
-  const RELOAD_FLAG = '__crew_chunk_reload_attempted';
-
   // Para CSS/JS cargados por <link>/<script>: el navegador NO bubble-ea el
   // error y NO dispara unhandledrejection. Hay que usar el listener en fase
   // de captura ({ capture: true }) y mirar e.target.
+  // Solo las hojas de estilo que vinieron en el HTML inicial: las que agrega
+  // Vite al abrir una pantalla (y los modulepreload) las atrapa
+  // lazyConReintento, que reintenta sin recargar y sin perder lo que el
+  // usuario estaba haciendo.
+  const cssIniciales = new Set(
+    Array.from(document.querySelectorAll('link[rel="stylesheet"][href*="/assets/"]')).map((l) => l.href)
+  );
   const isAssetTagFailure = (event) => {
     const t = event.target;
     if (!t || !t.tagName) return null;
     const tag = t.tagName.toLowerCase();
-    if (tag === 'link' && t.href && /\/assets\//.test(t.href)) return t.href;
+    if (tag === 'link' && t.rel === 'stylesheet' && cssIniciales.has(t.href)) return t.href;
     if (tag === 'script' && t.src && /\/assets\//.test(t.src)) return t.src;
     return null;
   };
 
   // Detección + recuperación (unregister SW + limpiar cachés + reload con
-  // cache-bust, una sola vez por sesión) viven en ./utils/chunkReload para
+  // cache-bust, hasta 3 veces seguidas) viven en ./utils/chunkReload para
   // reusarse también desde ErrorBoundary cuando React/Suspense traga el error.
-  const reload = (why) => recoverFromChunkError(why);
+  const reload = (why, err) => recoverFromChunkError(why, err);
 
-  // 0) vite:preloadError — Vite lo emite aunque React/Suspense trague la promesa.
-  //    Es la forma más confiable de detectar chunk load failures en producción.
-  window.addEventListener('vite:preloadError', () => reload('vite-preload'));
+  // vite:preloadError NO recarga: ese mismo error le llega a lazyConReintento,
+  // que primero repara la caché y reintenta en el sitio. Recargar acá cortaba
+  // el reintento y hacía perder lo que el usuario estaba llenando.
 
-  // 1) Dynamic imports rechazados — lazy() de React lo emite por acá
+  // 1) Imports dinámicos que nadie atrapó
   window.addEventListener('unhandledrejection', (event) => {
-    if (isChunkLoadError(event.reason)) reload('dynimport');
+    if (isChunkLoadError(event.reason)) reload('dynimport', event.reason);
   });
 
   // 2) Errores JS síncronos
   window.addEventListener('error', (event) => {
     if (isChunkLoadError(event.error || event.message)) {
-      reload('jserror');
+      reload('jserror', event.error || event.message);
       return;
     }
     // 3) <link>/<script> que fallaron al cargar (CSS roto incluido).
@@ -110,9 +115,9 @@ if (typeof window !== 'undefined') {
     if (url) reload('asset:' + url.slice(-40));
   }, true);
 
-  // Borra el flag tras 5s OK — así, si más tarde hay otro deploy en la misma
-  // sesión, volvemos a poder intentar el auto-reload.
-  setTimeout(() => sessionStorage.removeItem(RELOAD_FLAG), 5000);
+  // El contador de reintentos se reinicia solo tras un minuto sin fallos
+  // (ver ./utils/chunkReload): así un deploy o un corte más tarde en la misma
+  // sesión vuelve a recuperarse solo.
 }
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
