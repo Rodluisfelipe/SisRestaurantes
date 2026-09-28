@@ -1701,7 +1701,7 @@ export default function Menu() {
   }
 
   if (showOrderTypeSelector && !isViewOnly) {
-    return <OrderTypeSelector onComplete={handleOrderTypeComplete} initialTableNumber={tableFromUrl} />;
+    return <OrderTypeSelector onComplete={handleOrderTypeComplete} initialTableNumber={tableFromUrl} products={products} plan={subscriptionCommercialPlan} />;
   }
 
   // El menú siempre se renderiza, el CartSummary se superpone como modal

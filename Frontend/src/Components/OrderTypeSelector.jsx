@@ -1,26 +1,112 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Star, User, Phone, ArrowRight, Check, Home, ShoppingBag } from 'lucide-react';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import * as SessionManager from '../utils/sessionManager';
+import { menuCssVars } from '../utils/menuTokens';
+import { ANILLO_MARCA } from '../utils/anilloMarca';
+import useTarjetaSellos, { fidelidadPublica } from '../hooks/useTarjetaSellos';
+import CarruselRazones from './CarruselRazones';
+import { pesos } from '../utils/pedidos';
+import { API_ENDPOINTS } from '../config';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-/* ─── Inline check badge ─── */
-const CheckBadge = ({ color }) => (
-  <motion.div
-    initial={{ scale: 0, opacity: 0 }}
-    animate={{ scale: 1, opacity: 1 }}
-    exit={{ scale: 0, opacity: 0 }}
-    transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-    className="absolute right-3 top-1/2 -translate-y-1/2"
-  >
-    <svg className="w-[18px] h-[18px]" viewBox="0 0 20 20" fill={color}>
-      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-    </svg>
-  </motion.div>
+/**
+ * Bienvenida del menú: antes de ver el menú se piden nombre y celular.
+ *
+ * Antes solo decía "Ingresa tus datos para ver el menú": pedía el teléfono
+ * sin decir para qué ni por qué pedir aquí y no escribir directo al WhatsApp.
+ * Ahora muestra cómo está el negocio (abierto, calificación) y las razones
+ * para pedir por aquí, armadas con lo que ESTE negocio tiene activo: no se
+ * promete nada que no tenga.
+ */
+
+const DIAS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const a12h = (hhmm) => {
+  if (!hhmm || typeof hhmm !== 'string') return '';
+  const [hStr, mStr = '00'] = hhmm.split(':');
+  const h = parseInt(hStr, 10);
+  if (Number.isNaN(h)) return hhmm;
+  const sufijo = h >= 12 ? 'p. m.' : 'a. m.';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  const min = parseInt(mStr, 10) || 0;
+  return min === 0 ? `${h12} ${sufijo}` : `${h12}:${String(min).padStart(2, '0')} ${sufijo}`;
+};
+
+const GoogleG = ({ className = 'w-3.5 h-3.5' }) => (
+  <svg className={className} viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0012 23z"/><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 010-4.2V7.06H2.18a11 11 0 000 9.88l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/></svg>
 );
 
-function OrderTypeSelector({ onComplete, initialTableNumber }) {
+// El mismo sello de verificado del perfil del menú
+const Verificado = () => (
+  <svg className="w-[20px] h-[20px] shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-label="Negocio verificado" role="img"><path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+);
+
+/* Las fotos de Google llegan como { name: 'places/.../photos/REF' } y pasan por
+   el proxy del backend (igual que en las historias). */
+const fotoGoogle = (photo, w = 400) => {
+  const name = typeof photo === 'string' ? photo : photo?.name;
+  if (!name || !String(name).includes('/photos/')) return null;
+  return `${API_ENDPOINTS.BASE_URL}/places/photo?name=${encodeURIComponent(name)}&maxWidthPx=${w}`;
+};
+
+/* Una reseña corta y buena, completa (nunca cortada): la reseña entera si es
+   breve o, si no, su primera frase cuando es breve. */
+function resenaCorta(resenas = []) {
+  for (const r of resenas) {
+    if (!r?.text || (Number(r.rating) || 0) < 4) continue;
+    const t = String(r.text).trim().replace(/\s+/g, ' ');
+    if (t.length >= 18 && t.length <= 95) return { ...r, text: t };
+    const frase = (t.match(/^[^.!?]{18,95}[.!?]/) || [])[0];
+    if (frase) return { ...r, text: frase.trim() };
+  }
+  return null;
+}
+
+const NOMBRE_PAGO = { nequi: 'Nequi', daviplata: 'Daviplata', transferencia: 'transferencia', bold: 'tarjeta' };
+
+function Campo({ icono: Icono, etiqueta, nota, valido, bajo = false, ...props }) {
+  const [foco, setFoco] = useState(false);
+  return (
+    <label className="block">
+      <span className="block text-[13px] font-semibold" style={{ color: 'var(--mb-ink)' }}>{etiqueta}</span>
+      {nota && <span className="flex items-center gap-1.5 text-[12px] mt-0.5" style={{ color: 'var(--mb-ink-2)' }}>{nota}</span>}
+      <span className="block h-1.5" />
+      <span
+        className={`relative flex items-center rounded-2xl border-[1.5px] transition-all ${bajo ? 'h-[48px]' : 'h-[52px]'}`}
+        style={{
+          borderColor: foco ? 'var(--mb-accent)' : 'var(--mb-line)',
+          background: 'var(--mb-card)',
+          boxShadow: foco ? '0 0 0 4px var(--mb-accent-soft)' : 'none',
+        }}
+      >
+        <Icono className="absolute left-4 w-[18px] h-[18px]" style={{ color: foco ? 'var(--mb-accent)' : 'var(--mb-ink-3)' }} />
+        <input
+          {...props}
+          onFocus={() => setFoco(true)}
+          onBlur={() => setFoco(false)}
+          className="w-full h-full pl-11 pr-11 bg-transparent text-[16px] outline-none rounded-2xl"
+          style={{ color: 'var(--mb-ink)' }}
+        />
+        <AnimatePresence>
+          {valido && (
+            <motion.span
+              initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+              className="absolute right-3.5 w-6 h-6 rounded-full flex items-center justify-center"
+              style={{ background: 'var(--mb-accent)', color: 'var(--mb-on-accent)' }}
+            >
+              <Check className="w-3.5 h-3.5" strokeWidth={3} />
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </span>
+    </label>
+  );
+}
+
+function OrderTypeSelector({ onComplete, initialTableNumber, products = [], plan = null }) {
   const isQRMode = Boolean(initialTableNumber);
 
   const [orderInfo, setOrderInfo] = useState(() => {
@@ -40,56 +126,157 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
   });
 
   const isReturning = useRef(Boolean(SessionManager.getSavedCustomerName())).current;
-
   const [showOrderTypes, setShowOrderTypes] = useState(false);
-  const [nameFocused, setNameFocused] = useState(false);
-  const [phoneFocused, setPhoneFocused] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
-  const { businessConfig } = useBusinessConfig();
-  const nameRef = useRef(null);
-  const phoneRef = useRef(null);
+  /* Sin scroll: la pantalla mide lo mismo que el celular y se acomoda a su
+     alto. Amplio: las razones con explicación; medio: solo el título; bajo
+     (iPhone SE y similares): las razones como etiquetas. La portada se lleva
+     el espacio que sobre. */
+  const [alto, setAlto] = useState(() => (typeof window !== 'undefined' ? window.innerHeight : 800));
+  const [altoVisible, setAltoVisible] = useState(null);   // con el teclado abierto
+  useEffect(() => {
+    const medir = () => { if (!keyboardOpen) setAlto(window.innerHeight); };
+    window.addEventListener('resize', medir);
+    return () => window.removeEventListener('resize', medir);
+  }, [keyboardOpen]);
+  const nivel = alto >= 800 ? 'amplio' : alto >= 690 ? 'medio' : 'bajo';
+  const baja = nivel !== 'amplio';
+  const { businessConfig, businessId, businessStatus } = useBusinessConfig();
+  const tarjeta = useTarjetaSellos(businessId);
+  const [conPuntos, setConPuntos] = useState(false);
 
-  const themeColor = businessConfig?.theme?.buttonColor || '#2563eb';
-  const themeTextColor = businessConfig?.theme?.buttonTextColor || '#ffffff';
-  const hasCover = Boolean(businessConfig?.coverImage);
+  const cfg = businessConfig || {};
+  const esServicio = ['salon', 'spa', 'clinic', 'services'].includes(cfg.businessType);
+  const esHotel = cfg.businessType === 'hotel';
+  const isInAppMode = cfg.orderingMode === 'inapp' || cfg.orderingMode === 'both';
+  const urlDe = (u) => (u ? (u.startsWith('http') ? u : `${API_BASE_URL}${u}`) : null);
+  const logoUrl = urlDe(cfg.logo);
+  const coverUrl = urlDe(cfg.coverImage);
+  const [sinLogo, setSinLogo] = useState(!logoUrl);
 
-  const logoUrl = businessConfig?.logo
-    ? (businessConfig.logo.startsWith('http') ? businessConfig.logo : `${API_BASE_URL}${businessConfig.logo}`)
-    : null;
-  const coverUrl = businessConfig?.coverImage
-    ? (businessConfig.coverImage.startsWith('http') ? businessConfig.coverImage : `${API_BASE_URL}${businessConfig.coverImage}`)
-    : null;
-  const defaultLogo = 'https://placehold.co/150x150?text=Logo';
+  // ¿Tiene programa de puntos? (si usa sellos, lo dice la tarjeta)
+  useEffect(() => {
+    if (!businessId) return undefined;
+    let vivo = true;
+    fidelidadPublica(businessId).then((data) => { if (vivo) setConPuntos(!!data?.puntos); });
+    return () => { vivo = false; };
+  }, [businessId]);
 
-  /* ── Keyboard detect ── */
+  /* ── Teclado abierto: la portada se encoge ── */
   useEffect(() => {
     const vv = window.visualViewport;
-    if (!vv) return;
-    const onResize = () => setKeyboardOpen(vv.height < window.innerHeight * 0.75);
+    if (!vv) return undefined;
+    const onResize = () => {
+      const abierto = vv.height < window.innerHeight * 0.75;
+      setKeyboardOpen(abierto);
+      setAltoVisible(abierto ? vv.height : null);
+    };
     vv.addEventListener('resize', onResize);
     return () => vv.removeEventListener('resize', onResize);
   }, []);
 
-  /* ── Table sync ── */
   useEffect(() => {
     if (initialTableNumber && orderInfo.tableNumber !== initialTableNumber) {
-      setOrderInfo(prev => ({ ...prev, tableNumber: initialTableNumber }));
+      setOrderInfo((prev) => ({ ...prev, tableNumber: initialTableNumber }));
     }
   }, [initialTableNumber, orderInfo.tableNumber]);
 
-  /* ── Auto-focus ── */
-  useEffect(() => {
-    const t = setTimeout(() => { if (!showOrderTypes) nameRef.current?.focus(); }, 700);
-    return () => clearTimeout(t);
-  }, [showOrderTypes]);
+  /* ── Estado y calificación, como en el perfil del menú ── */
+  const abierto = !!businessStatus?.isOpen;
+  const hoy = cfg.businessHours?.[DIAS[new Date().getDay()]];
+  const estado = abierto
+    ? (hoy?.closeTime ? `Abierto · cierra ${a12h(hoy.closeTime)}` : 'Abierto')
+    : (businessStatus?.nextOpenTime?.time ? `Cerrado · abre ${a12h(businessStatus.nextOpenTime.time)}` : 'Cerrado');
+  const verResenas = cfg.reviewsDisplay || 'both';
+  const ratingGoogle = ['both', 'google'].includes(verResenas) ? cfg.google?.rating : null;
+  const ratingInterno = ['both', 'internal'].includes(verResenas) && cfg.reviewStats?.totalReviews > 0 ? cfg.reviewStats.averageRating : null;
+  const rating = ratingGoogle || ratingInterno;
+  const numResenas = ratingGoogle ? cfg.google?.reviewCount : cfg.reviewStats?.totalReviews;
 
-  /* ── Submit ── */
+  /* ── Diapositivas: la misma idea que `beneficios`, contada con fotos y datos
+     reales del negocio (su premio, sus productos, sus precios, sus pagos) ── */
+  const diapositivas = useMemo(() => {
+    const activos = (products || []).filter((p) => p.active !== false);
+    const premioProd = tarjeta ? activos.find((p) => String(p._id) === String(tarjeta.premioProductId)) : null;
+    const conFoto = activos.filter((p) => p.image && (!premioProd || p._id !== premioProd._id));
+    const orden = [...conFoto.filter((p) => p.isFeatured), ...conFoto.filter((p) => !p.isFeatured)];
+    const fotoCocina = orden[0];
+    const prodPrecio = orden[1] || orden[0] || activos.find((p) => !premioProd || p._id !== premioProd._id);
+    const out = [];
+
+    if (tarjeta) {
+      out.push({
+        clave: 'sellos', kicker: 'Tarjeta de sellos',
+        titulo: `Junta ${tarjeta.requeridos} sellos`,
+        texto: `y llévate ${tarjeta.premio}. Solo suman los pedidos hechos aquí.`,
+        visual: { tipo: 'sellos', foto: premioProd?.image, requeridos: tarjeta.requeridos },
+      });
+    } else if (conPuntos) {
+      out.push({
+        clave: 'puntos', kicker: 'Puntos',
+        titulo: 'Cada pedido suma puntos',
+        texto: 'Y los cambias por premios. Solo pidiendo por aquí.',
+        visual: { tipo: 'icono', icono: Star },
+      });
+    }
+    /* Reseña real de Google (si el negocio muestra las de Google). Con la foto
+       del local; si no hay, la de un producto. */
+    const resena = ['both', 'google'].includes(cfg.reviewsDisplay || 'both') ? resenaCorta(cfg.google?.reviews) : null;
+    if (resena) {
+      out.push({
+        clave: 'resena', kicker: 'Lo que dicen en Google',
+        titulo: `“${resena.text}”`,
+        texto: resena.author || resena.authorName || 'Cliente',
+        resena: { rating: Number(resena.rating) || 5 },
+        visual: { tipo: 'foto', foto: fotoGoogle(cfg.google?.photos?.[0]) || fotoCocina?.image || prodPrecio?.image },
+      });
+    }
+    if (isInAppMode) {
+      out.push({
+        clave: 'vivo', kicker: 'Pedido en vivo',
+        titulo: esServicio ? 'Tu cita, confirmada al momento' : 'Ves cómo va tu pedido',
+        texto: esServicio ? 'Sin esperar a que te respondan.' : 'Sin preguntar por WhatsApp si ya salió.',
+        visual: { tipo: 'vivo', ultimo: esServicio ? 'Confirmada' : 'Listo' },
+      });
+    }
+    out.push({
+      clave: 'cocina', kicker: 'Sin esperar',
+      titulo: esServicio || esHotel ? 'Directo al negocio' : 'Directo a la cocina',
+      texto: 'Nadie tiene que leer y contestar tu WhatsApp primero.',
+      visual: { tipo: 'foto', foto: fotoCocina?.image },
+    });
+    if (prodPrecio) {
+      out.push({
+        clave: 'precio', kicker: 'Precios reales',
+        titulo: 'Lo que ves es lo que pagas',
+        texto: `Fotos y precios al día. ${prodPrecio.name}: ${pesos(prodPrecio.price)}.`,
+        visual: { tipo: 'precio', foto: prodPrecio.image, precio: pesos(prodPrecio.price) },
+      });
+    }
+    const pm = cfg.paymentMethods || {};
+    const modo = isInAppMode ? 'inapp' : 'whatsapp';
+    const medios = ['nequi', 'daviplata', 'transferencia']
+      .filter((id) => pm[id]?.enabled && pm[id].modes?.[modo] !== false)
+      .map((id) => NOMBRE_PAGO[id].charAt(0).toUpperCase() + NOMBRE_PAGO[id].slice(1));
+    if (cfg.boldActivo) medios.push('Tarjeta');
+    if (medios.length) {
+      out.push({
+        clave: 'pagos', kicker: 'Pagos',
+        titulo: 'Paga como prefieras',
+        texto: `Efectivo o ${medios.join(', ').toLowerCase().replace(/, ([^,]*)$/, ' o $1')}.`,
+        visual: { tipo: 'pagos', medios },
+      });
+    }
+    return out;
+  }, [products, tarjeta, conPuntos, isInAppMode, esServicio, esHotel, cfg.paymentMethods, cfg.boldActivo, cfg.google, cfg.reviewsDisplay]);
+
+  /* ── Enviar ── */
   const handleSubmit = useCallback((e) => {
     e.preventDefault();
     if (!orderInfo.customerName.trim()) return;
     if (isQRMode) {
       if (showOrderTypes) {
-        if (!orderInfo.orderType) { alert('Por favor selecciona el tipo de pedido'); return; }
+        if (!orderInfo.orderType) return;   // el botón ya queda apagado sin tipo
         const final = { ...orderInfo, tableNumber: initialTableNumber || '' };
         SessionManager.saveOrderInfo(final);
         onComplete(final);
@@ -105,348 +292,203 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
     }
   }, [orderInfo, isQRMode, showOrderTypes, initialTableNumber, onComplete]);
 
-  const handleOrderTypeChange = (type) => setOrderInfo(prev => ({ ...prev, orderType: type }));
-
   const nameValid = orderInfo.customerName.trim().length > 0;
-  const phoneValid = (orderInfo.phone?.trim().length || 0) >= 7;
+  const digitos = (orderInfo.phone || '').replace(/\D/g, '');
+  const phoneValid = digitos.length >= 7;
   const isFormValid = nameValid && phoneValid;
+  const primerNombre = orderInfo.customerName.trim().split(' ')[0];
 
-  /* ── Shared input style helper ── */
-  const inputWrapStyle = (focused) => ({
-    borderColor: focused ? themeColor : '#e8eaed',
-    backgroundColor: focused ? '#fff' : '#f8f9fb',
-    boxShadow: focused ? `0 0 0 3px ${themeColor}15` : 'none'
-  });
+  const opcionesQR = [
+    { type: 'inSite', title: esHotel ? 'En la habitación' : 'Comer aquí', sub: esHotel ? 'Te lo llevamos' : 'Te lo llevamos a la mesa', Icono: Home },
+    { type: 'takeaway', title: 'Para llevar', sub: 'Lo recoges empacado', Icono: ShoppingBag },
+  ];
+
+  const botonActivo = showOrderTypes ? !!orderInfo.orderType : isFormValid;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col overflow-hidden touch-none">
-
-      {/* ═══════════════════════════════════════════
-          HERO — top section with cover/gradient + logo
-          ═══════════════════════════════════════════ */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.6 }}
-        className="relative flex-shrink-0 flex flex-col items-center justify-end"
-        style={{
-          height: keyboardOpen ? '20vh' : '42vh',
-          transition: 'height 0.3s ease'
-        }}
-      >
-        {/* Background: cover image or themed gradient */}
-        {coverUrl ? (
-          <>
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${coverUrl})` }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/60" />
-          </>
-        ) : (
-          <>
-            <div
-              className="absolute inset-0"
-              style={{
-                background: `linear-gradient(135deg, ${themeColor} 0%, ${themeColor}dd 50%, ${themeColor}aa 100%)`
-              }}
-            />
-            {/* Subtle pattern overlay */}
-            <div className="absolute inset-0 opacity-[0.04]" style={{
-              backgroundImage: `radial-gradient(circle at 25% 25%, white 1px, transparent 1px), radial-gradient(circle at 75% 75%, white 1px, transparent 1px)`,
-              backgroundSize: '24px 24px'
-            }} />
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20" />
-          </>
-        )}
-
-        {/* Logo — overlapping the card */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.6, y: 30 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 20, delay: 0.15 }}
-          className="relative z-20"
-          style={{ marginBottom: keyboardOpen ? -28 : -36 }}
-        >
-          <div className="relative">
-            <div
-              className="w-[76px] h-[76px] rounded-2xl overflow-hidden shadow-2xl ring-[3px] ring-white/90"
-              style={{ boxShadow: `0 8px 32px ${themeColor}40, 0 2px 8px rgba(0,0,0,0.15)` }}
-            >
-              <img
-                src={logoUrl || defaultLogo}
-                alt={businessConfig.businessName || 'Logo'}
-                className="w-full h-full object-cover"
-                onError={(e) => { e.target.src = defaultLogo; }}
-              />
+    <div
+      className="fixed inset-x-0 top-0 z-50 overflow-hidden overscroll-none"
+      style={{
+        ...menuCssVars(cfg.theme?.buttonColor, { on: cfg.theme?.buttonTextColor }),
+        background: 'var(--mb-surface)',
+        height: altoVisible ? `${altoVisible}px` : '100dvh',
+      }}
+    >
+      <div className="h-full flex flex-col max-w-[520px] mx-auto">
+        {/* ── Portada: se lleva el espacio que sobre ── */}
+        <div className="relative flex-1 min-h-[116px]">
+          {coverUrl ? (
+            <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${coverUrl})` }} />
+          ) : (
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, var(--mb-accent), var(--mb-accent-strong))' }} />
+          )}
+          {/* Estado y calificación sobre la portada, en vidrio claro */}
+          {!keyboardOpen && (
+            <div className="absolute inset-x-0 flex items-start justify-between gap-2 px-4"
+              style={{ top: 'calc(12px + env(safe-area-inset-top, 0px))' }}>
+              <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] font-bold backdrop-blur-md"
+                style={{ background: 'rgba(255,255,255,0.88)', color: '#1f2937' }}>
+                <span className="w-2 h-2 rounded-full" style={{ background: abierto ? '#16a34a' : '#dc2626' }} />
+                {estado}
+              </span>
+              {rating > 0 && (
+                <span className="inline-flex items-center gap-1 h-8 px-3 rounded-full text-[12px] font-bold backdrop-blur-md"
+                  style={{ background: 'rgba(255,255,255,0.88)', color: '#1f2937' }}>
+                  {ratingGoogle ? <GoogleG /> : null}
+                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  {Number(rating).toFixed(1)}
+                  {numResenas > 0 && <span className="font-semibold" style={{ color: '#6b7280' }}>({numResenas})</span>}
+                </span>
+              )}
             </div>
-            {/* Online pulse */}
-            <div
-              className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-[2.5px] border-white"
-              style={{ backgroundColor: '#22c55e' }}
-            >
-              <span className="absolute inset-0 rounded-full animate-ping opacity-40" style={{ backgroundColor: '#22c55e' }} />
-            </div>
-          </div>
-        </motion.div>
-      </motion.div>
+          )}
+        </div>
 
-      {/* ═══════════════════════════════════════════
-          CARD — bottom sheet with form
-          ═══════════════════════════════════════════ */}
-      <motion.div
-        initial={{ y: 60, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 200, damping: 26, delay: 0.2 }}
-        className="relative z-10 flex-1 bg-white rounded-t-[28px] flex flex-col"
-        style={{
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-          boxShadow: '0 -8px 30px rgba(0,0,0,0.08)'
-        }}
-      >
-        <div className="flex-1 flex flex-col px-6 pt-12">
-          {/* Business name + greeting */}
+        {/* ── Hoja que sube sobre la portada: todo lo demás va aquí ── */}
+        <div className="relative shrink-0 -mt-7 rounded-t-[28px] flex flex-col"
+          style={{ background: 'var(--mb-surface)', boxShadow: '0 -14px 34px -16px rgba(0,0,0,0.28)' }}>
+
+        {/* ── Logo, nombre y estado ── */}
+        <div className="relative shrink-0 px-5 text-center" style={{ marginTop: nivel === 'bajo' ? -36 : nivel === 'medio' ? -42 : -48 }}>
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-            className="text-center mb-1"
-            style={{ display: keyboardOpen ? 'none' : 'block' }}
+            initial={{ opacity: 0, scale: 0.7, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 220, damping: 20, delay: 0.1 }}
+            className={`mx-auto rounded-full p-[3px] ${nivel === 'bajo' ? 'w-[72px] h-[72px]' : nivel === 'medio' ? 'w-[84px] h-[84px]' : 'w-[96px] h-[96px]'}`}
+            style={{ background: ANILLO_MARCA }}
           >
-            <h1 className="text-[22px] font-bold text-gray-800 leading-tight">
-              {businessConfig.businessName || 'Nuestro negocio'}
-            </h1>
+            <span className="block w-full h-full rounded-full overflow-hidden" style={{ border: '3px solid var(--mb-surface)', background: 'var(--mb-card)', boxShadow: '0 6px 18px -6px rgba(0,0,0,0.25)' }}>
+              {!sinLogo ? (
+                <img src={logoUrl} alt="" className="w-full h-full object-cover" onError={() => setSinLogo(true)} />
+              ) : (
+                <span className="w-full h-full flex items-center justify-center text-3xl font-black" style={{ color: 'var(--mb-accent)' }}>
+                  {(cfg.businessName || '?').trim().charAt(0).toUpperCase()}
+                </span>
+              )}
+            </span>
           </motion.div>
 
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.42 }}
-            className="text-[13px] text-gray-400 text-center"
-            style={{ marginBottom: keyboardOpen ? 12 : 24, display: keyboardOpen && showOrderTypes ? 'none' : 'block' }}
-          >
-            {isReturning && orderInfo.customerName
-              ? <>Hola de nuevo, <span className="font-semibold text-gray-600">{orderInfo.customerName.split(' ')[0]}</span></>
-              : 'Ingresa tus datos para ver el menú'
-            }
-          </motion.p>
+          <h1 className={`${nivel === 'bajo' ? 'mt-1.5 text-[20px]' : baja ? 'mt-2 text-[22px]' : 'mt-3 text-[24px]'} font-black leading-tight tracking-tight break-words`} style={{ color: 'var(--mb-ink)' }}>
+            {cfg.businessName || 'Bienvenido'}
+            {['starter', 'pro', 'pro_max'].includes(String(plan || '').toLowerCase()) && (
+              <span className="inline-block align-[-3px] ml-1.5" style={{ color: 'var(--mb-accent)' }}><Verificado /></span>
+            )}
+          </h1>
+        </div>
 
-          {/* QR progress */}
-          {isQRMode && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.45 }}
-              className="flex justify-center gap-1.5 mb-5"
-            >
-              <div className="h-1 rounded-full transition-all duration-300" style={{ width: !showOrderTypes ? 24 : 10, backgroundColor: !showOrderTypes ? themeColor : '#d1d5db' }} />
-              <div className="h-1 rounded-full transition-all duration-300" style={{ width: showOrderTypes ? 24 : 10, backgroundColor: showOrderTypes ? themeColor : '#d1d5db' }} />
-            </motion.div>
-          )}
-
-          {/* ── Forms ── */}
-          <AnimatePresence mode="wait">
-            {/* STEP 1 */}
-            {!showOrderTypes && (
-              <motion.form
-                key="step-info"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-                onSubmit={handleSubmit}
-                className="space-y-3"
-              >
-                {/* Name */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-gray-400 mb-1 tracking-wider uppercase pl-0.5">
-                    Tu nombre
-                  </label>
-                  <div className="relative rounded-xl border transition-all duration-200" style={inputWrapStyle(nameFocused)}>
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                      <svg className="w-[17px] h-[17px]" style={{ color: nameFocused ? themeColor : '#b5bcc7' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </div>
-                    <input
-                      ref={nameRef}
-                      type="text"
-                      value={orderInfo.customerName}
-                      onChange={(e) => setOrderInfo({ ...orderInfo, customerName: e.target.value })}
-                      onFocus={() => setNameFocused(true)}
-                      onBlur={() => setNameFocused(false)}
-                      className="w-full pl-10 pr-10 py-3 bg-transparent text-gray-800 text-[15px] placeholder-gray-300 rounded-xl outline-none"
-                      placeholder="Ingresa tu nombre"
-                      autoComplete="given-name"
-                      enterKeyHint="next"
-                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); phoneRef.current?.focus(); } }}
-                      required
-                    />
-                    <AnimatePresence>{nameValid && <CheckBadge color={themeColor} />}</AnimatePresence>
+        <div className={`shrink-0 px-5 pb-3 ${baja ? 'pt-3 space-y-3' : 'pt-5 space-y-5'}`}>
+          <AnimatePresence mode="wait" initial={false}>
+            {!showOrderTypes ? (
+              <motion.div key="datos" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.25 }} className={baja ? 'space-y-3' : 'space-y-5'}>
+                {/* ── Por qué pedir por aquí ── */}
+                {!keyboardOpen && (
+                  <div style={{ height: nivel === 'bajo' ? 132 : nivel === 'medio' ? 150 : 162 }}>
+                    <CarruselRazones diapositivas={diapositivas} logo={sinLogo ? null : logoUrl} compacto={nivel !== 'amplio'} />
                   </div>
-                </div>
+                )}
 
-                {/* Phone */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-gray-400 mb-1 tracking-wider uppercase pl-0.5">
-                    Tu teléfono
-                  </label>
-                  <div className="relative rounded-xl border transition-all duration-200" style={inputWrapStyle(phoneFocused)}>
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                      <svg className="w-[17px] h-[17px]" style={{ color: phoneFocused ? themeColor : '#b5bcc7' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                      </svg>
-                    </div>
-                    <input
-                      ref={phoneRef}
+                {/* ── Datos ── */}
+                <form id="bienvenida" onSubmit={handleSubmit} className={baja ? 'space-y-2.5' : 'space-y-3.5'}>
+                  {isReturning && primerNombre && (
+                    <p className="text-[15px] font-semibold" style={{ color: 'var(--mb-ink)' }}>Hola de nuevo, {primerNombre} 👋</p>
+                  )}
+                  <Campo
+                    icono={User}
+                    etiqueta="Tu nombre"
+                    valido={nameValid}
+                    bajo={baja}
+                    type="text"
+                    value={orderInfo.customerName}
+                    onChange={(e) => setOrderInfo({ ...orderInfo, customerName: e.target.value })}
+                    placeholder="¿A nombre de quién?"
+                    autoComplete="given-name"
+                    enterKeyHint="next"
+                    required
+                  />
+                  <div>
+                    <Campo
+                      icono={Phone}
+                      etiqueta="Tu celular"
+                      valido={phoneValid}
+                      bajo={baja}
                       type="tel"
                       inputMode="tel"
                       value={orderInfo.phone || ''}
-                      onChange={(e) => setOrderInfo({ ...orderInfo, phone: e.target.value })}
-                      onFocus={() => setPhoneFocused(true)}
-                      onBlur={() => setPhoneFocused(false)}
-                      className="w-full pl-10 pr-10 py-3 bg-transparent text-gray-800 text-[15px] placeholder-gray-300 rounded-xl outline-none"
-                      placeholder="Ej: 3001234567"
+                      // Solo dígitos: el celular identifica al cliente; con espacios sería otro
+                      onChange={(e) => setOrderInfo({ ...orderInfo, phone: e.target.value.replace(/[^\d+]/g, '').slice(0, 15) })}
+                      placeholder="3001234567"
                       autoComplete="tel"
                       enterKeyHint="go"
                       required
                     />
-                    <AnimatePresence>{phoneValid && <CheckBadge color={themeColor} />}</AnimatePresence>
                   </div>
-                </div>
-
-                {/* CTA */}
-                <div className="pt-2">
-                  <motion.button
-                    type="submit"
-                    disabled={!isFormValid}
-                    whileTap={{ scale: 0.97 }}
-                    className="relative w-full py-3.5 rounded-2xl text-[15px] font-semibold transition-all duration-200 overflow-hidden disabled:opacity-30"
-                    style={{
-                      backgroundColor: isFormValid ? themeColor : '#e5e7eb',
-                      color: isFormValid ? themeTextColor : '#9ca3af',
-                      boxShadow: isFormValid ? `0 4px 20px ${themeColor}35` : 'none'
-                    }}
-                  >
-                    {isFormValid && (
-                      <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                        initial={{ x: '-100%' }}
-                        animate={{ x: '100%' }}
-                        transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 3 }}
-                      />
-                    )}
-                    <span className="relative flex items-center justify-center gap-2">
-                      Ver menú
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                      </svg>
-                    </span>
-                  </motion.button>
-                </div>
-              </motion.form>
-            )}
-
-            {/* STEP 2: QR order type */}
-            {showOrderTypes && (
-              <motion.form
-                key="step-order-type"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-                onSubmit={handleSubmit}
-                className="space-y-3.5"
-              >
-                <p className="text-sm text-gray-500 text-center leading-relaxed">
-                  Hola <span className="font-semibold text-gray-700">{orderInfo.customerName}</span>, {businessConfig?.businessType === 'hotel' ? 'habitación' : 'mesa'}{' '}
-                  <span className="font-bold" style={{ color: themeColor }}>{initialTableNumber}</span>
+                </form>
+              </motion.div>
+            ) : (
+              /* ── Mesa (QR): cómo lo quiere ── */
+              <motion.form key="tipo" id="bienvenida" onSubmit={handleSubmit}
+                initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.25 }} className="space-y-3">
+                <p className="text-[16px] font-bold" style={{ color: 'var(--mb-ink)' }}>
+                  Hola {primerNombre}, estás en la {esHotel ? 'habitación' : 'mesa'}{' '}
+                  <span style={{ color: 'var(--mb-accent)' }}>{initialTableNumber}</span>
                 </p>
-
-                <div className="space-y-2">
-                  {[
-                    { type: 'inSite', title: businessConfig?.businessType === 'hotel' ? 'En habitación' : 'En sitio', sub: businessConfig?.businessType === 'hotel' ? 'Servicio a la habitación' : 'Comer en el local', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg> },
-                    { type: 'takeaway', title: 'Para llevar', sub: 'Recoger y llevar', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg> }
-                  ].map(({ type, title, sub, icon }, i) => {
-                    const active = orderInfo.orderType === type;
-                    return (
-                      <motion.button
-                        key={type}
-                        type="button"
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.06 + i * 0.06 }}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => handleOrderTypeChange(type)}
-                        className="w-full py-3.5 rounded-xl flex items-center gap-3 px-4 border transition-all duration-200"
-                        style={{
-                          borderColor: active ? themeColor : '#e8eaed',
-                          backgroundColor: active ? `${themeColor}08` : '#fafafa',
-                          boxShadow: active ? `0 0 0 3px ${themeColor}10` : 'none'
-                        }}
-                      >
-                        <div
-                          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                          style={{ backgroundColor: active ? `${themeColor}12` : '#f0f1f3', color: active ? themeColor : '#9ca3af' }}
-                        >
-                          {icon}
-                        </div>
-                        <div className="text-left flex-1">
-                          <span className={`text-[15px] font-semibold block ${active ? 'text-gray-800' : 'text-gray-500'}`}>{title}</span>
-                          <span className="text-xs text-gray-400">{sub}</span>
-                        </div>
-                        {active && (
-                          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 500, damping: 25 }} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: themeColor }}>
-                            <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                          </motion.div>
-                        )}
-                      </motion.button>
-                    );
-                  })}
-                </div>
-
-                <div className="pt-1">
-                  <motion.button
-                    type="submit"
-                    disabled={!orderInfo.orderType}
-                    whileTap={{ scale: 0.97 }}
-                    className="relative w-full py-3.5 rounded-2xl text-[15px] font-semibold transition-all duration-200 overflow-hidden disabled:opacity-30"
-                    style={{
-                      backgroundColor: orderInfo.orderType ? themeColor : '#e5e7eb',
-                      color: orderInfo.orderType ? themeTextColor : '#9ca3af',
-                      boxShadow: orderInfo.orderType ? `0 4px 20px ${themeColor}35` : 'none'
-                    }}
-                  >
-                    {orderInfo.orderType && (
-                      <motion.div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent" initial={{ x: '-100%' }} animate={{ x: '100%' }} transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 3 }} />
-                    )}
-                    <span className="relative flex items-center justify-center gap-2">
-                      Ver Menú
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                    </span>
-                  </motion.button>
-                </div>
-
-                <button type="button" onClick={() => setShowOrderTypes(false)} className="w-full text-center text-xs text-gray-400 py-1 active:text-gray-600">
-                  ← Cambiar datos
+                <p className="text-[13px]" style={{ color: 'var(--mb-ink-2)' }}>¿Cómo lo quieres?</p>
+                {opcionesQR.map(({ type, title, sub, Icono }) => {
+                  const activo = orderInfo.orderType === type;
+                  return (
+                    <button key={type} type="button" onClick={() => setOrderInfo((prev) => ({ ...prev, orderType: type }))}
+                      className="w-full flex items-center gap-3 p-3.5 rounded-2xl border-[1.5px] text-left transition-all"
+                      style={{
+                        borderColor: activo ? 'var(--mb-accent)' : 'var(--mb-line)',
+                        background: activo ? 'var(--mb-accent-soft)' : 'var(--mb-card)',
+                      }}>
+                      <span className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
+                        style={{ background: activo ? 'var(--mb-accent)' : 'var(--mb-surface-2)', color: activo ? 'var(--mb-on-accent)' : 'var(--mb-ink-2)' }}>
+                        <Icono className="w-5 h-5" />
+                      </span>
+                      <span className="flex-1">
+                        <span className="block text-[15px] font-bold" style={{ color: 'var(--mb-ink)' }}>{title}</span>
+                        <span className="block text-[12.5px]" style={{ color: 'var(--mb-ink-2)' }}>{sub}</span>
+                      </span>
+                      {activo && <Check className="w-5 h-5" style={{ color: 'var(--mb-accent)' }} strokeWidth={3} />}
+                    </button>
+                  );
+                })}
+                <button type="button" onClick={() => setShowOrderTypes(false)} className="w-full text-center text-[13px] font-semibold py-2"
+                  style={{ color: 'var(--mb-ink-2)' }}>
+                  ← Cambiar mis datos
                 </button>
               </motion.form>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Footer */}
-        {!keyboardOpen && (
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.4 }}
-            transition={{ delay: 0.8 }}
-            className="text-center text-2xs text-gray-400 pb-3 pt-2"
+        {/* ── Botón fijo abajo: siempre a la vista, también con el teclado ── */}
+        <div className="shrink-0 px-5 pt-1" style={{ paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))' }}>
+          <motion.button
+            type="submit"
+            form="bienvenida"
+            disabled={!botonActivo}
+            whileTap={botonActivo ? { scale: 0.97 } : undefined}
+            className="w-full h-[54px] rounded-2xl text-[16px] font-bold flex items-center justify-center gap-2 transition-all"
+            style={{
+              background: botonActivo ? 'var(--mb-accent)' : 'var(--mb-surface-2)',
+              color: botonActivo ? 'var(--mb-on-accent)' : 'var(--mb-ink-3)',
+              boxShadow: botonActivo ? '0 8px 24px -8px var(--mb-accent)' : 'none',
+            }}
           >
-            Powered by <span className="font-medium">MenuBy</span>
-          </motion.p>
-        )}
-      </motion.div>
+            {isQRMode && !showOrderTypes ? 'Continuar' : esServicio ? 'Ver servicios' : 'Ver el menú'}
+            <ArrowRight className="w-5 h-5" />
+          </motion.button>
+          {!keyboardOpen && (
+            <p className="text-center text-[11px] pt-2" style={{ color: 'var(--mb-ink-3)' }}>
+              Hecho con <span className="font-semibold">MenuBy</span>
+            </p>
+          )}
+        </div>
+        </div>
+      </div>
     </div>
   );
 }

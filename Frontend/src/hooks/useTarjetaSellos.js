@@ -2,6 +2,23 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 import useResumenCuenta from './useResumenCuenta';
 
+/* La información pública del programa (sin datos del cliente) se pide UNA vez
+   por visita y la comparten todas las pantallas: bienvenida, historias y "Más".
+   Antes cada una la pedía por su cuenta, y con varios clientes en el mismo
+   WiFi se llegaba al límite de consultas y la tarjeta desaparecía. */
+const publicas = new Map();   // businessId -> promesa de { active, tarjeta?, puntos? }
+
+export function fidelidadPublica(businessId) {
+  if (!businessId) return Promise.resolve(null);
+  if (!publicas.has(businessId)) {
+    const p = api.get('/loyalty/tarjeta', { params: { businessId } })
+      .then(({ data }) => data || null)
+      .catch(() => { publicas.delete(businessId); return null; });   // si falla, se puede reintentar
+    publicas.set(businessId, p);
+  }
+  return publicas.get(businessId);
+}
+
 /**
  * La tarjeta de sellos para mostrar en el menú.
  *
@@ -20,9 +37,7 @@ export default function useTarjetaSellos(businessId) {
   useEffect(() => {
     if (conCuenta || !businessId) return undefined;
     let vivo = true;
-    api.get('/loyalty/tarjeta', { params: { businessId } })
-      .then(({ data }) => { if (vivo) setPublica(data?.active ? data.tarjeta : null); })
-      .catch(() => { if (vivo) setPublica(null); });
+    fidelidadPublica(businessId).then((data) => { if (vivo) setPublica(data?.active ? data.tarjeta : null); });
     return () => { vivo = false; };
   }, [conCuenta, businessId]);
 

@@ -44,6 +44,15 @@ const publicLimiter = rateLimit({
   message: { message: 'Demasiadas solicitudes. Intenta de nuevo en unos minutos.' }
 });
 
+/* La tarjeta pública es liviana y sin datos de nadie, y la piden todos los
+   clientes al entrar. En un local, todos salen por la misma IP del WiFi: con
+   el límite general (60) bastaban unas 15 personas para que desapareciera. */
+const tarjetaLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 600,
+  message: { message: 'Demasiadas solicitudes. Intenta de nuevo en unos minutos.' }
+});
+
 // ─── ADMIN: Get loyalty program config ───
 router.get('/program', tenantAuth, async (req, res) => {
   try {
@@ -299,12 +308,17 @@ router.get('/sellos', tenantAuth, async (req, res) => {
 
 // ─── PUBLIC: la tarjeta de sellos del negocio (sin datos de nadie) ───
 // Para que quien aún no ha pedido vea que existe y qué se gana.
-router.get('/tarjeta', publicLimiter, async (req, res) => {
+router.get('/tarjeta', tarjetaLimiter, async (req, res) => {
+  res.set('Cache-Control', 'public, max-age=60');
   try {
     let businessId;
     try { businessId = await resolveBusinessId(req.query.businessId); } catch { return res.json({ active: false }); }
     const program = await sellos.programaDeSellos(businessId);
-    if (!program) return res.json({ active: false });
+    if (!program) {
+      // Sin sellos: se dice si hay programa de puntos, para anunciarlo en la bienvenida
+      const puntos = await LoyaltyProgram.exists({ businessId, isActive: true, mode: { $ne: 'stamps' } });
+      return res.json({ active: false, puntos: !!puntos });
+    }
     const t = sellos.estadoTarjeta(program, null);
     res.json({ active: true, tarjeta: { requeridos: t.requeridos, montoMinimo: t.montoMinimo, premio: t.premio, sellos: 0, premiosDisponibles: 0 } });
   } catch (error) {
