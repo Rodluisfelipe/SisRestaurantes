@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../services/api';
 import { Capa } from '../ui';
+import { pesos } from '../../utils/pedidos';
 
 /**
  * Receta de un producto: qué insumos consume una unidad.
@@ -10,7 +11,6 @@ import { Capa } from '../ui';
  * por unidad, que es lo correcto para una gaseosa.
  */
 
-const money = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-CO');
 
 export default function RecipeEditor({ producto, businessId, themeColor, onClose, onGuardado }) {
   const [insumos, setInsumos] = useState([]);
@@ -18,6 +18,7 @@ export default function RecipeEditor({ producto, businessId, themeColor, onClose
   const [lineas, setLineas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  const [errorGuardar, setErrorGuardar] = useState('');
   const [busqueda, setBusqueda] = useState('');
 
   useEffect(() => {
@@ -70,7 +71,9 @@ export default function RecipeEditor({ producto, businessId, themeColor, onClose
     : null;
 
   const guardar = async () => {
+    if (guardando) return;
     setGuardando(true);
+    setErrorGuardar('');
     try {
       const res = await api.put(`/supplies/recipe/${producto._id}`, {
         businessId,
@@ -79,7 +82,7 @@ export default function RecipeEditor({ producto, businessId, themeColor, onClose
       onGuardado?.(res.data);
       onClose();
     } catch (err) {
-      alert(err.response?.data?.message || 'No se pudo guardar la receta');
+      setErrorGuardar(err.response?.data?.message || (err.response ? 'No se pudo guardar la receta' : 'Sin conexión. Revisa el internet.'));
     } finally {
       setGuardando(false);
     }
@@ -94,7 +97,7 @@ export default function RecipeEditor({ producto, businessId, themeColor, onClose
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
           <div className="min-w-0">
-            <h3 className="text-sm font-bold text-slate-800 truncate">Receta de {producto.name}</h3>
+            <h3 className="text-sm font-bold text-slate-800 break-words">Receta de {producto.name}</h3>
             <p className="text-[11px] text-slate-400">Qué consume una unidad</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
@@ -119,10 +122,10 @@ export default function RecipeEditor({ producto, businessId, themeColor, onClose
                 return (
                   <div key={l.supplyId} className="flex items-center gap-2 p-2.5">
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold text-slate-800 truncate">{s?.name || 'Insumo eliminado'}</p>
+                      <p className="text-[13px] font-semibold text-slate-800 break-words">{s?.name || 'Insumo eliminado'}</p>
                       {s?.cost != null && (
                         <p className="text-[11px] text-slate-400">
-                          {money(s.cost * (Number(l.quantity) || 0))} por unidad del plato
+                          {pesos(s.cost * (Number(l.quantity) || 0))} por unidad del plato
                         </p>
                       )}
                     </div>
@@ -153,17 +156,17 @@ export default function RecipeEditor({ producto, businessId, themeColor, onClose
             <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-1">
               <div className="flex justify-between text-[12px]">
                 <span className="text-slate-500">Costo de la receta</span>
-                <span className="font-bold text-slate-800 tabular-nums">{money(costo.total)}</span>
+                <span className="font-bold text-slate-800 tabular-nums">{pesos(costo.total)}</span>
               </div>
               <div className="flex justify-between text-[12px]">
                 <span className="text-slate-500">Precio de venta</span>
-                <span className="font-bold text-slate-800 tabular-nums">{money(producto.price)}</span>
+                <span className="font-bold text-slate-800 tabular-nums">{pesos(producto.price)}</span>
               </div>
               {margen !== null && (
                 <div className="flex justify-between text-[12px] pt-1 border-t border-slate-200">
                   <span className="font-semibold text-slate-700">Deja</span>
                   <span className={`font-black tabular-nums ${margen < 30 ? 'text-red-600' : 'text-emerald-600'}`}>
-                    {money(producto.price - costo.total)} · {margen}%
+                    {pesos(producto.price - costo.total)} · {margen}%
                   </span>
                 </div>
               )}
@@ -202,6 +205,9 @@ export default function RecipeEditor({ producto, businessId, themeColor, onClose
           )}
         </div>
 
+        {errorGuardar && (
+          <p role="alert" className="mx-3 mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{errorGuardar}</p>
+        )}
         <div className="p-3 border-t border-slate-100 flex gap-2">
           {producto.recipe?.length > 0 && lineas.length === 0 && (
             <p className="flex-1 text-[11px] text-amber-700 self-center leading-snug">

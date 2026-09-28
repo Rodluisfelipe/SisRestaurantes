@@ -1,9 +1,10 @@
 import ProductOrderSelector from '../ProductOrderSelector';
 import {
-  FaStar, FaChevronLeft, FaGripVertical, FaTimes
+  FaStar, FaChevronLeft, FaGripVertical, FaArrowUp, FaArrowDown
 } from 'react-icons/fa';
 import { useBusinessConfig } from '../../Context/BusinessContext';
 import PopularSectionManager from './PopularSectionManager';
+import { pesos } from '../../utils/pedidos';
 
 /**
  * Pestaña "product-order": muestra productos destacados con drag-and-drop
@@ -18,6 +19,7 @@ export default function FeaturedProductsManager({
   setProducts,
   setActiveTab,
   handleToggleFeatured,
+  handleReorderFeatured,
   handleFeaturedDragStart,
   handleFeaturedDragOver,
   handleFeaturedDragEnd,
@@ -28,6 +30,17 @@ export default function FeaturedProductsManager({
     : [];
   const { businessConfig } = useBusinessConfig();
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
+
+  /* Flechas para subir y bajar: arrastrar solo funciona con mouse, en el
+     celular no había forma de cambiar el orden. */
+  const mover = (index, delta) => {
+    const destino = index + delta;
+    if (destino < 0 || destino >= featuredProducts.length) return;
+    const nuevo = [...featuredProducts];
+    const [item] = nuevo.splice(index, 1);
+    nuevo.splice(destino, 0, item);
+    handleReorderFeatured(nuevo);
+  };
 
   return (
     <div className="space-y-4">
@@ -46,22 +59,24 @@ export default function FeaturedProductsManager({
           <div className="flex items-center gap-2">
             <FaStar className="text-amber-500 text-sm" />
             <div>
-              <h3 className="text-sm font-semibold text-slate-800">{isService ? 'Servicios Destacados' : 'Productos Destacados'}</h3>
+              <h3 className="text-sm font-semibold text-slate-800">{isService ? 'Servicios destacados' : 'Productos destacados'}</h3>
               <p className="text-xs text-slate-500">
-                Arrastra para reordenar &bull; {featuredProducts.length}/5
+                Salen primero en tu menú &bull; {featuredProducts.length} de 5
               </p>
             </div>
           </div>
         </div>
 
         {featuredProducts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 text-center">
+          <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
             <FaStar className="text-2xl text-slate-300 mb-2" />
             <p className="text-sm text-slate-500 font-medium">{isService ? 'Sin servicios destacados' : 'Sin productos destacados'}</p>
-            <p className="text-xs text-slate-400 mt-1">{isService ? 'Marca hasta 5 servicios como destacados desde Gestión de Servicios' : 'Marca hasta 5 productos como destacados desde Gestión de Productos'}</p>
+            <p className="text-xs text-slate-500 mt-1">
+              En {isService ? 'Servicios' : 'Productos'}, toca la estrella <FaStar className="inline text-amber-500 -mt-0.5" /> de hasta 5 para destacarlos.
+            </p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-50">
+          <div className="divide-y divide-slate-100">
             {featuredProducts.map((product, index) => (
               <div
                 key={product._id}
@@ -69,15 +84,15 @@ export default function FeaturedProductsManager({
                 onDragStart={(e) => handleFeaturedDragStart(e, index)}
                 onDragOver={(e) => handleFeaturedDragOver(e, index, featuredProducts)}
                 onDragEnd={handleFeaturedDragEnd}
-                className={`flex items-center gap-3 px-4 py-2.5 transition-all cursor-grab active:cursor-grabbing active:scale-[0.98] lg:active:scale-100 ${
+                className={`flex items-center gap-3 px-4 py-2.5 transition-all lg:cursor-grab lg:active:cursor-grabbing ${
                   draggedFeaturedItem === index
                     ? 'bg-amber-50 opacity-50'
                     : 'hover:bg-slate-50'
                 }`}
               >
-                <FaGripVertical className="text-slate-300 hover:text-slate-500 text-xs flex-shrink-0 transition-colors" />
+                <FaGripVertical className="hidden lg:block text-slate-300 hover:text-slate-500 text-xs flex-shrink-0 transition-colors" />
 
-                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-2xs font-bold flex-shrink-0 ${
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                   index === 0 ? 'bg-amber-100 text-amber-700' :
                   index === 1 ? 'bg-slate-200 text-slate-600' :
                   index === 2 ? 'bg-orange-100 text-orange-600' :
@@ -87,21 +102,32 @@ export default function FeaturedProductsManager({
                 </span>
 
                 {product.image && (
-                  <img src={product.image} alt={product.name} className="w-9 h-9 object-cover rounded-lg flex-shrink-0" />
+                  <img src={product.image} alt="" className="w-10 h-10 object-cover rounded-lg flex-shrink-0" />
                 )}
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-800 truncate">{product.name}</p>
-                  <p className="text-xs text-slate-500">${product.price.toLocaleString()}</p>
+                  <p className="text-sm font-medium text-slate-800 break-words">{product.name}</p>
+                  <p className="text-xs text-slate-500">{pesos(product.price)}</p>
                 </div>
 
-                <button
-                  onClick={() => handleToggleFeatured(product._id)}
-                  className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
-                  title="Quitar de destacados"
-                >
-                  <FaTimes className="text-xs" />
-                </button>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button type="button" onClick={() => mover(index, -1)} disabled={index === 0} aria-label="Subir"
+                    className="w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-30 flex items-center justify-center">
+                    <FaArrowUp className="text-xs" />
+                  </button>
+                  <button type="button" onClick={() => mover(index, 1)} disabled={index === featuredProducts.length - 1} aria-label="Bajar"
+                    className="w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-30 flex items-center justify-center">
+                    <FaArrowDown className="text-xs" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleFeatured(product._id)}
+                    className="h-9 px-2.5 rounded-lg text-xs font-semibold text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+                    title="Quitar de destacados"
+                  >
+                    Quitar
+                  </button>
+                </div>
               </div>
             ))}
           </div>

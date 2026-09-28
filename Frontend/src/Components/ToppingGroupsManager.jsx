@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaCheese, FaPlus, FaTrash, FaTag, FaAlignLeft, FaDollarSign, FaCog, FaListUl, FaExclamationTriangle, FaCheck, FaTimes, FaEdit, FaBoxOpen, FaSyncAlt, FaEye, FaEyeSlash, FaLayerGroup, FaImage } from 'react-icons/fa';
 import ImageUploader from './Admin/ImageUploader';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
+import { pesos } from '../utils/pedidos';
 
 function ToppingGroupsManager() {
   const [toppingGroups, setToppingGroups] = useState([]);
@@ -26,6 +27,17 @@ function ToppingGroupsManager() {
   // Qué opción tiene abierto el editor de foto: {kind:'opt', index} | {kind:'sub', si, oi}
   const [imageEditor, setImageEditor] = useState(null);
   const { businessId } = useBusinessConfig();
+  const [aviso, setAviso] = useState('');
+  const [guardando, setGuardando] = useState(false);
+  const guardandoRef = useRef(false); // inmediato: el doble toque no alcanza a ver el estado
+  const formularioRef = useRef(null);
+  /* El formulario va plegado: lo de todos los días es agotar una opción o
+     editar un grupo, y antes había que pasar por encima de un formulario de
+     pantalla entera para llegar a la lista. */
+  const [formAbierto, setFormAbierto] = useState(false);
+  // Cuántos productos usan cada grupo: se dice antes de borrarlo.
+  const [usoPorGrupo, setUsoPorGrupo] = useState({});
+  const avisar = (texto) => { setAviso(texto); setTimeout(() => setAviso(''), 3000); };
 
   useEffect(() => {
     // Solo los oyentes de este efecto: socket.off('evento') sin la función
@@ -60,13 +72,16 @@ function ToppingGroupsManager() {
         subGroups: group.subGroups || []
       }));
       
-      console.log('Grupos procesados en frontend:', groupsWithSubGroups.map(g => ({
-        name: g.name,
-        basePrice: g.basePrice,
-        tipo: typeof g.basePrice
-      })));
-      
       setToppingGroups(groupsWithSubGroups);
+      api.get(`/products?businessId=${businessId}&panel=1`).then(({ data }) => {
+        const lista = Array.isArray(data) ? data : (data?.products || []);
+        const uso = {};
+        lista.forEach((p) => (p.toppingGroups || []).forEach((g) => {
+          const id = String(g?._id || g);
+          uso[id] = (uso[id] || 0) + 1;
+        }));
+        setUsoPorGrupo(uso);
+      }).catch(() => {});
       setError(null);
     } catch (err) {
       setError('Error al cargar los grupos de toppings');
@@ -78,6 +93,9 @@ function ToppingGroupsManager() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (guardandoRef.current) return;
+    guardandoRef.current = true;
+    setGuardando(true);
     try {
       const groupToSend = {
         ...currentGroup,
@@ -91,6 +109,7 @@ function ToppingGroupsManager() {
         await api.post('/topping-groups', groupToSend);
       }
       fetchToppingGroups();
+      avisar(isEditing ? 'Grupo actualizado' : 'Grupo creado');
       resetForm();
       setError(null); // Limpiar errores previos
     } catch (error) {
@@ -110,6 +129,9 @@ function ToppingGroupsManager() {
       } else {
         setError('Error al guardar el grupo de toppings. Inténtalo de nuevo.');
       }
+    } finally {
+      guardandoRef.current = false;
+      setGuardando(false);
     }
   };
 
@@ -195,6 +217,7 @@ function ToppingGroupsManager() {
   };
 
   const resetForm = () => {
+    setFormAbierto(false);
     setCurrentGroup({
       name: '',
       description: '',
@@ -211,12 +234,15 @@ function ToppingGroupsManager() {
   };
 
   const handleEdit = (group) => {
-    const groupWithSubGroups = {
-      ...group,
-      subGroups: group.subGroups || []
-    };
-    setCurrentGroup(groupWithSubGroups);
+    /* Copia de verdad: los cambios en opciones y subgrupos se hacían sobre
+       el mismo objeto de la lista, y al cancelar la lista quedaba mostrando
+       cambios que nunca se guardaron. */
+    const copia = JSON.parse(JSON.stringify({ ...group, subGroups: group.subGroups || [] }));
+    setCurrentGroup(copia);
     setIsEditing(true);
+    setFormAbierto(true);
+    // El formulario está arriba: se lleva la vista hasta él.
+    setTimeout(() => formularioRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   };
 
   const handleToggleOption = async (groupId, optionId) => {
@@ -231,12 +257,20 @@ function ToppingGroupsManager() {
   };
 
   const handleDelete = async (groupId) => {
-      try {
+    // Antes se borraba con un toque, sin preguntar, y se quitaba de todos los productos.
+    const grupo = toppingGroups.find((g) => g._id === groupId);
+    const n = usoPorGrupo[String(groupId)] || 0;
+    const pregunta = n
+      ? `"${grupo?.name}" está en ${n} ${n === 1 ? 'producto' : 'productos'}. Si lo borras, esos productos dejarán de ofrecerlo. ¿Borrarlo?`
+      : `¿Borrar "${grupo?.name}"?`;
+    if (!window.confirm(pregunta)) return;
+    try {
       await api.delete(`/topping-groups/${groupId}`);
       await fetchToppingGroups();
-      } catch (error) {
+      avisar('Grupo borrado');
+    } catch (error) {
       console.error('Error al eliminar grupo:', error);
-      setError('Error al eliminar el grupo de toppings');
+      setError(error.response?.data?.message || 'No se pudo eliminar el grupo');
     }
   };
 
@@ -292,16 +326,37 @@ function ToppingGroupsManager() {
             <FaExclamationTriangle className="text-2xs flex-shrink-0" /> {error}
           </motion.div>
         )}
+        {aviso && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-3 py-2 bg-emerald-50 text-emerald-700 text-xs font-medium flex items-center gap-2 rounded-lg border border-emerald-100"
+          >
+            <FaCheck className="text-2xs flex-shrink-0" /> {aviso}
+          </motion.div>
+        )}
       </AnimatePresence>
 
-      {loading ? (
+      {/* El "Cargando" solo la primera vez: antes cada recarga (agotar una
+          opción, guardar) reemplazaba toda la pantalla y saltaba arriba. */}
+      {loading && toppingGroups.length === 0 ? (
         <div className="flex items-center justify-center py-10 text-sm text-slate-400">
           <FaSyncAlt className="animate-spin mr-2 text-xs" /> Cargando extras...
         </div>
       ) : (
         <>
           {/* Create / Edit Form */}
-          <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
+          {!formAbierto && toppingGroups.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => { resetForm(); setFormAbierto(true); }}
+              className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold flex items-center justify-center gap-2"
+            >
+              <FaPlus className="text-xs" /> Nuevo grupo de extras
+            </button>
+          ) : (
+          <div ref={formularioRef} className="scroll-mt-4 bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
               {isEditing ? <FaEdit className="text-amber-500 text-sm" /> : <FaPlus className="text-blue-500 text-sm" />}
               <div>
@@ -738,7 +793,7 @@ function ToppingGroupsManager() {
 
               {/* Actions */}
               <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
-                {isEditing && (
+                {(isEditing || toppingGroups.length > 0) && (
                   <button
                     type="button"
                     onClick={resetForm}
@@ -749,14 +804,16 @@ function ToppingGroupsManager() {
                 )}
                 <button
                   type="submit"
-                  className="flex-1 bg-red-500 lg:bg-blue-500 text-white py-2.5 lg:py-2 rounded-xl lg:rounded-lg hover:opacity-90 transition-colors text-[13px] lg:text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-[0.97] lg:active:scale-100"
+                  disabled={guardando}
+                  className="flex-1 bg-red-500 lg:bg-blue-500 disabled:opacity-60 text-white py-2.5 rounded-xl lg:rounded-lg hover:opacity-90 transition-colors text-[13px] font-semibold flex items-center justify-center gap-1.5 active:scale-[0.97] lg:active:scale-100"
                 >
                   {isEditing ? <FaEdit className="text-2xs" /> : <FaPlus className="text-2xs" />}
-                  {isEditing ? 'Actualizar Grupo' : 'Crear Grupo'}
+                  {guardando ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Crear grupo'}
                 </button>
               </div>
             </form>
           </div>
+          )}
 
           {/* Existing Groups List */}
           <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
@@ -785,26 +842,27 @@ function ToppingGroupsManager() {
                           <FaCheese className="text-amber-500 text-xs" />
                         </div>
                         <div className="min-w-0">
-                          <h4 className="text-xs font-semibold text-slate-800 truncate">{group.name}</h4>
-                          {group.basePrice > 0 && (
-                            <span className="text-[11px] text-emerald-600 font-medium">
-                              ${group.basePrice.toLocaleString(undefined, { minimumFractionDigits: 0 })}
-                            </span>
-                          )}
+                          <h4 className="text-sm font-semibold text-slate-800 break-words">{group.name}</h4>
+                          <p className="text-[11px] text-slate-500">
+                            {group.basePrice > 0 && <span className="text-emerald-600 font-medium">+{pesos(group.basePrice)} · </span>}
+                            {usoPorGrupo[String(group._id)]
+                              ? `En ${usoPorGrupo[String(group._id)]} ${usoPorGrupo[String(group._id)] === 1 ? 'producto' : 'productos'}`
+                              : 'Sin productos'}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <button
                           onClick={() => handleEdit(group)}
-                          className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Editar"
+                          className="w-9 h-9 flex items-center justify-center text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Editar" aria-label="Editar"
                         >
                           <FaEdit className="text-xs" />
                         </button>
                         <button
                           onClick={() => handleDelete(group._id)}
-                          className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Eliminar"
+                          className="w-9 h-9 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Eliminar" aria-label="Eliminar"
                         >
                           <FaTrash className="text-xs" />
                         </button>
@@ -835,11 +893,11 @@ function ToppingGroupsManager() {
                         <p className="text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Opciones</p>
                         <div className="space-y-0.5">
                           {group.options.map((option, idx) => (
-                            <div key={idx} className={`flex items-center justify-between py-1 px-2 rounded text-xs ${
+                            <div key={idx} className={`flex items-center justify-between gap-2 py-1.5 px-2 rounded text-xs ${
                               option.active !== false ? 'bg-slate-50' : 'bg-red-50/50 opacity-60'
                             }`}>
                               <div className="flex items-center gap-1.5 min-w-0">
-                                <span className={`${option.active !== false ? 'text-slate-700' : 'text-red-500 line-through'} truncate`}>
+                                <span className={`${option.active !== false ? 'text-slate-700' : 'text-red-500 line-through'} break-words`}>
                                   {option.name}
                                 </span>
                                 {option.active === false && (
@@ -848,18 +906,18 @@ function ToppingGroupsManager() {
                               </div>
                               <div className="flex items-center gap-1.5 flex-shrink-0">
                                 <span className={`font-semibold ${option.active !== false ? 'text-emerald-600' : 'text-red-400'}`}>
-                                  ${option.price.toFixed(0)}
+                                  {option.price > 0 ? `+${pesos(option.price)}` : 'Gratis'}
                                 </span>
                                 <button
                                   onClick={() => handleToggleOption(group._id, option._id)}
-                                  className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${
+                                  className={`h-8 px-2.5 rounded-lg border text-[11px] font-semibold inline-flex items-center gap-1 transition-colors ${
                                     option.active !== false
-                                      ? 'text-emerald-500 hover:bg-emerald-50'
-                                      : 'text-red-400 hover:bg-red-50'
+                                      ? 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                                      : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                                   }`}
-                                  title={option.active !== false ? 'Desactivar' : 'Activar'}
+                                  title={option.active !== false ? 'Marcar como agotado' : 'Volver a ofrecer'}
                                 >
-                                  {option.active !== false ? <FaEye className="text-2xs" /> : <FaEyeSlash className="text-2xs" />}
+                                  {option.active !== false ? <><FaEyeSlash className="text-2xs" /> Agotar</> : <><FaEye className="text-2xs" /> Activar</>}
                                 </button>
                               </div>
                             </div>
@@ -900,7 +958,7 @@ function ToppingGroupsManager() {
                                     }`}>
                                       <div className="flex items-center gap-1 min-w-0">
                                         <span className="text-slate-300">•</span>
-                                        <span className={`${option.active !== false ? 'text-slate-600' : 'text-red-500 line-through'} truncate`}>
+                                        <span className={`${option.active !== false ? 'text-slate-600' : 'text-red-500 line-through'} break-words`}>
                                           {option.name}
                                         </span>
                                         {option.active === false && (
@@ -909,18 +967,18 @@ function ToppingGroupsManager() {
                                       </div>
                                       <div className="flex items-center gap-1 flex-shrink-0">
                                         <span className={`font-semibold ${option.active !== false ? 'text-emerald-600' : 'text-red-400'}`}>
-                                          ${option.price.toFixed(0)}
+                                          {option.price > 0 ? `+${pesos(option.price)}` : 'Gratis'}
                                         </span>
                                         <button
                                           onClick={() => handleToggleOption(group._id, option._id)}
-                                          className={`w-4 h-4 rounded flex items-center justify-center transition-colors ${
+                                          className={`h-8 px-2.5 rounded-lg border text-[11px] font-semibold inline-flex items-center gap-1 transition-colors ${
                                             option.active !== false
-                                              ? 'text-emerald-500 hover:bg-emerald-50'
-                                              : 'text-red-400 hover:bg-red-50'
+                                              ? 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                                              : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                                           }`}
-                                          title={option.active !== false ? 'Desactivar' : 'Activar'}
+                                          title={option.active !== false ? 'Marcar como agotado' : 'Volver a ofrecer'}
                                         >
-                                          {option.active !== false ? <FaEye className="text-2xs" /> : <FaEyeSlash className="text-2xs" />}
+                                          {option.active !== false ? <><FaEyeSlash className="text-2xs" /> Agotar</> : <><FaEye className="text-2xs" /> Activar</>}
                                         </button>
                                       </div>
                                     </div>

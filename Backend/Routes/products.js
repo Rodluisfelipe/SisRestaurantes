@@ -380,6 +380,9 @@ router.put("/popular/config", tenantAuth, async (req, res) => {
     ).select('popularSection').lean();
 
     invalidatePopularCache(businessId);
+    /* El panel guarda la configuración del negocio en memoria: sin este aviso,
+       al salir y volver a la pantalla se veía la configuración anterior. */
+    emitToBusiness(String(businessId), 'business_config_update', { popularSection: updated?.popularSection || next });
     logger.info(`Updated popular section config for business ${businessId}`, null, req);
     res.json(updated?.popularSection || next);
   } catch (error) {
@@ -415,10 +418,17 @@ router.get("/inventory", tenantAuth, async (req, res) => {
       .populate('category', 'name')
       .lean();
 
+    /* Con presentaciones (tallas, fragancias) lo que hay es la suma de todas;
+       el contador del producto se queda en cero. Antes el resumen y el orden
+       usaban solo ese contador y mostraban agotada una tienda con existencias. */
+    const unidades = (p) => (Array.isArray(p.variantes) && p.variantes.length
+      ? p.variantes.reduce((t, v) => t + (Number(v.stock) || 0), 0)
+      : (p.stock ?? 0));
+
     const conControl = productos.filter(p => p.trackStock);
-    const agotados = conControl.filter(p => (p.stock ?? 0) <= 0);
+    const agotados = conControl.filter(p => unidades(p) <= 0);
     const bajos = conControl.filter(p => {
-      const s = p.stock ?? 0;
+      const s = unidades(p);
       return s > 0 && s <= (p.lowStockAlert || 5);
     });
 
@@ -426,7 +436,7 @@ router.get("/inventory", tenantAuth, async (req, res) => {
        después el resto. Es el orden en que hay que actuar. */
     const peso = (p) => {
       if (!p.trackStock) return 3;
-      const s = p.stock ?? 0;
+      const s = unidades(p);
       if (s <= 0) return 0;
       if (s <= (p.lowStockAlert || 5)) return 1;
       return 2;
@@ -445,9 +455,13 @@ router.get("/inventory", tenantAuth, async (req, res) => {
         /* Valor a COSTO cuando el producto lo tiene. Antes se calculaba con
            el precio al publico, que no es lo que el negocio tiene invertido:
            mostraba una cifra que parecia una valoracion y no lo era. */
-        valorInventario: conControl.reduce((s, p) => s + ((p.cost ?? p.price) || 0) * Math.max(0, p.stock ?? 0), 0),
+        valorInventario: conControl.reduce((s, p) => s + ((p.cost ?? p.price) || 0) * Math.max(0, unidades(p)), 0),
         conCosto: conControl.filter(p => p.cost != null).length,
       },
+      /* El nivel sale de aquí y no de la configuración que el panel cargó al
+         entrar: esa no se entera del cambio, y al volver a la pantalla
+         mostraba el nivel viejo. */
+      modo: (await BusinessConfig.findById(businessId).select('inventory.mode').lean())?.inventory?.mode || 'off',
     });
   } catch (error) {
     logger.error('Error obteniendo inventario', error, req);
@@ -501,7 +515,10 @@ router.get("/inventory/movements", tenantAuth, async (req, res) => {
 
     const StockMovement = require('../Models/StockMovement');
     const filtro = { businessId };
-    if (req.query.productId) filtro.productId = req.query.productId;
+    if (req.query.productId) {
+      if (!mongoose.isValidObjectId(String(req.query.productId))) return res.status(400).json({ message: 'Producto inválido' });
+      filtro.productId = String(req.query.productId);
+    }
 
     const limit = Math.min(parseInt(req.query.limit) || 50, 200);
     const movimientos = await StockMovement.find(filtro)
@@ -586,7 +603,7 @@ router.patch("/:id/stock", tenantAuth, async (req, res) => {
       });
     }
 
-    const stockAntes = producto.stock;
+    let stockAntes = producto.stock;
 
     if (trackStock !== undefined) {
       producto.trackStock = !!trackStock;
@@ -595,10 +612,10 @@ router.patch("/:id/stock", tenantAuth, async (req, res) => {
       if (producto.trackStock && producto.stock == null) producto.stock = 0;
     }
 
+    let d;
     if (delta !== undefined) {
-      const d = parseInt(delta, 10);
+      d = parseInt(delta, 10);
       if (!Number.isInteger(d)) return res.status(400).json({ message: 'delta debe ser un entero' });
-      producto.stock = Math.max(0, (producto.stock ?? 0) + d);
     } else if (stock !== undefined) {
       if (stock === null) {
         producto.stock = null;   // ilimitado
@@ -623,6 +640,20 @@ router.patch("/:id/stock", tenantAuth, async (req, res) => {
       const a = parseInt(lowStockAlert, 10);
       if (!Number.isInteger(a) || a < 0) return res.status(400).json({ message: 'El aviso debe ser un entero de 0 o más' });
       producto.lowStockAlert = a;
+    }
+
+    /* El +/− se suma en la base de datos en una sola operación, igual que las
+       ventas. Antes se leía, se sumaba aquí y se guardaba el resultado: una
+       venta que entrara en medio se perdía del conteo. */
+    if (d !== undefined) {
+      const previo = await Product.findOneAndUpdate(
+        { _id: producto._id },
+        [{ $set: { stock: { $max: [0, { $add: [{ $ifNull: ['$stock', 0] }, d] }] } } }],
+        { new: false }
+      ).select('stock').lean();
+      if (previo) stockAntes = previo.stock;
+      producto.stock = Math.max(0, (stockAntes ?? 0) + d);
+      producto.unmarkModified('stock');   // ya quedó escrito; save no debe pisarlo
     }
 
     await producto.save();

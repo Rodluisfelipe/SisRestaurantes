@@ -84,9 +84,11 @@ router.put('/program', tenantAuth, validateUpdateProgram, async (req, res) => {
 
     const planGate = await getPlanGateInfo(businessId);
 
+    /* Solo se bloquea si se quieren ENCENDER los niveles. Antes bastaba con que
+       vinieran niveles en la lista (quedan ahí al prender y apagar el
+       interruptor) para que un plan sin niveles no pudiera guardar nada. */
     const requestedTiersEnabled = tiersEnabled === true || tiersEnabled === 'true';
-    const hasTierPayload = Array.isArray(tiers) && tiers.length > 0;
-    if (requestedTiersEnabled || hasTierPayload) {
+    if (requestedTiersEnabled) {
       if (!planGate.hasLoyaltyTiers) {
         return res.status(403).json({
           message: 'Tu plan actual no incluye niveles de lealtad (tiers).',
@@ -117,7 +119,7 @@ router.put('/program', tenantAuth, validateUpdateProgram, async (req, res) => {
       tiersEnabled: !!tiersEnabled
     };
 
-    if (Array.isArray(tiers)) {
+    if (Array.isArray(tiers) && (planGate.hasLoyaltyTiers || tiers.length === 0)) {
       update.tiers = tiers.map(t => ({
         name: String(t.name || '').slice(0, 50),
         minPoints: Math.max(0, Number(t.minPoints) || 0),
@@ -138,7 +140,11 @@ router.put('/program', tenantAuth, validateUpdateProgram, async (req, res) => {
           maxDiscount: Math.max(0, Number(r.maxDiscount) || 0),
           pointsCost: Math.max(1, Number(r.pointsCost) || 1),
           isActive: r.isActive !== false,
-          timesRedeemed: r.timesRedeemed || 0
+          timesRedeemed: r.timesRedeemed || 0,
+          // "Aplica para" (mesa, llevar, domicilio): antes no se guardaba y el premio valía para todo
+          applicableOrderModes: Array.isArray(r.applicableOrderModes)
+            ? [...new Set(r.applicableOrderModes.filter(m => ['inSite', 'takeaway', 'delivery'].includes(m)))]
+            : []
         };
         // Only include _id if it's a valid ObjectId (not temp_*)
         if (r._id && !String(r._id).startsWith('temp_')) {
@@ -206,7 +212,8 @@ router.get('/top-customers', tenantAuth, async (req, res) => {
 
     let query = { businessId };
     if (search) {
-      query.phone = { $regex: search, $options: 'i' };
+      // Escapado: un "(" o "+" en la búsqueda rompía la consulta
+      query.phone = { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
     }
 
     const [customers, total] = await Promise.all([

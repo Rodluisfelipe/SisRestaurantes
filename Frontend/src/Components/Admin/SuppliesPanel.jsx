@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../../services/api';
+import { pesos } from '../../utils/pedidos';
 
 /**
  * Insumos — lo que el negocio compra, no lo que vende.
@@ -9,7 +10,6 @@ import api from '../../services/api';
  * los platos que los consumen.
  */
 
-const money = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-CO');
 
 // Cantidades con decimales: 0,5 kg es una compra normal; 3 unidades no lleva coma
 const cant = (n) => {
@@ -41,6 +41,11 @@ export default function SuppliesPanel({ businessId, themeColor, onCambio }) {
   const [nuevo, setNuevo] = useState(null);          // formulario de alta
   const [editando, setEditando] = useState(null);    // id con cantidad exacta abierta
   const [valorExacto, setValorExacto] = useState('');
+  const [aviso, setAviso] = useState('');
+  const mostrarAviso = (err, porDefecto) => {
+    setAviso(err?.response?.data?.message || (err?.response ? porDefecto : 'Sin conexión. Revisa el internet.'));
+    setTimeout(() => setAviso(''), 6000);
+  };
 
   const cargar = useCallback(async () => {
     if (!businessId) return;
@@ -66,7 +71,7 @@ export default function SuppliesPanel({ businessId, themeColor, onCambio }) {
       setDatos((d) => d && ({ ...d, insumos: d.insumos.map((s) => (s._id === insumo._id ? res.data : s)) }));
       onCambio?.();
     } catch (err) {
-      alert(err.response?.data?.message || 'No se pudo ajustar el insumo');
+      mostrarAviso(err, 'No se pudo ajustar el insumo');
     } finally {
       setOcupado(null);
       setEditando(null);
@@ -74,7 +79,7 @@ export default function SuppliesPanel({ businessId, themeColor, onCambio }) {
   }, [businessId, ocupado, onCambio]);
 
   const crear = async () => {
-    if (!nuevo?.name?.trim()) return;
+    if (!nuevo?.name?.trim() || ocupado) return;   // sin duplicados por doble toque
     setOcupado('nuevo');
     try {
       await api.post('/supplies', { businessId, ...nuevo });
@@ -82,7 +87,7 @@ export default function SuppliesPanel({ businessId, themeColor, onCambio }) {
       await cargar();
       onCambio?.();
     } catch (err) {
-      alert(err.response?.data?.message || 'No se pudo crear el insumo');
+      mostrarAviso(err, 'No se pudo crear el insumo');
     } finally {
       setOcupado(null);
     }
@@ -97,7 +102,7 @@ export default function SuppliesPanel({ businessId, themeColor, onCambio }) {
       onCambio?.();
     } catch (err) {
       // El servidor bloquea si alguna receta lo usa, y explica cuántas
-      alert(err.response?.data?.message || 'No se pudo eliminar');
+      mostrarAviso(err, 'No se pudo eliminar');
     } finally {
       setOcupado(null);
     }
@@ -114,6 +119,9 @@ export default function SuppliesPanel({ businessId, themeColor, onCambio }) {
 
   return (
     <div className="space-y-3">
+      {aviso && (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">{aviso}</div>
+      )}
       {/* Resumen */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-white rounded-2xl border border-slate-200 p-3">
@@ -126,7 +134,7 @@ export default function SuppliesPanel({ businessId, themeColor, onCambio }) {
         </div>
         <div className="bg-white rounded-2xl border border-slate-200 p-3">
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Valor</p>
-          <p className="text-xl font-black text-emerald-600 tabular-nums">{r ? money(r.valorInventario) : '—'}</p>
+          <p className="text-xl font-black text-emerald-600 tabular-nums">{r ? pesos(r.valorInventario) : '—'}</p>
         </div>
       </div>
 
@@ -228,11 +236,11 @@ export default function SuppliesPanel({ businessId, themeColor, onCambio }) {
             return (
               <div key={s._id} className="flex items-center gap-3 p-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-bold text-slate-800 truncate">{s.name}</p>
+                  <p className="text-[13px] font-bold text-slate-800 break-words">{s.name}</p>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     <span className={`text-2xs font-bold px-1.5 py-0.5 rounded-md border ${COLOR[e]}`}>{ETIQUETA[e]}</span>
                     <span className="text-[11px] text-slate-400">
-                      {s.cost != null ? `${money(s.cost)} / ${unidades[s.unit] || s.unit}` : 'sin costo'}
+                      {s.cost != null ? `${pesos(s.cost)} / ${unidades[s.unit] || s.unit}` : 'sin costo'}
                     </span>
                     {s.supplier && <span className="text-[11px] text-slate-400">· {s.supplier}</span>}
                   </div>

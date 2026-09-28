@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Joyride, { STATUS } from 'react-joyride';
 import confetti from 'canvas-confetti';
@@ -14,6 +14,14 @@ import { useBusinessConfig } from '../Context/BusinessContext';
 import AI from './Admin/AdminIcons';
 import { enlaceWhatsApp } from '../utils/whatsapp';
 import { Capa } from './ui';
+import { pesos } from '../utils/pedidos';
+
+/* Campos numéricos: se guarda lo que se escribe (texto). Antes cada tecla
+   pasaba por Number(...) || 1: al borrar quedaba 1 y escribir 5000 daba 15000.
+   Para plata se muestran los puntos de miles y se guardan solo los dígitos
+   (en un campo numérico "10.000" se leía como 10). */
+const soloDigitos = (v) => String(v ?? '').replace(/\D/g, '');
+const conMiles = (v) => (v === '' || v === null || v === undefined ? '' : pesos(v).replace('$', ''));
 
 /* ═══════════════════════════════════════════ */
 /*              CONSTANTS                      */
@@ -282,6 +290,11 @@ const LoyaltyManager = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [errorGuardar, setErrorGuardar] = useState('');
+  // Lo último que quedó guardado: para saber si hay cambios sin guardar
+  const guardadoRef = useRef('');
+  const guardandoRef = useRef(false);
+  const busquedaRef = useRef(0);
   const [stats, setStats] = useState(null);
   const [topCustomers, setTopCustomers] = useState([]);
   const [activeTab, setActiveTab] = useState('rules');
@@ -335,6 +348,7 @@ const LoyaltyManager = () => {
       setLoading(true);
       const { data } = await api.get(`/loyalty/program?businessId=${bizId}`);
       setProgram(data);
+      guardadoRef.current = JSON.stringify(data);
     } catch (err) {
       console.error('Error loading loyalty program:', err);
     } finally {
@@ -362,10 +376,12 @@ const LoyaltyManager = () => {
     if (!bizId) return;
     try {
       setCustomersLoading(true);
+      const este = ++busquedaRef.current;
       const skip = reset ? 0 : allCustomers.length;
       const params = new URLSearchParams({ businessId: bizId, limit: '50', skip: String(skip) });
       if (search) params.set('search', search);
       const { data } = await api.get(`/loyalty/top-customers?${params}`);
+      if (este !== busquedaRef.current) return;
       const list = data.customers || (Array.isArray(data) ? data : []);
       setAllCustomers(prev => reset ? list : [...prev, ...list]);
       setCustomersTotal(data.total || list.length);
@@ -400,27 +416,42 @@ const LoyaltyManager = () => {
 
   /* ═══ ACTIONS ═══ */
 
-  const handleSave = async () => {
+  const guardar = async (prog = program) => {
+    if (guardandoRef.current) return false;   // un guardado a la vez
+    guardandoRef.current = true;
+    setErrorGuardar('');
     try {
       setSaving(true);
-      const { data } = await api.put('/loyalty/program', { ...program, businessId: bizId });
+      const { data } = await api.put('/loyalty/program', { ...prog, businessId: bizId });
       setProgram(data);
+      guardadoRef.current = JSON.stringify(data);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
       if (data.isActive && data.rewards.length > 0) {
         confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
       }
+      return true;
     } catch (err) {
       console.error('Error saving loyalty program:', err);
-      alert('Error al guardar. Intenta de nuevo.');
+      setErrorGuardar(err.response?.data?.message || (err.response ? 'No se pudo guardar. Intenta de nuevo.' : 'Sin conexión. Revisa el internet.'));
+      return false;
     } finally {
+      guardandoRef.current = false;
       setSaving(false);
     }
   };
+  const handleSave = () => guardar();
 
-  const handleToggleActive = () => {
-    setProgram(p => ({ ...p, isActive: !p.isActive }));
+  /* Activar o apagar el programa se guarda al instante: el botón parecía un
+     interruptor pero no hacía nada hasta tocar "Guardar". */
+  const handleToggleActive = async () => {
+    const antes = program.isActive;
+    const nuevo = { ...program, isActive: !antes };
+    setProgram(nuevo);
+    if (!(await guardar(nuevo))) setProgram(p => ({ ...p, isActive: antes }));
   };
+
+  const hayCambios = !loading && guardadoRef.current !== '' && JSON.stringify(program) !== guardadoRef.current;
 
   const handleToggleTiers = () => {
     setProgram(p => ({
@@ -478,25 +509,27 @@ const LoyaltyManager = () => {
     setShowTemplates(false);
   };
 
-  const saveReward = () => {
-    if (!rewardForm.name.trim() || !rewardForm.pointsCost) return;
+  /* El premio se guarda al tocar "Crear premio": antes solo quedaba en
+     pantalla y, si no se tocaba "Guardar" arriba, se perdía al salir. */
+  const saveReward = async () => {
+    if (!rewardForm.name.trim() || !Number(rewardForm.pointsCost)) return;
     const newReward = { ...rewardForm };
+    let siguiente;
     if (editingReward) {
       newReward._id = editingReward._id;
       newReward.timesRedeemed = editingReward.timesRedeemed || 0;
-      setProgram(p => ({
-        ...p,
-        rewards: p.rewards.map(r => (r._id === editingReward._id ? newReward : r))
-      }));
+      siguiente = { ...program, rewards: program.rewards.map(r => (r._id === editingReward._id ? newReward : r)) };
     } else {
       newReward._id = `temp_${Date.now()}`;
-      setProgram(p => ({ ...p, rewards: [...p.rewards, newReward] }));
+      siguiente = { ...program, rewards: [...program.rewards, newReward] };
     }
-    setShowRewardModal(false);
+    if (await guardar(siguiente)) setShowRewardModal(false);
   };
 
-  const deleteReward = (id) => {
-    setProgram(p => ({ ...p, rewards: p.rewards.filter(r => r._id !== id) }));
+  const deleteReward = async (id) => {
+    const premio = program.rewards.find(r => r._id === id);
+    if (!window.confirm(`¿Borrar el premio "${premio?.name || ''}"?`)) return;
+    await guardar({ ...program, rewards: program.rewards.filter(r => r._id !== id) });
   };
 
   /* ── Tier CRUD ── */
@@ -627,6 +660,22 @@ const LoyaltyManager = () => {
         </div>
       </div>
 
+      {errorGuardar && !showRewardModal && (
+        <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">{errorGuardar}</div>
+      )}
+
+      {/* Cambios de reglas o niveles sin guardar: antes no había aviso y al
+          salir de la pantalla se perdían. */}
+      {hayCambios && (
+        <div className="fixed left-1/2 -translate-x-1/2 bottom-24 lg:bottom-6 z-40 w-[calc(100%-32px)] max-w-md rounded-2xl border border-amber-300 bg-amber-50 shadow-lg px-4 py-3 flex items-center gap-3">
+          <span className="flex-1 text-sm font-semibold text-amber-900">Tienes cambios sin guardar</span>
+          <button onClick={handleSave} disabled={saving}
+            className="h-10 px-4 rounded-xl text-white text-sm font-bold disabled:opacity-50" style={{ backgroundColor: themeColor }}>
+            {saving ? 'Guardando...' : 'Guardar'}
+          </button>
+        </div>
+      )}
+
       {/* ═══ COMPLETION PROGRESS ═══ */}
       {completionPercent < 100 && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
@@ -698,7 +747,7 @@ const LoyaltyManager = () => {
                       type="number"
                       inputMode="numeric"
                       value={program.pointsPerAmount}
-                      onChange={e => setProgram(p => ({ ...p, pointsPerAmount: Number(e.target.value) || 1 }))}
+                      onChange={e => setProgram(p => ({ ...p, pointsPerAmount: soloDigitos(e.target.value) }))}
                       className="inline-block w-20 px-3 py-1.5 rounded-lg border-2 border-orange-200 bg-white text-center font-bold text-orange-600 text-lg focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none"
                       min="1"
                     />
@@ -706,11 +755,11 @@ const LoyaltyManager = () => {
                     <span>por cada</span>
                     <span className="text-slate-400">$</span>
                     <input
-                      type="number"
+                      type="text"
                       inputMode="numeric"
-                      value={program.amountPerPoints}
-                      onChange={e => setProgram(p => ({ ...p, amountPerPoints: Number(e.target.value) || 1 }))}
-                      className="inline-block w-28 px-3 py-1.5 rounded-lg border-2 border-orange-200 bg-white text-center font-bold text-orange-600 text-lg focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none"
+                      value={conMiles(program.amountPerPoints)}
+                      onChange={e => setProgram(p => ({ ...p, amountPerPoints: soloDigitos(e.target.value) }))}
+                      className="inline-block w-32 px-3 py-1.5 rounded-lg border-2 border-orange-200 bg-white text-center font-bold text-orange-600 text-lg focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none"
                       min="1"
                     />
                     <span>que gasten.</span>
@@ -719,7 +768,7 @@ const LoyaltyManager = () => {
                 <div className="mt-3 flex items-start gap-2 p-3 bg-blue-50/60 rounded-xl">
                   <FaInfoCircle className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
                   <p className="text-xs text-blue-600">
-                    <strong>Ejemplo:</strong> Si un cliente compra ${Number(program.amountPerPoints * 3).toLocaleString('es-CO')}, gana <strong>{program.pointsPerAmount * 3} puntos</strong> automáticamente.
+                    <strong>Ejemplo:</strong> Si un cliente compra {pesos(Number(program.amountPerPoints) * 3)}, gana <strong>{Number(program.pointsPerAmount) * 3} puntos</strong> automáticamente.
                   </p>
                 </div>
               </div>
@@ -738,7 +787,7 @@ const LoyaltyManager = () => {
                         type="number"
                         inputMode="numeric"
                         value={program.firstOrderBonus}
-                        onChange={e => setProgram(p => ({ ...p, firstOrderBonus: Number(e.target.value) || 0 }))}
+                        onChange={e => setProgram(p => ({ ...p, firstOrderBonus: soloDigitos(e.target.value) }))}
                         className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-emerald-200 text-[14px] lg:text-sm font-semibold text-center focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 outline-none"
                         min="0" placeholder="0 = sin bonus"
                       />
@@ -753,7 +802,7 @@ const LoyaltyManager = () => {
                         type="number"
                         inputMode="numeric"
                         value={program.pointsExpiryDays}
-                        onChange={e => setProgram(p => ({ ...p, pointsExpiryDays: Number(e.target.value) || 0 }))}
+                        onChange={e => setProgram(p => ({ ...p, pointsExpiryDays: soloDigitos(e.target.value) }))}
                         className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-slate-200 text-[14px] lg:text-sm font-semibold text-center focus:ring-2 focus:ring-slate-200 outline-none"
                         min="0" placeholder="0 = nunca"
                       />
@@ -806,30 +855,30 @@ const LoyaltyManager = () => {
                     : null;
                   return (
                     <motion.div key={reward._id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                      className={`bg-white rounded-2xl border p-4 flex items-center gap-4 transition-all ${
+                      className={`bg-white rounded-2xl border p-4 flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 transition-all ${
                         reward.isActive ? 'border-slate-200 hover:border-slate-300' : 'border-slate-100 opacity-60'
                       }`}
                     >
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${rt.bg}`}>
                         <span className="text-xl">{rt.emoji}</span>
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-[160px]">
                         <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-bold text-slate-800 truncate">{reward.name}</h4>
+                          <h4 className="text-sm font-bold text-slate-800 break-words">{reward.name}</h4>
                           {!reward.isActive && <span className="text-2xs px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded-full">Inactiva</span>}
                         </div>
                         <p className="text-xs text-slate-500 mt-0.5">
                           {reward.type === 'discount_percent' && `${reward.discountValue}% de descuento`}
-                          {reward.type === 'discount_fixed' && `$${Number(reward.discountValue).toLocaleString('es-CO')} de descuento`}
+                          {reward.type === 'discount_fixed' && `${pesos(reward.discountValue)} de descuento`}
                           {reward.type === 'free_product' && <span className="inline-flex items-center gap-1">{AI.utensils('w-3 h-3')} {reward.productName || 'Por definir'}</span>}
                           {reward.type === 'free_delivery' && <span className="inline-flex items-center gap-1">{AI.truck('w-3 h-3')} Envío gratuito</span>}
                         </p>
-                        <div className="flex items-center gap-3 mt-1">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
                           <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
                             {reward.pointsCost} pts
                           </span>
                           {moneyEquiv != null && (
-                            <span className="text-2xs text-slate-400">≈ ${moneyEquiv.toLocaleString('es-CO')} en compras</span>
+                            <span className="text-xs text-slate-500">≈ {pesos(moneyEquiv)} en compras</span>
                           )}
                           {reward.applicableOrderModes?.length > 0 && (
                             <span className="text-2xs text-slate-400 inline-flex items-center gap-0.5">
@@ -841,13 +890,13 @@ const LoyaltyManager = () => {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-2xs text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">{reward.timesRedeemed || 0} canjes</span>
-                        <button onClick={() => openRewardModal(reward)} className="p-2 rounded-lg hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors">
-                          <FaEdit className="w-3.5 h-3.5" />
+                      <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                        <span className="text-xs text-slate-500 bg-slate-50 px-2 py-1 rounded-lg">{reward.timesRedeemed || 0} canjes</span>
+                        <button onClick={() => openRewardModal(reward)} aria-label="Editar premio" className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-slate-50 text-slate-500 hover:text-slate-700 transition-colors">
+                          <FaEdit className="w-4 h-4" />
                         </button>
-                        <button onClick={() => deleteReward(reward._id)} className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors">
-                          <FaTrash className="w-3.5 h-3.5" />
+                        <button onClick={() => deleteReward(reward._id)} disabled={saving} aria-label="Borrar premio" className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600 transition-colors">
+                          <FaTrash className="w-4 h-4" />
                         </button>
                       </div>
                     </motion.div>
@@ -925,12 +974,12 @@ const LoyaltyManager = () => {
                       <div className="grid grid-cols-3 gap-3">
                         <div>
                           <label className="block text-2xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Puntos mínimos</label>
-                          <input type="number" inputMode="numeric" value={tier.minPoints} onChange={e => updateTier(idx, 'minPoints', Number(e.target.value) || 0)}
+                          <input type="number" inputMode="numeric" value={tier.minPoints} onChange={e => updateTier(idx, 'minPoints', soloDigitos(e.target.value))}
                             className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-slate-200 text-[14px] lg:text-sm font-semibold text-center focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none" min="0" />
                         </div>
                         <div>
                           <label className="block text-2xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Multiplicador</label>
-                          <input type="number" inputMode="decimal" value={tier.multiplier} onChange={e => updateTier(idx, 'multiplier', Number(e.target.value) || 1)}
+                          <input type="number" inputMode="decimal" value={tier.multiplier} onChange={e => updateTier(idx, 'multiplier', e.target.value)}
                             className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-slate-200 text-[14px] lg:text-sm font-semibold text-center focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none" min="1" step="0.5" />
                         </div>
                         <div>
@@ -993,7 +1042,7 @@ const LoyaltyManager = () => {
                               {i < 3 ? AI.medal('w-4 h-4', i === 0 ? 'gold' : i === 1 ? 'silver' : 'bronze') : i + 1}
                             </span>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-slate-700 truncate">{c.customerId?.name || c.phone}</p>
+                              <p className="text-sm font-semibold text-slate-700 break-words">{c.customerId?.name || c.phone}</p>
                               <p className="text-2xs text-slate-400">{c.phone} · {c.totalOrders} {isService ? 'citas' : 'pedidos'}</p>
                             </div>
                             <div className="text-right">
@@ -1052,14 +1101,14 @@ const LoyaltyManager = () => {
                             {i < 3 ? AI.medal('w-4 h-4', i === 0 ? 'gold' : i === 1 ? 'silver' : 'bronze') : i + 1}
                           </span>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-slate-700 truncate">{c.customerId?.name || c.phone}</p>
+                            <p className="text-sm font-semibold text-slate-700 break-words">{c.customerId?.name || c.phone}</p>
                             <p className="text-2xs text-slate-400">
                               {c.phone} &middot; {c.totalOrders} {isService ? 'citas' : 'pedidos'}
                               {c.currentTier && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-semibold">{c.currentTier}</span>}
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-base font-black text-slate-800">{c.points.toLocaleString('es-CO')}</p>
+                            <p className="text-base font-black text-slate-800">{Number(c.points || 0).toLocaleString('es-CO')}</p>
                             <p className="text-2xs text-slate-400">puntos</p>
                           </div>
                         </div>
@@ -1202,15 +1251,16 @@ const LoyaltyManager = () => {
                           <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                             Valor {rewardForm.type === 'discount_percent' ? '(%)' : '($)'}
                           </label>
-                          <input type="number" inputMode="numeric" value={rewardForm.discountValue}
-                            onChange={e => setRewardForm(f => ({ ...f, discountValue: Number(e.target.value) || 0 }))}
+                          <input type="text" inputMode="numeric"
+                            value={rewardForm.type === 'discount_fixed' ? conMiles(rewardForm.discountValue) : rewardForm.discountValue}
+                            onChange={e => setRewardForm(f => ({ ...f, discountValue: soloDigitos(e.target.value) }))}
                             className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-center focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none" min="0" />
                         </div>
                         {rewardForm.type === 'discount_percent' && (
                           <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1.5">Máx. descuento ($)</label>
-                            <input type="number" inputMode="numeric" value={rewardForm.maxDiscount}
-                              onChange={e => setRewardForm(f => ({ ...f, maxDiscount: Number(e.target.value) || 0 }))}
+                            <input type="text" inputMode="numeric" value={Number(rewardForm.maxDiscount) ? conMiles(rewardForm.maxDiscount) : ''}
+                              onChange={e => setRewardForm(f => ({ ...f, maxDiscount: soloDigitos(e.target.value) }))}
                               className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-center focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none" min="0" placeholder="0 = sin límite" />
                           </div>
                         )}
@@ -1225,7 +1275,7 @@ const LoyaltyManager = () => {
                             rewardForm.productName ? 'border-green-300 bg-green-50 text-green-700' : 'border-slate-200 text-slate-400 hover:border-slate-300'
                           }`}
                         >
-                          <span className="truncate">{rewardForm.productName || (isService ? 'Seleccionar servicio...' : 'Seleccionar producto...')}</span>
+                          <span className="break-words text-left">{rewardForm.productName || (isService ? 'Seleccionar servicio...' : 'Seleccionar producto...')}</span>
                           <FaChevronDown className={`w-3 h-3 shrink-0 transition-transform ${showProductDropdown ? 'rotate-180' : ''}`} />
                         </button>
                         {showProductDropdown && (
@@ -1247,8 +1297,8 @@ const LoyaltyManager = () => {
                                     rewardForm.productId === p._id ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-700'
                                   }`}
                                 >
-                                  <span className="truncate">{p.name}</span>
-                                  {p.price != null && <span className="text-[11px] text-slate-400 ml-2 shrink-0">${Number(p.price).toLocaleString('es-CO')}</span>}
+                                  <span className="break-words">{p.name}</span>
+                                  {p.price != null && <span className="text-xs text-slate-500 ml-2 shrink-0">{pesos(p.price)}</span>}
                                 </button>
                               ))}
                               {products.filter(p => !productSearch || p.name.toLowerCase().includes(productSearch.toLowerCase())).length === 0 && (
@@ -1263,12 +1313,12 @@ const LoyaltyManager = () => {
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1.5">Costo en puntos</label>
                       <input type="number" inputMode="numeric" value={rewardForm.pointsCost}
-                        onChange={e => setRewardForm(f => ({ ...f, pointsCost: Number(e.target.value) || 1 }))}
+                        onChange={e => setRewardForm(f => ({ ...f, pointsCost: soloDigitos(e.target.value) }))}
                         className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-center focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none" min="1" />
                       {program.amountPerPoints > 0 && program.pointsPerAmount > 0 && (
                         <p className="mt-1.5 text-[11px] text-slate-400 flex items-center gap-1">
                           <FaInfoCircle className="w-3 h-3" />
-                          Equivale a ${Math.round((rewardForm.pointsCost * program.amountPerPoints) / program.pointsPerAmount).toLocaleString('es-CO')} en compras del cliente
+                          Equivale a {pesos((Number(rewardForm.pointsCost) * Number(program.amountPerPoints)) / Number(program.pointsPerAmount))} en compras del cliente
                         </p>
                       )}
                     </div>
@@ -1315,6 +1365,9 @@ const LoyaltyManager = () => {
                 )}
               </div>
 
+              {!showTemplates && errorGuardar && (
+                <p role="alert" className="mx-5 mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{errorGuardar}</p>
+              )}
               {!showTemplates && (
                 <div className="flex gap-2 p-5 pt-3 shrink-0 border-t border-slate-100">
                   <button onClick={() => setShowRewardModal(false)}
@@ -1322,11 +1375,11 @@ const LoyaltyManager = () => {
                     Cancelar
                   </button>
                   <button onClick={saveReward}
-                    disabled={!rewardForm.name.trim() || !rewardForm.pointsCost}
+                    disabled={!rewardForm.name.trim() || !Number(rewardForm.pointsCost) || saving}
                     className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-all disabled:opacity-40 shadow-sm"
                     style={{ backgroundColor: themeColor }}
                   >
-                    {editingReward ? <><span className="inline-flex items-center gap-1">{AI.check('w-4 h-4')} Actualizar</span></> : <><span className="inline-flex items-center gap-1">{AI.gift('w-4 h-4')} Crear premio</span></>}
+                    {saving ? 'Guardando...' : editingReward ? <><span className="inline-flex items-center gap-1">{AI.check('w-4 h-4')} Guardar cambios</span></> : <><span className="inline-flex items-center gap-1">{AI.gift('w-4 h-4')} Crear premio</span></>}
                   </button>
                 </div>
               )}

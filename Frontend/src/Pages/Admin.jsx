@@ -144,7 +144,7 @@ function Admin() {
     handleChange, handleBlur, handlePriceChange, handleToppingGroupsChange,
     handleEdit, handleDelete, confirmDelete,
     handleToggleProduct, handleToggleFeatured,
-    handleFeaturedDragStart, handleFeaturedDragOver, handleFeaturedDragEnd,
+    handleFeaturedDragStart, handleFeaturedDragOver, handleFeaturedDragEnd, handleReorderFeatured,
     editProduct, deleteProduct,
     cancelEdit, cancelDelete,
   } = useProductHandlers({ businessId, products, setProducts, toppingGroups, loadData });
@@ -683,6 +683,7 @@ function Admin() {
                     setProducts={setProducts}
                     setActiveTab={setActiveTab}
                     handleToggleFeatured={handleToggleFeatured}
+                    handleReorderFeatured={handleReorderFeatured}
                     handleFeaturedDragStart={handleFeaturedDragStart}
                     handleFeaturedDragOver={handleFeaturedDragOver}
                     handleFeaturedDragEnd={handleFeaturedDragEnd}
@@ -702,7 +703,7 @@ function Admin() {
                 {activeTab === 'reviews' && (
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Reseñas" onGoBack={() => setActiveTab('dashboard')}>
-                      <AdminReviews />
+                      <AdminReviews setActiveTab={setActiveTab} />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}

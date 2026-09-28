@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaFolderOpen, FaPlus, FaTrash, FaTag, FaAlignLeft, FaGripVertical, FaSave, FaTimes, FaExclamationTriangle, FaCheck, FaSyncAlt, FaBoxOpen, FaPen } from 'react-icons/fa';
+import { FaFolderOpen, FaPlus, FaTrash, FaTag, FaAlignLeft, FaGripVertical, FaSave, FaTimes, FaExclamationTriangle, FaCheck, FaSyncAlt, FaBoxOpen, FaPen, FaArrowUp, FaArrowDown } from 'react-icons/fa';
 import api from '../services/api';
 import { useParams } from 'react-router-dom';
 import { socket } from '../services/socket';
 import { Capa } from './ui';
 
-const LOCAL_STORAGE_KEY = 'categoryOrderSettings';
 
 // Delete Category Modal
 const DeleteCategoryModal = ({ isOpen, onClose, onConfirm, category }) => {
@@ -58,6 +57,11 @@ const CategorySettings = () => {
   const [sortMode, setSortMode] = useState(false);
   const [draggedItem, setDraggedItem] = useState(null);
   const [saveLoading, setSaveLoading] = useState(false);
+  // Cuántos productos tiene cada categoría (clave antes de borrar una).
+  const [conteo, setConteo] = useState({});
+  const [creando, setCreando] = useState(false);
+  const creandoRef = useRef(false); // inmediato: el estado tarda un render y el doble toque se colaba
+  const mensajeServidor = (error, porDefecto) => error?.response?.data?.message || (error?.response ? porDefecto : 'Sin conexión. Revisa el internet.');
   const { businessId } = useParams();
   // Estado para el modal de eliminación
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -98,33 +102,18 @@ const CategorySettings = () => {
     // --- Fin WebSocket ---
   }, [businessId]);
 
-  // Obtiene el orden guardado de localStorage
-  const getSavedOrder = () => {
-    try {
-      const savedOrder = localStorage.getItem(LOCAL_STORAGE_KEY);
-      return savedOrder ? JSON.parse(savedOrder) : {};
-    } catch (error) {
-      console.error('Error al obtener orden guardado:', error);
-      return {};
-    }
-  };
-
-  // Guarda el orden en localStorage
-  const saveOrderToStorage = (orderMap) => {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(orderMap));
-      return true;
-    } catch (error) {
-      console.error('Error al guardar orden:', error);
-      return false;
-    }
-  };
-
   const fetchCategories = async () => {
     setLoading(true);
     try {
-      const response = await api.get(`/categories?businessId=${businessId}`);
+      const [response, productos] = await Promise.all([
+        api.get(`/categories?businessId=${businessId}`),
+        api.get(`/products?businessId=${businessId}&panel=1`).catch(() => ({ data: [] })),
+      ]);
       setCategories(response.data);
+      const lista = Array.isArray(productos.data) ? productos.data : (productos.data?.products || []);
+      const c = {};
+      lista.forEach((p) => { const id = String(p.category?._id || p.category || ''); c[id] = (c[id] || 0) + 1; });
+      setConteo(c);
     } catch (error) {
       setError('Error al cargar categorías');
     } finally {
@@ -134,23 +123,35 @@ const CategorySettings = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (creandoRef.current || !newCategory.name.trim()) return; // un toque a la vez: sin duplicados
+    creandoRef.current = true;
+    setCreando(true);
     try {
-      await api.post('/categories', { ...newCategory, businessId });
+      await api.post('/categories', { ...newCategory, name: newCategory.name.trim(), businessId });
       setNewCategory({ name: '', description: '' });
       setSuccessMessage('Categoría creada correctamente');
       setTimeout(() => setSuccessMessage(''), 3000);
+      // La lista se recarga aquí: antes dependía solo del aviso en tiempo
+      // real, y si no llegaba la categoría nueva no aparecía.
+      fetchCategories();
     } catch (error) {
-      if (error.response && error.response.status === 400 && error.response.data?.message?.includes('Ya existe una categoría')) {
-        setError('Ya existe una categoría con ese nombre en este negocio.');
-      } else {
-        setError('Error al crear la categoría');
-      }
-      setTimeout(() => setError(null), 3000);
+      setError(mensajeServidor(error, 'No se pudo crear la categoría'));
+      setTimeout(() => setError(null), 4000);
+    } finally {
+      creandoRef.current = false;
+      setCreando(false);
     }
   };
 
   const handleDelete = async (id) => {
     const category = categories.find(cat => cat._id === id);
+    const n = conteo[String(id)] || 0;
+    // Con productos no se puede: se dice de una vez, sin abrir la confirmación.
+    if (n > 0) {
+      setError(`"${category?.name}" tiene ${n} ${n === 1 ? 'producto' : 'productos'}. Muévelos a otra categoría (en Productos) antes de borrarla.`);
+      setTimeout(() => setError(null), 6000);
+      return;
+    }
     setCategoryToDelete(category);
     setShowDeleteModal(true);
   };
@@ -159,12 +160,6 @@ const CategorySettings = () => {
     if (!categoryToDelete) return;
     try {
       await api.delete(`/categories/${categoryToDelete._id}`);
-      // Eliminar la categoría del orden guardado
-      const orderMap = getSavedOrder();
-      if (orderMap[categoryToDelete._id]) {
-        delete orderMap[categoryToDelete._id];
-        saveOrderToStorage(orderMap);
-      }
       setSuccessMessage('Categoría eliminada correctamente');
       setTimeout(() => setSuccessMessage(''), 3000);
       setShowDeleteModal(false);
@@ -173,8 +168,8 @@ const CategorySettings = () => {
       fetchCategories();
     } catch (error) {
       console.error('Error al eliminar categoría:', error);
-      setError('Error al eliminar la categoría');
-      setTimeout(() => setError(null), 3000);
+      setError(mensajeServidor(error, 'No se pudo eliminar la categoría'));
+      setTimeout(() => setError(null), 6000);
       setShowDeleteModal(false);
       setCategoryToDelete(null);
     }
@@ -200,12 +195,8 @@ const CategorySettings = () => {
       setEditingId(null);
       fetchCategories();
     } catch (error) {
-      if (error.response?.status === 400 && error.response.data?.message?.includes('Ya existe')) {
-        setError('Ya existe una categoría con ese nombre.');
-      } else {
-        setError('Error al actualizar la categoría');
-      }
-      setTimeout(() => setError(null), 3000);
+      setError(mensajeServidor(error, 'No se pudo actualizar la categoría'));
+      setTimeout(() => setError(null), 4000);
     } finally {
       setEditLoading(false);
     }
@@ -237,6 +228,15 @@ const CategorySettings = () => {
     setDraggedItem(index);
   };
 
+  const mover = (index, delta) => {
+    const destino = index + delta;
+    if (destino < 0 || destino >= categories.length) return;
+    const items = [...categories];
+    const [item] = items.splice(index, 1);
+    items.splice(destino, 0, item);
+    setCategories(items);
+  };
+
   const handleDragEnd = (e) => {
     e.target.style.opacity = '1';
   };
@@ -258,20 +258,14 @@ const CategorySettings = () => {
         categories: orderedCategories 
       });
       
-      // También guardar en localStorage para compatibilidad con PC
-      const orderMap = {};
-      categories.forEach((category, index) => {
-        orderMap[category._id] = index;
-      });
-      saveOrderToStorage(orderMap);
-      
+            
       setSaveLoading(false);
       setSuccessMessage('Orden de categorías guardado correctamente');
       setSortMode(false);
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {
       console.error('Error al guardar el orden:', error);
-      setError('Error al guardar el orden de categorías');
+      setError(mensajeServidor(error, 'No se pudo guardar el orden'));
       setSaveLoading(false);
       setTimeout(() => setError(null), 3000);
     }
@@ -353,7 +347,7 @@ const CategorySettings = () => {
             <FaGripVertical className="text-blue-500 text-sm" />
             <div>
               <h3 className="text-sm font-semibold text-slate-800">Reordenar Categorías</h3>
-              <p className="text-[11px] text-slate-500">Arrastra para cambiar el orden en el menú</p>
+              <p className="text-[11px] text-slate-500">Usa las flechas (o arrastra) para cambiar el orden en el menú</p>
             </div>
           </div>
           <div className="p-2 space-y-1">
@@ -371,10 +365,17 @@ const CategorySettings = () => {
                   {index + 1}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <span className="text-xs font-medium text-slate-700 truncate block">{category.name}</span>
-                  {category.description && (
-                    <span className="text-[11px] text-slate-400 truncate block">{category.description}</span>
-                  )}
+                  <span className="text-sm font-medium text-slate-700 break-words block">{category.name}</span>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <button type="button" onClick={() => mover(index, -1)} disabled={index === 0} aria-label="Subir"
+                    className="w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-30 flex items-center justify-center">
+                    <FaArrowUp className="text-xs" />
+                  </button>
+                  <button type="button" onClick={() => mover(index, 1)} disabled={index === categories.length - 1} aria-label="Bajar"
+                    className="w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-30 flex items-center justify-center">
+                    <FaArrowDown className="text-xs" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -424,10 +425,11 @@ const CategorySettings = () => {
 
               <button
                 type="submit"
+                disabled={creando}
                 className="w-full bg-red-500 lg:bg-blue-500 text-white py-2.5 lg:py-2 rounded-xl lg:rounded-lg hover:opacity-90 transition-colors text-[13px] lg:text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-[0.97] lg:active:scale-100"
               >
                 <FaPlus className="text-2xs" />
-                Crear Categoría
+                {creando ? 'Creando…' : 'Crear categoría'}
               </button>
             </form>
           </div>
@@ -451,8 +453,7 @@ const CategorySettings = () => {
             ) : (
               <div className="divide-y divide-slate-100">
                 {categories.map((category) => {
-                  const orderMap = getSavedOrder();
-                  const displayOrder = orderMap[category._id] !== undefined ? orderMap[category._id] + 1 : '—';
+                  const n = conteo[String(category._id)] || 0;
                   const isEditing = editingId === category._id;
 
                   return (
@@ -519,27 +520,27 @@ const CategorySettings = () => {
                               <FaFolderOpen className="text-blue-500 text-xs" />
                             </div>
                             <div className="min-w-0">
-                              <h4 className="text-xs font-semibold text-slate-800 truncate">{category.name}</h4>
+                              <h4 className="text-sm font-semibold text-slate-800 break-words">{category.name}</h4>
                               {category.description && (
-                                <p className="text-[11px] text-slate-400 truncate">{category.description}</p>
+                                <p className="text-xs text-slate-400 break-words">{category.description}</p>
                               )}
                             </div>
-                            <span className="bg-slate-100 text-slate-500 text-2xs font-medium px-1.5 py-0.5 rounded flex-shrink-0">
-                              #{displayOrder}
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${n ? 'bg-slate-100 text-slate-600' : 'bg-amber-50 text-amber-700'}`}>
+                              {n ? `${n} ${n === 1 ? 'producto' : 'productos'}` : 'Vacía'}
                             </span>
                           </div>
                           <div className="flex items-center gap-1 ml-3 flex-shrink-0">
                             <button
                               onClick={() => startEdit(category)}
-                              className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                              title="Editar"
+                              className="w-9 h-9 flex items-center justify-center text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Editar" aria-label="Editar"
                             >
                               <FaPen className="text-xs" />
                             </button>
                             <button
                               onClick={() => handleDelete(category._id)}
-                              className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Eliminar"
+                              className="w-9 h-9 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title={n ? 'Tiene productos: muévelos antes de borrarla' : 'Eliminar'} aria-label="Eliminar"
                             >
                               <FaTrash className="text-xs" />
                             </button>

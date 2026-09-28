@@ -31,6 +31,16 @@ const ensureToppingsFeatureEnabled = async (businessId, req, res) => {
 };
 
 // Get all topping groups
+/* ¿El grupo es del negocio que hace la petición? Editar y agotar opciones
+   buscaban el grupo solo por su id: con la sesión de un negocio se podían
+   cambiar los extras de otro. Se responde "no encontrado" para no revelar
+   que existe. */
+function esDelNegocio(req, grupo) {
+  if (req.user?.role === 'superadmin') return true;
+  const propios = [req.user?.businessId, req.resolvedBusinessId].filter(Boolean).map(String);
+  return propios.includes(String(grupo.businessId));
+}
+
 router.get("/", async (req, res) => {
   try {
     let { businessId } = req.query;
@@ -160,7 +170,7 @@ router.put("/:id", tenantAuth, async (req, res) => {
 
     // Buscar el grupo existente primero
     const existingGroup = await ToppingGroup.findById(req.params.id);
-    if (!existingGroup) {
+    if (!existingGroup || !esDelNegocio(req, existingGroup)) {
       return res.status(404).json(formatHttpError(req, "Grupo de toppings no encontrado", 404));
     }
 
@@ -317,7 +327,7 @@ router.patch("/:groupId/options/:optionId/toggle", tenantAuth, async (req, res) 
     
     // Encontrar el grupo
     const group = await ToppingGroup.findById(groupId);
-    if (!group) {
+    if (!group || !esDelNegocio(req, group)) {
       return res.status(404).json(formatHttpError(req, "Grupo de toppings no encontrado", 404));
     }
 

@@ -228,6 +228,19 @@ router.delete("/:id", tenantAuth, validateDeleteCategory, async (req, res) => {
     // Use businessId from token for tenant isolation, fallback for superadmin
     const tenantBusinessId = req.user.businessId || req.query.businessId;
     const beforeDelete = await Category.findOne({ _id: req.params.id, ...(tenantBusinessId ? { businessId: tenantBusinessId } : {}) }).lean();
+    /* Con productos no se borra: quedaban apuntando a una categoría que ya
+       no existe y desaparecían del menú sin que nadie supiera por qué. */
+    if (beforeDelete) {
+      const Product = require('../Models/Product');
+      const conProductos = await Product.countDocuments({ category: beforeDelete._id, businessId: beforeDelete.businessId });
+      if (conProductos > 0) {
+        return res.status(409).json({
+          message: `"${beforeDelete.name}" tiene ${conProductos} ${conProductos === 1 ? 'producto' : 'productos'}. Muévelos a otra categoría antes de borrarla.`,
+          code: 'CATEGORIA_CON_PRODUCTOS',
+          productos: conProductos,
+        });
+      }
+    }
     const category = await Category.findOneAndDelete({ _id: req.params.id, ...(tenantBusinessId ? { businessId: tenantBusinessId } : {}) });
     if (!category) {
       return res.status(404).json(formatHttpError(req, "Categoría no encontrada", 404));

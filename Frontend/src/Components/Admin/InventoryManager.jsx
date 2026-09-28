@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useBusinessConfig } from '../../Context/BusinessContext';
 import api from '../../services/api';
 import SuppliesPanel from './SuppliesPanel';
 import RecipeEditor from './RecipeEditor';
 import { Capa } from '../ui';
+import { pesos } from '../../utils/pedidos';
 
 /**
  * Inventario.
@@ -13,7 +14,6 @@ import { Capa } from '../ui';
  * y se ajusta sin entrar a editar el producto.
  */
 
-const money = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-CO');
 
 const NIVELES = [
   { id: 'off', label: 'Sin control', desc: 'No se lleva inventario.' },
@@ -90,12 +90,27 @@ export default function InventoryManager() {
   const [abierto, setAbierto] = useState(null);
   const [campos, setCampos] = useState({ cost: '', lowStockAlert: '' });
 
+  /* Avisos en la pantalla en vez de alert(): la ventana del navegador asusta
+     y en el celular a veces ni se ve. */
+  const [aviso, setAviso] = useState('');
+  const avisoTimer = useRef(null);
+  const mostrarAviso = useCallback((texto) => {
+    setAviso(texto);
+    clearTimeout(avisoTimer.current);
+    avisoTimer.current = setTimeout(() => setAviso(''), 6000);
+  }, []);
+  const mensajeDe = (err, porDefecto) => err?.response?.data?.message || (err?.response ? porDefecto : 'Sin conexión. Revisa el internet.');
+
+  const datosRef = useRef(null);
+  datosRef.current = datos;
+
   const cargar = useCallback(async () => {
     if (!businessId) return;
     setCargando(true);
     try {
       const res = await api.get(`/products/inventory?businessId=${businessId}`);
       setDatos(res.data);
+      if (res.data?.modo) setModo(res.data.modo);
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'No se pudo cargar el inventario');
@@ -113,23 +128,106 @@ export default function InventoryManager() {
      `abierto` (costo y umbral), que ya usaba esa fila. */
   const [verVariantes, setVerVariantes] = useState(null);
 
+  /* +/−: cada toque cuenta. Antes, mientras viajaba el primer toque los
+     botones quedaban bloqueados y tocar "+" cinco veces seguidas sumaba dos o
+     tres. Ahora el número cambia al instante y los toques se juntan y se
+     mandan en uno solo medio segundo después. */
+  const pendientes = useRef({});   // clave -> { producto, variante, delta, timer }
+
+  const aplicarDelta = (d, id, delta, variante) => {
+    if (!d) return d;
+    const productos = d.productos.map((p) => {
+      if (p._id !== id) return p;
+      if (variante) {
+        const clave = variante.join('|');
+        return { ...p, variantes: p.variantes.map((v) => (v.valores.join('|') === clave ? { ...v, stock: Math.max(0, (Number(v.stock) || 0) + delta) } : v)) };
+      }
+      return { ...p, stock: Math.max(0, (p.stock ?? 0) + delta) };
+    });
+    return { ...d, productos, resumen: recalcular(productos) };
+  };
+
+  // Mezcla la respuesta del servidor y vuelve a aplicar los toques que aún no se han enviado.
+  const aplicarServidor = (id, del) => {
+    setDatos((d) => {
+      if (!d) return d;
+      const productos = d.productos.map((p) => (p._id === id ? { ...p, ...del } : p));
+      let nuevo = { ...d, productos, resumen: recalcular(productos) };
+      Object.values(pendientes.current).forEach((pen) => {
+        if (pen.producto._id === id && pen.delta) nuevo = aplicarDelta(nuevo, id, pen.delta, pen.variante);
+      });
+      return nuevo;
+    });
+  };
+
+  const enviarPendiente = useCallback(async (clave) => {
+    const pen = pendientes.current[clave];
+    if (!pen) return;
+    delete pendientes.current[clave];
+    clearTimeout(pen.timer);
+    if (!pen.delta) return;
+    try {
+      const res = await api.patch(`/products/${pen.producto._id}/stock`, {
+        businessId, delta: pen.delta, ...(pen.variante ? { variante: pen.variante } : {}),
+      });
+      aplicarServidor(pen.producto._id, res.data);
+    } catch (err) {
+      setDatos((d) => aplicarDelta(d, pen.producto._id, -pen.delta, pen.variante));
+      mostrarAviso(mensajeDe(err, 'No se pudo guardar la cantidad de ' + pen.producto.name));
+    }
+  }, [businessId]);
+
+  const sumar = (producto, delta, variante) => {
+    const actual = datosRef.current?.productos.find((p) => p._id === producto._id);
+    if (!actual) return;
+    const antes = variante
+      ? Number(actual.variantes?.find((v) => v.valores.join('|') === variante.join('|'))?.stock) || 0
+      : (actual.stock ?? 0);
+    // Lo que de verdad cambia (no baja de cero), para que el total enviado cuadre con lo que se ve
+    const real = Math.max(0, antes + delta) - antes;
+    if (!real) return;
+    setDatos((d) => aplicarDelta(d, producto._id, real, variante));
+    const clave = variante ? `${producto._id}:${variante.join('|')}` : producto._id;
+    const pen = pendientes.current[clave] || { producto, variante, delta: 0 };
+    clearTimeout(pen.timer);
+    pen.delta += real;
+    pen.timer = setTimeout(() => enviarPendiente(clave), 500);
+    pendientes.current[clave] = pen;
+  };
+
+  // Al salir de la pantalla no se pierden los últimos toques
+  useEffect(() => () => {
+    Object.keys(pendientes.current).forEach((clave) => enviarPendiente(clave));
+    clearTimeout(avisoTimer.current);
+  }, [enviarPendiente]);
+
+  const ocupadoRef = useRef(false);
   const ajustar = useCallback(async (producto, cambios) => {
-    if (ocupado) return;
+    if (ocupadoRef.current) return false;   // un cambio a la vez, aunque se toque dos veces
+    ocupadoRef.current = true;
     setOcupado(producto._id);
+    // Una cantidad exacta reemplaza lo que hubiera: los toques pendientes ya no aplican
+    if (cambios.stock !== undefined) {
+      Object.keys(pendientes.current).forEach((clave) => {
+        if (pendientes.current[clave].producto._id === producto._id) {
+          clearTimeout(pendientes.current[clave].timer);
+          delete pendientes.current[clave];
+        }
+      });
+    }
     try {
       const res = await api.patch(`/products/${producto._id}/stock`, { businessId, ...cambios });
-      setDatos((d) => {
-        if (!d) return d;
-        const productos = d.productos.map((p) => (p._id === producto._id ? { ...p, ...res.data } : p));
-        return { ...d, productos, resumen: recalcular(productos) };
-      });
+      aplicarServidor(producto._id, res.data);
+      return true;
     } catch (err) {
-      alert(err.response?.data?.message || 'No se pudo ajustar el inventario');
+      mostrarAviso(mensajeDe(err, 'No se pudo ajustar el inventario'));
+      return false;
     } finally {
+      ocupadoRef.current = false;
       setOcupado(null);
       setEditando(null);
     }
-  }, [businessId, ocupado]);
+  }, [businessId]);
 
   // El resumen se recalcula en el cliente para que los contadores de arriba
   // reaccionen al instante, sin volver a pedirlo al servidor.
@@ -183,12 +281,18 @@ export default function InventoryManager() {
       await api.patch('/products/inventory/mode', { businessId, mode: nuevo });
     } catch (err) {
       setModo(antes);
-      alert(err.response?.data?.message || 'No se pudo cambiar el nivel');
+      mostrarAviso(mensajeDe(err, 'No se pudo cambiar el nivel'));
     }
   };
 
   return (
     <div className="space-y-4">
+      {aviso && (
+        <div role="alert" className="fixed left-1/2 -translate-x-1/2 bottom-24 lg:bottom-6 z-[130] w-[calc(100%-32px)] max-w-md rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800 shadow-lg flex items-start gap-3">
+          <span className="flex-1">{aviso}</span>
+          <button onClick={() => setAviso('')} className="text-red-500 font-bold" aria-label="Cerrar">✕</button>
+        </div>
+      )}
       {/* Nivel de inventario */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4">
         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5">Nivel de inventario</h3>
@@ -253,7 +357,7 @@ export default function InventoryManager() {
         <Tarjeta label="Agotados" valor={r?.agotados ?? '—'} tono="red" />
         <Tarjeta label="Por acabarse" valor={r?.bajos ?? '—'} tono="amber" />
         <Tarjeta label="Con control" valor={r ? `${r.conControl}/${r.total}` : '—'} />
-        <Tarjeta label="Valor en bodega" valor={r ? money(r.valorInventario) : '—'} tono="emerald" />
+        <Tarjeta label="Valor en bodega" valor={r ? pesos(r.valorInventario) : '—'} tono="emerald" />
       </div>
 
       {/* Si faltan costos, la valoración cae al precio de venta y NO es lo que
@@ -321,17 +425,17 @@ export default function InventoryManager() {
             const trabajando = ocupado === p._id;
             return (
               <div key={p._id}>
-              <div className="flex items-center gap-3 p-3">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 p-3">
                 {p.image
                   ? <img src={p.image} alt="" className="w-11 h-11 rounded-xl object-cover shrink-0 bg-slate-100" />
                   : <div className="w-11 h-11 rounded-xl bg-slate-100 shrink-0" />}
 
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-bold text-slate-800 truncate">{p.name}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className={`text-2xs font-bold px-1.5 py-0.5 rounded-md border ${COLOR[e]}`}>{ETIQUETA[e]}</span>
-                    <span className="text-[11px] text-slate-400">{money(p.price)}</span>
-                    {p.active === false && <span className="text-2xs text-slate-400">· oculto</span>}
+                <div className="flex-1 min-w-[140px]">
+                  <p className="text-sm font-bold text-slate-800 break-words">{p.name}</p>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
+                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded-md border ${COLOR[e]}`}>{ETIQUETA[e]}</span>
+                    <span className="text-xs text-slate-500">{pesos(p.price)}</span>
+                    {p.active === false && <span className="text-xs text-slate-400">· no disponible</span>}
                   </div>
                 </div>
 
@@ -339,13 +443,13 @@ export default function InventoryManager() {
                   <button
                     onClick={() => setVerVariantes(verVariantes === p._id ? null : p._id)}
                     title="Ver el stock de cada presentación"
-                    className="shrink-0 flex items-center gap-2 px-3 h-8 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
+                    className="shrink-0 flex items-center gap-2 px-3 h-10 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
                   >
                     <span className="text-[13px] font-black tabular-nums text-slate-800">
-                      {trabajando ? '·' : unidades(p)}
+                      {unidades(p)}
                     </span>
-                    <span className="text-[11px] text-slate-400">
-                      {p.variantes.length} pres.
+                    <span className="text-xs text-slate-500">
+                      en {p.variantes.length} {p.variantes.length === 1 ? 'presentación' : 'presentaciones'}
                     </span>
                     <svg
                       className={`w-3.5 h-3.5 text-slate-400 transition-transform ${verVariantes === p._id ? 'rotate-180' : ''}`}
@@ -355,11 +459,12 @@ export default function InventoryManager() {
                     </svg>
                   </button>
                 ) : p.trackStock ? (
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1.5 w-full sm:w-auto">
                     <button
-                      onClick={() => ajustar(p, { delta: -1 })}
-                      disabled={trabajando || (p.stock ?? 0) <= 0}
-                      className="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 transition-colors flex items-center justify-center"
+                      onClick={() => sumar(p, -1)}
+                      disabled={(p.stock ?? 0) <= 0}
+                      aria-label="Quitar una unidad"
+                      className="w-10 h-10 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 transition-colors flex items-center justify-center"
                     >
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M5 12h14" /></svg>
                     </button>
@@ -373,22 +478,22 @@ export default function InventoryManager() {
                         onChange={(ev) => setValorExacto(ev.target.value)}
                         onBlur={() => { const v = parseInt(valorExacto, 10); Number.isInteger(v) && v >= 0 ? ajustar(p, { stock: v }) : setEditando(null); }}
                         onKeyDown={(ev) => { if (ev.key === 'Enter') ev.currentTarget.blur(); if (ev.key === 'Escape') setEditando(null); }}
-                        className="w-14 h-8 text-center text-[13px] font-bold rounded-lg border-2 border-slate-300 outline-none tabular-nums"
+                        className="w-16 h-10 text-center text-[15px] font-bold rounded-lg border-2 border-slate-300 outline-none tabular-nums"
                       />
                     ) : (
                       <button
                         onClick={() => { setEditando(p._id); setValorExacto(String(p.stock ?? 0)); }}
                         title="Escribir la cantidad exacta"
-                        className="w-14 h-8 rounded-lg text-[13px] font-black tabular-nums text-slate-800 hover:bg-slate-100 transition-colors"
+                        className="w-16 h-10 rounded-lg text-[15px] font-black tabular-nums text-slate-800 hover:bg-slate-100 transition-colors"
                       >
-                        {trabajando ? '·' : (p.stock ?? 0)}
+                        {p.stock ?? 0}
                       </button>
                     )}
 
                     <button
-                      onClick={() => ajustar(p, { delta: 1 })}
-                      disabled={trabajando}
-                      className="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 transition-colors flex items-center justify-center"
+                      onClick={() => sumar(p, 1)}
+                      aria-label="Agregar una unidad"
+                      className="w-10 h-10 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 transition-colors flex items-center justify-center"
                     >
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
                     </button>
@@ -399,7 +504,7 @@ export default function InventoryManager() {
                         title={p.recipe?.length
                           ? `Receta: ${p.recipe.length} insumo(s)`
                           : 'Definir la receta'}
-                        className={`ml-1 px-2 h-8 rounded-lg text-[11px] font-bold transition-colors ${
+                        className={`ml-1 px-2 h-10 rounded-lg text-xs font-bold transition-colors ${
                           p.recipe?.length ? 'text-white' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
                         }`}
                         style={p.recipe?.length ? { backgroundColor: themeColor } : undefined}
@@ -410,7 +515,8 @@ export default function InventoryManager() {
                     <button
                       onClick={() => verHistorial(p)}
                       title="Ver el historial de movimientos"
-                      className="ml-1 w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-center"
+                      aria-label="Historial"
+                      className="ml-auto sm:ml-1 w-10 h-10 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-center"
                     >
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
@@ -420,16 +526,16 @@ export default function InventoryManager() {
                       onClick={() => ajustar(p, { trackStock: false })}
                       disabled={trabajando}
                       title="Dejar de controlar el inventario de este producto"
-                      className="px-2 h-8 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                      className="px-2 h-10 rounded-lg text-xs font-semibold whitespace-nowrap text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
                     >
-                      Quitar
+                      No controlar
                     </button>
                   </div>
                 ) : (
                   <button
                     onClick={() => ajustar(p, { trackStock: true })}
                     disabled={trabajando}
-                    className="shrink-0 px-3 h-8 rounded-lg text-[11px] font-bold text-white transition-colors disabled:opacity-50"
+                    className="shrink-0 px-3 h-10 rounded-lg text-xs font-bold text-white transition-colors disabled:opacity-50"
                     style={{ backgroundColor: themeColor }}
                   >
                     {trabajando ? '...' : 'Controlar'}
@@ -447,17 +553,18 @@ export default function InventoryManager() {
                     return (
                       <div key={clave} className="flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-2.5 py-1.5">
                         <div className="flex-1 min-w-0">
-                          <p className="text-[12px] font-semibold text-slate-700 truncate">
+                          <p className="text-[12px] font-semibold text-slate-700 break-words">
                             {v.valores.join(' · ')}
                             {v.activo === false && <span className="ml-1.5 text-2xs font-normal text-slate-400">· no está a la venta</span>}
                           </p>
-                          {v.sku && <p className="text-2xs text-slate-400 truncate">{v.sku}</p>}
+                          {v.sku && <p className="text-2xs text-slate-400 break-words">{v.sku}</p>}
                         </div>
 
                         <button
-                          onClick={() => ajustar(p, { variante: v.valores, delta: -1 })}
-                          disabled={trabajando || (Number(v.stock) || 0) <= 0}
-                          className="w-7 h-7 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-30 transition-colors flex items-center justify-center"
+                          onClick={() => sumar(p, -1, v.valores)}
+                          disabled={(Number(v.stock) || 0) <= 0}
+                          aria-label="Quitar una unidad"
+                          className="w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-30 transition-colors flex items-center justify-center"
                         >
                           <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M5 12h14" /></svg>
                         </button>
@@ -476,22 +583,22 @@ export default function InventoryManager() {
                                 : setEditando(null);
                             }}
                             onKeyDown={(ev) => { if (ev.key === 'Enter') ev.currentTarget.blur(); if (ev.key === 'Escape') setEditando(null); }}
-                            className="w-12 h-7 text-center text-[12px] font-bold rounded-lg border-2 border-slate-300 outline-none tabular-nums"
+                            className="w-14 h-9 text-center text-sm font-bold rounded-lg border-2 border-slate-300 outline-none tabular-nums"
                           />
                         ) : (
                           <button
                             onClick={() => { setEditando(`${p._id}:${clave}`); setValorExacto(String(Number(v.stock) || 0)); }}
                             title="Escribir la cantidad exacta"
-                            className="w-12 h-7 rounded-lg text-[12px] font-black tabular-nums text-slate-800 bg-white border border-slate-200 hover:bg-slate-100 transition-colors"
+                            className="w-14 h-9 rounded-lg text-sm font-black tabular-nums text-slate-800 bg-white border border-slate-200 hover:bg-slate-100 transition-colors"
                           >
                             {Number(v.stock) || 0}
                           </button>
                         )}
 
                         <button
-                          onClick={() => ajustar(p, { variante: v.valores, delta: 1 })}
-                          disabled={trabajando}
-                          className="w-7 h-7 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-30 transition-colors flex items-center justify-center"
+                          onClick={() => sumar(p, 1, v.valores)}
+                          aria-label="Agregar una unidad"
+                          className="w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-30 transition-colors flex items-center justify-center"
                         >
                           <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
                         </button>
@@ -512,9 +619,9 @@ export default function InventoryManager() {
                           Costo por unidad
                         </label>
                         <input
-                          type="number" min="0" step="any"
-                          value={campos.cost}
-                          onChange={(ev) => setCampos({ ...campos, cost: ev.target.value })}
+                          type="text" inputMode="numeric"
+                          value={campos.cost === '' ? '' : pesos(campos.cost).replace('$', '')}
+                          onChange={(ev) => setCampos({ ...campos, cost: ev.target.value.replace(/\D/g, '') })}
                           placeholder="Lo que te cuesta"
                           className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-[13px] outline-none focus:ring-2 focus:ring-slate-200"
                         />
@@ -524,7 +631,7 @@ export default function InventoryManager() {
                           Avisar cuando queden
                         </label>
                         <input
-                          type="number" min="0"
+                          type="number" min="0" inputMode="numeric"
                           value={campos.lowStockAlert}
                           onChange={(ev) => setCampos({ ...campos, lowStockAlert: ev.target.value })}
                           placeholder="5"
@@ -532,21 +639,22 @@ export default function InventoryManager() {
                         />
                       </div>
                       <button
-                        onClick={() => {
-                          ajustar(p, {
+                        onClick={async () => {
+                          const ok = await ajustar(p, {
                             cost: campos.cost === '' ? null : campos.cost,
                             lowStockAlert: campos.lowStockAlert === '' ? 5 : campos.lowStockAlert,
                           });
-                          setAbierto(null);
+                          if (ok) setAbierto(null);   // si falla, lo escrito sigue ahí
                         }}
-                        className="px-3 py-1.5 rounded-lg text-white text-[12px] font-bold"
+                        disabled={trabajando}
+                        className="px-4 h-10 rounded-lg text-white text-sm font-bold disabled:opacity-50"
                         style={{ backgroundColor: themeColor }}
                       >
                         Guardar
                       </button>
                       <button
                         onClick={() => setAbierto(null)}
-                        className="px-2 py-1.5 rounded-lg text-[12px] font-semibold text-slate-400 hover:text-slate-700"
+                        className="px-3 h-10 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-700"
                       >
                         Cancelar
                       </button>
@@ -556,14 +664,14 @@ export default function InventoryManager() {
                       onClick={() => {
                         setAbierto(p._id);
                         setCampos({
-                          cost: p.cost ?? '',
+                          cost: p.cost != null ? String(Math.round(p.cost)) : '',
                           lowStockAlert: p.lowStockAlert ?? '',
                         });
                       }}
-                      className="text-[11px] font-semibold text-slate-400 hover:text-slate-700 transition-colors"
+                      className="text-xs font-semibold text-slate-500 hover:text-slate-700 underline-offset-2 hover:underline transition-colors text-left"
                     >
                       {p.cost != null
-                        ? `Costo ${money(p.cost)} · avisa en ${p.lowStockAlert ?? 5}`
+                        ? `Costo ${pesos(p.cost)} · avisa en ${p.lowStockAlert ?? 5}`
                         : 'Sin costo · toca para configurarlo'}
                     </button>
                   )}
@@ -610,7 +718,7 @@ export default function InventoryManager() {
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
               <div className="min-w-0">
-                <h3 className="text-sm font-bold text-slate-800 truncate">{historial.producto.name}</h3>
+                <h3 className="text-sm font-bold text-slate-800 break-words">{historial.producto.name}</h3>
                 <p className="text-[11px] text-slate-400">Historial de movimientos</p>
               </div>
               <button onClick={() => setHistorial(null)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
@@ -643,11 +751,11 @@ export default function InventoryManager() {
                           {historial.tipos?.[m.type] || m.type}
                           {m.orderNumber && <span className="font-normal text-slate-400"> · pedido #{m.orderNumber}</span>}
                         </p>
-                        {m.note && <p className="text-[11px] text-slate-400 truncate">{m.note}</p>}
+                        {m.note && <p className="text-[11px] text-slate-400 break-words">{m.note}</p>}
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-[11px] font-semibold text-slate-500 tabular-nums">
-                          {m.stockBefore} → {m.stockAfter}
+                          {m.stockBefore ?? '—'} → {m.stockAfter ?? '—'}
                         </p>
                         <p className="text-2xs text-slate-400">
                           {new Date(m.createdAt).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}

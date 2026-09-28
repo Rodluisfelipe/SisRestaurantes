@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaStar, FaReply, FaEye, FaEyeSlash, FaSearch, FaChevronLeft, FaChevronRight, FaSyncAlt, FaBoxOpen, FaStarHalfAlt, FaMagic } from 'react-icons/fa';
 import api from '../../services/api';
@@ -38,7 +38,30 @@ const RatingBar = ({ label, count, total, color }) => {
   );
 };
 
-export default function AdminReviews() {
+/* Aviso de Google con un botón que lleva a donde se vincula. Antes decía
+   "Configuración → Conectar con Google", una sección que no existe en el
+   menú: está en Datos y horario. */
+function AvisoGoogle({ texto, setActiveTab }) {
+  return (
+    <div className="mt-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex flex-wrap items-center gap-2">
+      <span className="flex-1 min-w-[180px]">{texto}</span>
+      {setActiveTab && (
+        <button
+          type="button"
+          onClick={() => {
+            try { sessionStorage.setItem('abrirSeccionNegocio', 'cfg-contacto'); } catch { /* sin almacenamiento abre en Identidad */ }
+            setActiveTab('business');
+          }}
+          className="h-9 px-3 rounded-lg bg-white border border-amber-300 text-amber-800 text-xs font-bold hover:bg-amber-100"
+        >
+          Conectar con Google
+        </button>
+      )}
+    </div>
+  );
+}
+
+export default function AdminReviews({ setActiveTab }) {
   const { businessConfig, updateConfig } = useBusinessConfig();
   const businessId = businessConfig?._id || businessConfig?.businessId || getBusinessSlug();
 
@@ -46,6 +69,7 @@ export default function AdminReviews() {
   const [reviewsDisplay, setReviewsDisplayState] = useState(businessConfig?.reviewsDisplay || 'both');
   const [savingDisplay, setSavingDisplay] = useState(false);
   const hasGoogleRating = businessConfig?.google?.rating > 0;
+  const googleVinculado = !!(businessConfig?.google?.placeId || businessConfig?.google?.reviewUrl);
 
   // ── Cómo recolectar reseñas ──
   const [collection, setCollectionState] = useState(businessConfig?.reviewCollection || { mode: 'funnel', googleThreshold: 4 });
@@ -66,6 +90,15 @@ export default function AdminReviews() {
   const [aiReplyLoading, setAiReplyLoading] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
   const [toast, setToast] = useState(null);
+  const [errorLista, setErrorLista] = useState('');
+  /* La búsqueda espera a que se deje de escribir: antes cada letra pedía la
+     lista y una respuesta vieja podía llegar de última y pisar la buena. */
+  const [busqueda, setBusqueda] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setSearchTerm(busqueda), 350);
+    return () => clearTimeout(t);
+  }, [busqueda]);
+  const pedidoActual = useRef(0);
 
   // Show toast
   const showToast = (message, type = 'success') => {
@@ -131,6 +164,7 @@ export default function AdminReviews() {
   // Fetch reviews (admin endpoint - all reviews including hidden)
   const fetchReviews = useCallback(async (page = 1) => {
     if (!businessId) return;
+    const este = ++pedidoActual.current;
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -142,28 +176,18 @@ export default function AdminReviews() {
       if (searchTerm.trim()) params.append('search', searchTerm.trim());
 
       const { data } = await api.get(`/reviews/admin?${params}`);
+      if (este !== pedidoActual.current) return;
       setReviews(data.reviews || []);
       setPagination(data.pagination || {});
       setCurrentPage(page);
+      setErrorLista('');
     } catch (err) {
-      console.error('Error fetching reviews:', err);
-      // Fallback to public endpoint if admin endpoint doesn't exist yet
-      try {
-        const params = new URLSearchParams({
-          businessId,
-          page: String(page),
-          limit: '15',
-        });
-        if (ratingFilter !== 'all') params.append('rating', ratingFilter);
-        const { data } = await api.get(`/reviews?${params}`);
-        setReviews(data.reviews || []);
-        setPagination(data.pagination || {});
-        setCurrentPage(page);
-      } catch (fallbackErr) {
-        console.error('Fallback also failed:', fallbackErr);
-      }
+      if (este !== pedidoActual.current) return;
+      /* Antes caía a la lista pública, que solo trae las visibles: las ocultas
+         desaparecían del panel sin decir nada. */
+      setErrorLista(err.response ? 'No se pudieron cargar las reseñas.' : 'Sin conexión. Revisa el internet.');
     } finally {
-      setLoading(false);
+      if (este === pedidoActual.current) setLoading(false);
     }
   }, [businessId, ratingFilter, searchTerm]);
 
@@ -220,7 +244,7 @@ export default function AdminReviews() {
       fetchReviews(currentPage);
       fetchStats(); // Stats change when visibility changes
     } catch (err) {
-      showToast('Error al cambiar visibilidad', 'error');
+      showToast(err.response?.data?.message || 'No se pudo cambiar. Intenta de nuevo.', 'error');
     } finally {
       setActionLoading(null);
     }
@@ -287,7 +311,7 @@ export default function AdminReviews() {
               Qué reseñas ve el cliente
               {savingDisplay && <FaSyncAlt className="text-2xs text-indigo-300 animate-spin" />}
             </h3>
-            <p className="text-[11px] text-slate-400">La calificación que aparece en el encabezado de tu menú.</p>
+            <p className="text-xs text-slate-500">La calificación que aparece en el encabezado de tu menú.</p>
           </div>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
@@ -310,14 +334,17 @@ export default function AdminReviews() {
                 )}
                 <span className="text-base">{opt.icon}</span>
                 <span className={`block text-xs font-bold mt-1 ${active ? 'text-indigo-700' : 'text-slate-700'}`}>{opt.label}</span>
-                <span className="block text-2xs text-slate-400 leading-tight">{opt.desc}</span>
+                <span className="block text-xs text-slate-500 leading-tight">{opt.desc}</span>
               </button>
             );
           })}
         </div>
-        {(reviewsDisplay === 'google' || reviewsDisplay === 'both') && !hasGoogleRating && (
-          <p className="mt-3 text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5 flex items-start gap-1.5">
-            <span>⚠️</span><span>Aún no vinculas Google. Ve a <strong>Configuración → Conectar con Google</strong> para mostrar tu rating.</span>
+        {(reviewsDisplay === 'google' || reviewsDisplay === 'both') && !googleVinculado && (
+          <AvisoGoogle setActiveTab={setActiveTab} texto="Aún no vinculas Google, así que tu calificación de Google no sale en el menú." />
+        )}
+        {(reviewsDisplay === 'google' || reviewsDisplay === 'both') && googleVinculado && !hasGoogleRating && (
+          <p className="mt-3 text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+            Google está vinculado, pero tu negocio aún no tiene calificación allá.
           </p>
         )}
       </div>
@@ -333,7 +360,7 @@ export default function AdminReviews() {
               Cómo se piden las reseñas
               {savingCollection && <FaSyncAlt className="text-2xs text-indigo-300 animate-spin" />}
             </h3>
-            <p className="text-[11px] text-slate-400">Qué pasa cuando un cliente va a calificarte.</p>
+            <p className="text-xs text-slate-500">Qué pasa cuando un cliente va a calificarte.</p>
           </div>
         </div>
 
@@ -359,7 +386,7 @@ export default function AdminReviews() {
                     <span className={`text-[13px] font-bold ${active ? 'text-indigo-700' : 'text-slate-700'}`}>{opt.icon} {opt.label}</span>
                     {opt.badge && <span className="text-2xs font-bold uppercase tracking-wide text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full">{opt.badge}</span>}
                   </div>
-                  <span className="block text-[11px] text-slate-500 leading-snug mt-0.5">{opt.desc}</span>
+                  <span className="block text-xs text-slate-500 leading-snug mt-0.5">{opt.desc}</span>
                 </div>
               </button>
             );
@@ -407,7 +434,7 @@ export default function AdminReviews() {
                 <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 font-medium">🔒 Queda solo en tu panel (privada)</span>
               </div>
             </div>
-            <p className="text-2xs text-slate-400 mt-2.5 leading-snug">Así proteges tu reputación: las malas experiencias las ves tú primero y no llegan a Google.</p>
+            <p className="text-xs text-slate-500 mt-2.5 leading-snug">Así proteges tu reputación: las malas experiencias las ves tú primero y no llegan a Google.</p>
           </div>
         )}
 
@@ -417,10 +444,8 @@ export default function AdminReviews() {
           </p>
         )}
 
-        {cmode !== 'internal' && !hasGoogleRating && (
-          <p className="mt-3 text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5 flex items-start gap-1.5">
-            <span>⚠️</span><span>Para enviar reseñas a Google, primero vincula tu negocio en <strong>Configuración → Conectar con Google</strong>.</span>
-          </p>
+        {cmode !== 'internal' && !googleVinculado && (
+          <AvisoGoogle setActiveTab={setActiveTab} texto="Mientras no vincules Google, ningún cliente será invitado a reseñarte allá: todo queda en tu panel." />
         )}
       </div>
 
@@ -510,8 +535,8 @@ export default function AdminReviews() {
               type="text"
               placeholder="Buscar por nombre o comentario..."
               aria-label="Buscar reseñas"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
               className="w-full pl-9 pr-4 py-2.5 lg:py-2 bg-slate-100/80 lg:bg-white border-0 lg:border lg:border-slate-200 rounded-xl lg:rounded-lg text-[14px] lg:text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 lg:focus:ring-2 lg:focus:ring-blue-500/20 focus:bg-white transition-all"
             />
           </div>
@@ -546,16 +571,23 @@ export default function AdminReviews() {
           {/* Refresh */}
           <button
             onClick={() => { fetchReviews(1); fetchStats(); }}
-            className="p-2.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-all"
+            className="h-10 px-3 flex items-center justify-center gap-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-all text-sm font-medium"
             title="Actualizar"
           >
             <FaSyncAlt className={`text-sm ${loading ? 'animate-spin' : ''}`} />
+            <span className="sm:hidden">Actualizar</span>
           </button>
         </div>
       </div>
 
       {/* Reviews List */}
       <div className="space-y-3">
+        {errorLista && (
+          <div role="alert" className="bg-red-50 border border-red-200 rounded-2xl p-4 flex flex-wrap items-center gap-3 text-sm text-red-800">
+            <span className="flex-1">{errorLista}</span>
+            <button onClick={() => fetchReviews(currentPage)} className="h-9 px-3 rounded-lg bg-white border border-red-300 font-semibold">Reintentar</button>
+          </div>
+        )}
         {loading ? (
           // Skeleton
           [...Array(3)].map((_, i) => (
@@ -570,7 +602,7 @@ export default function AdminReviews() {
               </div>
             </div>
           ))
-        ) : reviews.length === 0 ? (
+        ) : errorLista ? null : reviews.length === 0 ? (
           // Empty state
           <div className="bg-white rounded-2xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-12 text-center">
             <FaBoxOpen className="text-4xl text-slate-300 mx-auto mb-3" />
@@ -607,12 +639,12 @@ export default function AdminReviews() {
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm text-slate-800 truncate">
+                        <span className="font-semibold text-sm text-slate-800 break-words">
                           {review.customerName}
                         </span>
                         {review.isVisible === false && (
-                          <span className="text-2xs font-medium px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full">
-                            Oculta
+                          <span className="text-xs font-medium px-1.5 py-0.5 bg-red-100 text-red-700 rounded-full">
+                            Oculta del menú
                           </span>
                         )}
                         {review.orderType && (
@@ -628,46 +660,11 @@ export default function AdminReviews() {
                     </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      onClick={() => handleToggleVisibility(review._id, review.isVisible !== false)}
-                      disabled={actionLoading === review._id}
-                      className={`p-2 rounded-lg text-xs transition-all ${
-                        review.isVisible === false
-                          ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-                          : 'bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-red-500'
-                      }`}
-                      title={review.isVisible === false ? 'Hacer visible' : 'Ocultar'}
-                    >
-                      {actionLoading === review._id ? (
-                        <FaSyncAlt className="text-sm animate-spin" />
-                      ) : review.isVisible === false ? (
-                        <FaEye className="text-sm" />
-                      ) : (
-                        <FaEyeSlash className="text-sm" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setReplyingTo(replyingTo === review._id ? null : review._id);
-                        setReplyText(review.reply || '');
-                      }}
-                      className={`p-2 rounded-lg text-xs transition-all ${
-                        review.reply
-                          ? 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-                          : 'bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-blue-500'
-                      }`}
-                      title={review.reply ? 'Editar respuesta' : 'Responder'}
-                    >
-                      <FaReply className="text-sm" />
-                    </button>
-                  </div>
                 </div>
 
                 {/* Comment */}
                 {review.comment && (
-                  <p className="text-sm text-slate-600 mt-3 leading-relaxed">
+                  <p className="text-sm text-slate-600 mt-3 leading-relaxed break-words">
                     {review.comment}
                   </p>
                 )}
@@ -694,9 +691,45 @@ export default function AdminReviews() {
                         <span className="text-2xs text-blue-400">• {formatDate(review.repliedAt)}</span>
                       )}
                     </div>
-                    <p className="text-sm text-blue-700">{review.reply}</p>
+                    <p className="text-sm text-blue-700 break-words">{review.reply}</p>
                   </div>
                 )}
+
+                  {/* Acciones con texto: con solo íconos no se sabía qué hacía cada botón */}
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    <button
+                      onClick={() => handleToggleVisibility(review._id, review.isVisible !== false)}
+                      disabled={actionLoading === review._id}
+                      className={`h-9 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all disabled:opacity-60 ${
+                        review.isVisible === false
+                          ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {actionLoading === review._id ? (
+                        <FaSyncAlt className="text-xs animate-spin" />
+                      ) : review.isVisible === false ? (
+                        <FaEye className="text-xs" />
+                      ) : (
+                        <FaEyeSlash className="text-xs" />
+                      )}
+                      {review.isVisible === false ? 'Mostrar en el menú' : 'Ocultar del menú'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setReplyingTo(replyingTo === review._id ? null : review._id);
+                        setReplyText(review.reply || '');
+                      }}
+                      className={`h-9 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                        review.reply
+                          ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      <FaReply className="text-xs" />
+                      {review.reply ? 'Editar respuesta' : 'Responder'}
+                    </button>
+                  </div>
 
                 {/* Reply form */}
                 <AnimatePresence>
@@ -718,7 +751,7 @@ export default function AdminReviews() {
                           className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none transition-all"
                           autoFocus
                         />
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-slate-400">
                               {replyText.length}/300
@@ -741,14 +774,14 @@ export default function AdminReviews() {
                           <div className="flex gap-2">
                             <button
                               onClick={() => { setReplyingTo(null); setReplyText(''); }}
-                              className="px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-all"
+                              className="h-9 px-3 text-sm font-medium text-slate-600 hover:text-slate-800 rounded-lg hover:bg-slate-100 transition-all"
                             >
                               Cancelar
                             </button>
                             <button
                               onClick={() => handleReply(review._id)}
                               disabled={!replyText.trim() || replyLoading}
-                              className="px-4 py-1.5 text-xs font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-1.5"
+                              className="h-9 px-4 text-sm font-semibold bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-1.5"
                             >
                               {replyLoading ? (
                                 <FaSyncAlt className="text-2xs animate-spin" />
@@ -775,7 +808,8 @@ export default function AdminReviews() {
           <button
             onClick={() => fetchReviews(currentPage - 1)}
             disabled={currentPage <= 1}
-            className="p-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            aria-label="Página anterior"
+            className="w-10 h-10 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
             <FaChevronLeft className="text-xs" />
           </button>
@@ -785,7 +819,8 @@ export default function AdminReviews() {
           <button
             onClick={() => fetchReviews(currentPage + 1)}
             disabled={currentPage >= pagination.pages}
-            className="p-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            aria-label="Página siguiente"
+            className="w-10 h-10 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
             <FaChevronRight className="text-xs" />
           </button>

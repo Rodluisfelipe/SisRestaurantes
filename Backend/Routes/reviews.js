@@ -495,7 +495,9 @@ router.put('/:id/reply', authMiddleware, validateReply, async (req, res) => {
     }
 
     // Tenant isolation: verify admin owns this review's business BEFORE writing
-    if (req.user.businessId && review.businessId && review.businessId.toString() !== req.user.businessId.toString() && !req.user.isSuperAdmin) {
+    /* Sin negocio en el token no hay con qué comparar: antes eso dejaba pasar
+       a cualquier administrador sin negocio a reseñas ajenas. */
+    if (!req.user.isSuperAdmin && String(review.businessId || '') !== String(req.user.businessId || '-')) {
       return res.status(403).json(formatHttpError(req, 'No tienes acceso a esta reseña', 403));
     }
 
@@ -538,7 +540,9 @@ router.put('/:id/visibility', authMiddleware, validateVisibility, async (req, re
     }
 
     // Tenant isolation: verify admin owns this review's business BEFORE writing
-    if (req.user.businessId && review.businessId && review.businessId.toString() !== req.user.businessId.toString() && !req.user.isSuperAdmin) {
+    /* Sin negocio en el token no hay con qué comparar: antes eso dejaba pasar
+       a cualquier administrador sin negocio a reseñas ajenas. */
+    if (!req.user.isSuperAdmin && String(review.businessId || '') !== String(req.user.businessId || '-')) {
       return res.status(403).json(formatHttpError(req, 'No tienes acceso a esta reseña', 403));
     }
 
@@ -598,7 +602,7 @@ router.get('/admin', authMiddleware, async (req, res) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit))
-        .select('customerName rating comment reply repliedAt orderType thumbsUp createdAt')
+        .select('customerName rating comment reply repliedAt orderType thumbsUp createdAt isVisible')  // sin isVisible una reseña oculta se veía visible y no se podía volver a mostrar
         .lean(),
       Review.countDocuments(filter)
     ]);

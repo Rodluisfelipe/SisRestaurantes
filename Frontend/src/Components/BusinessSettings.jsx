@@ -63,7 +63,12 @@ const BusinessSettings = () => {
   const [applyFlags, setApplyFlags] = useState({ address: true, hours: true, location: true, google: true });
 
   // Pestaña activa de la configuración
-  const [activeTab, setActiveTab] = useState('cfg-general');
+  // Otra pantalla puede pedir abrir una pestaña (Reseñas → "Conectar con Google" está en Contacto)
+  const [activeTab, setActiveTab] = useState(() => {
+    try { return sessionStorage.getItem('abrirSeccionNegocio') || 'cfg-general'; } catch { return 'cfg-general'; }
+  });
+  // Se borra después de montar (en desarrollo React lee el valor inicial dos veces)
+  useEffect(() => { try { sessionStorage.removeItem('abrirSeccionNegocio'); } catch { /* nada */ } }, []);
 
   // Al elegir un lugar: mostramos preview con checkboxes (aún no aplicamos nada)
   const handlePlacePicked = (d) => {

@@ -374,6 +374,10 @@ export default function useProductHandlers({ businessId, products, setProducts, 
     e.dataTransfer.effectAllowed = 'move';
   };
 
+  /* Mientras se arrastra solo se mueve en pantalla; se guarda una vez al
+     soltar. Antes cada paso del arrastre llamaba al servidor, y las
+     respuestas cruzadas podían dejar un orden distinto al que se veía. */
+  const ordenDestacadosRef = useRef(null);
   const handleFeaturedDragOver = (e, index, featuredProducts) => {
     e.preventDefault();
     if (draggedFeaturedItem === null || draggedFeaturedItem === index) return;
@@ -382,10 +386,18 @@ export default function useProductHandlers({ businessId, products, setProducts, 
     newOrder.splice(draggedFeaturedItem, 1);
     newOrder.splice(index, 0, dragged);
     setDraggedFeaturedItem(index);
-    handleReorderFeatured(newOrder);
+    ordenDestacadosRef.current = newOrder;
+    const ids = newOrder.map(p => p._id);
+    setProducts(prev => prev.map(p => (ids.includes(p._id) ? { ...p, featuredOrder: ids.indexOf(p._id) + 1 } : p)));
   };
 
-  const handleFeaturedDragEnd = () => setDraggedFeaturedItem(null);
+  const handleFeaturedDragEnd = () => {
+    setDraggedFeaturedItem(null);
+    if (ordenDestacadosRef.current) {
+      handleReorderFeatured(ordenDestacadosRef.current);
+      ordenDestacadosRef.current = null;
+    }
+  };
 
   // --- Alias helpers ---
   const editProduct = (product) => {
