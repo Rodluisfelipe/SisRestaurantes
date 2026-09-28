@@ -9,6 +9,7 @@ import ProductToppingsSelector from './ProductToppingsSelector';
 import StoryViewer from './StoryViewer';
 import IndicadorSellos from './IndicadorSellos';
 import useTarjetaSellos from '../hooks/useTarjetaSellos';
+import { ANILLO_MARCA } from '../utils/anilloMarca';
 
 const seenKey = (bid) => `mb_stories_seen_${bid}`;
 
@@ -243,7 +244,7 @@ export default function StoriesRow({ products = [], categories = [], addToCart, 
                   style={{
                     background: isSeen
                       ? 'var(--mb-line)'
-                      : 'conic-gradient(from 200deg, var(--mb-accent), var(--mb-ring-partner), var(--mb-accent))',
+                      : ANILLO_MARCA,
                   }}
                 >
                   <span
@@ -277,7 +278,8 @@ export default function StoriesRow({ products = [], categories = [], addToCart, 
             );
           })}
           {tarjeta && (
-            <div className="ml-auto">
+            /* Llena el espacio libre a la derecha de las historias */
+            <div className="flex-1 min-w-[112px] max-w-[320px] ml-auto">
               <IndicadorSellos
                 tarjeta={tarjeta}
                 fotoPremio={products.find((p) => String(p._id) === String(tarjeta.premioProductId))?.image || null}

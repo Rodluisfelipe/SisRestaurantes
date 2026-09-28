@@ -5,6 +5,7 @@ import api from '../services/api';
 import { menuCssVars, derivePalette, shade } from '../utils/menuTokens';
 import { formatCurrency } from '../utils/currency';
 import { Capa } from './ui';
+import { ANILLO_MARCA } from '../utils/anilloMarca';
 
 /**
  * La vitrina de un dueño con varios negocios.
@@ -258,7 +259,7 @@ export default function PortafolioPublico() {
               al lado dejaban las etiquetas cortadas. */}
           <div
             className="w-[76px] h-[76px] sm:w-[92px] sm:h-[92px] rounded-full p-[3px] flex-shrink-0"
-            style={{ background: 'conic-gradient(from 180deg, var(--mb-accent), var(--mb-ring-partner), var(--mb-accent))' }}
+            style={{ background: ANILLO_MARCA }}
           >
             <div
               className="w-full h-full rounded-full overflow-hidden flex items-center justify-center"
