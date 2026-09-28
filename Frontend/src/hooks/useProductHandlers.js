@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import api from '../services/api';
 
 // Convierte ISO/Date a valor de <input type="datetime-local"> en hora LOCAL.
@@ -48,6 +48,16 @@ export default function useProductHandlers({ businessId, products, setProducts, 
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [showProductModal, setShowProductModal] = useState(false);
+  /* Guardando: un toque a la vez. Antes, tocar "Crear producto" dos veces
+     creaba el producto duplicado. */
+  const [guardando, setGuardando] = useState(false);
+  const guardandoRef = useRef(false);
+  const unaVez = async (fn) => {
+    if (guardandoRef.current) return;
+    guardandoRef.current = true;
+    setGuardando(true);
+    try { await fn(); } finally { guardandoRef.current = false; setGuardando(false); }
+  };
   const [draggedFeaturedItem, setDraggedFeaturedItem] = useState(null);
 
   // --- Mensajes ---
@@ -146,6 +156,9 @@ export default function useProductHandlers({ businessId, products, setProducts, 
       stock: form.trackStock && form.stock !== '' ? parseInt(form.stock, 10) : null,
       lowStockAlert: form.trackStock && form.lowStockAlert !== '' ? parseInt(form.lowStockAlert, 10) : 5,
       promo: buildPromoPayload(form),
+      // Dónde se vende: el formulario los tenía pero nunca se enviaban.
+      enMenu: form.enMenu !== false,
+      enPos: form.enPos !== false,
     };
     /* Variantes (solo tiendas). Se mandan siempre que el formulario las
        traiga, aunque vengan vacías: así quitar la última opción también se
@@ -165,24 +178,31 @@ export default function useProductHandlers({ businessId, products, setProducts, 
     if (form.itemType) payload.itemType = form.itemType;
     if (form.itemType === 'service' && form.durationMinutes) payload.durationMinutes = parseInt(form.durationMinutes, 10);
 
-    try {
-      if (editingId) {
-        setShowConfirmModal(true);
-      } else {
+    /* Editar guarda directo. Antes pedía "¿Seguro?" en cada edición: es lo
+       que más se hace en el panel (cientos de veces al mes) y el clic de más
+       no protegía de nada, los cambios se ven antes de guardar. */
+    /* Se edita solo si hay un producto ABIERTO para editar. Antes se usaba
+       `editingId`, que quedaba puesto al cerrar la ventana con la X o Esc:
+       "Nuevo producto" terminaba reemplazando el último producto editado. */
+    if (editingProduct?._id) { await confirmEdit(); return; }
+    await unaVez(async () => {
+      try {
         const response = await api.post('/products', payload);
         showSuccessMessage('Producto creado exitosamente');
         resetForm();
         setTimeout(() => setShowProductModal(false), 500);
         setProducts(prev => [...prev, response.data]);
         setTimeout(() => loadData(), 800);
+      } catch (error) {
+        console.error('Error:', error);
+        showErrorMessage(mensajeDeError(error, 'No se pudo crear el producto. Revisa los datos e intentalo de nuevo.'));
       }
-    } catch (error) {
-      console.error('Error:', error);
-      showErrorMessage(mensajeDeError(error, 'No se pudo crear el producto. Revisa los datos e intentalo de nuevo.'));
-    }
+    });
   };
 
-  const confirmEdit = async () => {
+  const confirmEdit = () => unaVez(async () => {
+    const editingId = editingProduct?._id;
+    if (!editingId) return;
     try {
       const toppingGroupIds = extractToppingGroupIds(form.toppingGroups);
       const formToSend = {
@@ -203,9 +223,31 @@ export default function useProductHandlers({ businessId, products, setProducts, 
         stock: form.trackStock && form.stock !== '' ? parseInt(form.stock, 10) : null,
         lowStockAlert: form.trackStock && form.lowStockAlert !== '' ? parseInt(form.lowStockAlert, 10) : 5,
         promo: buildPromoPayload(form),
+        enMenu: form.enMenu !== false,
+        enPos: form.enPos !== false,
       };
 
       const response = await api.put(`/products/${editingId}`, formToSend);
+
+      /* El inventario se guarda por su ruta (la misma de la pantalla de
+         Inventario), que deja el ajuste en el historial. El PUT general no lo
+         toca: antes, activar "Controlar inventario" o cambiar las unidades
+         al editar no se guardaba. */
+      const antes = editingProduct || {};
+      const trackStock = !!form.trackStock;
+      const stock = trackStock && form.stock !== '' ? parseInt(form.stock, 10) : null;
+      const lowStockAlert = form.lowStockAlert !== '' ? parseInt(form.lowStockAlert, 10) : 5;
+      let conInventario = response.data;
+      if (trackStock !== !!antes.trackStock || (trackStock && stock !== (antes.stock ?? null)) || lowStockAlert !== (antes.lowStockAlert ?? 5)) {
+        const inv = await api.patch(`/products/${editingId}/stock`, {
+          trackStock,
+          ...(trackStock ? { stock: stock ?? 0 } : {}),
+          lowStockAlert,
+          nota: 'Ajuste desde la ficha del producto',
+        });
+        conInventario = { ...response.data, trackStock: inv.data.trackStock, stock: inv.data.stock, lowStockAlert: inv.data.lowStockAlert };
+      }
+      response.data = conInventario;
 
       if (!response.data.toppingGroups || response.data.toppingGroups.length === 0) {
         setProducts(prev => prev.map(p => p._id === editingId ? { ...response.data, toppingGroups: toppingGroupIds } : p));
@@ -225,7 +267,7 @@ export default function useProductHandlers({ businessId, products, setProducts, 
       showErrorMessage(mensajeDeError(error, 'No se pudo actualizar el producto.'));
       setShowConfirmModal(false);
     }
-  };
+  });
 
   const handleEdit = (product) => {
     let processedToppingGroups = [];
@@ -241,9 +283,13 @@ export default function useProductHandlers({ businessId, products, setProducts, 
     setEditingId(product._id);
     setEditingProduct(product);
     setForm({
-      name: product.name,
-      description: product.description,
-      price: product.price.toString(),
+      /* Con valores por defecto: un producto creado desde la caja u otra vía
+         puede no tener descripción, y el formulario tumbaba la pantalla al
+         abrirlo ("reading 'trim'"). */
+      name: product.name || '',
+      description: product.description || '',
+      // Con punto de miles, como se escribe al crear ("6.000", no "6000").
+      price: product.price != null ? String(Math.round(product.price)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '',
       category: product.category || '',
       image: product.image || '',
       // Productos de antes de la galería: su única foto pasa a ser la principal.
@@ -346,9 +392,13 @@ export default function useProductHandlers({ businessId, products, setProducts, 
     setEditingId(product._id);
     setEditingProduct(product);
     setForm({
-      name: product.name,
-      description: product.description,
-      price: product.price.toString(),
+      /* Con valores por defecto: un producto creado desde la caja u otra vía
+         puede no tener descripción, y el formulario tumbaba la pantalla al
+         abrirlo ("reading 'trim'"). */
+      name: product.name || '',
+      description: product.description || '',
+      // Con punto de miles, como se escribe al crear ("6.000", no "6000").
+      price: product.price != null ? String(Math.round(product.price)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '',
       category: product.category,
       image: product.image,
       /* Sin esto, editar un producto guardaba la galería y las variantes
@@ -369,6 +419,8 @@ export default function useProductHandlers({ businessId, products, setProducts, 
       promoPrice: product.promo?.price != null ? String(product.promo.price) : '',
       promoEndsAt: toLocalDatetimeInput(product.promo?.endsAt),
       promoLabel: product.promo?.label || '',
+      enMenu: product.enMenu !== false,
+      enPos: product.enPos !== false,
     });
     setTouchedFields({});
     setShowProductModal(true);
@@ -394,6 +446,7 @@ export default function useProductHandlers({ businessId, products, setProducts, 
     successMessage, setSuccessMessage,
     errorMessage, setErrorMessage,
     showProductModal, setShowProductModal,
+    guardando,
     draggedFeaturedItem,
     // Handlers
     handleSubmit, confirmEdit,

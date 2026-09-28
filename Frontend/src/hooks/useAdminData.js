@@ -94,7 +94,7 @@ export default function useAdminData(businessId) {
     setDataLoading(true);
     try {
       const [productsRes, categoriesRes, toppingGroupsRes] = await Promise.all([
-        api.get(`/products?businessId=${businessId}`),
+        api.get(`/products?businessId=${businessId}&panel=1`),
         api.get(`/categories?businessId=${businessId}`),
         api.get(`/topping-groups?businessId=${businessId}`)
       ]);
@@ -124,13 +124,30 @@ export default function useAdminData(businessId) {
     }
   }, [businessId, loadData, loadPendingOrdersCount]);
 
+  /* El contador de pendientes se vuelve a pedir al servidor cuando un pedido
+     cambia. Antes restaba uno con CUALQUIER cambio de estado —también al
+     completar un pedido que ya estaba en preparación— y el número se iba
+     descuadrando. Ref: los oyentes se registran una sola vez y deben llamar
+     a la versión actual (con el negocio ya cargado). */
+  const recargarPendientesRef = useRef(loadPendingOrdersCount);
+  useEffect(() => { recargarPendientesRef.current = loadPendingOrdersCount; }, [loadPendingOrdersCount]);
+  const temporizadorPendientes = useRef(null);
+  const recargarPendientes = () => {
+    clearTimeout(temporizadorPendientes.current);
+    temporizadorPendientes.current = setTimeout(() => recargarPendientesRef.current?.(), 400);
+  };
+
   // --- Socket listeners (una sola vez) ---
   useEffect(() => {
+    // Solo los oyentes de este efecto: socket.off('evento') sin la función
+    // quitaba también los de otras pantallas (el aviso de pedido nuevo, por ej.).
+    const oyentes = [];
+    const escuchar = (ev, fn) => { socket.on(ev, fn); oyentes.push([ev, fn]); };
     if (socketListenersRegistered.current) return;
 
     console.log('🔌 Registering socket listeners ONCE');
 
-    socket.on(SOCKET_EVENTS.ORDER_CREATED, (newOrder) => {
+    escuchar(SOCKET_EVENTS.ORDER_CREATED, (newOrder) => {
       console.log('🔔 New order received in Admin:', newOrder);
       if (newOrder.status === ORDER_STATUS.PENDING) {
         setNewOrderNotification(newOrder);
@@ -159,14 +176,11 @@ export default function useAdminData(businessId) {
       }
     });
 
-    socket.on(SOCKET_EVENTS.ORDER_UPDATED, (updatedOrder) => {
-      if (updatedOrder.status !== ORDER_STATUS.PENDING) {
-        setPendingOrdersCount(prev => Math.max(0, prev - 1));
-      }
-    });
+    escuchar(SOCKET_EVENTS.ORDER_UPDATED, () => recargarPendientes());
+    escuchar('order_deleted', () => recargarPendientes());
 
     // 📅 New booking notification sound
-    socket.on('new_booking', (booking) => {
+    escuchar('new_booking', (booking) => {
       console.log('📅 New booking received in Admin:', booking);
       const audio = globalAudioRef.current;
       if (audio) {
@@ -185,20 +199,23 @@ export default function useAdminData(businessId) {
       }
     });
 
-    socket.on('products_update', (data) => {
+    escuchar('products_update', (data) => {
       if (data.type === 'created' && data.product) {
         setProducts(prev => [...prev, data.product]);
       } else if (data.type === 'deleted' && data.productId) {
         setProducts(prev => prev.filter(p => p._id !== data.productId));
       } else if (data.type === 'updated' && data.product) {
         setProducts(prev => prev.map(p => p._id === data.product._id ? data.product : p));
+      } else if (data.type === 'toggled' && data.productId) {
+        // Pausado o activado desde otro equipo (la caja, otro celular).
+        setProducts(prev => prev.map(p => p._id === data.productId ? { ...p, active: data.active } : p));
       } else if (Array.isArray(data)) {
         setProducts(data);
       }
     });
 
-    socket.on('categories_update', (data) => setCategories(data.categories || data));
-    socket.on('topping_groups_update', (data) => setToppingGroups(data));
+    escuchar('categories_update', (data) => setCategories(data.categories || data));
+    escuchar('topping_groups_update', (data) => setToppingGroups(data));
 
     socketListenersRegistered.current = true;
 
@@ -207,12 +224,7 @@ export default function useAdminData(businessId) {
     }
 
     return () => {
-      socket.off(SOCKET_EVENTS.ORDER_CREATED);
-      socket.off(SOCKET_EVENTS.ORDER_UPDATED);
-      socket.off('new_booking');
-      socket.off('products_update');
-      socket.off('categories_update');
-      socket.off('topping_groups_update');
+      oyentes.forEach(([ev, fn]) => socket.off(ev, fn));
       socketListenersRegistered.current = false;
     };
   }, []);

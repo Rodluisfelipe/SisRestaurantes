@@ -306,6 +306,26 @@ async function actualizarEstadoPedido(req, res) {
           session.endSession();
         }
 
+        /* Respaldo sin transacción. Si la transacción fallaba (un conflicto
+           momentáneo de la base), el pedido quedaba "completado" en la
+           colección de activos: no salía ni en Pedidos ni en Terminados ni en
+           las ventas del día. Se copia a terminados sin duplicar (mismo _id,
+           upsert) y después se borra de activos: repetirlo no hace daño. */
+        if (!moveSucceeded) {
+          try {
+            await CompletedOrder.updateOne(
+              { _id: completedOrder._id },
+              { $setOnInsert: completedOrder.toObject() },
+              { upsert: true },
+            );
+            await Order.deleteOne({ _id: id });
+            moveSucceeded = true;
+            logger.warn('Pedido pasado a terminados sin transacción', { orderId: id });
+          } catch (fallbackErr) {
+            logger.error('No se pudo pasar el pedido a terminados', { error: fallbackErr.message, orderId: id });
+          }
+        }
+
         if (moveSucceeded) {
           // Notify clients that order was removed from active list
           setTimeout(() => {

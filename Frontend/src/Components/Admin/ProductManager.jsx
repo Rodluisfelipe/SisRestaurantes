@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import ProductFormToppingSelector from '../ProductFormToppingSelector';
 import ProductToppingOrderSelector from '../ProductToppingOrderSelector';
@@ -14,6 +14,9 @@ import {
   FaCheese, FaGripVertical, FaExclamationTriangle, FaMagic, FaClock
 } from 'react-icons/fa';
 import { Capa } from '../ui';
+import { pesos } from '../../utils/pedidos';
+
+const sinTildes = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 /**
  * Modal wizard de Crear/Editar producto + Grid de productos.
@@ -44,7 +47,12 @@ export default function ProductManager({
   handleToggleFeatured,
   setActiveTab,
   enableBookings,
+  guardando = false,
 }) {
+  /* Buscar y filtrar: antes había que recorrer todas las tarjetas para
+     encontrar el producto a editar. */
+  const [busqueda, setBusqueda] = useState('');
+  const [categoriaFiltro, setCategoriaFiltro] = useState('todas');
   const [currentStep, setCurrentStep] = useState(1);
   /* En PC no hay razón para partir el formulario en tres pasos: cabe entero y
      se llena de una sola pasada. En el celular sigue el asistente, porque ahí
@@ -72,7 +80,7 @@ export default function ProductManager({
 
   // Generate AI names
   const generateAiNames = async () => {
-    const desc = form.description || form.name;
+    const desc = form.description || form.name || '';
     if (!desc.trim()) return;
     setAiNamesLoading(true);
     setShowAiNames(true);
@@ -106,6 +114,32 @@ export default function ProductManager({
   };
 
   const safeProducts = Array.isArray(products) ? products : [];
+
+  /* Agrupados por categoría, en el orden de las categorías; lo que no tiene
+     categoría (o una que ya no existe) va al final. */
+  const grupos = useMemo(() => {
+    const q = sinTildes(busqueda.trim());
+    const visibles = safeProducts.filter((p) => {
+      if (categoriaFiltro !== 'todas' && String(p.category?._id || p.category) !== categoriaFiltro) return false;
+      return !q || sinTildes(`${p.name} ${p.description || ''}`).includes(q);
+    });
+    const orden = new Map(categories.map((c, i) => [String(c._id), i]));
+    const porCat = new Map();
+    visibles.forEach((p) => {
+      const id = String(p.category?._id || p.category || '');
+      const clave = orden.has(id) ? id : 'sin';
+      if (!porCat.has(clave)) porCat.set(clave, []);
+      porCat.get(clave).push(p);
+    });
+    return [...porCat.entries()]
+      .sort((a, b) => (orden.get(a[0]) ?? 1e9) - (orden.get(b[0]) ?? 1e9))
+      .map(([id, lista]) => ({
+        id,
+        nombre: id === 'sin' ? 'Sin categoría' : categories.find((c) => String(c._id) === id)?.name,
+        lista,
+      }));
+  }, [safeProducts, categories, busqueda, categoriaFiltro]);
+  const totalVisibles = grupos.reduce((n, g) => n + g.lista.length, 0);
 
   return (
     <div className="space-y-4">
@@ -200,7 +234,7 @@ export default function ProductManager({
                           <button
                             type="button"
                             onClick={generateAiNames}
-                            disabled={aiNamesLoading || (!form.description.trim() && !form.name.trim())}
+                            disabled={aiNamesLoading || (!(form.description || '').trim() && !(form.name || '').trim())}
                             className="flex items-center gap-1 text-2xs font-semibold text-violet-600 hover:text-violet-700 disabled:text-slate-300 disabled:cursor-not-allowed transition-colors px-2 py-0.5 rounded-md hover:bg-violet-50"
                             title="La IA sugiere nombres creativos basados en la descripción"
                           >
@@ -680,9 +714,10 @@ export default function ProductManager({
                         }
                         handleSubmit(e);
                       }}
-                      className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-1.5">
+                      disabled={guardando}
+                      className="flex-1 px-3 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-lg transition-colors text-sm font-semibold flex items-center justify-center gap-1.5">
                       <FaCheck className="text-2xs" />
-                      <span>{editingProduct ? 'Actualizar' : (isService ? 'Crear Servicio' : 'Crear Producto')}</span>
+                      <span>{guardando ? 'Guardando…' : editingProduct ? 'Guardar cambios' : (isService ? 'Crear servicio' : 'Crear producto')}</span>
                     </button>
                   )}
                 </div>
@@ -692,10 +727,47 @@ export default function ProductManager({
         )}
       </AnimatePresence>
 
-      {/* Products Grid */}
+      {/* Buscar y filtrar */}
+      {safeProducts.length > 0 && (
+        <div className="space-y-2">
+          <input
+            type="search"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder={isService ? 'Buscar servicio…' : 'Buscar producto…'}
+            aria-label="Buscar producto"
+            className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-[15px] text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300"
+          />
+          {categories.length > 1 && (
+            <div className="flex gap-1.5 flex-wrap">
+              {[{ _id: 'todas', name: 'Todas' }, ...categories].map((c) => {
+                const activa = categoriaFiltro === String(c._id);
+                return (
+                  <button
+                    key={c._id}
+                    onClick={() => setCategoriaFiltro(String(c._id))}
+                    className={`px-3 h-9 rounded-full text-[13px] font-semibold border transition-colors ${activa ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                  >
+                    {c.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {safeProducts.length > 0 && totalVisibles === 0 && (
+        <p className="text-center text-sm text-slate-500 py-10">No hay productos con “{busqueda}”.</p>
+      )}
+
+      {grupos.map((grupo) => (
+      <section key={grupo.id} className="space-y-2">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 px-1">
+          {grupo.nombre} <span className="font-semibold text-slate-300">· {grupo.lista.length}</span>
+        </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-        {safeProducts.map((product) => {
-          const categoryName = categories.find(c => c._id === product.category)?.name || 'Sin categoría';
+        {grupo.lista.map((product) => {
           const isActive = product.active !== false;
 
           return (
@@ -707,14 +779,21 @@ export default function ProductManager({
             >
               {/* Image */}
               <div className="relative h-36 overflow-hidden flex-shrink-0 bg-slate-100">
-                <img
-                  src={product.image || 'https://placehold.co/400x300?text=Sin+imagen'}
-                  alt={product.name}
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
+                {product.image ? (
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    loading="lazy"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-300">
+                    <FaImage className="text-3xl" />
+                  </div>
+                )}
                 {/* Price badge */}
                 <div className="absolute top-2 left-2 bg-white/95 backdrop-blur-sm text-slate-900 px-2 py-0.5 rounded-full text-xs font-bold shadow-sm">
-                  ${Number(product.price).toLocaleString('es-CO')}
+                  {pesos(product.price)}
                 </div>
                 {/* Status badges */}
                 <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
@@ -726,19 +805,24 @@ export default function ProductManager({
                   <span className={`px-1.5 py-0.5 rounded-full text-2xs font-semibold ${
                     isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                   }`}>
-                    {isActive ? 'Activo' : 'Inactivo'}
+                    {isActive ? 'Disponible' : 'No disponible'}
                   </span>
+                  {/* Por qué no se ve en algún lado: sin esto el dueño buscaba
+                      el producto en el menú o en la caja sin entender. */}
+                  {product.enMenu === false && (
+                    <span className="bg-slate-800/80 text-white px-1.5 py-0.5 rounded-full text-2xs font-semibold">Oculto del menú</span>
+                  )}
+                  {product.enPos === false && (
+                    <span className="bg-slate-800/80 text-white px-1.5 py-0.5 rounded-full text-2xs font-semibold">No sale en la caja</span>
+                  )}
                 </div>
               </div>
 
               {/* Content */}
               <div className="p-3 flex-grow flex flex-col">
                 <div className="flex items-start justify-between gap-2 mb-1">
-                  <h3 className="text-sm font-semibold text-slate-900 line-clamp-1">{product.name}</h3>
+                  <h3 className="text-sm font-semibold text-slate-900 break-words">{product.name}</h3>
                 </div>
-                <span className="text-2xs text-slate-500 font-medium flex items-center gap-1 mb-1.5">
-                  <FaFolderOpen className="text-2xs" /> {categoryName}
-                </span>
                 <p className="text-xs text-slate-500 leading-relaxed line-clamp-2 flex-grow mb-3">{product.description}</p>
 
                 {/* Actions */}
@@ -778,6 +862,8 @@ export default function ProductManager({
           );
         })}
       </div>
+      </section>
+      ))}
     </div>
   );
 }

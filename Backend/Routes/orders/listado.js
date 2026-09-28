@@ -88,9 +88,16 @@ router.get("/completed", tenantAuth, async (req, res) => {
     if (orderChannel && allowedChannels.includes(orderChannel)) {
       filter.orderChannel = orderChannel;
     }
-    const allowedPayments = ['cash', 'efectivo', 'nequi', 'daviplata', 'transfer', 'transferencia', 'other'];
-    if (paymentMethod && allowedPayments.includes(paymentMethod)) {
-      filter.paymentMethod = paymentMethod;
+    /* Efectivo y transferencia se guardan con dos nombres según de dónde
+       salió el pedido (pedido rápido: cash/transfer; menú: efectivo/
+       transferencia): filtrar por uno solo dejaba fuera la mitad. */
+    const GRUPOS_PAGO = {
+      cash: ['cash', 'efectivo'], efectivo: ['cash', 'efectivo'],
+      transfer: ['transfer', 'transferencia'], transferencia: ['transfer', 'transferencia'],
+      nequi: ['nequi'], daviplata: ['daviplata'], credito: ['credito'], bold: ['bold'], other: ['other'],
+    };
+    if (paymentMethod && GRUPOS_PAGO[paymentMethod]) {
+      filter.paymentMethod = { $in: GRUPOS_PAGO[paymentMethod] };
     }
 
     // Text search (customer name or order number)

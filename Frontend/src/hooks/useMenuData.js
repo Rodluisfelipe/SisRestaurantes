@@ -78,6 +78,10 @@ export default function useMenuData(businessId) {
 
   // Socket.IO real-time sync for products and categories
   useEffect(() => {
+    // Solo los oyentes de este efecto: socket.off('evento') sin la función
+    // quitaba también los de otras pantallas (el aviso de pedido nuevo, por ej.).
+    const oyentes = [];
+    const escuchar = (ev, fn) => { socket.on(ev, fn); oyentes.push([ev, fn]); };
     const isValid = isValidBusinessIdentifier(businessId);
     if (!isValid) return;
 
@@ -87,7 +91,7 @@ export default function useMenuData(businessId) {
     if (socket) {
       socket.emit('joinBusiness', businessId);
 
-      socket.on('products_update', (data) => {
+      escuchar('products_update', (data) => {
         if (data.type === 'created') {
           setProducts(prev => [...prev, data.product]);
         } else if (data.type === 'deleted') {
@@ -97,7 +101,7 @@ export default function useMenuData(businessId) {
         }
       });
 
-      socket.on('categories_update', (data) => {
+      escuchar('categories_update', (data) => {
         if (data.type === 'created') {
           setCategories(prev => [...prev, data.category]);
         } else if (data.type === 'updated') {
@@ -111,8 +115,7 @@ export default function useMenuData(businessId) {
     return () => {
       if (socket) {
         socket.emit('leaveBusiness', businessId);
-        socket.off('products_update');
-        socket.off('categories_update');
+        oyentes.forEach(([ev, fn]) => socket.off(ev, fn));
       }
     };
   }, [businessId]);

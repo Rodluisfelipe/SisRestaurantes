@@ -68,12 +68,16 @@ const CategorySettings = () => {
   const [editLoading, setEditLoading] = useState(false);
 
   useEffect(() => {
+    // Solo los oyentes de este efecto: socket.off('evento') sin la función
+    // quitaba también los de otras pantallas (el aviso de pedido nuevo, por ej.).
+    const oyentes = [];
+    const escuchar = (ev, fn) => { socket.on(ev, fn); oyentes.push([ev, fn]); };
     fetchCategories();
     // --- WebSocket: Conexión y listeners ---
     if (socket) {
       socket.connect();
       socket.emit('joinBusiness', businessId);
-      socket.on('categories_update', (data) => {
+      escuchar('categories_update', (data) => {
         if (data.type === 'created') {
           setCategories((prev) => [...prev, data.category]);
         } else if (data.type === 'updated') {
@@ -85,9 +89,10 @@ const CategorySettings = () => {
     }
     return () => {
       if (socket) {
-        socket.emit('leaveBusiness', businessId);
-        socket.off('categories_update');
-        socket.disconnect();
+        /* El socket es el de TODO el panel: salir del negocio o desconectarlo
+           al cerrar esta pantalla dejaba el panel sin pedidos en tiempo real
+           (sin aviso, sin sonido, sin contador) hasta recargar. */
+        oyentes.forEach(([ev, fn]) => socket.off(ev, fn));
       }
     };
     // --- Fin WebSocket ---

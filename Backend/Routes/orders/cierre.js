@@ -17,6 +17,8 @@ const { tenantAuth } = require('../../middleware/tenantAuth');
 const { validateDeleteOrder, validateDailyClosing, validateCleanupCompleted } = require('../../middleware/validators/orderValidators');
 const { startOfDayCOL, endOfDayCOL } = require('../../utils/timezone');
 const { sincronizarCreditoPedido } = require('../../services/credito');
+const { salesOf, deliveryOf, tipsOf, chargedOf } = require('../../utils/revenue');
+const { lineTotal } = require('./compartido');
 
 // Delete an order (admin only)
 router.delete("/:id", tenantAuth, validateDeleteOrder, async (req, res) => {
@@ -96,6 +98,9 @@ router.post("/daily-closing", tenantAuth, validateDailyClosing, async (req, res)
           totalOrders: 0, 
           totalSales: 0, 
           totalAmount: 0,
+          totalDelivery: 0,
+          totalTips: 0,
+          totalCharged: 0,
           ordersByType: {
             inSite: { count: 0, total: 0 },
             takeaway: { count: 0, total: 0 },
@@ -111,6 +116,9 @@ router.post("/daily-closing", tenantAuth, validateDailyClosing, async (req, res)
       totalOrders: completedOrders.length,
       totalSales: 0,
       totalAmount: 0,
+      totalDelivery: 0,
+      totalTips: 0,
+      totalCharged: 0,
       ordersByType: {
         inSite: { count: 0, total: 0 },
         takeaway: { count: 0, total: 0 },
@@ -121,14 +129,21 @@ router.post("/daily-closing", tenantAuth, validateDailyClosing, async (req, res)
     
     // Process orders
     completedOrders.forEach(order => {
-      // Add to total sales
-      stats.totalSales += order.totalAmount;
-      stats.totalAmount += order.totalAmount;
-      
-      // Add to orders by type
+      /* Ventas con la misma definición que el resto del sistema
+         (utils/revenue): productos menos descuentos. Antes aquí no se restaba
+         el descuento y el panel mostraba dos cifras distintas para el mismo
+         día. Domicilios y propinas van aparte y se suman en "cobrado". */
+      stats.totalSales += salesOf(order);
+      stats.totalAmount += salesOf(order);
+      stats.totalDelivery += deliveryOf(order);
+      stats.totalTips += tipsOf(order);
+      stats.totalCharged += chargedOf(order);
+
       const type = order.orderType;
-      stats.ordersByType[type].count += 1;
-      stats.ordersByType[type].total += order.totalAmount;
+      if (stats.ordersByType[type]) {
+        stats.ordersByType[type].count += 1;
+        stats.ordersByType[type].total += salesOf(order);
+      }
       
       // Count items for top selling
       order.items.forEach(item => {
@@ -140,7 +155,8 @@ router.post("/daily-closing", tenantAuth, validateDailyClosing, async (req, res)
           };
         }
         stats.topSellingItems[itemName].count += item.quantity;
-        stats.topSellingItems[itemName].total += (item.price * item.quantity);
+        // Con sus opciones (tocineta, queso extra…), igual que el total del pedido.
+        stats.topSellingItems[itemName].total += lineTotal(item);
       });
     });
     
@@ -150,14 +166,10 @@ router.post("/daily-closing", tenantAuth, validateDailyClosing, async (req, res)
       .sort((a, b) => b.count - a.count)
       .slice(0, 10); // Top 10 items
     
-    // Mark orders as included in report
-    await CompletedOrder.updateMany(
-      { 
-        _id: { $in: completedOrders.map(order => order._id) } 
-      },
-      { includedInReport: true }
-    );
-    
+    /* Ya no se marca `includedInReport` aquí: la pantalla llama a esta ruta
+       cada vez que se abre o se actualiza, y la marca no la usa nadie. Era
+       una escritura en la base por cada vistazo. */
+
     res.json({
       message: "Daily closing report generated successfully",
       reportDate: today,

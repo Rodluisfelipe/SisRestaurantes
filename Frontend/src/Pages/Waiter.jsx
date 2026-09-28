@@ -104,7 +104,7 @@ export default function Waiter() {
     Promise.all([
       api.get(`/floors?businessId=${resolvedBusinessId}`),
       api.get(`/tables?businessId=${resolvedBusinessId}`),
-      api.get(`/products?businessId=${resolvedBusinessId}`),
+      api.get(`/products?businessId=${resolvedBusinessId}&panel=1`),
       api.get(`/categories?businessId=${resolvedBusinessId}`),
       api.get(`/orders?businessId=${resolvedBusinessId}&status=confirmed,preparing,ready`),
     ]).then(([fRes, tRes, pRes, cRes, oRes]) => {

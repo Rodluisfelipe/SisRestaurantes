@@ -3,6 +3,7 @@
  * Elimina los 18+ líneas repetidas de {activeTab === 'x' && 'Title'}.
  */
 import { useBusinessConfig } from '../../Context/BusinessContext';
+import { nombreDePestana } from '../../utils/navegacionAdmin';
 
 const TAB_CONFIG = {
   'dashboard':        { title: 'Panel Principal',         desc: 'Acceso rápido a todas las funciones' },
@@ -56,12 +57,14 @@ export default function AdminHeader({ activeTab }) {
 
   const overrides = isHotel ? HOTEL_OVERRIDES : isService ? SERVICE_OVERRIDES : {};
   const config = overrides[activeTab] || TAB_CONFIG[activeTab] || { title: '', desc: '' };
+  // El nombre, el mismo del menú; la descripción, la de esta lista.
+  const titulo = nombreDePestana(activeTab, businessConfig) || config.title;
 
   return (
     <div className="hidden md:block bg-white border-b border-slate-200 sticky top-0 z-40">
       <div className="px-4 md:px-6 py-2 mt-12 lg:mt-0 flex items-center justify-between">
-        <h1 className="text-sm font-semibold text-slate-700 truncate">
-          {config.title}
+        <h1 className="text-sm font-semibold text-slate-700">
+          {titulo}
           <span className="ml-2 text-xs font-normal text-slate-400">{config.desc}</span>
         </h1>
       </div>

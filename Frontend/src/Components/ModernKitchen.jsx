@@ -243,6 +243,10 @@ function ModernKitchen() {
 
   // Set up socket connection for real-time updates
   useEffect(() => {
+    // Solo los oyentes de este efecto: socket.off('evento') sin la función
+    // quitaba también los de otras pantallas (el aviso de pedido nuevo, por ej.).
+    const oyentes = [];
+    const escuchar = (ev, fn) => { socket.on(ev, fn); oyentes.push([ev, fn]); };
     if (!businessId) return;
     
     const handleConnect = () => {
@@ -265,15 +269,15 @@ function ModernKitchen() {
     }
     
     if (socket) {
-    socket.on('connect', handleConnect);
-    socket.on('disconnect', handleDisconnect);
-    socket.on('connect_error', (err) => {
+    escuchar('connect', handleConnect);
+    escuchar('disconnect', handleDisconnect);
+    escuchar('connect_error', (err) => {
       console.error('Socket connection error:', err);
       setSocketConnected(false);
     });
     
     // Listen for order events
-    socket.on('order_created', (newOrder) => {
+    escuchar('order_created', (newOrder) => {
       console.log('New order received:', newOrder);
       setOrders(prevOrders => {
         if (newOrder.sentToKitchen && ['pending', 'confirmed', 'inProgress', 'preparing'].includes(newOrder.status)) {
@@ -284,7 +288,7 @@ function ModernKitchen() {
       setLastUpdated(new Date());
     });
     
-    socket.on('order_updated', (updatedOrder) => {
+    escuchar('order_updated', (updatedOrder) => {
       console.log('Order updated:', updatedOrder);
       setOrders(prevOrders => 
         prevOrders.map(order => 
@@ -296,7 +300,7 @@ function ModernKitchen() {
       setLastUpdated(new Date());
     });
     
-    socket.on('order_deleted', (deletedOrder) => {
+    escuchar('order_deleted', (deletedOrder) => {
       console.log('Order deleted:', deletedOrder);
       setOrders(prevOrders => 
         prevOrders.filter(order => order._id !== deletedOrder._id)
@@ -309,10 +313,7 @@ function ModernKitchen() {
       if (socket) {
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
-      socket.off('connect_error');
-      socket.off('order_created');
-      socket.off('order_updated');
-      socket.off('order_deleted');
+      oyentes.forEach(([ev, fn]) => socket.off(ev, fn));
       }
     };
   }, [businessId]);

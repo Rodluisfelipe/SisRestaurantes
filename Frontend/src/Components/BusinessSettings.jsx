@@ -174,9 +174,10 @@ const BusinessSettings = () => {
       socket.on('business_config_update', handler);
 
       return () => {
-        socket.emit('leaveBusiness', businessId);
+        /* El socket es el de TODO el panel: salir del negocio o desconectarlo
+           al cerrar esta pantalla dejaba el panel sin pedidos en tiempo real
+           (sin aviso, sin sonido, sin contador) hasta recargar. */
         socket.off('business_config_update', handler);
-        socket.disconnect();
         if (debounceTimeout) clearTimeout(debounceTimeout);
       };
     }

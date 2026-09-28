@@ -933,6 +933,10 @@ export default function Menu() {
   }, [businessConfig?.currency]);
 
   useEffect(() => {
+    // Solo los oyentes de este efecto: socket.off('evento') sin la función
+    // quitaba también los de otras pantallas (el aviso de pedido nuevo, por ej.).
+    const oyentes = [];
+    const escuchar = (ev, fn) => { socket.on(ev, fn); oyentes.push([ev, fn]); };
     // Usar isValidBusinessIdentifier en lugar de isValidObjectId
     const isValid = isValidBusinessIdentifier(businessId);
     if (!isValid) {
@@ -952,7 +956,7 @@ export default function Menu() {
     }
     logger.info('Socket joinPublicBusiness:', businessId);
     if (socket) {
-      socket.on('products_update', (data) => {
+      escuchar('products_update', (data) => {
         if (data.type === 'created') {
           setProducts((prev) => [...prev, data.product]);
         } else if (data.type === 'deleted') {
@@ -975,7 +979,7 @@ export default function Menu() {
           )));
         }
       });
-      socket.on('categories_update', (data) => {
+      escuchar('categories_update', (data) => {
         if (data.type === 'created') {
           setCategories((prev) => [...prev, data.category]);
         } else if (data.type === 'updated') {
@@ -987,7 +991,7 @@ export default function Menu() {
       /* Un grupo de toppings cambia el precio de todos los productos que lo
          usan, y el evento no dice cuáles: toca volver a pedir el catálogo.
          Es lo que pasó el 22/09: se editó el grupo "BEBIDA", no el Bowl. */
-      socket.on('topping_groups_update', () => {
+      escuchar('topping_groups_update', () => {
         api.get(`/products?businessId=${businessId}`)
           .then(({ data }) => {
             setProducts(data);
@@ -1000,9 +1004,7 @@ export default function Menu() {
     return () => {
       if (socket) {
         socket.emit('leavePublicBusiness');
-        socket.off('products_update');
-        socket.off('categories_update');
-        socket.off('topping_groups_update');
+        oyentes.forEach(([ev, fn]) => socket.off(ev, fn));
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

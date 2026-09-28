@@ -159,7 +159,8 @@ router.post("/", (req, res, next) => {
 
     // === SERVER-SIDE PRICE VALIDATION ===
     try {
-      const priceResult = await validateOrderPrices(items, businessObjectId, numericTotalAmount);
+      const esPublico = !esPersonalDelNegocio(req) && !['pos', 'admin'].includes(orderChannel);
+      const priceResult = await validateOrderPrices(items, businessObjectId, numericTotalAmount, { publico: esPublico });
       if (!priceResult.valid) {
         return res.status(priceResult.error.status).json({
           message: priceResult.error.message,

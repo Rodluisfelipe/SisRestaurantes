@@ -90,6 +90,10 @@ const BusinessHoursSettings = () => {
   };
 
   useEffect(() => {
+    // Solo los oyentes de este efecto: socket.off('evento') sin la función
+    // quitaba también los de otras pantallas (el aviso de pedido nuevo, por ej.).
+    const oyentes = [];
+    const escuchar = (ev, fn) => { socket.on(ev, fn); oyentes.push([ev, fn]); };
     fetchBusinessConfig();
     
     if (socket) {
@@ -97,19 +101,20 @@ const BusinessHoursSettings = () => {
       socket.emit('joinBusiness', businessId);
 
       // Escuchar actualizaciones de horarios
-      socket.on('business_hours_update', (data) => {
+      escuchar('business_hours_update', (data) => {
         setBusinessHours(data.businessHours);
       });
 
       // Escuchar actualizaciones de estado del menú
-      socket.on('menu_status_update', (data) => {
+      escuchar('menu_status_update', (data) => {
         setMenuStatus(data.menuStatus);
       });
 
       return () => {
-        socket.emit('leaveBusiness', businessId);
-        socket.off('business_hours_update');
-        socket.off('menu_status_update');
+        /* El socket es el de TODO el panel: salir del negocio o desconectarlo
+           al cerrar esta pantalla dejaba el panel sin pedidos en tiempo real
+           (sin aviso, sin sonido, sin contador) hasta recargar. */
+        oyentes.forEach(([ev, fn]) => socket.off(ev, fn));
       };
     }
   }, [businessId]);

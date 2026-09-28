@@ -227,6 +227,10 @@ function CustomerOrderDisplay() {
 
   // Socket connection for real-time updates
   useEffect(() => {
+    // Solo los oyentes de este efecto: socket.off('evento') sin la función
+    // quitaba también los de otras pantallas (el aviso de pedido nuevo, por ej.).
+    const oyentes = [];
+    const escuchar = (ev, fn) => { socket.on(ev, fn); oyentes.push([ev, fn]); };
     if (!businessId) return;
     
     if (socket && !socket.connected) {
@@ -239,7 +243,7 @@ function CustomerOrderDisplay() {
     
     // Listen for order events
     if (socket) {
-      socket.on('order_created', (newOrder) => {
+      escuchar('order_created', (newOrder) => {
       console.log('New order received:', newOrder);
       setOrders(prevOrders => {
         const updatedOrders = [newOrder, ...prevOrders];
@@ -253,7 +257,7 @@ function CustomerOrderDisplay() {
       setLastUpdated(new Date());
     });
     
-    socket.on('order_updated', (updatedOrder) => {
+    escuchar('order_updated', (updatedOrder) => {
       console.log('Order updated:', updatedOrder);
       setOrders(prevOrders => {
         const newOrders = prevOrders.map(order => 
@@ -275,7 +279,7 @@ function CustomerOrderDisplay() {
       setLastUpdated(new Date());
     });
     
-      socket.on('order_deleted', (deletedOrder) => {
+      escuchar('order_deleted', (deletedOrder) => {
         console.log('Order deleted:', deletedOrder);
         setOrders(prevOrders => 
           prevOrders.filter(order => order._id !== deletedOrder._id)
@@ -286,9 +290,7 @@ function CustomerOrderDisplay() {
 
     return () => {
       if (socket) {
-        socket.off('order_created');
-        socket.off('order_updated');
-        socket.off('order_deleted');
+        oyentes.forEach(([ev, fn]) => socket.off(ev, fn));
       }
     };
   }, [businessId]);

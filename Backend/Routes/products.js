@@ -1,3 +1,4 @@
+const { verifyToken } = require('../config/jwt');
 const express = require("express");
 const router = express.Router();
 const Product = require("../Models/Product");
@@ -71,6 +72,7 @@ const emitProductsUpdate = async (req) => {
 router.get("/", publicProductLimiter, async (req, res) => {
   try {
     let { businessId } = req.query;
+    const idPedido = businessId;
 
     // useSharedMenu: redirect public menu queries to main branch's products
     try {
@@ -90,7 +92,15 @@ router.get("/", publicProductLimiter, async (req, res) => {
 
        `$ne: false` y no `true`: los productos creados antes de que este campo
        existiera no lo tienen, y ausente significa "sale donde salía". */
-    filter.enMenu = { $ne: false };
+    /* El panel del propio negocio sí ve todo: si no, un producto marcado
+       "solo en la caja" desaparecía también de Productos y no había cómo
+       volver a editarlo. Se reconoce por la sesión (token del negocio). */
+    const auth = req.headers.authorization || '';
+    const sesion = auth.startsWith('Bearer ') ? verifyToken(auth.slice(7)) : null;
+    // Solo si lo pide el panel (panel=1): el dueño que abre su menú público
+    // en el mismo navegador debe verlo como lo ve un cliente.
+    const delNegocio = req.query.panel === '1' && !!sesion && (sesion.role === 'superadmin' || (sesion.businessId && [String(idPedido), String(businessId)].includes(String(sesion.businessId))));
+    if (!delNegocio) filter.enMenu = { $ne: false };
     
     logger.debug('Searching products with filter', filter);
     
@@ -1029,7 +1039,21 @@ router.put("/:id/toggle-featured", tenantAuth, validateToggleFeatured, async (re
 router.put("/:id", tenantAuth, validateUpdateProductParam, validateProductInput, async (req, res) => {
   try {
     const productId = req.params.id;
-    const { name, description, price, category, image, images, sku, opciones, variantes, toppingGroups, promo } = req.body;
+    const { name, description, price, category, image, images, sku, opciones, variantes, toppingGroups, promo, enMenu, enPos, itemType, durationMinutes } = req.body;
+
+    /* Dónde se vende y qué es. El formulario los tenía pero esta ruta no los
+       leía: el dueño apagaba "Mostrar en la caja", guardaba y no pasaba nada.
+       Solo se tocan si vienen (un panel viejo no los manda y no debe
+       prenderlos ni apagarlos). El inventario NO va aquí: tiene su ruta
+       (PATCH /:id/stock) que deja el movimiento en el historial. */
+    const extras = {};
+    if (typeof enMenu === 'boolean') extras.enMenu = enMenu;
+    if (typeof enPos === 'boolean') extras.enPos = enPos;
+    if (itemType === 'product' || itemType === 'service') extras.itemType = itemType;
+    if (durationMinutes !== undefined) {
+      const d = parseInt(durationMinutes, 10);
+      extras.durationMinutes = Number.isInteger(d) && d > 0 ? d : null;
+    }
 
     /* Solo se toca la galería si el panel la envió. Un panel viejo manda solo
        `image`, y no debe borrar las fotos que el negocio ya tenía. */
@@ -1078,7 +1102,8 @@ router.put("/:id", tenantAuth, validateUpdateProductParam, validateProductInput,
         ...(promo !== undefined ? { promo } : {}),
         ...(sku !== undefined ? { sku: String(sku).trim().slice(0, 40) } : {}),
         ...(galeria ? { images: galeria, image: galeria[0] || '' } : {}),
-        ...(catalogo || {})
+        ...(catalogo || {}),
+        ...extras
       },
       { new: true }
     ).populate({

@@ -28,18 +28,22 @@ function ToppingGroupsManager() {
   const { businessId } = useBusinessConfig();
 
   useEffect(() => {
+    // Solo los oyentes de este efecto: socket.off('evento') sin la función
+    // quitaba también los de otras pantallas (el aviso de pedido nuevo, por ej.).
+    const oyentes = [];
+    const escuchar = (ev, fn) => { socket.on(ev, fn); oyentes.push([ev, fn]); };
     fetchToppingGroups();
     // --- WebSocket: Conexión y listeners ---
     if (socket) {
       socket.connect();
       socket.emit('joinBusiness', businessId);
-      socket.on('topping_groups_update', () => {
+      escuchar('topping_groups_update', () => {
         fetchToppingGroups();
       });
     }
     return () => {
       if (socket) {
-        socket.off('topping_groups_update');
+        oyentes.forEach(([ev, fn]) => socket.off(ev, fn));
       }
     };
     // --- Fin WebSocket ---

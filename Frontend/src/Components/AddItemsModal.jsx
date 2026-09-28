@@ -26,7 +26,7 @@ function AddItemsModal({ isOpen, onClose, order, onItemsAdded }) {
     if (!isOpen || !businessId) return;
     setLoading(true);
     Promise.all([
-      api.get(`/products?businessId=${businessId}`),
+      api.get(`/products?businessId=${businessId}&panel=1`),
       api.get(`/categories?businessId=${businessId}`)
     ]).then(([productsRes, categoriesRes]) => {
       setProducts(productsRes.data.filter(p => p.active !== false));

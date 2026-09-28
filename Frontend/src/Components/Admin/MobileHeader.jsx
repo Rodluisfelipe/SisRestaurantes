@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useBusinessConfig } from '../../Context/BusinessContext';
+import { nombreDePestana } from '../../utils/navegacionAdmin';
 
 /**
  * Tab titles for mobile header — short versions.
@@ -72,7 +73,8 @@ export default function MobileHeader({ activeTab, setActiveTab }) {
   const isDashboard = activeTab === 'dashboard';
 
   const overrides = isHotel ? HOTEL_OVERRIDES : isService ? SERVICE_OVERRIDES : {};
-  const title = overrides[activeTab] || TAB_TITLES[activeTab] || '';
+  // El mismo nombre del menú (utils/navegacionAdmin).
+  const title = nombreDePestana(activeTab, businessConfig) || overrides[activeTab] || TAB_TITLES[activeTab] || '';
 
   const isOpen = businessConfig?.isOpen !== false;
 

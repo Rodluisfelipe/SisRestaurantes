@@ -380,7 +380,7 @@ const LoyaltyManager = () => {
   const fetchProducts = useCallback(async () => {
     if (!bizId) return;
     try {
-      const { data } = await api.get(`/products?businessId=${bizId}`);
+      const { data } = await api.get(`/products?businessId=${bizId}&panel=1`);
       setProducts(data.filter(p => p.active !== false));
     } catch (err) {
       console.error('Error loading products:', err);

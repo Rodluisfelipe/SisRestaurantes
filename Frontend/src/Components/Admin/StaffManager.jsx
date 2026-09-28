@@ -45,7 +45,7 @@ const EditProfileModal = ({ member, businessId, onClose, onSaved }) => {
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const res = await api.get(`/products?businessId=${businessId}`);
+        const res = await api.get(`/products?businessId=${businessId}&panel=1`);
         const products = res.data.products || res.data || [];
         setServices(products.filter(p => p.itemType === 'service' || !p.itemType));
       } catch { /* empty */ }

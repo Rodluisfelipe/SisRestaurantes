@@ -138,6 +138,7 @@ function Admin() {
     successMessage, setSuccessMessage,
     errorMessage, setErrorMessage,
     showProductModal, setShowProductModal,
+    guardando: guardandoProducto,
     draggedFeaturedItem,
     handleSubmit, confirmEdit,
     handleChange, handleBlur, handlePriceChange, handleToppingGroupsChange,
@@ -671,6 +672,7 @@ function Admin() {
                     handleToggleFeatured={handleToggleFeatured}
                     setActiveTab={setActiveTab}
                     enableBookings={businessConfig?.enableBookings}
+                    guardando={guardandoProducto}
                   />
                 )}
                 {activeTab === 'product-order' && (

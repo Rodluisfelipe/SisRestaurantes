@@ -129,7 +129,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated, prefill, channel = '
     if (!isOpen || !businessId) return;
     setLoadingProducts(true);
     Promise.all([
-      api.get(`/products?businessId=${businessId}`),
+      api.get(`/products?businessId=${businessId}&panel=1`),
       api.get(`/categories?businessId=${businessId}`)
     ]).then(([pRes, cRes]) => {
       setProducts(pRes.data.filter(p => p.active !== false));

@@ -23,6 +23,18 @@ import {
 } from 'react-icons/fa';
 import { Capa } from './ui';
 import { importarConReintento } from '../utils/chunkReload';
+import { pesos, totalDeLinea } from '../utils/pedidos';
+
+/* Nombres de canal y forma de pago, una sola vez para la tabla, el detalle,
+   los filtros y el Excel. Antes 'admin' (el pedido rápido, el 89 % de los
+   pedidos) salía como "WhatsApp", y crédito y tarjeta no tenían nombre. */
+const CANALES = { pos: 'Caja (POS)', inapp: 'Menú', admin: 'Pedido rápido', whatsapp: 'WhatsApp' };
+const labelCanal = (c) => CANALES[c] || 'WhatsApp';
+const PAGOS = {
+  cash: 'Efectivo', efectivo: 'Efectivo', nequi: 'Nequi', daviplata: 'Daviplata',
+  transfer: 'Transferencia', transferencia: 'Transferencia', credito: 'Crédito', bold: 'Tarjeta', other: 'Otro',
+};
+const labelPago = (p) => PAGOS[p] || p || '—';
 
 // Estilo premium por tipo de insight de IA
 const AI_INSIGHT_STYLES = {
@@ -238,11 +250,8 @@ function EnhancedCompletedOrders() {
       const xlCharged = (o) => xlSales(o) + (Number(o.deliveryFee) || 0) + (Number(o.tipAmount) || 0);
 
       const orderTypeLabel = (t) => t === 'delivery' ? 'Domicilio' : t === 'takeaway' ? 'Para llevar' : 'En sitio';
-      const channelLabel = (c) => c === 'pos' ? 'POS' : c === 'inapp' ? 'In-App' : 'WhatsApp';
-      const paymentLabel = (p) => {
-        const map = { cash: 'Efectivo', efectivo: 'Efectivo', nequi: 'Nequi', daviplata: 'Daviplata', transfer: 'Transferencia', transferencia: 'Transferencia', other: 'Otro' };
-        return map[p] || p || 'N/A';
-      };
+      const channelLabel = labelCanal;
+      const paymentLabel = labelPago;
 
       const { default: ExcelJS } = await excelPromise;
 
@@ -442,7 +451,7 @@ function EnhancedCompletedOrders() {
         (o.items || []).forEach(item => {
           if (!prodCounts[item.name]) prodCounts[item.name] = { count: 0, total: 0 };
           prodCounts[item.name].count += item.quantity;
-          prodCounts[item.name].total += (item.price || 0) * item.quantity;
+          prodCounts[item.name].total += totalDeLinea(item);
         });
       });
       const topProducts = Object.entries(prodCounts).sort((a, b) => b[1].count - a[1].count).slice(0, 30);
@@ -580,112 +589,68 @@ function EnhancedCompletedOrders() {
     }
   };
 
-  // Generate insights and recommendations
+  /* Resumen del día: solo hechos que salen de los pedidos. Antes había
+     consejos que decían lo mismo todos los días ("considera combos", "hora
+     pico del almuerzo" según el reloj, no según los pedidos) y el "producto
+     estrella" usaba la lista anterior, así que no salía la primera vez. */
   const generateInsights = (stats, orders) => {
-    const newInsights = [];
-    
-    // Insight 1: Total sales performance
-    if (stats.totalSales > 0) {
-      if (stats.totalSales > 1000000) {
-        newInsights.push({
-          type: 'success',
-          icon: 'trophy',
-          title: '¡Excelente día!',
-          message: `Has generado $${stats.totalSales.toLocaleString()} en ventas. ¡Sigue así!`,
-          recommendation: 'Considera ofrecer promociones especiales para mantener este momentum.'
-        });
-      } else if (stats.totalSales > 500000) { // > $500K COP
-        newInsights.push({
-          type: 'good',
-          icon: 'up',
-          title: 'Buen día de ventas',
-          message: `Has generado $${stats.totalSales.toLocaleString()} en ventas.`,
-          recommendation: 'Podrías mejorar promocionando tus productos más populares.'
-        });
-      } else {
-        newInsights.push({
-          type: 'info',
-          icon: 'lightbulb',
-          title: 'Oportunidad de mejora',
-          message: `Has generado $${stats.totalSales.toLocaleString()} en ventas.`,
-          recommendation: 'Considera ofrecer combos o promociones para aumentar el ticket promedio.'
-        });
-      }
-    }
-
-    // Insight 2: Order type analysis
-    const totalOrders = stats.ordersByType.inSite.count + stats.ordersByType.takeaway.count + stats.ordersByType.delivery.count;
-    if (totalOrders > 0) {
-      const deliveryPercentage = (stats.ordersByType.delivery.count / totalOrders) * 100;
-      if (deliveryPercentage > 60) {
-        newInsights.push({
-          type: 'info',
-          icon: 'truck',
-          title: 'Alto volumen de delivery',
-          message: `${deliveryPercentage.toFixed(1)}% de tus pedidos son a domicilio.`,
-          recommendation: 'Considera optimizar tus rutas de delivery o implementar un sistema de delivery propio.'
-        });
-      }
-    }
-
-    // Insight 3: Average order value
-    const avgOrderValue = stats.totalSales / (stats.totalOrders || 1);
-    if (avgOrderValue > 50000) {
-      newInsights.push({
-        type: 'success',
-        icon: 'dollar',
-        title: 'Ticket promedio excelente',
-        message: `Tu ticket promedio es de $${avgOrderValue.toLocaleString()}.`,
-        recommendation: '¡Excelente! Los clientes están comprando productos de alto valor.'
-      });
-    } else if (avgOrderValue < 25000) {
-      newInsights.push({
-        type: 'warning',
-        icon: 'chart',
-        title: 'Oportunidad de aumentar ticket promedio',
-        message: `Tu ticket promedio es de $${avgOrderValue.toLocaleString()}.`,
-        recommendation: 'Ofrece combos, bebidas o postres para aumentar el valor por pedido.'
+    const lista = [];
+    const ventas = orders.reduce((s, o) => s + salesOf(o), 0);
+    const envios = orders.reduce((s, o) => s + (Number(o.deliveryFee) || 0), 0);
+    const propinas = orders.reduce((s, o) => s + (Number(o.tipAmount) || 0), 0);
+    if (orders.length > 0) {
+      const partes = [`${pesos(ventas)} en ventas`];
+      if (envios > 0) partes.push(`${pesos(envios)} de domicilios`);
+      if (propinas > 0) partes.push(`${pesos(propinas)} de propinas`);
+      lista.push({
+        type: 'success', icon: 'dollar', title: `Entraron ${pesos(ventas + envios + propinas)}`,
+        message: partes.join(' + '),
+        recommendation: envios > 0 || propinas > 0 ? 'Los domicilios y las propinas no se cuentan como ventas del negocio.' : '',
       });
     }
-
-    // Insight 4: Top selling items
-    if (topSellingItems.length > 0) {
-      const topItem = topSellingItems[0];
-      newInsights.push({
-        type: 'success',
-        icon: 'trophy',
-        title: 'Producto estrella',
-        message: `"${topItem.name}" es tu producto más vendido con ${topItem.count} unidades.`,
-        recommendation: 'Asegúrate de tener suficiente stock y considera crear variaciones de este producto.'
+    const estrella = (stats?.topSellingItems || [])[0];
+    if (estrella) {
+      lista.push({
+        type: 'good', icon: 'trophy', title: 'Lo que más salió',
+        message: `${estrella.name}: ${estrella.count} ${estrella.count === 1 ? 'unidad' : 'unidades'}.`,
       });
     }
-
-    // Insight 5: Time-based insights
-    const now = new Date();
-    const hour = now.getHours();
-    if (hour >= 12 && hour <= 14) {
-      newInsights.push({
-        type: 'info',
-        icon: 'food',
-        title: 'Hora pico del almuerzo',
-        message: 'Estás en la hora pico del almuerzo.',
-        recommendation: 'Asegúrate de tener suficiente personal y productos preparados.'
-      });
-    } else if (hour >= 18 && hour <= 20) {
-      newInsights.push({
-        type: 'info',
-        icon: 'food',
-        title: 'Hora pico de la cena',
-        message: 'Estás en la hora pico de la cena.',
-        recommendation: 'Prepara tu cocina para el aumento de pedidos.'
+    if (orders.length >= 3) {
+      const porHora = {};
+      orders.forEach((o) => { const h = new Date(o.completedAt || o.createdAt).getHours(); porHora[h] = (porHora[h] || 0) + 1; });
+      const [hora, cuantos] = Object.entries(porHora).sort((a, b) => b[1] - a[1])[0];
+      const h = Number(hora);
+      const fmt = (x) => `${((x + 11) % 12) + 1}${x < 12 ? 'am' : 'pm'}`;
+      lista.push({
+        type: 'info', icon: 'chart', title: `La hora más movida: ${fmt(h)} a ${fmt((h + 1) % 24)}`,
+        message: `${cuantos} de ${orders.length} pedidos.`,
       });
     }
-
-    setInsights(newInsights);
+    const pagos = {};
+    orders.forEach((o) => { const p = labelPago(o.paymentMethod); pagos[p] = (pagos[p] || 0) + salesOf(o); });
+    const formas = Object.entries(pagos).filter(([p]) => p !== '—').sort((a, b) => b[1] - a[1]);
+    if (formas.length > 1) {
+      lista.push({
+        type: 'info', icon: 'lightbulb', title: 'Cómo pagaron',
+        message: formas.map(([p, v]) => `${p} ${pesos(v)}`).join(' · '),
+      });
+    }
+    const domicilios = orders.filter((o) => o.orderType === 'delivery').length;
+    if (domicilios > 0) {
+      lista.push({
+        type: 'info', icon: 'truck', title: `${domicilios} ${domicilios === 1 ? 'domicilio' : 'domicilios'}`,
+        message: `De ${orders.length} pedidos del día.`,
+      });
+    }
+    setInsights(lista);
   };
 
   // Effect to load orders when businessId changes
   useEffect(() => {
+    // Solo los oyentes de este efecto: socket.off('evento') sin la función
+    // quitaba también los de otras pantallas (el aviso de pedido nuevo, por ej.).
+    const oyentes = [];
+    const escuchar = (ev, fn) => { socket.on(ev, fn); oyentes.push([ev, fn]); };
     if (!businessId) return;
     
     if (viewMode === 'today') {
@@ -702,7 +667,7 @@ function EnhancedCompletedOrders() {
     if (socket) {
       socket.emit('joinBusiness', businessId);
       
-      socket.on('order_updated', (updatedOrder) => {
+      escuchar('order_updated', (updatedOrder) => {
         if (updatedOrder.status === 'completed') {
           if (viewMode === 'today') fetchCompletedOrders();
           else fetchAllCompletedOrders(currentPage);
@@ -712,7 +677,7 @@ function EnhancedCompletedOrders() {
     
     return () => {
       if (socket) {
-        socket.off('order_updated');
+        oyentes.forEach(([ev, fn]) => socket.off(ev, fn));
       }
     };
   }, [businessId, viewMode]);
@@ -809,14 +774,16 @@ function EnhancedCompletedOrders() {
             <div className="bg-slate-50 rounded-lg p-3">
               <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Cliente</h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="flex items-center gap-2 text-slate-700">
-                  <FaUser className="text-slate-400 text-xs" />
-                  <span>{selectedOrder.customerName || 'No especificado'}</span>
+                <div className="flex items-center gap-2 text-slate-700 min-w-0">
+                  <FaUser className="text-slate-400 text-xs shrink-0" />
+                  <span className="break-words min-w-0">{selectedOrder.customerName || 'No especificado'}</span>
                 </div>
-                <div className="flex items-center gap-2 text-slate-700">
-                  <FaPhone className="text-slate-400 text-xs" />
-                  <span>{selectedOrder.phone || 'No especificado'}</span>
-                </div>
+                {selectedOrder.phone && (
+                  <div className="flex items-center gap-2 text-slate-700">
+                    <FaPhone className="text-slate-400 text-xs" />
+                    <a href={`tel:${selectedOrder.phone}`} className="hover:underline">{selectedOrder.phone}</a>
+                  </div>
+                )}
                 {selectedOrder.orderType === 'delivery' && (
                   <div className="col-span-2 flex items-center gap-2 text-slate-700">
                     <FaMapMarkerAlt className="text-slate-400 text-xs" />
@@ -841,9 +808,10 @@ function EnhancedCompletedOrders() {
                     selectedOrder.orderType === 'takeaway' ? 'bg-amber-100 text-amber-700' :
                     'bg-blue-100 text-blue-700'
                   }`}>
-                    {selectedOrder.orderType === 'delivery' ? 'Delivery' :
+                    {selectedOrder.orderType === 'delivery' ? 'Domicilio' :
                      selectedOrder.orderType === 'takeaway' ? 'Para llevar' : 'En sitio'}
                   </span>
+                  <span className="text-xs text-slate-500">{labelCanal(selectedOrder.orderChannel)} · {labelPago(selectedOrder.paymentMethod)}</span>
                 </div>
               </div>
             </div>
@@ -866,7 +834,7 @@ function EnhancedCompletedOrders() {
                               items.push(
                                 <p key={`t-${idx}`} className="text-xs text-slate-500">
                                   + {topping.groupName}: {topping.optionName}
-                                  {topping.price > 0 && ` (+$${topping.price.toLocaleString()})`}
+                                  {topping.price > 0 && ` (+${pesos(topping.price)})`}
                                 </p>
                               );
                             }
@@ -875,7 +843,7 @@ function EnhancedCompletedOrders() {
                                 items.push(
                                   <p key={`s-${idx}-${si}`} className="text-xs text-orange-600 pl-2">
                                     + {sg.subGroupTitle}: {sg.optionName}
-                                    {sg.price > 0 && ` (+$${sg.price.toLocaleString()})`}
+                                    {sg.price > 0 && ` (+${pesos(sg.price)})`}
                                   </p>
                                 );
                               });
@@ -886,7 +854,7 @@ function EnhancedCompletedOrders() {
                       )}
                     </div>
                     <span className="text-sm font-medium text-slate-700 tabular-nums">
-                      ${(item.price * item.quantity).toLocaleString('es-CO')}
+                      {pesos(totalDeLinea(item))}
                     </span>
                   </div>
                 ))}
@@ -898,31 +866,31 @@ function EnhancedCompletedOrders() {
                 {(selectedOrder.deliveryFee > 0 || selectedOrder.discountAmount > 0 || selectedOrder.tipAmount > 0) && (
                   <div className="flex justify-between items-center text-sm text-slate-600">
                     <span>Subtotal</span>
-                    <span className="tabular-nums">${(selectedOrder.totalAmount || 0).toLocaleString('es-CO')}</span>
+                    <span className="tabular-nums">{pesos(selectedOrder.totalAmount)}</span>
                   </div>
                 )}
                 {selectedOrder.deliveryFee > 0 && (
                   <div className="flex justify-between items-center text-sm text-slate-600">
                     <span>Domicilio{selectedOrder.deliveryZoneName ? ` (${selectedOrder.deliveryZoneName})` : ''}</span>
-                    <span className="tabular-nums">${selectedOrder.deliveryFee.toLocaleString('es-CO')}</span>
+                    <span className="tabular-nums">{pesos(selectedOrder.deliveryFee)}</span>
                   </div>
                 )}
                 {selectedOrder.discountAmount > 0 && (
                   <div className="flex justify-between items-center text-sm text-emerald-600">
                     <span>Descuento{selectedOrder.couponCode ? ` (${selectedOrder.couponCode})` : ''}</span>
-                    <span className="tabular-nums">-${selectedOrder.discountAmount.toLocaleString('es-CO')}</span>
+                    <span className="tabular-nums">−{pesos(selectedOrder.discountAmount)}</span>
                   </div>
                 )}
                 {selectedOrder.tipAmount > 0 && (
                   <div className="flex justify-between items-center text-sm text-slate-600">
                     <span>Propina</span>
-                    <span className="tabular-nums">${selectedOrder.tipAmount.toLocaleString('es-CO')}</span>
+                    <span className="tabular-nums">{pesos(selectedOrder.tipAmount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center pt-1.5 border-t border-slate-100">
-                  <span className="text-sm font-semibold text-slate-900">Total</span>
+                  <span className="text-sm font-semibold text-slate-900">Total cobrado</span>
                   <span className="text-base font-bold text-slate-900 tabular-nums">
-                    ${(selectedOrder.finalAmount || selectedOrder.totalAmount || 0).toLocaleString('es-CO')}
+                    {pesos(chargedOf(selectedOrder))}
                   </span>
                 </div>
               </div>
@@ -991,10 +959,10 @@ function EnhancedCompletedOrders() {
                 </span>
                 <div>
                   <p className="text-sm font-medium text-slate-800">{item.name}</p>
-                  <p className="text-xs text-slate-500">{item.count} uds</p>
+                  <p className="text-xs text-slate-500">{item.count} {item.count === 1 ? 'unidad' : 'unidades'}</p>
                 </div>
               </div>
-              <span className="text-sm font-semibold text-slate-700">${item.total.toLocaleString()}</span>
+              <span className="text-sm font-semibold text-slate-700 tabular-nums">{pesos(item.total)}</span>
             </div>
           ))}
         </div>
@@ -1010,7 +978,7 @@ function EnhancedCompletedOrders() {
       <div className="space-y-2">
         <div className="flex items-center gap-2 mb-1">
           <FaLightbulb className="text-amber-500 text-xs" />
-          <h3 className="text-sm font-semibold text-slate-800">Insights</h3>
+          <h3 className="text-sm font-semibold text-slate-800">Resumen del día</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {insights.map((insight, index) => (
@@ -1031,7 +999,7 @@ function EnhancedCompletedOrders() {
               <div className="min-w-0">
                 <h4 className="text-xs font-semibold text-slate-800">{insight.title}</h4>
                 <p className="text-xs text-slate-600 mt-0.5">{insight.message}</p>
-                <p className="text-xs text-slate-400 mt-1">{insight.recommendation}</p>
+                {insight.recommendation && <p className="text-xs text-slate-400 mt-1">{insight.recommendation}</p>}
               </div>
             </div>
           ))}
@@ -1069,7 +1037,7 @@ function EnhancedCompletedOrders() {
           }
         : localMetrics(totalOrders)) // backend viejo sin stats: total real + montos de la página
     : localMetrics();
-  const fmtMoney = (n) => Math.round(n || 0).toLocaleString('es-CO');
+  const fmtMoney = (n) => pesos(n).slice(1);
 
   // Loading state — only show full spinner on initial load
   if (loading && !refreshing) {
@@ -1134,7 +1102,7 @@ function EnhancedCompletedOrders() {
 
           {/* Right side: search + filter toggle + export + refresh */}
           <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
-            <div className="relative flex-1 sm:flex-none">
+            <div className="relative basis-full sm:basis-auto flex-1 sm:flex-none">
               <FaSearch className="absolute left-3 lg:left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
               <input
                 type="text"
@@ -1249,9 +1217,10 @@ function EnhancedCompletedOrders() {
                     <select value={filterChannel} onChange={(e) => setFilterChannel(e.target.value)}
                       className="w-full px-2.5 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all">
                       <option value="">Todos</option>
+                      <option value="admin">Pedido rápido</option>
+                      <option value="inapp">Menú</option>
                       <option value="whatsapp">WhatsApp</option>
-                      <option value="inapp">In-App</option>
-                      <option value="pos">POS</option>
+                      <option value="pos">Caja (POS)</option>
                     </select>
                   </div>
                   {/* Payment */}
@@ -1264,6 +1233,8 @@ function EnhancedCompletedOrders() {
                       <option value="nequi">Nequi</option>
                       <option value="daviplata">Daviplata</option>
                       <option value="transfer">Transferencia</option>
+                      <option value="credito">Crédito</option>
+                      <option value="bold">Tarjeta</option>
                       <option value="other">Otro</option>
                     </select>
                   </div>
@@ -1285,7 +1256,7 @@ function EnhancedCompletedOrders() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         {[
           { label: isService ? 'Citas' : 'Pedidos', value: (metrics.orders || 0).toLocaleString('es-CO'), Icon: FaClipboardList, from: 'from-blue-500', to: 'to-indigo-600' },
-          { label: 'Ventas', value: `$${fmtMoney(metrics.revenue)}`, Icon: FaDollarSign, from: 'from-emerald-500', to: 'to-teal-600' },
+          { label: 'Ventas', value: `$${fmtMoney(metrics.revenue)}`, Icon: FaDollarSign, from: 'from-emerald-500', to: 'to-teal-600', ayuda: 'Productos menos descuentos. Sin domicilios ni propinas.' },
           { label: 'Promedio', value: `$${fmtMoney(metrics.avg)}`, Icon: FaChartBar, from: 'from-violet-500', to: 'to-purple-600' },
           { label: isService ? 'Servicios' : 'Productos', value: (metrics.products || 0).toLocaleString('es-CO'), Icon: FaHamburger, from: 'from-orange-500', to: 'to-amber-600' },
         ].map((c, i) => (
@@ -1294,6 +1265,7 @@ function EnhancedCompletedOrders() {
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.28, delay: i * 0.05 }}
+            title={c.ayuda}
             className="bg-white rounded-xl border border-slate-100 px-3 py-2.5 flex items-center gap-2.5 shadow-[0_1px_4px_rgba(0,0,0,0.04)]"
           >
             <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${c.from} ${c.to} flex items-center justify-center shrink-0`}>
@@ -1441,7 +1413,7 @@ function EnhancedCompletedOrders() {
                   <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Canal</th>
                   <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Pago</th>
                   <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Detalle</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider" title="Ventas + domicilio + propina">Cobrado</th>
                   <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Fecha</th>
                   <th className="px-4 py-2.5 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider"></th>
                 </tr>
@@ -1453,7 +1425,7 @@ function EnhancedCompletedOrders() {
                       <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-md bg-slate-100 text-[12px] font-bold text-slate-700 tabular-nums group-hover:bg-white">#{order.orderNumber}</span>
                     </td>
                     <td className="px-4 py-2.5">
-                      <div className="text-sm text-slate-600">{order.customerName || 'Sin nombre'}</div>
+                      <div className="text-sm text-slate-600 break-words">{order.customerName || 'Sin nombre'}</div>
                       {order.phone && <div className="text-[11px] text-slate-400">{order.phone}</div>}
                     </td>
                     <td className="px-4 py-2.5">
@@ -1464,8 +1436,8 @@ function EnhancedCompletedOrders() {
                           ? 'bg-amber-50 text-amber-700'
                           : 'bg-blue-50 text-blue-700'
                       }`}>
-                        {order.orderType === 'delivery' ? <><FaTruck className="text-2xs" /> Delivery</> :
-                         order.orderType === 'takeaway' ? <><FaShoppingBag className="text-2xs" /> Llevar</> :
+                        {order.orderType === 'delivery' ? <><FaTruck className="text-2xs" /> Domicilio</> :
+                         order.orderType === 'takeaway' ? <><FaShoppingBag className="text-2xs" /> Para llevar</> :
                          <><FaChair className="text-2xs" /> En sitio</>}
                       </span>
                     </td>
@@ -1473,10 +1445,10 @@ function EnhancedCompletedOrders() {
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
                         order.orderChannel === 'pos' ? 'bg-slate-100 text-slate-600' :
                         order.orderChannel === 'inapp' ? 'bg-cyan-50 text-cyan-700' :
+                        order.orderChannel === 'admin' ? 'bg-red-50 text-red-700' :
                         'bg-green-50 text-green-700'
                       }`}>
-                        {order.orderChannel === 'pos' ? 'POS' :
-                         order.orderChannel === 'inapp' ? 'In-App' : 'WhatsApp'}
+                        {labelCanal(order.orderChannel)}
                       </span>
                     </td>
                     <td className="px-4 py-2.5 hidden md:table-cell">
@@ -1485,10 +1457,10 @@ function EnhancedCompletedOrders() {
                          order.paymentMethod === 'nequi' ? <>{AI.deviceMobile('w-3.5 h-3.5')} Nequi</> :
                          order.paymentMethod === 'daviplata' ? <>{AI.deviceMobile('w-3.5 h-3.5')} Daviplata</> :
                          order.paymentMethod === 'transfer' || order.paymentMethod === 'transferencia' ? <>{AI.bank('w-3.5 h-3.5')} Transf.</> :
-                         order.paymentMethod ? order.paymentMethod : '—'}
+                         labelPago(order.paymentMethod)}
                       </span>
                     </td>
-                    <td className="px-4 py-2.5 text-xs text-slate-500 hidden sm:table-cell max-w-[150px] truncate">
+                    <td className="px-4 py-2.5 text-xs text-slate-500 hidden sm:table-cell max-w-[220px] break-words">
                       {order.orderType === 'delivery'
                         ? (order.deliveryPersonId?.name
                             ? <span className="inline-flex items-center gap-1">{AI.truck('w-3 h-3')} {order.deliveryPersonId.name}</span>
@@ -1498,10 +1470,10 @@ function EnhancedCompletedOrders() {
                         : '—'}
                     </td>
                     <td className="px-4 py-2.5 text-sm font-bold text-emerald-600 tabular-nums">
-                      ${chargedOf(order).toLocaleString()}
+                      {pesos(chargedOf(order))}
                     </td>
                     <td className="px-4 py-2.5 text-xs text-slate-500 hidden sm:table-cell tabular-nums">
-                      {new Date(order.completedAt || order.createdAt).toLocaleString('es-ES', {
+                      {new Date(order.completedAt || order.createdAt).toLocaleString('es-CO', {
                         day: 'numeric', month: 'numeric',
                         hour: '2-digit', minute: '2-digit'
                       })}
@@ -1540,7 +1512,7 @@ function EnhancedCompletedOrders() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-[13px] font-semibold text-slate-900">#{order.orderNumber}</span>
-                    <span className="text-[11px] text-slate-400">{order.customerName || 'Sin nombre'}</span>
+                    <span className="text-[12px] text-slate-500 break-words min-w-0">{order.customerName || 'Sin nombre'}</span>
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-[11px] text-slate-400">
@@ -1552,8 +1524,8 @@ function EnhancedCompletedOrders() {
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-[13px] font-bold text-emerald-600 tabular-nums">${chargedOf(order).toLocaleString()}</p>
-                  <p className="text-2xs text-slate-400">{order.items?.length || 0} items</p>
+                  <p className="text-[13px] font-bold text-emerald-600 tabular-nums">{pesos(chargedOf(order))}</p>
+                  <p className="text-2xs text-slate-400">{labelPago(order.paymentMethod)}</p>
                 </div>
                 <svg className="w-4 h-4 text-slate-300 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
               </button>

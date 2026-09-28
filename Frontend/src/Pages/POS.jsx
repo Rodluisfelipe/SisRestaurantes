@@ -123,7 +123,7 @@ export default function POS() {
     const fetchData = async () => {
       try {
         const [productsRes, categoriesRes, cashRes] = await Promise.all([
-          api.get(`/products?businessId=${resolvedBusinessId}`),
+          api.get(`/products?businessId=${resolvedBusinessId}&panel=1`),
           api.get(`/categories?businessId=${resolvedBusinessId}`),
           api.get(`/cash-register/current?businessId=${resolvedBusinessId}`)
         ]);

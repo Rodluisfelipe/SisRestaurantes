@@ -24,6 +24,17 @@ import { SECCIONES_OCULTAS } from './seccionesOcultas';
 /** Las pestañas que ve el personal (rol staff). */
 export const PESTANAS_PERSONAL = ['orders', 'completed_orders', 'cash-closings', 'change-password'];
 
+/** El nombre de una pestaña tal como sale en el menú: así la pantalla se
+    llama igual arriba, en el menú y en el celular. */
+export function nombreDePestana(id, businessConfig) {
+  if (id === 'dashboard') return 'Inicio';
+  for (const s of seccionesDelPanel({ businessConfig })) {
+    const item = s.items.find((i) => i.id === id);
+    if (item) return item.label;
+  }
+  return '';
+}
+
 export function seccionesDelPanel({ businessConfig, esPersonal = false, pedidosPendientes = 0, whatsappSinLeer = 0 }) {
   const servicio = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const hotel = businessConfig?.businessType === 'hotel';

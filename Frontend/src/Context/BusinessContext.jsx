@@ -208,6 +208,10 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
   }, [propBusinessId]); // ✅ Eliminado businessId de dependencias para evitar loop infinito
 
   useEffect(() => {
+    // Solo los oyentes de este efecto: socket.off('evento') sin la función
+    // quitaba también los de otras pantallas (el aviso de pedido nuevo, por ej.).
+    const oyentes = [];
+    const escuchar = (ev, fn) => { socket.on(ev, fn); oyentes.push([ev, fn]); };
     if (!businessId) return;
     // --- WebSocket: Conexión y listeners ---
     try {
@@ -218,14 +222,14 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
       }
       
       if (socket) {
-        socket.on('business_config_update', (data) => {
+        escuchar('business_config_update', (data) => {
           setBusinessConfig(prevConfig => ({
             ...prevConfig,
             ...data,
             theme: data.theme || prevConfig.theme
           }));
         });
-        socket.on('business_status_update', (data) => {
+        escuchar('business_status_update', (data) => {
             setBusinessConfig(prevConfig => ({
               ...prevConfig,
             isActive: data.isActive
@@ -237,8 +241,7 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
         try {
           if (socket) {
             socket.emit('leaveBusiness', businessId);
-            socket.off('business_config_update');
-            socket.off('business_status_update');
+            oyentes.forEach(([ev, fn]) => socket.off(ev, fn));
           }
         } catch (e) {
           // Error silencioso

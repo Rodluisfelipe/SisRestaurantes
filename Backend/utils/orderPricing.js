@@ -13,7 +13,7 @@ const logger = require('./logger');
  * @param {number} clientTotal - The total amount sent by the client
  * @returns {{ valid: boolean, error?: { status: number, message: string, code?: string } }}
  */
-async function validateOrderPrices(items, businessObjectId, clientTotal) {
+async function validateOrderPrices(items, businessObjectId, clientTotal, { publico = false } = {}) {
   let calculatedTotal = 0;
   const debugItems = [];
 
@@ -23,6 +23,23 @@ async function validateOrderPrices(items, businessObjectId, clientTotal) {
     ? await Product.find({ _id: { $in: productIds }, businessId: businessObjectId }).lean()
     : [];
   const productMap = new Map(dbProducts.map(p => [p._id.toString(), p]));
+
+  /* Pedido del menú público: un producto pausado ("se acabó") u oculto del
+     menú no se puede pedir. El cliente podía tener el menú abierto desde
+     antes de que se pausara y el pedido entraba igual. El personal del
+     negocio (panel, caja) no pasa por aquí: decide él. */
+  if (publico) {
+    const noDisponible = items
+      .filter((i) => i.productId && !i.isLoyaltyReward)
+      .map((i) => productMap.get(i.productId.toString()))
+      .find((p) => p && (p.active === false || p.enMenu === false));
+    if (noDisponible) {
+      return {
+        valid: false,
+        error: { status: 409, message: `"${noDisponible.name}" ya no está disponible. Quítalo del carrito para continuar.`, code: 'PRODUCTO_NO_DISPONIBLE' },
+      };
+    }
+  }
 
   // Batch-fetch all topping groups for this business for server-side validation
   const allToppingGroupIds = dbProducts.flatMap(p => (p.toppingGroups || []).map(id => id.toString()));

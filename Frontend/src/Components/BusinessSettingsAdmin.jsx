@@ -30,6 +30,10 @@ const BusinessSettingsAdmin = () => {
   const defaultLogo = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiNlNWU3ZWIiLz48dGV4dCB4PSI1MCIgeT0iNTAiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IiM5Y2EzYWYiPkxvZ288L3RleHQ+PC9zdmc+';
 
   useEffect(() => {
+    // Solo los oyentes de este efecto: socket.off('evento') sin la función
+    // quitaba también los de otras pantallas (el aviso de pedido nuevo, por ej.).
+    const oyentes = [];
+    const escuchar = (ev, fn) => { socket.on(ev, fn); oyentes.push([ev, fn]); };
     const fetchSettings = async () => {
       try {
         setLoading(true);
@@ -51,7 +55,7 @@ const BusinessSettingsAdmin = () => {
     if (socket) {
       socket.connect();
       socket.emit('joinBusiness', businessId);
-      socket.on('business_config_update', (data) => {
+      escuchar('business_config_update', (data) => {
         setSettings(prev => ({ ...prev, ...data }));
         setPreviewLogo(data.logo || defaultLogo);
         setPreviewCover(data.coverImage);
@@ -59,7 +63,7 @@ const BusinessSettingsAdmin = () => {
     }
     return () => {
       if (socket) {
-        socket.off('business_config_update');
+        oyentes.forEach(([ev, fn]) => socket.off(ev, fn));
       }
     };
     // --- Fin WebSocket ---

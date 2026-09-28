@@ -386,13 +386,17 @@ export default function useOrdersDashboard() {
 
   // Socket connection for real-time updates
   useEffect(() => {
+    // Solo los oyentes de este efecto: socket.off('evento') sin la función
+    // quitaba también los de otras pantallas (el aviso de pedido nuevo, por ej.).
+    const oyentes = [];
+    const escuchar = (ev, fn) => { socket.on(ev, fn); oyentes.push([ev, fn]); };
     if (!businessId) return;
     console.log('Connecting to socket for business:', businessId);
     socketDiagnostic();
     joinBusiness(businessId);
 
     if (socket) {
-      socket.on(SOCKET_EVENTS.ORDER_CREATED, (newOrder) => {
+      escuchar(SOCKET_EVENTS.ORDER_CREATED, (newOrder) => {
         console.log('New order received:', newOrder);
         if (!newOrder?._id) return;
         // Puede llegar dos veces (socket y recarga): nunca duplicado en la lista.
@@ -402,7 +406,7 @@ export default function useOrdersDashboard() {
         }
       });
 
-      socket.on(SOCKET_EVENTS.ORDER_UPDATED, (updatedOrder) => {
+      escuchar(SOCKET_EVENTS.ORDER_UPDATED, (updatedOrder) => {
         console.log('Order updated:', updatedOrder);
         if (!updatedOrder?._id) return;
         /* Terminado o cancelado en otro equipo (la caja, la cocina): sale de
@@ -418,7 +422,7 @@ export default function useOrdersDashboard() {
         }
       });
 
-      socket.on('order_deleted', (deletedOrder) => {
+      escuchar('order_deleted', (deletedOrder) => {
         console.log('Order deleted:', deletedOrder);
         if (!deletedOrder?._id) return;
         setOrders(prevOrders => prevOrders.filter(order => order && order._id !== deletedOrder._id));
@@ -429,7 +433,7 @@ export default function useOrdersDashboard() {
         }
       });
 
-      socket.on('payment_proof_uploaded', (data) => {
+      escuchar('payment_proof_uploaded', (data) => {
         console.log('Payment proof uploaded:', data);
         if (!data?.orderId) return;
         api.get(`/orders/${data.orderId}`).then(res => {
@@ -443,10 +447,7 @@ export default function useOrdersDashboard() {
 
     return () => {
       if (socket) {
-        socket.off(SOCKET_EVENTS.ORDER_CREATED);
-        socket.off(SOCKET_EVENTS.ORDER_UPDATED);
-        socket.off('order_deleted');
-        socket.off('payment_proof_uploaded');
+        oyentes.forEach(([ev, fn]) => socket.off(ev, fn));
       }
     };
   }, [businessId]);
