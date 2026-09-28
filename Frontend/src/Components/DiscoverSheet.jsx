@@ -5,6 +5,7 @@ import ProductToppingsSelector from './ProductToppingsSelector';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { isPromoActive, getEffectivePrice } from '../utils/promo';
 import { Capa } from './ui';
+import { useBloqueoScroll } from '../utils/bloqueoScroll';
 
 const money = (n) => `$${Number(n || 0).toLocaleString('es-CO', { maximumFractionDigits: 0 })}`;
 
@@ -41,13 +42,8 @@ export default function DiscoverSheet({ open, onClose, products = [], categories
     ].slice(0, 40);
   }, [products]);
 
-  // Bloquear el scroll del fondo mientras está abierto
-  useEffect(() => {
-    if (!open) return undefined;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, [open]);
+  // Bloquear el scroll del fondo mientras está abierto (también en iPhone)
+  useBloqueoScroll(open);
 
   useEffect(() => {
     if (!open) return undefined;

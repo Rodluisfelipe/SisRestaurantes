@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Capa } from './ui';
+import { useBloqueoScroll } from '../utils/bloqueoScroll';
 
 const SLIDE_MS = 5000;
 
@@ -67,12 +68,8 @@ export default function StoryViewer({ story, onClose, onCta, onSlideSeen }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose, next, prev]);
 
-  // Bloquear el scroll del fondo mientras el visor está abierto
-  useEffect(() => {
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prevOverflow; };
-  }, []);
+  // Bloquear el scroll del fondo mientras el visor está abierto (también en iPhone)
+  useBloqueoScroll(true);
 
   if (!slide) return null;
 

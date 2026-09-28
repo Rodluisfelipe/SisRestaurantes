@@ -25,6 +25,7 @@ const LocationPicker = lazyConReintento(cargarLocationPicker);
 import { Capa } from './ui';
 import MapaPunto from './Catalog/MapaPunto';
 import { marcarEtapa, ETAPA } from '../utils/embudo';
+import { useBloqueoScroll } from '../utils/bloqueoScroll';
 
 /* ── Checkout SVG Icon System (admin-style, no emojis) ── */
 const CI = {
@@ -61,25 +62,8 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
   const scrollContainerRef = useRef(null);
   const checkoutRef = useRef(null);
 
-  // Lock body scroll when modal is open
-  useEffect(() => {
-    const originalOverflow = document.body.style.overflow;
-    const originalPosition = document.body.style.position;
-    const originalTop = document.body.style.top;
-    const scrollY = window.scrollY;
-    
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.overflow = 'hidden';
-    document.body.style.width = '100%';
-    
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      document.body.style.position = originalPosition;
-      document.body.style.top = originalTop;
-      window.scrollTo(0, scrollY);
-    };
-  }, []);
+  // El menú de atrás queda quieto mientras el carrito está abierto
+  useBloqueoScroll(true);
   const [locationChecked, setLocationChecked] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [customerNotes, setCustomerNotes] = useState('');

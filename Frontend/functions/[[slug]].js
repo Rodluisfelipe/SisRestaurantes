@@ -667,6 +667,20 @@ function injectMenuShell(html, business) {
     let out = html.replace(rootTag, `<div id="root">${buildSplashDiv(name, theme, logo)}</div>`);
     out = out.replace(/<title>[\s\S]*?<\/title>/, `<title>${escapeHtml(name)} — Menú</title>`);
     out = out.replace(/<meta name="theme-color" content="[^"]*"\s*\/>/, `<meta name="theme-color" content="${escapeHtml(theme)}" />`);
+
+    /* "Añadir a inicio": el celular lee estos datos al cargar la página, antes
+       de que el menú los cambie con JavaScript. Venían con el nombre y el
+       ícono de MenuBy, y el acceso directo quedaba como MenuBy. */
+    const slug = business.slug || '';
+    out = out.replace(/<meta name="apple-mobile-web-app-title" content="[^"]*"\s*\/>/,
+      `<meta name="apple-mobile-web-app-title" content="${escapeHtml(name)}" />`);
+    if (logo) {
+      out = out.replace(/<link rel="apple-touch-icon"[^>]*>/, `<link rel="apple-touch-icon" href="${escapeHtml(logo)}" />`);
+    }
+    if (slug) {
+      out = out.replace(/<link rel="manifest" href="[^"]*"\s*\/>/,
+        `<link rel="manifest" href="/manifest?slug=${encodeURIComponent(slug)}" />`);
+    }
     return out;
   } catch (e) {
     return null;

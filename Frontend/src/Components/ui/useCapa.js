@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { bloquearScroll as bloquearScroll_, desbloquearScroll } from '../../utils/bloqueoScroll';
 
 /**
  * Lo que toda capa encima de la página (modal, hoja, visor) le debe a quien
@@ -15,7 +16,6 @@ import { useEffect, useRef } from 'react';
  */
 
 const pila = [];
-let overflowPrevio = '';
 /* Cuántos `popstate` provocamos nosotros al cerrar con la X: esos no son el
    usuario pidiendo "atrás" y no deben cerrar la capa que queda debajo. */
 let propios = 0;
@@ -56,10 +56,8 @@ export default function useCapa(abierta, onCerrar, { bloquearScroll = true } = {
 
     const capa = { marca: `capa-${Date.now()}-${Math.random().toString(36).slice(2)}`, cerrar, porAtras: false, bloquearScroll };
     instalar();
-    if (bloquearScroll && !pila.some((c) => c.bloquearScroll)) {
-      overflowPrevio = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-    }
+    // Bloqueo compartido: también funciona en iPhone y lleva la cuenta de capas
+    if (bloquearScroll) bloquearScroll_();
     pila.push(capa);
     try { window.history.pushState({ ...(window.history.state || {}), capa: capa.marca }, ''); } catch { /* sin historial */ }
 
@@ -73,7 +71,7 @@ export default function useCapa(abierta, onCerrar, { bloquearScroll = true } = {
         propios += 1;
         try { window.history.back(); } catch { propios -= 1; }
       }
-      if (bloquearScroll && !pila.some((c) => c.bloquearScroll)) document.body.style.overflow = overflowPrevio;
+      if (bloquearScroll) desbloquearScroll();
     };
   }, [abierta, bloquearScroll]);
 }

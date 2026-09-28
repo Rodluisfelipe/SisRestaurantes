@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Capa } from './ui';
+import { useBloqueoScroll } from '../utils/bloqueoScroll';
 
 /**
  * MenuScreen — contenedor de "pantalla completa" del menú V2.
@@ -26,13 +27,9 @@ export default function MenuScreen({
 }) {
   const reduceMotion = useReducedMotion();
 
-  // Bloquear el scroll del fondo mientras la pantalla está abierta
-  useEffect(() => {
-    if (!open) return undefined;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, [open]);
+  /* El menú de atrás queda quieto mientras la pantalla está abierta (también
+     en iPhone) y al cerrarla el cliente vuelve a donde estaba. */
+  useBloqueoScroll(open);
 
   // Volver con Escape (y con el gesto/botón atrás del navegador)
   useEffect(() => {
@@ -103,7 +100,7 @@ export default function MenuScreen({
           )}
 
           {/* Contenido */}
-          <div className="flex-1 overflow-y-auto overscroll-contain">
+          <div className="flex-1 overflow-y-auto overscroll-none">
             {children}
           </div>
 
