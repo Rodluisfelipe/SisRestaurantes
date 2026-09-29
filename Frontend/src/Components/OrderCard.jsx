@@ -10,6 +10,7 @@ import { ORDER_STATUS } from '../utils/constants';
 import { pasosDelPedido, TONOS_PASO, totalDelPedido, pesos } from '../utils/pedidos';
 import api from '../services/api';
 import { SECCIONES_OCULTAS } from '../utils/seccionesOcultas';
+import DomiciliarioActivos from './DomiciliarioActivos';
 
 const PAYMENT_LABELS = {
   cash: 'Efectivo', efectivo: 'Efectivo',
@@ -170,6 +171,9 @@ function OrderCard({
                 )}
               </div>
             )}
+
+            {/* Domiciliario con Activos (solo si el negocio lo tiene habilitado) */}
+            {!isTerminal && <DomiciliarioActivos order={order} />}
 
             {/* Datos cortos en fichas */}
             {(order.deliveryZoneName || order.deliveryFee > 0 || order.paymentMethod) && (

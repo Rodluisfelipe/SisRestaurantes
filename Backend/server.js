@@ -246,6 +246,7 @@ app.use("/api/asistencia", require("./Routes/asistencia")); // Entradas y salida
 app.use("/api/leads", require("./Routes/leadsPublico")); // Formulario "Te llamamos" de la web → CRM
 app.use("/api/errores-cliente", require("./Routes/erroresCliente")); // Errores de pantalla del navegador → logs, buscables por código
 app.use("/api/delivery-zones", require("./Routes/deliveryZones")); // Zonas de entrega
+app.use("/api/delivery-activos", require("./Routes/activos")); // Domiciliario con Activos (mensajería externa)
 app.use("/api/delivery-admin", require("./Routes/deliveryAdmin")); // Gestión de domiciliarios (admin)
 app.use("/api/delivery-partners", require("./Routes/deliveryPartners")); // Empresas externas de reparto (partners)
 app.use("/api/delivery", require("./Routes/deliveryPublic")); // Endpoints públicos de domiciliarios

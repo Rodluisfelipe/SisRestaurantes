@@ -223,6 +223,16 @@ const orderSchema = new mongoose.Schema({
       default: null
     }
   },
+  /* Domiciliario pedido a Activos (mensajería externa). `entregaId` es la clave
+     de su base; con ella se consulta el estado y el repartidor. */
+  activos: {
+    type: {
+      entregaId: { type: String, trim: true },
+      solicitadoAt: { type: Date },
+      solicitadoPor: { type: String, trim: true },
+    },
+    default: undefined
+  },
   deliveryDistance: {
     type: Number,
     default: 0
