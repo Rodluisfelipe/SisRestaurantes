@@ -224,15 +224,12 @@ async function validateDeliveryForOrder(businessId, point, orderTotal) {
  * @returns {Promise<Array>}
  */
 async function getZonesWithStats(businessId) {
-  // Convertir businessId a ObjectId para la búsqueda y contemplar datos históricos guardados como string
-  const mongoose = require('mongoose');
-  const isValid = mongoose.Types.ObjectId.isValid(businessId);
-  const asObjectId = isValid ? new mongoose.Types.ObjectId(businessId) : null;
   const asString = String(businessId);
 
-  const query = asObjectId
-    ? { businessId: { $in: [asObjectId, asString] } }
-    : { businessId: asString };
+  /* Se compara como texto dentro de $expr: con `$in: [ObjectId, texto]`
+     Mongoose convertía el texto a ObjectId y las zonas viejas (guardadas con
+     el negocio como texto) nunca aparecían. */
+  const query = { $expr: { $eq: [{ $toString: '$businessId' }, asString] }, deletedAt: null };
 
   const zones = await DeliveryZone.find(query)
     .sort({ priority: -1, createdAt: -1 });

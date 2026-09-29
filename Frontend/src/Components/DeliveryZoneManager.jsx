@@ -7,6 +7,7 @@ import 'leaflet-draw';
 import { MAP_TILE_URL, MAP_ATTRIBUTION } from '../utils/mapTiles';
 import api from '../services/api';
 import { useAuth } from '../Context/AuthContext';
+import { useBusinessConfig } from '../Context/BusinessContext';
 import { AlertTriangle, MapPin, X, RotateCw, Check, Store, CheckCircle2, XCircle, Map, Circle as CircleIcon, FileText } from 'lucide-react';
 import { Capa } from './ui';
 
@@ -108,6 +109,19 @@ function DrawControl({ onCreated, onEdited, color }) {
 
 const DeliveryZoneManager = () => {
   const { isAuthenticated, loading: authLoading } = useAuth();
+  /* El negocio es el que está abierto en el panel. Antes se leía del usuario
+     guardado en el navegador, que comparten todas las pestañas: con el
+     superadmin (o dos negocios abiertos) la pantalla trabajaba sobre otro. */
+  const { businessConfig } = useBusinessConfig();
+  const negocioId = () => {
+    if (businessConfig?._id) return businessConfig._id;
+    try { return JSON.parse(localStorage.getItem('user') || '{}').businessId || null; } catch { return null; }
+  };
+  const motivo = (error, porDefecto) => {
+    const d = error?.response?.data;
+    if (Array.isArray(d?.errors) && d.errors.length) return d.errors.join('\n');
+    return d?.message || (error?.response ? porDefecto : 'Sin conexión. Revisa el internet.');
+  };
   const [zones, setZones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedZone, setSelectedZone] = useState(null);
@@ -153,14 +167,9 @@ const DeliveryZoneManager = () => {
     locationCheckedRef.current = true;
 
     try {
-      const userStr = localStorage.getItem('user');
-      if (!userStr) return;
-      
-      const user = JSON.parse(userStr);
-      const businessId = user.businessId;
-      
+      const businessId = negocioId();
       if (!businessId) return;
-      
+
       // Cargar configuración del negocio
       const response = await api.get(`/business-config?businessId=${businessId}`);
       const business = response.data;
@@ -200,20 +209,7 @@ const DeliveryZoneManager = () => {
       
       console.log('🔍 Iniciando carga de zonas...');
       
-      // Obtener businessId del usuario almacenado (necesario para SuperAdmin)
-      const userStr = localStorage.getItem('user');
-      console.log('👤 Usuario en localStorage:', userStr ? 'existe' : 'NO existe');
-      
-      let businessId = null;
-      if (userStr) {
-        try {
-          const user = JSON.parse(userStr);
-          businessId = user.businessId;
-          console.log('🏢 BusinessId:', businessId);
-        } catch (e) {
-          console.error('❌ Error parseando user:', e);
-        }
-      }
+      const businessId = negocioId();
       
       // Construir URL con businessId si existe
       const url = businessId ? `/delivery-zones?businessId=${businessId}` : '/delivery-zones';
@@ -274,15 +270,7 @@ const DeliveryZoneManager = () => {
         return;
       }
 
-      // Obtener businessId del usuario actual
-      const userStr = localStorage.getItem('user');
-      if (!userStr) {
-        alert('No se pudo obtener la información del usuario. Por favor, inicia sesión nuevamente.');
-        return;
-      }
-      
-      const user = JSON.parse(userStr);
-      const businessId = user.businessId;
+      const businessId = negocioId();
       
       if (!businessId) {
         alert('No se pudo determinar el negocio. Por favor, inicia sesión nuevamente.');
@@ -317,10 +305,7 @@ const DeliveryZoneManager = () => {
       console.error('Error al guardar zona:', error);
       // El backend manda el motivo puntual (ej: nombre muy largo) en `errors`,
       // no en `message` (que es genérico: "Datos de zona inválidos").
-      const detalle = Array.isArray(error.response?.data?.errors) && error.response.data.errors.length
-        ? error.response.data.errors.join('\n')
-        : error.response?.data?.message;
-      alert(detalle || 'Error al guardar la zona');
+      alert(motivo(error, 'No se pudo guardar la zona'));
     }
   };
 
@@ -328,43 +313,38 @@ const DeliveryZoneManager = () => {
     if (!confirm('¿Estás seguro de eliminar esta zona?')) return;
 
     try {
-      const userStr = localStorage.getItem('user');
-      const user = userStr ? JSON.parse(userStr) : {};
-      const businessId = user?.businessId;
       await api.delete(`/delivery-zones/${zoneId}`, {
-        params: { businessId }
+        params: { businessId: negocioId() }
       });
-      alert('Zona eliminada exitosamente');
+      setZones((prev) => prev.filter((z) => z.id !== zoneId));
       loadZones();
     } catch (error) {
       console.error('Error al eliminar zona:', error);
-      alert('Error al eliminar la zona');
+      alert(motivo(error, 'No se pudo eliminar la zona'));
+      loadZones();
     }
   };
 
   const handleToggleZone = async (zoneId) => {
     try {
-      const userStr = localStorage.getItem('user');
-      const user = userStr ? JSON.parse(userStr) : {};
-      const businessId = user?.businessId;
       await api.patch(`/delivery-zones/${zoneId}/toggle`, null, {
-        params: { businessId }
+        params: { businessId: negocioId() }
       });
       loadZones();
     } catch (error) {
       console.error('Error al cambiar estado de zona:', error);
-      alert('Error al cambiar el estado de la zona');
+      alert(motivo(error, 'No se pudo cambiar el estado de la zona'));
     }
   };
 
   const handleDuplicateZone = async (zoneId) => {
     try {
-      await api.post(`/delivery-zones/${zoneId}/duplicate`);
+      await api.post(`/delivery-zones/${zoneId}/duplicate`, null, { params: { businessId: negocioId() } });
       alert('Zona duplicada exitosamente');
       loadZones();
     } catch (error) {
       console.error('Error al duplicar zona:', error);
-      alert('Error al duplicar la zona');
+      alert(motivo(error, 'No se pudo duplicar la zona'));
     }
   };
 
@@ -617,9 +597,7 @@ const DeliveryZoneManager = () => {
       }
 
       try {
-        const userStr = localStorage.getItem('user');
-        const user = JSON.parse(userStr);
-        const businessId = user.businessId;
+        const businessId = negocioId();
 
         await api.put(`/business-config/${businessId}`, {
           location: {

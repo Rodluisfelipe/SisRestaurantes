@@ -209,10 +209,8 @@ router.get("/public", zoneLimiter, async (req, res) => {
       );
     }
 
-    const zones = await DeliveryZone.find({
-      businessId: resolvedBusiness._id,
-      isActive: true
-    }).sort({ priority: -1 }).lean();
+    // Misma búsqueda que la cobertura: activas, no eliminadas y también las viejas
+    const zones = await DeliveryZone.getActiveZones(resolvedBusiness._id).lean();
 
     if (zones.length === 0) {
       return res.json({
@@ -401,26 +399,43 @@ router.get("/", authMiddleware, zoneLimiter, async (req, res) => {
 });
 
 /**
+ * La zona que se va a ver o cambiar, si quien pide puede tocarla.
+ *
+ * Se busca por su propio id y luego se compara el negocio, en vez de filtrar
+ * por el businessId que manda el navegador: ese dato venía del usuario
+ * guardado en el navegador, que con el superadmin (o con dos negocios
+ * abiertos en pestañas) podía ser otro negocio. Y las zonas viejas guardaron
+ * el negocio como texto, que el filtro por ObjectId no encontraba.
+ *
+ * @returns {Promise<{zona: object} | {estado: number, mensaje: string}>}
+ */
+async function zonaPermitida(req, id) {
+  if (!mongoose.isValidObjectId(id)) return { estado: 400, mensaje: 'Zona inválida' };
+  const zona = await DeliveryZone.findOne({ _id: id, deletedAt: null });
+  if (!zona) return { estado: 404, mensaje: 'Zona no encontrada' };
+  if (req.user?.isSuperAdmin) return { zona };
+
+  let propio = req.user?.businessId;
+  if (!propio && req.user?.id) {
+    const Admin = require("../Models/Admin");
+    const admin = await Admin.findById(req.user.id).select('businessId').lean();
+    propio = admin?.businessId;
+  }
+  if (!propio || String(zona.businessId) !== String(propio)) {
+    return { estado: 404, mensaje: 'Zona no encontrada' };
+  }
+  return { zona };
+}
+
+/**
  * GET /api/delivery-zones/:id
  * Obtener una zona específica
  */
 router.get("/:id", authMiddleware, zoneLimiter, async (req, res) => {
   try {
-    const { id } = req.params;
-    const businessId = req.user.businessId || req.query.businessId;
-    
-    const zone = await DeliveryZone.findOne({ _id: id, businessId });
-    
-    if (!zone) {
-      return res.status(404).json(
-        formatHttpError(req, "Zona no encontrada", 404)
-      );
-    }
-    
-    res.json({
-      success: true,
-      zone
-    });
+    const r = await zonaPermitida(req, req.params.id);
+    if (!r.zona) return res.status(r.estado).json(formatHttpError(req, r.mensaje, r.estado));
+    res.json({ success: true, zone: r.zona });
   } catch (error) {
     logger.error("Error al obtener zona", error, req);
     res.status(500).json(formatHttpError(req, "Error al obtener la zona", 500));
@@ -620,62 +635,30 @@ router.post("/", authMiddleware, zoneLimiter, validateDeliveryZoneInput, async (
  */
 router.put("/:id", authMiddleware, zoneLimiter, async (req, res) => {
   try {
-    const { id } = req.params;
-    let businessId = req.user.businessId || req.body.businessId || req.query.businessId;
-    
-    // Si no hay businessId en el token, buscar en el modelo Admin
-    if (!businessId && req.user.id) {
-      const Admin = require("../Models/Admin");
-      const admin = await Admin.findById(req.user.id);
-      if (admin && admin.businessId) {
-        businessId = admin.businessId;
-      }
-    }
-    
-    // Requerir businessId cuando sea un token temporal de SuperAdmin
-    if (req.user.isTempToken && !businessId) {
-      return res.status(400).json(
-        formatHttpError(req, "businessId es requerido para tokens temporales de SuperAdmin", 400)
-      );
-    }
-    
-    if (!businessId) {
-      return res.status(400).json(
-        formatHttpError(req, "No se pudo determinar el negocio. Por favor, cierre sesión e inicie de nuevo.", 400)
-      );
-    }
-    
-    const updateData = req.body;
-    
+    const r = await zonaPermitida(req, req.params.id);
+    if (!r.zona) return res.status(r.estado).json(formatHttpError(req, r.mensaje, r.estado));
+    const zone = r.zona;
+
+    const updateData = { ...req.body };
+
     // Block sensitive fields from mass assignment
     delete updateData._id;
+    delete updateData.id;
     delete updateData.businessId;  // Prevent tenant switch
+    delete updateData.deletedAt;
+    delete updateData.stats;
     delete updateData.createdAt;
     delete updateData.updatedAt;
     delete updateData.__v;
-    
+
     // Normalizar datos del círculo (el frontend envía type: 'radius' pero geometry.type: 'Point')
     if (updateData.type === 'radius' && updateData.geometry) {
       updateData.geometry.type = 'Point';
     }
-    
-    // Buscar zona
-    const zone = await DeliveryZone.findOne({ _id: id, businessId });
-    
-    if (!zone) {
-      return res.status(404).json(
-        formatHttpError(req, "Zona no encontrada", 404)
-      );
-    }
-    
+
     // Validar datos si se están actualizando campos críticos
     if (updateData.geometry || updateData.pricing || updateData.type) {
-      const dataToValidate = {
-        ...zone.toObject(),
-        ...updateData
-      };
-      
-      const validation = validateZoneData(dataToValidate);
+      const validation = validateZoneData({ ...zone.toObject(), ...updateData });
       if (!validation.valid) {
         return res.status(400).json({
           success: false,
@@ -684,36 +667,22 @@ router.put("/:id", authMiddleware, zoneLimiter, async (req, res) => {
         });
       }
     }
-    
+
     // Validar polígono si se está actualizando
     if (updateData.geometry && updateData.type === 'polygon' && updateData.geometry.coordinates) {
       const polygonValidation = validatePolygon(updateData.geometry.coordinates);
       if (!polygonValidation.isValid) {
-        return res.status(400).json({
-          success: false,
-          message: polygonValidation.error
-        });
+        return res.status(400).json({ success: false, message: polygonValidation.error });
       }
     }
-    
-    // Actualizar zona
+
     Object.assign(zone, updateData);
     await zone.save();
-    
-    res.json({
-      success: true,
-      message: "Zona actualizada exitosamente",
-      zone
-    });
+
+    res.json({ success: true, message: "Zona actualizada exitosamente", zone });
   } catch (error) {
     logger.error("Error al actualizar zona", error, req);
-    const isDev = process.env.NODE_ENV === 'development';
-    res.status(500).json(formatHttpError(
-      req,
-      "Error al actualizar la zona",
-      500,
-      isDev ? { stack: error.stack } : undefined
-    ));
+    res.status(500).json(formatHttpError(req, "Error al actualizar la zona", 500));
   }
 });
 
@@ -723,49 +692,15 @@ router.put("/:id", authMiddleware, zoneLimiter, async (req, res) => {
  */
 router.delete("/:id", authMiddleware, zoneLimiter, async (req, res) => {
   try {
-    const { id } = req.params;
-    let businessId = req.user.businessId || req.body.businessId || req.query.businessId;
-    
-    // Si no hay businessId en el token, buscar en el modelo Admin
-    if (!businessId && req.user.id) {
-      const Admin = require("../Models/Admin");
-      const admin = await Admin.findById(req.user.id);
-      if (admin && admin.businessId) {
-        businessId = admin.businessId;
-      }
-    }
-    
-    // Requerir businessId cuando sea un token temporal de SuperAdmin
-    if (req.user.isTempToken && !businessId) {
-      return res.status(400).json(
-        formatHttpError(req, "businessId es requerido para tokens temporales de SuperAdmin", 400)
-      );
-    }
-    
-    if (!businessId) {
-      return res.status(400).json({
-        success: false,
-        message: "No se pudo determinar el negocio."
-      });
-    }
-    
-    // Soft-delete: deactivate instead of permanently removing
-    const zone = await DeliveryZone.findOneAndUpdate(
-      { _id: id, businessId },
-      { $set: { isActive: false } },
-      { new: true }
-    );
-    
-    if (!zone) {
-      return res.status(404).json(
-        formatHttpError(req, "Zona no encontrada", 404)
-      );
-    }
-    
-    res.json({
-      success: true,
-      message: "Zona eliminada exitosamente"
-    });
+    const r = await zonaPermitida(req, req.params.id);
+    if (!r.zona) return res.status(r.estado).json(formatHttpError(req, r.mensaje, r.estado));
+
+    // Eliminada de verdad: deja de salir en el panel y en el menú
+    r.zona.isActive = false;
+    r.zona.deletedAt = new Date();
+    await r.zona.save();
+
+    res.json({ success: true, message: "Zona eliminada exitosamente" });
   } catch (error) {
     logger.error("Error al eliminar zona", error, req);
     res.status(500).json(formatHttpError(req, "Error al eliminar la zona", 500));
@@ -778,43 +713,13 @@ router.delete("/:id", authMiddleware, zoneLimiter, async (req, res) => {
  */
 router.patch("/:id/toggle", authMiddleware, zoneLimiter, async (req, res) => {
   try {
-    const { id } = req.params;
-    let businessId = req.user.businessId || req.body.businessId || req.query.businessId;
-    
-    // Si no hay businessId en el token, buscar en el modelo Admin
-    if (!businessId && req.user.id) {
-      const Admin = require("../Models/Admin");
-      const admin = await Admin.findById(req.user.id);
-      if (admin && admin.businessId) {
-        businessId = admin.businessId;
-      }
-    }
-    
-    // Requerir businessId cuando sea un token temporal de SuperAdmin
-    if (req.user.isTempToken && !businessId) {
-      return res.status(400).json(
-        formatHttpError(req, "businessId es requerido para tokens temporales de SuperAdmin", 400)
-      );
-    }
-    
-    if (!businessId) {
-      return res.status(400).json({
-        success: false,
-        message: "No se pudo determinar el negocio."
-      });
-    }
-    
-    const zone = await DeliveryZone.findOne({ _id: id, businessId });
-    
-    if (!zone) {
-      return res.status(404).json(
-        formatHttpError(req, "Zona no encontrada", 404)
-      );
-    }
-    
+    const r = await zonaPermitida(req, req.params.id);
+    if (!r.zona) return res.status(r.estado).json(formatHttpError(req, r.mensaje, r.estado));
+    const zone = r.zona;
+
     zone.isActive = !zone.isActive;
     await zone.save();
-    
+
     res.json({
       success: true,
       message: `Zona ${zone.isActive ? 'activada' : 'desactivada'} exitosamente`,
@@ -836,51 +741,25 @@ router.patch("/:id/toggle", authMiddleware, zoneLimiter, async (req, res) => {
  */
 router.post("/:id/duplicate", authMiddleware, zoneLimiter, async (req, res) => {
   try {
-    const { id } = req.params;
-    let businessId = req.user.businessId;
-    
-    // Si no hay businessId en el token, buscar en el modelo Admin
-    if (!businessId && req.user.id) {
-      const Admin = require("../Models/Admin");
-      const admin = await Admin.findById(req.user.id);
-      if (admin && admin.businessId) {
-        businessId = admin.businessId;
-      }
-    }
-    
-    if (!businessId) {
-      return res.status(400).json({
-        success: false,
-        message: "No se pudo determinar el negocio."
-      });
-    }
-    
-    const originalZone = await DeliveryZone.findOne({ _id: id, businessId });
-    
-    if (!originalZone) {
-      return res.status(404).json(
-        formatHttpError(req, "Zona no encontrada", 404)
-      );
-    }
-    
-    // Crear copia
+    const r = await zonaPermitida(req, req.params.id);
+    if (!r.zona) return res.status(r.estado).json(formatHttpError(req, r.mensaje, r.estado));
+    const originalZone = r.zona;
+
+    // Crear copia (del mismo negocio de la zona original)
     const zoneData = originalZone.toObject();
     delete zoneData._id;
     delete zoneData.createdAt;
     delete zoneData.updatedAt;
     delete zoneData.stats;
-    
+    zoneData.deletedAt = null;
+
     zoneData.name = `${zoneData.name} (Copia)`;
     zoneData.priority = originalZone.priority + 1;
-    
+
     const newZone = new DeliveryZone(zoneData);
     await newZone.save();
-    
-    res.status(201).json({
-      success: true,
-      message: "Zona duplicada exitosamente",
-      zone: newZone
-    });
+
+    res.status(201).json({ success: true, message: "Zona duplicada exitosamente", zone: newZone });
   } catch (error) {
     logger.error("Error al duplicar zona", error, req);
     res.status(500).json(formatHttpError(req, "Error al duplicar la zona", 500));

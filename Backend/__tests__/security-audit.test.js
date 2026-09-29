@@ -1174,14 +1174,17 @@ describe('M2 — Soft-delete delivery zones', () => {
     );
   });
 
-  test('DELETE /:id uses findOneAndUpdate with isActive:false instead of findOneAndDelete', () => {
+  test('DELETE /:id marca la zona como eliminada (deletedAt) sin borrarla físicamente', () => {
     // Find the DELETE handler
     const deleteSection = zonesSource.indexOf('router.delete("/:id"');
     expect(deleteSection).toBeGreaterThan(-1);
     const deleteBody = zonesSource.substring(deleteSection, deleteSection + 1200);
-    expect(deleteBody).toContain('findOneAndUpdate');
-    expect(deleteBody).toContain('isActive: false');
+    expect(deleteBody).toContain('deletedAt = new Date()');
+    expect(deleteBody).toContain('isActive = false');
     expect(deleteBody).not.toContain('findOneAndDelete');
+    expect(deleteBody).not.toContain('deleteOne');
+    // y la búsqueda de zonas excluye las eliminadas
+    expect(zonesSource).toContain('deletedAt: null');
   });
 
   test('DeliveryZone model has isActive field', () => {

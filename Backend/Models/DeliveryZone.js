@@ -148,6 +148,14 @@ const deliveryZoneSchema = new mongoose.Schema({
     default: true,
     index: true
   },
+
+  /* Eliminada. Antes "eliminar" solo la desactivaba, igual que el botón de
+     activar/desactivar, y la zona seguía en la lista del panel. Se marca en
+     vez de borrarla para no dejar huérfanos los pedidos que la usaron. */
+  deletedAt: {
+    type: Date,
+    default: null
+  },
   
   // Horarios de disponibilidad (opcional)
   schedule: {
@@ -190,9 +198,13 @@ deliveryZoneSchema.index({ businessId: 1, priority: -1 });
 
 // Método estático para obtener zonas activas de un negocio
 deliveryZoneSchema.statics.getActiveZones = function(businessId) {
-  return this.find({ 
-    businessId, 
-    isActive: true 
+  /* Zonas viejas guardaron el negocio como texto: se compara como texto dentro
+     de $expr (fuera de $expr Mongoose lo convertiría a ObjectId y no
+     coincidirían). */
+  return this.find({
+    $expr: { $eq: [{ $toString: '$businessId' }, String(businessId)] },
+    isActive: true,
+    deletedAt: null
   }).sort({ priority: -1 });
 };
 
