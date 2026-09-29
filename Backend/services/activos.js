@@ -11,6 +11,7 @@
  * queda apagado y no pasa nada.
  */
 const logger = require('../utils/logger');
+const { geocodeAddress } = require('../utils/geocoding');
 
 const API_KEY = process.env.ACTIVOS_API_KEY || 'AIzaSyDqPIV52Sy9_uIg_qBnMtdizw1MfNtWyTo';
 const DB = process.env.ACTIVOS_DB_URL || 'https://allco-uo9n52-default-rtdb.firebaseio.com';
@@ -69,9 +70,9 @@ async function token() {
 }
 
 // ── Construir la entrega desde el pedido de MenuBy ──
-function construirEntrega(order, { minutosPreparacion = 15 } = {}) {
+function construirEntrega(order, { minutosPreparacion = 15, coords: coordsOverride } = {}) {
   const c = config();
-  const coords = order.deliveryCoordinates || {};
+  const coords = coordsOverride || order.deliveryCoordinates || {};
   const efectivo = ['efectivo', 'cash', 'contraentrega'].includes(String(order.paymentMethod || '').toLowerCase());
   return {
     // Identidad de la tienda
@@ -104,11 +105,30 @@ function construirEntrega(order, { minutosPreparacion = 15 } = {}) {
  * Crea la entrega en Activos. ⚠️ Despacha un repartidor real.
  * @returns {Promise<string>} entrega_id (la clave que genera Firebase)
  */
+/** Coordenadas del cliente, mirando los dos lugares y aceptando lon o lng. */
+function coordsDelPedido(order) {
+  for (const c of [order.deliveryCoordinates, order.deliveryZoneInfo?.coordinates]) {
+    if (!c) continue;
+    const lat = Number(c.lat);
+    const lng = Number(c.lng ?? c.lon);
+    if (lat && lng) return { lat, lon: lng };
+  }
+  return null;
+}
+
 async function solicitarEntrega(order, opciones = {}) {
   const c = config();
-  const cuerpo = construirEntrega(order, opciones);
+  // Coordenadas del pedido; si no hay, se geocodifica la dirección.
+  let coords = coordsDelPedido(order);
+  if (!coords && order.address) {
+    try {
+      const res = await geocodeAddress(order.address);
+      if (res && res[0]) coords = { lat: Number(res[0].lat), lon: Number(res[0].lon) };
+    } catch (e) { logger.warn('No se pudo geocodificar la dirección para Activos', { error: e.message }); }
+  }
+  const cuerpo = construirEntrega(order, { ...opciones, coords });
   if (!cuerpo.destino_ubicacion.lat || !cuerpo.destino_ubicacion.lng) {
-    throw new Error('El pedido no tiene ubicación del cliente (lat/lng).');
+    throw new Error('No pudimos ubicar la dirección del cliente. Pídele que marque el punto en el mapa al pedir.');
   }
   const r = await fetch(`${DB}/pedidos_activos/tiendas/${c.tiendaId}.json?auth=${await token()}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
