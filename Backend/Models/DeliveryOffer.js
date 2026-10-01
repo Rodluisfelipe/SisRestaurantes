@@ -20,6 +20,8 @@ const deliveryOfferSchema = new mongoose.Schema({
   driverId: { type: mongoose.Schema.Types.ObjectId, ref: 'DeliveryPerson', required: true, index: true },
 
   state: { type: String, enum: ['pending', 'accepted', 'rejected', 'expired', 'superseded'], default: 'pending', index: true },
+  // El negocio volvió a pedir "al más cercano": esta oferta perdida ya no lo deja por fuera
+  liberadaAt: { type: Date, default: null },
   attempt: { type: Number, default: 1 },       // nth offer for this delivery
   distanceKm: { type: Number, default: null },
   // Red MenuBy: la tarifa calculada al ofrecer, que se congela al aceptar

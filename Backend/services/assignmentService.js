@@ -220,7 +220,7 @@ async function assignToDriver(order, driver, method) {
 // Drivers who already rejected or let an offer expire for this delivery
 async function getExcludedDriverIds(deliveryId) {
   const DeliveryOffer = require('../Models/DeliveryOffer');
-  const past = await DeliveryOffer.find({ deliveryId, state: { $in: ['rejected', 'expired'] } }).select('driverId').lean();
+  const past = await DeliveryOffer.find({ deliveryId, state: { $in: ['rejected', 'expired'] }, liberadaAt: null }).select('driverId').lean();
   return past.map(o => String(o.driverId));
 }
 

@@ -97,6 +97,8 @@ function Tarjeta({ oferta, alTerminar }: { oferta: Oferta; alTerminar: (id: stri
     try {
       const r = await llamar<{ pedidoId?: string }>(`/domi-app/ofertas/${oferta.id}/${acepta ? 'aceptar' : 'rechazar'}`, { cuerpo: {} });
       if (acepta) exito();
+      // Lo aceptó él: no es una asignación que haya que avisarle
+      if (acepta && r.pedidoId) useApp.getState().yaVistos([r.pedidoId]);
       alTerminar(oferta.id);
       await useApp.getState().refrescar();
       if (acepta && r.pedidoId) router.push({ pathname: '/pedido/[id]', params: { id: r.pedidoId } });

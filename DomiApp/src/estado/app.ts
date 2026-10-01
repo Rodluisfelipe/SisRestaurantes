@@ -56,6 +56,8 @@ type Estado = {
   gpsSimulado: boolean;
   /** La app fue modificada (lo vio el celular o lo dijo el servidor) */
   appAlterada: boolean;
+  /** Pedidos que el negocio le asignó directo y aún no ha visto (suenan como oferta) */
+  asignadosNuevos: string[];
 
   iniciar: () => Promise<void>;
   entrar: (telefono: string, pin: string) => Promise<void>;
@@ -69,7 +71,14 @@ type Estado = {
   limpiarError: (pedidoId: string) => void;
   cambiarAjustes: (a: Partial<Ajustes>) => void;
   quitarOferta: (id: string) => void;
+  /** Ya vio estos pedidos (los aceptó él o tocó "Ver pedido") */
+  yaVistos: (ids: string[]) => void;
 };
+
+/* Los pedidos que ya conocía: lo que aparezca de nuevo y no venga de una
+   oferta que él aceptó es una asignación directa del negocio. null hasta la
+   primera carga, para no avisar de lo que ya llevaba al abrir la app. */
+let conocidos: Set<string> | null = null;
 
 const AJUSTES: Ajustes = { navegador: 'google', sonido: true, vibrar: true };
 
@@ -87,6 +96,7 @@ export const useApp = create<Estado>((set, get) => ({
   enLineaLocal: null,
   gpsSimulado: false,
   appAlterada: false,
+  asignadosNuevos: [],
 
   async iniciar() {
     reporteIntegridad().then((r) => { if (alteradaEnElCelular(r)) set({ appAlterada: true }); });
@@ -121,7 +131,8 @@ export const useApp = create<Estado>((set, get) => ({
     await ponerSesion(null);
     await limpiarCola();
     await guardar(CLAVES.estado, null);
-    set({ sesion: null, servidor: null, actualizadoAt: null, locales: {}, errores: {}, enLineaLocal: null });
+    conocidos = null;
+    set({ sesion: null, servidor: null, actualizadoAt: null, locales: {}, errores: {}, enLineaLocal: null, asignadosNuevos: [] });
   },
 
   async refrescar() {
@@ -138,7 +149,11 @@ export const useApp = create<Estado>((set, get) => ({
         if (confirmado && Date.now() - l.at > 3000) delete locales[id];
       }
       const at = Date.now();
-      set({ servidor, actualizadoAt: at, hayRed: true, locales, enLineaLocal: null });
+      const activos = servidor.pedidos.filter((p) => !['entregado', 'no_entregado', 'cancelado'].includes(p.estado)).map((p) => p.id);
+      const nuevos = conocidos ? activos.filter((id) => !conocidos!.has(id)) : [];
+      conocidos = new Set([...(conocidos ?? []), ...activos]);
+      const asignadosNuevos = [...get().asignadosNuevos.filter((id) => activos.includes(id)), ...nuevos];
+      set({ servidor, actualizadoAt: at, hayRed: true, locales, enLineaLocal: null, asignadosNuevos });
       guardar(CLAVES.estado, { servidor, at });
     } catch (e) {
       if (esSinRed(e)) set({ hayRed: false });
@@ -195,6 +210,11 @@ export const useApp = create<Estado>((set, get) => ({
     const ajustes = { ...get().ajustes, ...a };
     set({ ajustes });
     guardar(CLAVES.ajustes, ajustes);
+  },
+
+  yaVistos(ids) {
+    conocidos = new Set([...(conocidos ?? []), ...ids]);
+    set({ asignadosNuevos: get().asignadosNuevos.filter((id) => !ids.includes(id)) });
   },
 
   quitarOferta(id) {

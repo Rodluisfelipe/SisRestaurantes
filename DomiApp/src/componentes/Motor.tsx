@@ -5,7 +5,8 @@
  *  - el GPS: en vivo para el mapa, y en segundo plano según haya pedidos;
  *  - la conexión en vivo y las notificaciones;
  *  - no dejar que la pantalla se apague con pedidos en curso;
- *  - si cae una oferta con el domi en otra app, abrirse encima de ella;
+ *  - si cae una oferta (o el negocio le asigna un pedido) con el domi en otra
+ *    app, abrirse encima de ella;
  *  - con GPS falso, desconectarlo;
  *  - si lleva un rato quieto yendo al local o al cliente, avisarle.
  */
@@ -34,6 +35,7 @@ export function Motor() {
   const gpsSimulado = useApp((s) => s.gpsSimulado);
   const ofertas = servidor?.ofertas;
   const ofertasVistas = useRef(new Set<string>());
+  const asignados = useApp((s) => s.asignadosNuevos);
   const yo = useApp((s) => s.ubicacion);
   useAvisoQuieto(pedidos, yo);
 
@@ -98,6 +100,11 @@ export function Motor() {
     nuevas.forEach((o) => ofertasVistas.current.add(o.id));
     if (nuevas.length && AppState.currentState !== 'active') traerAlFrente();
   }, [ofertas]);
+
+  // Pedido asignado directo por el negocio: también se abre sola
+  useEffect(() => {
+    if (asignados.length && AppState.currentState !== 'active') traerAlFrente();
+  }, [asignados]);
 
   // GPS falso: fuera de línea hasta que lo apague (el servidor tampoco le manda pedidos)
   useEffect(() => {

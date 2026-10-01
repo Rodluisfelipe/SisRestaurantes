@@ -7,6 +7,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AvisoAsignado } from '@/componentes/AvisoAsignado';
 import { BarraSinSenal } from '@/componentes/BarraSinSenal';
 import { Bloqueo } from '@/componentes/Bloqueo';
 import { Motor } from '@/componentes/Motor';
@@ -50,6 +51,7 @@ export default function Raiz() {
       </Stack>
       {sesion && <Motor />}
       {sesion && <OfertaEntrante />}
+      {sesion && <AvisoAsignado />}
       <BarraSinSenal />
       <Bloqueo />
     </GestureHandlerRootView>

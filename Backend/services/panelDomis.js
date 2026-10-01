@@ -341,6 +341,9 @@ async function automatico(businessId, orderId) {
   const o = await pedidoDelNegocio(businessId, orderId);
   if (o.deliveryPersonId) throw new ErrorPanel(409, 'Este pedido ya tiene domiciliario.');
   const b = await negocio(businessId);
+  /* Pedido a mano = ronda nueva: quien dejó vencer o rechazó una oferta de
+     este pedido vuelve a contar (el reofrecer automático sí lo sigue saltando). */
+  await DeliveryOffer.updateMany({ orderId: o._id, state: { $in: ['rejected', 'expired'] }, liberadaAt: null }, { $set: { liberadaAt: new Date() } });
   const ajustes = b.deliverySettings || {};
   const modo = ajustes.assignmentMode && ajustes.assignmentMode !== 'manual' ? ajustes.assignmentMode : 'auto_nearest';
   const r = await require('./assignmentService').pickAndOffer(o, { ...b, deliverySettings: { ...ajustes, assignmentMode: modo } });
