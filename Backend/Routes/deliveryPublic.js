@@ -793,7 +793,7 @@ router.post('/:slug/domi/push-token', domiAuth, async (req, res) => {
     if (!fcmToken || typeof fcmToken !== 'string' || fcmToken.length < 20) {
       return res.status(400).json({ message: 'Token de push inválido' });
     }
-    await DeliveryPerson.updateOne({ _id: req.domi.dpId }, { $set: { fcmToken } });
+    await DeliveryPerson.updateOne({ _id: req.domi.dpId }, { $set: { fcmToken, fcmLlamadas: false } });
     res.json({ ok: true });
   } catch (err) {
     logger.error('Error saving push token', err);

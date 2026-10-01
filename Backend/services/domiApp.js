@@ -581,11 +581,12 @@ async function registrarUbicacion(domi, puntos = []) {
   return { recibidos: validos.length, ...(saltos ? { descartados: saltos } : {}) };
 }
 
-async function guardarPush(domi, fcmToken) {
+async function guardarPush(domi, fcmToken, llamadas = false) {
   if (!fcmToken || typeof fcmToken !== 'string' || fcmToken.length < 20 || fcmToken.length > 400) {
     throw new ErrorDomi(400, 'Token de notificaciones inválido.');
   }
-  await DeliveryPerson.updateMany({ _id: { $in: domi.ids } }, { $set: { fcmToken } });
+  // `llamadas`: la app trae el aviso nativo de llamada (las versiones viejas no)
+  await DeliveryPerson.updateMany({ _id: { $in: domi.ids } }, { $set: { fcmToken, fcmLlamadas: llamadas === true } });
 }
 
 /* ═══════════════════════ Ofertas ═══════════════════════ */

@@ -10,7 +10,8 @@ import { useEffect, useState } from 'react';
 import { AppState, Modal, StyleSheet, View } from 'react-native';
 import { callarOferta, sonarOferta } from '@/lib/aviso';
 import { pesos, primerNombre } from '@/lib/formato';
-import { mostrarSobreBloqueo } from '@/lib/sistema';
+import { cancelarLlamada, clavePedido, mostrarSobreBloqueo } from '@/lib/sistema';
+import { useTimbre } from '@/lib/useTimbre';
 import { useApp } from '@/estado/app';
 import { color, letra, radio } from '@/tema';
 import { Boton, Icono, T } from './base';
@@ -22,12 +23,17 @@ export function AvisoAsignado() {
   const pedidos = useApp((s) => s.servidor?.pedidos);
   const ajustes = useApp((s) => s.ajustes);
   const hay = nuevos.length > 0;
+  // Suena la app solo cuando el domi la ve; antes timbra la llamada del sistema
+  const suena = useTimbre(nuevos.map(clavePedido));
 
   useEffect(() => {
-    if (hay) sonarOferta(ajustes.sonido, ajustes.vibrar);
+    if (suena) sonarOferta(ajustes.sonido, ajustes.vibrar);
     else callarOferta();
+  }, [suena, ajustes.sonido, ajustes.vibrar]);
+
+  useEffect(() => {
     mostrarSobreBloqueo(hay);
-  }, [hay, ajustes.sonido, ajustes.vibrar]);
+  }, [hay]);
 
   // Como la oferta: la ventana se abre con la app al frente (si no, no recibe los toques)
   const [alFrente, setAlFrente] = useState(AppState.currentState === 'active');
@@ -37,10 +43,13 @@ export function AvisoAsignado() {
   }, []);
 
   const p = pedidos?.find((x) => x.id === nuevos[0]);
-  if (!hay || !alFrente || !p) return null;
+  const visible = hay && alFrente && !!p;
+
+  if (!visible || !p) return null;
 
   const ver = () => {
     callarOferta();
+    nuevos.forEach((id) => cancelarLlamada(clavePedido(id)));
     useApp.getState().yaVistos(nuevos);
     router.push({ pathname: '/pedido/[id]', params: { id: p.id } });
   };

@@ -14,10 +14,10 @@ import { abrirAjusteBateria, abrirAjustesApp, abrirAjustesUbicacion, bateriaRest
 import { permisoNotificaciones, pedirNotificaciones, registrarToken } from '@/lib/notificaciones';
 import { permisosUbicacion, pedirSegundoPlano } from '@/lib/ubicacion';
 import { CLAVES, guardar, leer } from '@/lib/almacen';
-import { abrirPermisoSuperponer, abrirPermisosXiaomi, hayModuloSistema, puedeSuperponer, xiaomiListo } from '@/lib/sistema';
+import { abrirPermisoPantallaCompleta, abrirPermisoSuperponer, abrirPermisosXiaomi, hayModuloSistema, puedePantallaCompleta, puedeSuperponer, xiaomiListo } from '@/lib/sistema';
 import { color, radio } from '@/tema';
 
-type Revision = { ubicacion: boolean; gps: boolean; avisos: boolean; bateria: boolean; encima: boolean; xiaomi: boolean; bateriaXiaomi: boolean };
+type Revision = { ubicacion: boolean; gps: boolean; avisos: boolean; bateria: boolean; encima: boolean; pantallaCompleta: boolean; xiaomi: boolean; bateriaXiaomi: boolean };
 
 async function leerRevision(): Promise<Revision> {
   const [u, avisos, restringida, bateriaXiaomi] = await Promise.all([
@@ -25,7 +25,7 @@ async function leerRevision(): Promise<Revision> {
   ]);
   return {
     ubicacion: u.segundoPlano, gps: u.gpsEncendido, avisos, bateria: !restringida,
-    encima: puedeSuperponer(), xiaomi: xiaomiListo(), bateriaXiaomi: !esXiaomi || bateriaXiaomi,
+    encima: puedeSuperponer(), pantallaCompleta: puedePantallaCompleta(), xiaomi: xiaomiListo(), bateriaXiaomi: !esXiaomi || bateriaXiaomi,
   };
 }
 
@@ -55,7 +55,7 @@ export default function Preparar() {
     revisar();
   };
 
-  const listo = !!r && r.ubicacion && r.gps && r.avisos && r.encima && r.xiaomi && r.bateriaXiaomi;
+  const listo = !!r && r.ubicacion && r.gps && r.avisos && r.encima && r.pantallaCompleta && r.xiaomi && r.bateriaXiaomi;
   const terminar = async () => {
     await guardar(CLAVES.permisosVistos, true);
     router.replace('/');
@@ -106,6 +106,18 @@ export default function Preparar() {
             boton="Activar"
             alTocar={abrirPermisoSuperponer}
             prueba="permiso-encima"
+          />
+        )}
+        {/* Android 14+: sin este permiso, con el celular bloqueado el pedido solo suena */}
+        {r && !r.pantallaCompleta && (
+          <Item
+            icono="phone-ring"
+            titulo="Pedidos como llamada"
+            porque="Con el celular bloqueado, el pedido entra como una llamada: prende la pantalla y suena hasta que lo veas. Toca el botón y activa «Permitir notificaciones en pantalla completa»."
+            ok={r.pantallaCompleta}
+            boton="Activar"
+            alTocar={abrirPermisoPantallaCompleta}
+            prueba="permiso-pantalla-completa"
           />
         )}
         {/* Solo aparece en Xiaomi / Redmi / POCO con el permiso apagado */}

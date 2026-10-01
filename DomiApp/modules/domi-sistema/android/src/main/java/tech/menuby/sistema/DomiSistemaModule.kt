@@ -31,6 +31,54 @@ class DomiSistemaModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("DomiSistema")
 
+    /* ── Pedidos como llamada entrante (ver Llamadas.kt) ── */
+
+    /** Esta versión de la app trae la llamada nativa (el servidor solo la usa si es así). */
+    Constant("llamadas") { true }
+
+    Events("llamada")
+
+    OnCreate {
+      Llamadas.alLlegar = { datos ->
+        sendEvent("llamada", mapOf("clave" to datos.getString("clave"), "tipo" to (datos.getString("tipo") ?: datos.getString("llamada"))))
+      }
+      Llamadas.crearCanales(contexto)
+    }
+
+    OnDestroy {
+      Llamadas.alLlegar = null
+    }
+
+    /** Cuelga una llamada: la app ya muestra la oferta o ya no aplica. */
+    Function("cancelarLlamada") { clave: String ->
+      Llamadas.cancelar(contexto, clave)
+    }
+
+    Function("cancelarLlamadas") {
+      Llamadas.cancelarTodas(contexto)
+    }
+
+    /** ¿El domi está viendo la app? (actividad al frente y pantalla prendida, aunque sea sobre el bloqueo) */
+    Function("appALaVista") {
+      Llamadas.actividadVisible && (contexto.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager).isInteractive
+    }
+
+    /** La llamada con la que se abrió la app (una sola vez). */
+    Function("llamadaPendiente") {
+      val p = Llamadas.pendiente ?: return@Function null
+      Llamadas.pendiente = null
+      mapOf("clave" to p.getString("clave"), "tipo" to p.getString("tipo"))
+    }
+
+    /** Android 14+: "Notificaciones en pantalla completa" (sin él la llamada no se abre sola con el celular bloqueado). */
+    Function("puedePantallaCompleta") {
+      Llamadas.puedePantallaCompleta(contexto)
+    }
+
+    Function("abrirPermisoPantallaCompleta") {
+      Llamadas.abrirPermisoPantallaCompleta(contexto)
+    }
+
     /** ¿Tiene el permiso "Mostrar sobre otras apps"? Sin él Android no deja abrirse desde atrás. */
     Function("puedeSuperponer") {
       Settings.canDrawOverlays(contexto)

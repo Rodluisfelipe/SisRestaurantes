@@ -9,6 +9,7 @@
 import * as Notifications from 'expo-notifications';
 import { AppState, Platform } from 'react-native';
 import { llamar } from './api';
+import { hayLlamadas } from './sistema';
 
 export const CANAL_OFERTAS = 'incoming-orders';
 export const CANAL_AVISOS = 'avisos';
@@ -64,7 +65,8 @@ export async function registrarToken(): Promise<boolean> {
     await crearCanales();
     const t = await Notifications.getDevicePushTokenAsync();
     if (typeof t.data !== 'string') return false;
-    await llamar('/domi-app/push', { cuerpo: { token: t.data } });
+    // `llamadas`: el servidor manda los pedidos como llamada solo si este celular la sabe pintar
+    await llamar('/domi-app/push', { cuerpo: { token: t.data, llamadas: hayLlamadas } });
     return true;
   } catch {
     return false;

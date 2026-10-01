@@ -13,7 +13,8 @@ import { AppState, Modal, StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { router } from 'expo-router';
 import { callarOferta, exito, fallo, sonarOferta } from '@/lib/aviso';
-import { mostrarSobreBloqueo } from '@/lib/sistema';
+import { cancelarLlamada, claveOferta, mostrarSobreBloqueo } from '@/lib/sistema';
+import { useTimbre } from '@/lib/useTimbre';
 import { pesos, km, minutos } from '@/lib/formato';
 import { llamar, ErrorApi } from '@/lib/api';
 import { distanciaKm } from '@/lib/ruta';
@@ -35,11 +36,13 @@ export function OfertaEntrante() {
   // Las vencidas se cierran solas: el temporizador de la tarjeta las descarta al primer tic.
   const oferta = ofertas.find((o) => !descartadas.includes(o.id));
 
+  // Suena la app solo cuando el domi la ve; antes timbra la llamada del sistema
+  const suena = useTimbre(oferta ? [claveOferta(oferta.id)] : []);
   useEffect(() => {
-    if (oferta) sonarOferta(ajustes.sonido, ajustes.vibrar);
+    if (suena) sonarOferta(ajustes.sonido, ajustes.vibrar);
     else callarOferta();
     return () => callarOferta();
-  }, [oferta, ajustes.sonido, ajustes.vibrar]);
+  }, [suena, oferta?.id, ajustes.sonido, ajustes.vibrar]);
 
   // Mientras suena: pantalla encendida y encima del bloqueo, como una llamada
   const hayOferta = !!oferta;
@@ -61,7 +64,7 @@ export function OfertaEntrante() {
       <Tarjeta
         key={oferta.id}
         oferta={oferta}
-        alTerminar={(id) => { callarOferta(); setDescartadas((d) => [...d, id]); useApp.getState().quitarOferta(id); }}
+        alTerminar={(id) => { callarOferta(); cancelarLlamada(claveOferta(id)); setDescartadas((d) => [...d, id]); useApp.getState().quitarOferta(id); }}
       />
     </Modal>
   );
@@ -98,7 +101,7 @@ function Tarjeta({ oferta, alTerminar }: { oferta: Oferta; alTerminar: (id: stri
       const r = await llamar<{ pedidoId?: string }>(`/domi-app/ofertas/${oferta.id}/${acepta ? 'aceptar' : 'rechazar'}`, { cuerpo: {} });
       if (acepta) exito();
       // Lo aceptó él: no es una asignación que haya que avisarle
-      if (acepta && r.pedidoId) useApp.getState().yaVistos([r.pedidoId]);
+      if (acepta && r.pedidoId) useApp.getState().yaVistos([r.pedidoId], true);
       alTerminar(oferta.id);
       await useApp.getState().refrescar();
       if (acepta && r.pedidoId) router.push({ pathname: '/pedido/[id]', params: { id: r.pedidoId } });

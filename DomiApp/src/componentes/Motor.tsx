@@ -18,10 +18,20 @@ import { encolarGps, vaciar } from '@/lib/cola';
 import { REFRESCO_MS } from '@/lib/config';
 import { escucharAvisos, registrarToken } from '@/lib/notificaciones';
 import { useAvisoQuieto } from '@/lib/useAvisoQuieto';
-import { traerAlFrente } from '@/lib/sistema';
+import { cancelarLlamadas, escucharLlamadas, llamadaPendiente, mostrarSobreBloqueo, traerAlFrente } from '@/lib/sistema';
 import { conectarEnVivo, desconectarEnVivo } from '@/lib/tiempoReal';
 import { alPuntoEnSegundoPlano, ponerModoGps, seguir } from '@/lib/ubicacion';
 import { pedidosVisibles, useApp } from '@/estado/app';
+
+/**
+ * Que el domi lo vea: encima del bloqueo, pantalla encendida y la app al frente.
+ * No se fía de AppState: con el celular bloqueado, algunas marcas (ColorOS)
+ * siguen diciendo "active" y la app creía que ya estaba a la vista.
+ */
+async function despertar() {
+  await mostrarSobreBloqueo(true);
+  traerAlFrente();
+}
 
 export function Motor() {
   const sesion = useApp((s) => s.sesion);
@@ -68,7 +78,23 @@ export function Motor() {
     conectarEnVivo(refrescar);
     registrarToken();
     const quitar = escucharAvisos(refrescar);
-    return () => { desconectarEnVivo(); quitar(); };
+    // Pedido que llegó como llamada (o que la colgaron): al día de una vez
+    const quitarLlamadas = escucharLlamadas(() => refrescar());
+    if (llamadaPendiente()) refrescar();
+    return () => { desconectarEnVivo(); quitar(); quitarLlamadas(); };
+  }, [sesion]);
+
+  // Al volver a la app sin nada pendiente, las llamadas que queden ya no aplican
+  useEffect(() => {
+    if (!sesion) return undefined;
+    const colgarViejas = async () => {
+      await useApp.getState().refrescar();
+      const s = useApp.getState();
+      if (!s.servidor?.ofertas?.length && !s.asignadosNuevos.length) cancelarLlamadas();
+    };
+    colgarViejas();
+    const sub = AppState.addEventListener('change', (e) => { if (e === 'active') colgarViejas(); });
+    return () => sub.remove();
   }, [sesion]);
 
   // GPS en vivo para el mapa (y en web, también para el servidor)
@@ -98,12 +124,12 @@ export function Motor() {
   useEffect(() => {
     const nuevas = (ofertas || []).filter((o) => !ofertasVistas.current.has(o.id));
     nuevas.forEach((o) => ofertasVistas.current.add(o.id));
-    if (nuevas.length && AppState.currentState !== 'active') traerAlFrente();
+    if (nuevas.length) despertar();
   }, [ofertas]);
 
   // Pedido asignado directo por el negocio: también se abre sola
   useEffect(() => {
-    if (asignados.length && AppState.currentState !== 'active') traerAlFrente();
+    if (asignados.length) despertar();
   }, [asignados]);
 
   // GPS falso: fuera de línea hasta que lo apague (el servidor tampoco le manda pedidos)

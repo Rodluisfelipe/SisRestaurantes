@@ -18,7 +18,7 @@ import { fallo, tocar } from '@/lib/aviso';
 import { pesos, km, minutos } from '@/lib/formato';
 import { planearRuta, type Parada } from '@/lib/ruta';
 import { aplicarPlan, useRutaCalles } from '@/lib/rutaCalles';
-import { puedeSuperponer, xiaomiListo } from '@/lib/sistema';
+import { puedePantallaCompleta, puedeSuperponer, xiaomiListo } from '@/lib/sistema';
 import { permisosUbicacion, ubicacionPrecisa } from '@/lib/ubicacion';
 import { permisoNotificaciones } from '@/lib/notificaciones';
 import { ErrorApi, pedidosVisibles, useApp } from '@/estado/app';
@@ -46,7 +46,7 @@ export default function Ruta() {
   const enLinea = enLineaLocal ?? !!servidor?.cuenta.enLinea;
 
   useEffect(() => {
-    Promise.all([permisosUbicacion(), permisoNotificaciones()]).then(([u, n]) => setFaltanPermisos(!u.segundoPlano || !u.gpsEncendido || !n || !puedeSuperponer() || !xiaomiListo()));
+    Promise.all([permisosUbicacion(), permisoNotificaciones()]).then(([u, n]) => setFaltanPermisos(!u.segundoPlano || !u.gpsEncendido || !n || !puedeSuperponer() || !puedePantallaCompleta() || !xiaomiListo()));
   }, [servidor?.servidorAt]);
 
   const conectar = async (valor: boolean) => {

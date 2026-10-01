@@ -35,4 +35,33 @@ const deliveryOfferSchema = new mongoose.Schema({
 // Fast sweep of pending offers past their expiry
 deliveryOfferSchema.index({ state: 1, expiresAt: 1 });
 
+/* Una oferta que deja de estar pendiente (la tomó otro, venció, la quitó el
+   negocio) cuelga la llamada en el celular del domi. Va en el modelo y no en
+   cada servicio para que ningún camino se lo salte. Nunca frena la operación. */
+function colgar(ofertas) {
+  if (!ofertas || !ofertas.length) return;
+  setImmediate(() => {
+    require('../services/fcmService').colgarOfertas(ofertas).catch(() => {});
+  });
+}
+
+deliveryOfferSchema.pre('save', function marcarColgar() {
+  this.$locals.colgar = !this.isNew && this.isModified('state') && this.state !== 'pending';
+});
+
+deliveryOfferSchema.post('save', function colgarAlGuardar(doc) {
+  if (doc.$locals.colgar) colgar([{ _id: doc._id, driverId: doc.driverId }]);
+});
+
+deliveryOfferSchema.pre('updateMany', async function buscarPorColgar() {
+  const u = this.getUpdate() || {};
+  const estado = (u.$set && u.$set.state) || u.state;
+  if (!estado || estado === 'pending') return;
+  this._porColgar = await this.model.find({ ...this.getFilter(), state: 'pending' }).select('_id driverId').lean();
+});
+
+deliveryOfferSchema.post('updateMany', function colgarVarias() {
+  colgar(this._porColgar);
+});
+
 module.exports = mongoose.model('DeliveryOffer', deliveryOfferSchema);

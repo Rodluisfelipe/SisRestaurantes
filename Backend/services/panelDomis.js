@@ -275,6 +275,7 @@ async function soltar(o, motivo) {
   o.statusHistory.push({ status: o.status, timestamp: new Date(), note: motivo });
   // La app del domi se entera y el pedido sale de su ruta
   socketService.emitToDeliveryPerson(anterior, 'orderUpdated', { orderId: String(o._id), quitado: true });
+  require('./fcmService').colgarAsignado(anterior, o._id).catch(() => {});
 }
 
 async function asignar(businessId, orderId, driverId, quien = '') {

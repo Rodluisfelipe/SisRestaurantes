@@ -143,7 +143,7 @@ router.post('/ruta', app, envolver(async (req, res) => {
 }));
 
 router.post('/push', app, envolver(async (req, res) => {
-  await servicio.guardarPush(req.domi, req.body?.token);
+  await servicio.guardarPush(req.domi, req.body?.token, req.body?.llamadas);
   res.json({ ok: true });
 }));
 

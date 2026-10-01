@@ -13,3 +13,23 @@ android {
     versionName '1.0.0'
   }
 }
+
+// LlamadasService extiende el servicio de Firebase de expo-notifications. Expo lo
+// trae precompilado (o como proyecto si se compila desde el código): se toma lo
+// que haya, con la versión que diga el propio paquete instalado.
+def notificaciones = {
+  def p = rootProject.findProject(':expo-notifications')
+  if (p != null) return p
+  def ruta = providers.exec {
+    workingDir(rootDir)
+    commandLine('node', '--print', "require.resolve('expo-notifications/expo-module.config.json')")
+  }.standardOutput.asText.get().trim()
+  def pub = new groovy.json.JsonSlurper().parse(new File(ruta)).android.publication
+  return "${pub.groupId}:${pub.artifactId}:${pub.version}"
+}
+
+dependencies {
+  implementation notificaciones()
+  implementation 'com.google.firebase:firebase-messaging:25.0.1'
+  implementation 'androidx.core:core:1.17.0'
+}

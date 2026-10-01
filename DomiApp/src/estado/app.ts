@@ -71,14 +71,16 @@ type Estado = {
   limpiarError: (pedidoId: string) => void;
   cambiarAjustes: (a: Partial<Ajustes>) => void;
   quitarOferta: (id: string) => void;
-  /** Ya vio estos pedidos (los aceptó él o tocó "Ver pedido") */
-  yaVistos: (ids: string[]) => void;
+  /** Ya vio estos pedidos ("Ver pedido"); con `aceptados`, son de una oferta que aceptó él */
+  yaVistos: (ids: string[], aceptados?: boolean) => void;
 };
 
 /* Los pedidos que ya conocía: lo que aparezca de nuevo y no venga de una
    oferta que él aceptó es una asignación directa del negocio. null hasta la
    primera carga, para no avisar de lo que ya llevaba al abrir la app. */
 let conocidos: Set<string> | null = null;
+/* Los que aceptó él desde una oferta: nunca se avisan como asignación. */
+const aceptados = new Set<string>();
 
 const AJUSTES: Ajustes = { navegador: 'google', sonido: true, vibrar: true };
 
@@ -150,8 +152,9 @@ export const useApp = create<Estado>((set, get) => ({
       }
       const at = Date.now();
       const activos = servidor.pedidos.filter((p) => !['entregado', 'no_entregado', 'cancelado'].includes(p.estado)).map((p) => p.id);
-      const nuevos = conocidos ? activos.filter((id) => !conocidos!.has(id)) : [];
-      conocidos = new Set([...(conocidos ?? []), ...activos]);
+      const nuevos = conocidos ? activos.filter((id) => !conocidos!.has(id) && !aceptados.has(id)) : [];
+      // Solo los que lleva ahora: si se lo quitan y se lo vuelven a dar, suena otra vez
+      conocidos = new Set(activos);
       const asignadosNuevos = [...get().asignadosNuevos.filter((id) => activos.includes(id)), ...nuevos];
       set({ servidor, actualizadoAt: at, hayRed: true, locales, enLineaLocal: null, asignadosNuevos });
       guardar(CLAVES.estado, { servidor, at });
@@ -212,8 +215,9 @@ export const useApp = create<Estado>((set, get) => ({
     guardar(CLAVES.ajustes, ajustes);
   },
 
-  yaVistos(ids) {
+  yaVistos(ids, deOferta = false) {
     conocidos = new Set([...(conocidos ?? []), ...ids]);
+    if (deOferta) ids.forEach((id) => aceptados.add(id));
     set({ asignadosNuevos: get().asignadosNuevos.filter((id) => !ids.includes(id)) });
   },
 

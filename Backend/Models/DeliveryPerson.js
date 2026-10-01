@@ -42,6 +42,12 @@ const deliveryPersonSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  // MenuBy Go con el aviso nativo de "llamada": recibe los pedidos como mensajes
+  // de datos de alta prioridad y la app pinta la llamada (ver fcmService)
+  fcmLlamadas: {
+    type: Boolean,
+    default: false
+  },
   // If set, this driver belongs to an external delivery company (partner) and
   // can serve any restaurant that has enabled that partner.
   partnerId: {
