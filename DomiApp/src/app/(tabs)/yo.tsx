@@ -10,8 +10,10 @@ import { router } from 'expo-router';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Boton, Icono, T, Tarjeta, type NombreIcono } from '@/componentes/base';
+import { Degradado } from '@/componentes/Degradado';
 import { tocar } from '@/lib/aviso';
 import { celularBonito } from '@/lib/formato';
+import { aspectoNivel } from '@/lib/niveles';
 import { pedidosVisibles, useApp } from '@/estado/app';
 import { color, radio } from '@/tema';
 
@@ -20,6 +22,7 @@ export default function Yo() {
   const locales = useApp((s) => s.locales);
   const ajustes = useApp((s) => s.ajustes);
   const cuenta = servidor?.cuenta;
+  const nivel = aspectoNivel(cuenta?.nivel?.id);
 
   const salir = () => {
     const activos = pedidosVisibles(servidor, locales).length;
@@ -48,6 +51,24 @@ export default function Yo() {
             <View style={s.dato}><Icono nombre="package-variant-closed-check" tam={18} tinte={color.dinero} /><T v="fuerte">{cuenta?.totalEntregas ?? 0} entregas</T></View>
           </View>
         </View>
+
+        {/* El nivel, a la vista: se toca para ver cómo va y qué le falta */}
+        <Pressable onPress={() => router.push('/desempeno')} testID="ir-nivel" style={({ pressed }) => [s.nivel, { opacity: pressed ? 0.85 : 1 }]}>
+          <Degradado colores={nivel.degradado} />
+          <View style={s.nivelIcono}><Icono nombre={nivel.icono} tam={26} tinte={nivel.acento} /></View>
+          <View style={{ flex: 1 }}>
+            <T v="pequeno" c="rgba(255,255,255,0.75)">Tu nivel</T>
+            <T v="titulo" c={nivel.acento}>{cuenta?.nivel?.nombre || 'Go'}</T>
+          </View>
+          <T v="fuerte" c="#fff">Ver</T>
+          <Icono nombre="chevron-right" tinte="#fff" />
+        </Pressable>
+
+        <T v="etiqueta" c={color.tintaSuave}>MenuBy Go</T>
+        <Tarjeta style={{ gap: 4, paddingVertical: 8 }}>
+          <Fila icono="lightning-bolt" texto="Aceptar pedidos solo" detalle={cuenta?.autoAcepta ? 'Activada' : 'Apagada'} ir="/auto-aceptar" prueba="ir-auto-aceptar" />
+          <Fila icono="gift-outline" texto="Beneficios" ir="/beneficios" prueba="ir-beneficios" />
+        </Tarjeta>
 
         <T v="etiqueta" c={color.tintaSuave}>Trabajas con</T>
         <Tarjeta style={{ gap: 12 }}>
@@ -95,6 +116,17 @@ export default function Yo() {
   );
 }
 
+function Fila({ icono, texto, detalle, ir, prueba }: { icono: NombreIcono; texto: string; detalle?: string; ir: '/auto-aceptar' | '/beneficios'; prueba: string }) {
+  return (
+    <Pressable onPress={() => router.push(ir)} style={s.fila} testID={prueba}>
+      <Icono nombre={icono} />
+      <T v="fuerte" style={{ flex: 1 }}>{texto}</T>
+      {!!detalle && <T v="pequeno" c={color.tintaSuave}>{detalle}</T>}
+      <Icono nombre="chevron-right" tinte={color.tintaSuave} />
+    </Pressable>
+  );
+}
+
 function Interruptor({ icono, texto, valor, alCambiar }: { icono: NombreIcono; texto: string; valor: boolean; alCambiar: (v: boolean) => void }) {
   return (
     <View style={s.fila}>
@@ -113,6 +145,8 @@ const s = StyleSheet.create({
   dato: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: color.superficie, paddingHorizontal: 12, paddingVertical: 7, borderRadius: radio.total },
   logo: { width: 44, height: 44, borderRadius: radio.m },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56 },
+  nivel: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: radio.l, padding: 14, overflow: 'hidden' },
+  nivelIcono: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.16)' },
   segmento: { flexDirection: 'row', backgroundColor: color.fondo, borderRadius: radio.total, padding: 3 },
   opcion: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: radio.total },
   opcionActiva: { backgroundColor: color.tinta },

@@ -26,6 +26,8 @@ type Nativo = {
   abrirPermisosXiaomi(): boolean;
   llamadas?: boolean;
   appALaVista?(): boolean;
+  timbrar?(clave: string, sonido: boolean, vibrar: boolean): void;
+  soltarTimbre?(clave: string): void;
   cancelarLlamada?(clave: string): void;
   cancelarLlamadas?(): void;
   llamadaPendiente?(): Llamada | null;
@@ -128,4 +130,25 @@ export function puedePantallaCompleta(): boolean {
 
 export function abrirPermisoPantallaCompleta() {
   try { nativo?.abrirPermisoPantallaCompleta?.(); } catch { /* sin ajuste en este celular */ }
+}
+
+/* ── Timbre al 100 % ──
+   El tono de pedidos suena por el canal de alarma con el volumen al máximo
+   (aunque el celular esté en silencio) y vuelve a dejarlo como estaba. */
+
+/** ¿Este celular trae el timbre nativo? */
+export const hayTimbre = !!nativo?.timbrar;
+
+export function timbrar(clave: string, sonido: boolean, vibrar: boolean): boolean {
+  try {
+    if (!nativo?.timbrar) return false;
+    nativo.timbrar(clave, sonido, vibrar);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function soltarTimbre(clave: string) {
+  try { nativo?.soltarTimbre?.(clave); } catch { /* ya callado */ }
 }

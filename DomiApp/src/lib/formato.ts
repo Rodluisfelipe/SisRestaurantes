@@ -52,6 +52,17 @@ export function diaCorto(iso: string): string {
   return `${DIAS[f.getDay()]} ${d}`;
 }
 
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+/** Una fecha con hora (ISO) → "jue 1 oct", en hora de Colombia. */
+export function fechaCorta(fecha: string | number | Date | null | undefined): string {
+  if (fecha == null) return '';
+  const f = new Date(fecha);
+  if (Number.isNaN(f.getTime())) return '';
+  const [a, m, d] = f.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }).split('-').map(Number);
+  const dia = new Date(a, m - 1, d);
+  return `${DIAS[dia.getDay()]} ${d} ${MESES[m - 1]}`;
+}
+
 /** Solo el primer nombre, para no gritar el nombre completo de nadie. */
 export function primerNombre(nombre: string | null | undefined): string {
   return String(nombre || '').trim().split(/\s+/)[0] || '';

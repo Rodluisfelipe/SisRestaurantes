@@ -8,13 +8,18 @@
 const express = require('express');
 const router = express.Router();
 const { protectSuperAdmin, requireRole } = require('../middleware/authSuperAdmin');
+const multer = require('multer');
 const red = require('../services/red');
+const desempeno = require('../services/desempenoDomi');
+const beneficios = require('../services/beneficios');
 const logger = require('../utils/logger');
 
 router.use(protectSuperAdmin);
 
 const envolver = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
-  if (e instanceof red.ErrorRed) return res.status(e.status).json({ message: e.message, codigo: e.codigo });
+  if ([red.ErrorRed, desempeno.ErrorDesempeno, beneficios.ErrorBeneficio].some((C) => e instanceof C)) {
+    return res.status(e.status).json({ message: e.message, codigo: e.codigo });
+  }
   logger.error('Error en la Red MenuBy (superadmin)', e, req);
   res.status(500).json({ message: 'Algo falló. Intenta de nuevo.' });
 });
@@ -65,6 +70,49 @@ router.post('/simular', envolver(async (req, res) => {
     kmEntrega: b.kmEntrega, kmRecogida: b.kmRecogida, demanda: b.demanda, oferta: b.oferta, lluvia: !!b.lluvia,
     fecha: b.hora ? new Date(`2026-01-01T${String(b.hora).padStart(5, '0')}:00-05:00`) : new Date(),
   }, b.tarifa || tarifa));
+}));
+
+/* ═══════════ Faltas y reclamos de los domis ═══════════ */
+
+router.get('/faltas', envolver(async (req, res) => {
+  res.json(await desempeno.listarFaltas({ estado: req.query.estado || 'en_revision', q: req.query.q || '', pagina: parseInt(req.query.pagina, 10) || 1 }));
+}));
+
+router.post('/faltas/:id/resolver', requireRole('admin'), envolver(async (req, res) => {
+  res.json(await desempeno.resolverFalta(req.params.id, { anular: req.body?.anular === true, respuesta: req.body?.respuesta }, quien(req)));
+}));
+
+// Día difícil (lluvia, paro, caída): ninguna falta de ese día cuenta
+router.post('/faltas/perdonar-dia', requireRole('admin'), envolver(async (req, res) => {
+  res.json(await desempeno.perdonarDia(req.body?.fecha, quien(req)));
+}));
+
+/* ═══════════ Beneficios para los domis ═══════════ */
+
+const imagen = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => cb(null, /^image\/(jpeg|png|webp)$/.test(file.mimetype)),
+}).single('imagen');
+
+router.get('/beneficios', envolver(async (req, res) => {
+  res.json(await beneficios.listarAdmin());
+}));
+
+router.post('/beneficios', requireRole('admin'), imagen, envolver(async (req, res) => {
+  res.status(201).json(await beneficios.crear(req.body || {}, req.file, quien(req)));
+}));
+
+router.patch('/beneficios/:id', requireRole('admin'), imagen, envolver(async (req, res) => {
+  res.json(await beneficios.editar(req.params.id, req.body || {}, req.file));
+}));
+
+router.delete('/beneficios/:id', requireRole('admin'), envolver(async (req, res) => {
+  res.json(await beneficios.eliminar(req.params.id));
+}));
+
+router.get('/beneficios/:id/canjes', envolver(async (req, res) => {
+  res.json(await beneficios.canjesAdmin(req.params.id));
 }));
 
 module.exports = router;

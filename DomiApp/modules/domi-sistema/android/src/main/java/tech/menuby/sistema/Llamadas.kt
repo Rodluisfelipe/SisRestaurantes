@@ -7,7 +7,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -36,8 +35,10 @@ import androidx.core.app.NotificationManagerCompat
 object Llamadas {
   private const val TAG = "MenuByLlamadas"
 
-  /** Versión en el id: los canales de Android no se pueden cambiar una vez creados. */
-  const val CANAL = "llamadas-pedidos-v1"
+  /** Versión en el id: los canales de Android no se pueden cambiar una vez creados.
+   *  v2: sin sonido propio; el timbre lo pone Timbre (alarma al 100 %). */
+  const val CANAL = "llamadas-pedidos-v2"
+  private val CANALES_VIEJOS = listOf("llamadas-pedidos-v1")
   /** Para cuando la app ya está a la vista: aviso sin timbre (lo pone la pantalla de la app). */
   const val CANAL_SILENCIO = "llamadas-pedidos-silencio-v1"
 
@@ -53,24 +54,18 @@ object Llamadas {
   /** JS escucha aquí si está vivo (para refrescar al instante). */
   @Volatile var alLlegar: ((Bundle) -> Unit)? = null
 
-  private val VIBRACION = longArrayOf(0, 900, 500, 900, 500, 900, 500)
-
   fun idDe(clave: String): Int = 0x4D000000 or (clave.hashCode() and 0x00FFFFFF)
 
   fun crearCanales(ctx: Context) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
     val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
+    CANALES_VIEJOS.forEach { try { nm.deleteNotificationChannel(it) } catch (e: Exception) { /* no estaba */ } }
     if (nm.getNotificationChannel(CANAL) == null) {
-      val sonido = Uri.parse("android.resource://${ctx.packageName}/raw/oferta")
-      val audio = AudioAttributes.Builder()
-        .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-        .build()
       nm.createNotificationChannel(NotificationChannel(CANAL, "Pedidos nuevos (como llamada)", NotificationManager.IMPORTANCE_HIGH).apply {
-        description = "Suena como una llamada cuando te ofrecen o te asignan un pedido"
-        setSound(sonido, audio)
-        enableVibration(true)
-        vibrationPattern = VIBRACION
+        description = "Aparece como una llamada cuando te ofrecen o te asignan un pedido. El timbre suena siempre al máximo."
+        // Sin sonido ni vibración del canal: el timbre propio suena por alarma al 100 %
+        setSound(null, null)
+        enableVibration(false)
         lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
         setBypassDnd(true)
         setShowBadge(true)
@@ -158,12 +153,8 @@ object Llamadas {
         .setAutoCancel(true)
         .setOngoing(!aLaVista)
         .setTimeoutAfter(vence * 1000)
-      if (!aLaVista) {
-        b.setFullScreenIntent(pi, true)
-        b.setVibrate(VIBRACION)
-      }
+      if (!aLaVista) b.setFullScreenIntent(pi, true)
       val n = b.build()
-      if (!aLaVista) n.flags = n.flags or android.app.Notification.FLAG_INSISTENT
 
       if (androidx.core.content.ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
         || Build.VERSION.SDK_INT < 33) {
@@ -171,6 +162,8 @@ object Llamadas {
       }
 
       if (!aLaVista) {
+        // El timbre al 100 % hasta que la vea, la cuelguen o venza
+        Timbre.sonar(ctx, clave, vence)
         // Prender la pantalla aunque la marca ignore la pantalla completa
         despertarPantalla(ctx)
         // Celular en uso y con "mostrar sobre otras apps": abrirse encima de lo que esté usando
@@ -201,9 +194,11 @@ object Llamadas {
 
   fun cancelar(ctx: Context, clave: String) {
     NotificationManagerCompat.from(ctx).cancel(idDe(clave))
+    Timbre.soltar(ctx, clave)
   }
 
   fun cancelarTodas(ctx: Context) {
+    Timbre.callarTodo()
     val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
       nm.activeNotifications.filter { (it.id and 0xFF000000.toInt()) == 0x4D000000 }.forEach { nm.cancel(it.id) }

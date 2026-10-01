@@ -250,6 +250,8 @@ function pedidoParaDomi(o, { negocio, regla }) {
     pideCodigoEntrega: negocio?._pideCodigo !== false,
     pideCodigoRecogida: !!negocio?._pideRecogida,
     asignadoAt: o.deliveryAssignedAt || null,
+    // Lo aceptó solo (aceptación automática)
+    automatico: !!o.autoAceptado?.at && String(o.autoAceptado.driverId || '') === String(o.deliveryPersonId || ''),
     marcas: {
       llegoLocal: o.deliveryArrivedStoreAt || null,
       recogido: o.deliveryPickedAt || null,
@@ -283,10 +285,17 @@ async function pedidosActivos(ids) {
 
 async function estado(domi) {
   const { docs, ids } = domi;
-  const [pedidos, ofertasRaw] = await Promise.all([
+  const [pedidos, ofertasRaw, cuentaDoc] = await Promise.all([
     pedidosActivos(ids),
     DeliveryOffer.find({ driverId: { $in: ids }, envioId: { $exists: false }, state: 'pending', expiresAt: { $gt: new Date() } }).sort({ offeredAt: -1 }).lean(),
+    DomiCuenta.findOne({ telefono: domi.telefono }),
   ]);
+  // La app recibió sus ofertas: desde aquí, dejarlas vencer sí cuenta (ver desempenoDomi)
+  await DeliveryOffer.updateMany(
+    { driverId: { $in: ids }, state: 'pending', vistaAt: null, expiresAt: { $gt: new Date() } },
+    { $set: { vistaAt: new Date() } },
+  );
+  require('./desempenoDomi').recalcularSiToca(cuentaDoc, docs);
   // Envíos de empresas de reparto (sus clientes propios): se ven igual que un pedido
   const envios = await require('./envios').paraLaApp(ids);
   const pedidosOferta = ofertasRaw.length
@@ -339,6 +348,11 @@ async function estado(domi) {
       calificacion: Math.round(Math.min(...docs.map((d) => d.rating ?? 5)) * 10) / 10,
       enLinea: docs.some((d) => d.isOnline),
       totalEntregas: docs.reduce((s, d) => s + (d.totalDeliveries || 0), 0),
+      nivel: (() => {
+        const n = require('../utils/nivelesDomi').nivelPorId(cuentaDoc?.nivel?.actual || 0);
+        return { id: n.id, nombre: n.nombre };
+      })(),
+      autoAcepta: !!cuentaDoc?.autoAcepta?.activo,
     },
     afiliaciones: docs.map((d) => {
       if (d.partnerId) {
@@ -556,6 +570,9 @@ async function registrarUbicacion(domi, puntos = []) {
   }
   if (cuenta && (simulados || saltos || validos.length)) await cuenta.save();
   if (simulados) {
+    // Falta (una por día como mucho). Los saltos solos no: pueden ser fallas del GPS.
+    const dia = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+    require('./desempenoDomi').registrarFalta({ telefono: domi.telefono, driverId: domi.ids[0], tipo: 'gps_falso', refId: `gps:${dia}` }).catch(() => {});
     // Con GPS falso no se reciben pedidos: se desconecta
     await DeliveryPerson.updateMany({ _id: { $in: domi.ids } }, { $set: { isOnline: false } });
     return { recibidos: validos.length, simulada: true };
@@ -748,6 +765,14 @@ async function ejecutar(domi, ev) {
     await dsm.recordForOrder(order, 'fail', { ...ctx, failureReason: order.deliveryFailReason });
     const { releaseDriver } = require('./orderCompletionService');
     await releaseDriver(order.deliveryPersonId, { delivered: false });
+    // Falta solo si nunca llegó donde el cliente (si llegó y el cliente no estaba, no es culpa suya)
+    if (!order.deliveryArrivedCustomerAt) {
+      const negocio = await BusinessConfig.findById(order.businessId).select('businessName').lean();
+      require('./desempenoDomi').registrarFalta({
+        telefono: domi.telefono, driverId: order.deliveryPersonId, tipo: 'no_entregado', refId: order._id,
+        pedidoNumero: order.orderNumber, negocio: negocio?.businessName || null,
+      }).catch(() => {});
+    }
     socketService.emitToBusiness(businessId, 'delivery:failed', {
       orderId: String(order._id), orderNumber: order.orderNumber, reason: order.deliveryFailReason, driverName: driver?.name,
     });
@@ -783,6 +808,9 @@ async function ejecutar(domi, ev) {
   await dsm.recordForOrder(order, 'deliver', { ...ctx, proofPhoto: ev.datos.fotoUrl, meta: { ...ctx.meta, codeUsed: pideCodigo } });
   const { finalizeDeliveredOrder } = require('./orderCompletionService');
   await finalizeDeliveredOrder(order);
+  // Subir de nivel es inmediato; y si lo aceptó solo, sus fallos vuelven a cero
+  require('./autoAceptar').entregoBien(order).catch(() => {});
+  require('./desempenoDomi').recalcularPorTelefono(domi.telefono).catch(() => {});
   return { ok: true, estado: 'entregado', businessId };
 }
 

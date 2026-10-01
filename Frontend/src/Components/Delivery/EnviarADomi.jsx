@@ -39,6 +39,15 @@ function Estado({ d, maxActivos }) {
   return <span className="text-emerald-600">● Conectado, libre</span>;
 }
 
+/* El nivel del domi en MenuBy Go (Go → MenuBy Black) */
+const COLOR_NIVEL = {
+  Go: 'text-slate-600 bg-slate-100',
+  'Go+': 'text-blue-700 bg-blue-50',
+  Pro: 'text-emerald-700 bg-emerald-50',
+  'Élite': 'text-violet-700 bg-violet-50',
+  'MenuBy Black': 'text-amber-300 bg-slate-900',
+};
+
 function Fila({ d, accion, textoAccion, ocupado, maxActivos, etiqueta }) {
   return (
     <div className={`flex items-center gap-3 p-3 rounded-xl border ${d.enLinea ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50/60'}`}>
@@ -46,6 +55,8 @@ function Fila({ d, accion, textoAccion, ocupado, maxActivos, etiqueta }) {
       <div className="min-w-0 flex-1">
         <p className="text-[13.5px] font-bold text-slate-800 truncate">
           {d.nombre}{etiqueta && <span className="ml-1.5 text-2xs font-bold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded">{etiqueta}</span>}
+          {d.nivel && <span className={`ml-1.5 text-2xs font-bold px-1.5 py-0.5 rounded ${COLOR_NIVEL[d.nivel] || COLOR_NIVEL.Go}`}>{d.nivel}</span>}
+          {d.autoAcepta && <span className="ml-1 text-2xs font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded" title="Acepta los pedidos automáticamente">⚡ Acepta solo</span>}
         </p>
         <p className="text-[11.5px] font-semibold"><Estado d={d} maxActivos={maxActivos} /></p>
         <p className="text-[11px] text-slate-400">
@@ -106,11 +117,15 @@ export default function EnviarADomi({ order, onClose, onIrADomis }) {
 
   const asignar = (d) => hacer(
     () => api.post(`/domi-app/negocio/pedidos/${order._id}/asignar`, { driverId: d.id, businessId }),
-    (r) => (r.estado === 'asignado' ? `${d.nombre} lleva el pedido #${order.orderNumber}` : `Se le ofreció a ${d.nombre}: espera que acepte`),
+    (r) => (r.estado === 'asignado'
+      ? (r.automatico ? `${d.nombre} lo aceptó automáticamente` : `${d.nombre} lleva el pedido #${order.orderNumber}`)
+      : `Se le ofreció a ${d.nombre}: espera que acepte`),
   );
   const automatico = () => hacer(
     () => api.post(`/domi-app/negocio/pedidos/${order._id}/automatico`, { businessId }),
-    (r) => `Se le ofreció a ${r.nombre || 'el domiciliario más cercano'}`,
+    (r) => (r.estado === 'asignado'
+      ? `${r.nombre || 'El domiciliario más cercano'} lo aceptó automáticamente`
+      : `Se le ofreció a ${r.nombre || 'el domiciliario más cercano'}`),
   );
   const quitar = () => {
     if (!window.confirm('¿Quitarle este pedido al domiciliario?')) return;
@@ -156,6 +171,7 @@ export default function EnviarADomi({ order, onClose, onIrADomis }) {
             <div className="flex-1 min-w-0">
               <p className="text-[13.5px] font-bold text-slate-800 truncate">
                 {actual.estado === 'asignado' ? `Lo lleva ${actual.nombre}` : `Esperando que ${actual.nombre} acepte…`}
+                {actual.automatico && <span className="ml-1.5 text-2xs font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">⚡ Aceptado automáticamente</span>}
               </p>
               <p className="text-[11.5px] text-slate-500">
                 {actual.estado === 'asignado'

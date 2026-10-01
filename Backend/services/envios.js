@@ -396,6 +396,11 @@ async function expirarOfertas() {
   for (const o of vencidas) {
     o.state = 'expired'; o.respondedAt = new Date(); await o.save();
     await Envio.updateOne({ _id: o.envioId }, { $addToSet: { rechazadoPor: o.driverId } });
+    // Falta solo si su app SÍ le mostró la oferta
+    if (o.vistaAt) {
+      const envio = await Envio.findById(o.envioId).select('numero').lean();
+      await require('./desempenoDomi').registrarFaltaDe(o.driverId, { tipo: 'oferta_vencida', refId: o._id, pedidoNumero: envio?.numero }).catch(() => {});
+    }
     await despachar(o.envioId).catch(() => {});
   }
   return vencidas.length;

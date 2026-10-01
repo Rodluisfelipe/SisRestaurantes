@@ -18,7 +18,7 @@ import { encolarGps, vaciar } from '@/lib/cola';
 import { REFRESCO_MS } from '@/lib/config';
 import { escucharAvisos, registrarToken } from '@/lib/notificaciones';
 import { useAvisoQuieto } from '@/lib/useAvisoQuieto';
-import { cancelarLlamadas, escucharLlamadas, llamadaPendiente, mostrarSobreBloqueo, traerAlFrente } from '@/lib/sistema';
+import { appALaVista, cancelarLlamadas, escucharLlamadas, hayLlamadas, llamadaPendiente, mostrarSobreBloqueo, traerAlFrente } from '@/lib/sistema';
 import { conectarEnVivo, desconectarEnVivo } from '@/lib/tiempoReal';
 import { alPuntoEnSegundoPlano, ponerModoGps, seguir } from '@/lib/ubicacion';
 import { pedidosVisibles, useApp } from '@/estado/app';
@@ -30,6 +30,9 @@ import { pedidosVisibles, useApp } from '@/estado/app';
  */
 async function despertar() {
   await mostrarSobreBloqueo(true);
+  // Con la llamada nativa, abrir la app lo hace Android (pantalla completa).
+  // Traerla al frente desde aquí la hacía saltar: cada vuelta al frente refrescaba y volvía a pedirlo.
+  if (hayLlamadas || appALaVista()) return;
   traerAlFrente();
 }
 
@@ -46,6 +49,7 @@ export function Motor() {
   const ofertas = servidor?.ofertas;
   const ofertasVistas = useRef(new Set<string>());
   const asignados = useApp((s) => s.asignadosNuevos);
+  const asignadosVistos = useRef(new Set<string>());
   const yo = useApp((s) => s.ubicacion);
   useAvisoQuieto(pedidos, yo);
 
@@ -129,7 +133,9 @@ export function Motor() {
 
   // Pedido asignado directo por el negocio: también se abre sola
   useEffect(() => {
-    if (asignados.length) despertar();
+    const nuevos = asignados.filter((id) => !asignadosVistos.current.has(id));
+    nuevos.forEach((id) => asignadosVistos.current.add(id));
+    if (nuevos.length) despertar();
   }, [asignados]);
 
   // GPS falso: fuera de línea hasta que lo apague (el servidor tampoco le manda pedidos)

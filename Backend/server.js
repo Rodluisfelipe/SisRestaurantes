@@ -110,7 +110,7 @@ app.set('trust proxy', 1);
 require('./services/socketService').initSocket(io);
 
 // Configurar CORS con los orígenes permitidos
-app.use(cors({
+const corsGeneral = cors({
   origin: function (origin, callback) {
     // No Origin header = not a cross-origin browser request (curl, Wget, mobile apps, healthchecks)
     // These are safe to allow — CORS is a browser-only mechanism
@@ -136,7 +136,11 @@ app.use(cors({
   preflightContinue: false,
   optionsSuccessStatus: 204
   
-}));
+});
+/* Beneficios para domis (lo público): la página de cada beneficio puede vivir
+   en otro dominio. No usa sesiones ni datos privados → CORS abierto, solo ahí. */
+const corsBeneficios = cors({ origin: true, credentials: false });
+app.use((req, res, next) => (req.path.startsWith('/api/beneficios') ? corsBeneficios : corsGeneral)(req, res, next));
 
 // Manejar peticiones OPTIONS explícitamente
 app.options('*', cors());
@@ -293,6 +297,7 @@ app.use("/api/superadmin/panel-live", require("./Routes/panelLive"));
 app.use("/api/superadmin/auth", require("./Routes/authSuperAdmin"));
 app.use("/api/superadmin/crm", require("./Routes/crm")); // CRM de leads de Menuby (con el WhatsApp de la plataforma)
 app.use("/api/superadmin/red", require("./Routes/superadminRed")); // Red MenuBy: domis independientes
+app.use("/api/beneficios", require("./Routes/beneficios")); // Beneficios para domis: lo público (página del beneficio, confirmar canje)
 app.use("/api/superadmin/team", require("./Routes/superadminTeam"));
 app.use("/api/superadmin", require("./Routes/superadmin"));
 

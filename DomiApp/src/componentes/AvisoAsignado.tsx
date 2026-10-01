@@ -59,8 +59,8 @@ export function AvisoAsignado() {
       <View style={s.fondo} testID="aviso-asignado">
         <View style={s.centro}>
           <View style={s.icono}><Icono nombre="moped" tam={44} tinte="#fff" /></View>
-          <T v="etiqueta" c={color.marca} centro>{nuevos.length > 1 ? `${nuevos.length} pedidos nuevos` : 'Pedido nuevo'}</T>
-          <T v="titulo" centro>{p.negocio?.nombre || 'El negocio'} te asignó el pedido #{p.numero}</T>
+          <T v="etiqueta" c={color.marca} centro>{nuevos.length > 1 ? `${nuevos.length} pedidos nuevos` : p.automatico ? 'Aceptado automáticamente' : 'Pedido nuevo'}</T>
+          <T v="titulo" centro>{p.automatico ? `Aceptaste el pedido #${p.numero} de ${p.negocio?.nombre || 'el negocio'}` : `${p.negocio?.nombre || 'El negocio'} te asignó el pedido #${p.numero}`}</T>
           {p.ganancia > 0 && <T v="enorme" c={color.dinero} centro style={s.ganancia}>{pesos(p.ganancia)}</T>}
         </View>
 

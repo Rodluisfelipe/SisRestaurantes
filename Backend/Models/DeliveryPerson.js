@@ -140,6 +140,17 @@ const deliveryPersonSchema = new mongoose.Schema({
     revisadoPor: { type: String },
     motivo: { type: String, maxlength: 300 },
   },
+  // Copia de lo que vive en la cuenta de la persona (DomiCuenta) y se necesita
+  // al elegir domi: el nivel (desempate) y su aceptación automática
+  prioridad: {
+    nivel: { type: Number, default: 0 },
+    autoAcepta: {
+      activo: { type: Boolean, default: false },
+      kmMax: { type: Number, default: 3 },
+      gananciaMin: { type: Number, default: 0 },
+      maxPedidos: { type: Number, default: 1 },
+    },
+  },
   // Negocios para los que el superadmin habilitó a este domi independiente
   negociosAsignados: [{ type: mongoose.Schema.Types.ObjectId, ref: 'BusinessConfig' }]
 }, { timestamps: true });

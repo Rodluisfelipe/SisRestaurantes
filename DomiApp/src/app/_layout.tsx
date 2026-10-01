@@ -47,6 +47,9 @@ export default function Raiz() {
           <Stack.Screen name="entregar/[id]" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="no-entregado/[id]" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="preparar" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="desempeno" />
+          <Stack.Screen name="auto-aceptar" />
+          <Stack.Screen name="beneficios" />
         </Stack.Protected>
       </Stack>
       {sesion && <Motor />}

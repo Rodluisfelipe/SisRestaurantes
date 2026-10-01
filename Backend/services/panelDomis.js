@@ -115,6 +115,9 @@ async function listarDomis(businessId) {
       entregasHoy: nHoy.get(String(d._id)) || 0,
       kmAlLocal: km != null ? Math.round(km * 10) / 10 : null,
       vehiculo: d.independiente?.vehiculo?.tipo || null,
+      // Nivel MenuBy Go (Go → MenuBy Black) y si acepta solo
+      nivel: require('../utils/nivelesDomi').nivelPorId(d.prioridad?.nivel || 0).nombre,
+      autoAcepta: !!d.prioridad?.autoAcepta?.activo,
     };
   };
   return {
@@ -229,6 +232,7 @@ async function asignacionActual(o) {
     return {
       estado: 'asignado', id: String(o.deliveryPersonId), nombre: d?.name || 'Domiciliario', foto: d?.photo || null,
       telefono: d?.phone || null, recogido: !!o.deliveryPickedAt,
+      automatico: !!o.autoAceptado?.at && String(o.autoAceptado.driverId || '') === String(o.deliveryPersonId),
     };
   }
   const oferta = await DeliveryOffer.findOne({ orderId: o._id, state: 'pending', expiresAt: { $gt: new Date() } }).sort({ createdAt: -1 }).lean();
@@ -332,8 +336,10 @@ async function asignar(businessId, orderId, driverId, quien = '') {
   const km = p && local ? reglas.distanciaKm(p, local) : null;
   const tarifa = await require('./red').tarifaParaOferta({ order: o, business: b, driver: d }).catch(() => undefined);
   const assignment = require('./assignmentService');
-  const { offer } = await assignment.offerToDriver(o, b, d, km != null ? Math.round(km * 100) / 100 : null, 1, tarifa);
+  const { offer, automatica } = await assignment.offerToDriver(o, b, d, km != null ? Math.round(km * 100) / 100 : null, 1, tarifa);
   await avisarCambio(o);
+  // Tiene la aceptación automática: ya quedó suyo
+  if (automatica) return { estado: 'asignado', nombre: d.name, automatico: true };
   return { estado: 'ofrecido', nombre: d.name, venceAt: offer?.expiresAt || null };
 }
 
@@ -348,6 +354,7 @@ async function automatico(businessId, orderId) {
   const ajustes = b.deliverySettings || {};
   const modo = ajustes.assignmentMode && ajustes.assignmentMode !== 'manual' ? ajustes.assignmentMode : 'auto_nearest';
   const r = await require('./assignmentService').pickAndOffer(o, { ...b, deliverySettings: { ...ajustes, assignmentMode: modo } });
+  if (r?.offered && r.automatica) return { estado: 'asignado', nombre: r.driver?.name || null, automatico: true };
   if (r?.offered) return { estado: 'ofrecido', nombre: r.driver?.name || null, venceAt: r.offer?.expiresAt || null };
   if (r?.reason === 'no_coordinates') throw new ErrorPanel(409, 'El pedido no tiene la ubicación del cliente en el mapa: elige el domiciliario tú.');
   throw new ErrorPanel(409, 'No hay domiciliarios conectados cerca en este momento.', 'sin_domis');
@@ -377,4 +384,5 @@ module.exports = {
   asignar,
   automatico,
   quitar,
+  soltar,
 };

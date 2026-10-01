@@ -63,6 +63,15 @@ class DomiSistemaModule : Module() {
       Llamadas.actividadVisible && (contexto.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager).isInteractive
     }
 
+    /** El timbre de la app (pantalla de oferta): alarma al 100 %, aunque esté en silencio. */
+    Function("timbrar") { clave: String, sonido: Boolean, vibrar: Boolean ->
+      Timbre.sonar(contexto, clave, 0, sonido, vibrar)
+    }
+
+    Function("soltarTimbre") { clave: String ->
+      Timbre.soltar(contexto, clave)
+    }
+
     /** La llamada con la que se abrió la app (una sola vez). */
     Function("llamadaPendiente") {
       val p = Llamadas.pendiente ?: return@Function null

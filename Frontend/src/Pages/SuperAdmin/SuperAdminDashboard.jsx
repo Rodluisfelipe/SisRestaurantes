@@ -24,6 +24,8 @@ import TeamManagement from "../../Components/SuperAdmin/TeamManagement";
 import CrewKYCManagement from "../../Components/SuperAdmin/CrewKYCManagement";
 import RedRepartidores from "../../Components/SuperAdmin/RedRepartidores";
 import TarifaRed from "../../Components/SuperAdmin/TarifaRed";
+import BeneficiosDomis from "../../Components/SuperAdmin/BeneficiosDomis";
+import FaltasDomis from "../../Components/SuperAdmin/FaltasDomis";
 import CrewFinanceManagement from "../../Components/SuperAdmin/CrewFinanceManagement";
 import CrewEmployersManagement from "../../Components/SuperAdmin/CrewEmployersManagement";
 import CrewPeopleManagement from "../../Components/SuperAdmin/CrewPeopleManagement";
@@ -133,6 +135,16 @@ const NAV_SECTIONS = [
       { id: 'red_tarifa', label: 'Tarifa de la red', desc: 'Cuánto gana un independiente por pedido', icon: (
         <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      )},
+      { id: 'red_faltas', label: 'Faltas y reclamos', desc: 'Lo que cuenta para el nivel de los domis', icon: (
+        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+      )},
+      { id: 'red_beneficios', label: 'Beneficios para domis', desc: 'Convenios que canjean con su código', icon: (
+        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
         </svg>
       )},
     ]
@@ -568,6 +580,18 @@ function SuperAdminDashboard() {
             {currentView === 'red_tarifa' && (
               <motion.div key="red_tarifa" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
                 <TarifaRed />
+              </motion.div>
+            )}
+
+            {currentView === 'red_faltas' && (
+              <motion.div key="red_faltas" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                <FaltasDomis />
+              </motion.div>
+            )}
+
+            {currentView === 'red_beneficios' && (
+              <motion.div key="red_beneficios" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                <BeneficiosDomis />
               </motion.div>
             )}
 

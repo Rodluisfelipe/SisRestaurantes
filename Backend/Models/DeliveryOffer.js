@@ -28,6 +28,11 @@ const deliveryOfferSchema = new mongoose.Schema({
   tarifa: { type: mongoose.Schema.Types.Mixed, default: undefined },
 
   offeredAt: { type: Date, default: Date.now },
+  // La app del domi la recibió (la mostró). Una oferta que vence sin que la
+  // haya visto no cuenta en su contra: pudo ser falla de señal o nuestra.
+  vistaAt: { type: Date, default: null },
+  // Se aceptó sola (aceptación automática del domi)
+  automatica: { type: Boolean, default: false },
   expiresAt: { type: Date, required: true, index: true },
   respondedAt: { type: Date, default: null },
 }, { timestamps: true });

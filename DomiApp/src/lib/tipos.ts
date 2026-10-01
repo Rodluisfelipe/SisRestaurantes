@@ -53,6 +53,8 @@ export type Pedido = {
   pideCodigoEntrega: boolean;
   pideCodigoRecogida: boolean;
   asignadoAt: string | null;
+  /** Lo aceptó solo (aceptación automática) */
+  automatico?: boolean;
   marcas: { llegoLocal: string | null; recogido: string | null; llegoCliente: string | null; entregado: string | null };
   listoEnLocal: boolean;
 };
@@ -104,6 +106,10 @@ export type EstadoServidor = {
     calificacion: number;
     enLinea: boolean;
     totalEntregas: number;
+    /** Nivel MenuBy Go (Go → MenuBy Black) */
+    nivel?: { id: number; nombre: string };
+    /** Tiene activa la aceptación automática */
+    autoAcepta?: boolean;
   };
   afiliaciones: Afiliacion[];
   pedidos: Pedido[];
@@ -139,4 +145,37 @@ export type ResultadoEvento = {
   intentosRestantes?: number;
   /** Con "lejos_del_cliente": a cuántos metros de la dirección estaba */
   metros?: number;
+};
+
+/* ── Nivel, desempeño, aceptación automática y beneficios ── */
+
+export type Desempeno = {
+  nivel: {
+    id: number; nombre: string; beneficio: string; desde: string | null; protegidoHasta: string | null;
+    enRiesgo: boolean; paraMantener: string[]; revisionAt: string | null;
+  };
+  siguiente: { id: number; nombre: string; beneficio: string; faltante: string[] } | null;
+  niveles: {
+    id: number; nombre: string; beneficio: string; logrado: boolean;
+    requisitos: { entregas: number; cumplimiento: number; puntualidad: number | null; calificacion: number | null } | null;
+  }[];
+  metricas: { entregas: number; faltas: number; cumplimiento: number; puntualidad: number; calificacion: number };
+  faltas: {
+    id: string; tipo: string; motivo: string; at: string; pedido: string | null; negocio: string | null;
+    estado: 'vigente' | 'en_revision' | 'anulada'; reclamo: { nota: string; respuesta: string | null } | null;
+  }[];
+};
+
+export type AutoAcepta = {
+  disponible: boolean; nivelNecesario: string; activo: boolean; kmMax: number; gananciaMin: number;
+  maxPedidos: number; maxActivos: number; apagadaPor: 'nivel' | 'no_arranco' | null;
+};
+
+export type Beneficios = {
+  codigo: string;
+  correo: string | null;
+  beneficios: {
+    id: string; titulo: string; descripcion: string; enlace: string; imagen: string | null;
+    canje: { estado: 'pendiente' | 'confirmado'; comprobante?: string; at: string } | null;
+  }[];
 };

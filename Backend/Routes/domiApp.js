@@ -14,6 +14,10 @@
  *   POST /pedidos/:id/foto  foto de prueba de entrega
  *   GET  /ganancias         por día
  *   GET  /cuadre            efectivo y pagos pendientes, por negocio
+ *   GET  /desempeno         nivel, métricas y faltas · POST /faltas/:id/reclamar
+ *   GET|PUT /auto-aceptar   aceptación automática de ofertas
+ *   GET  /beneficios        beneficios, su código único y sus canjes
+ *   POST /beneficios/:id/canjear · PUT /correo
  *
  * Panel (sesión del negocio):
  *   GET  /negocio/cuadre           cuánto trae cada domi y cuánto se le debe
@@ -59,9 +63,14 @@ const limiteApp = rateLimit({
   message: { message: 'Vas muy rápido. Espera un momento.' },
 });
 
+const desempeno = require('../services/desempenoDomi');
+const autoAceptar = require('../services/autoAceptar');
+const beneficios = require('../services/beneficios');
+const ERRORES_CONOCIDOS = [servicio.ErrorDomi, desempeno.ErrorDesempeno, autoAceptar.ErrorAuto, beneficios.ErrorBeneficio];
+
 /** Express 4 no atrapa errores de funciones async. */
 const envolver = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
-  if (e instanceof servicio.ErrorDomi) return res.status(e.status).json({ message: e.message, codigo: e.codigo });
+  if (ERRORES_CONOCIDOS.some((C) => e instanceof C)) return res.status(e.status).json({ message: e.message, codigo: e.codigo });
   logger.error('Error en la app del domi', e, req);
   res.status(500).json({ message: 'Algo falló. Intenta de nuevo.' });
 });
@@ -140,6 +149,37 @@ router.post('/ruta', app, envolver(async (req, res) => {
   const { yo, paradas } = req.body || {};
   const plan = await require('../services/rutas').planRuta(yo, paradas);
   res.json(plan || { aproximada: true });
+}));
+
+/* ═══════════ Desempeño, aceptación automática y beneficios ═══════════ */
+
+router.get('/desempeno', app, envolver(async (req, res) => {
+  res.json(await desempeno.desempeno(req.domi));
+}));
+
+router.post('/faltas/:id/reclamar', app, envolver(async (req, res) => {
+  res.json(await desempeno.reclamar(req.domi, req.params.id, req.body?.nota));
+}));
+
+router.get('/auto-aceptar', app, envolver(async (req, res) => {
+  res.json(await autoAceptar.configuracion(req.domi));
+}));
+
+router.put('/auto-aceptar', app, envolver(async (req, res) => {
+  const { activo, kmMax, gananciaMin, maxPedidos } = req.body || {};
+  res.json(await autoAceptar.guardar(req.domi, { activo, kmMax, gananciaMin, maxPedidos }));
+}));
+
+router.get('/beneficios', app, envolver(async (req, res) => {
+  res.json(await beneficios.paraDomi(req.domi));
+}));
+
+router.post('/beneficios/:id/canjear', app, envolver(async (req, res) => {
+  res.json(await beneficios.pedirCanje(req.params.id, { telefono: req.domi.telefono, origen: 'app' }));
+}));
+
+router.put('/correo', app, envolver(async (req, res) => {
+  res.json(await beneficios.guardarCorreo(req.domi, req.body?.email));
 }));
 
 router.post('/push', app, envolver(async (req, res) => {

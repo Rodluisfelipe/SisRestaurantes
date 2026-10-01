@@ -356,6 +356,15 @@ const orderSchema = new mongoose.Schema({
   /* Red MenuBy: lo que gana el domi independiente por este pedido y lo que
      paga el negocio, congelado cuando el domi aceptó la oferta. */
   tarifaRed: { type: mongoose.Schema.Types.Mixed, default: undefined },
+  /* Aceptado solo (aceptación automática del domi): dónde estaba al aceptar,
+     para revisar que sí arrancó hacia el local. */
+  autoAceptado: {
+    at: { type: Date },
+    driverId: { type: mongoose.Schema.Types.ObjectId, ref: 'DeliveryPerson' },
+    kmInicial: { type: Number },
+    avisadoAt: { type: Date },
+    revisadoAt: { type: Date },
+  },
   deliveryProofPhoto: {
     type: String,
     default: null

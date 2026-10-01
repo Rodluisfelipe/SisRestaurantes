@@ -5,6 +5,7 @@
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import { Platform, Vibration } from 'react-native';
+import { hayTimbre, soltarTimbre, timbrar } from './sistema';
 
 let tono: AudioPlayer | null = null;
 let sonando = false;
@@ -12,6 +13,8 @@ let sonando = false;
 export async function sonarOferta(conSonido: boolean, conVibracion: boolean) {
   if (sonando) return;
   sonando = true;
+  // Android con el módulo propio: por alarma y al 100 %, aunque esté en silencio
+  if (hayTimbre && timbrar('app', conSonido, conVibracion)) return;
   if (conVibracion && Platform.OS !== 'web') Vibration.vibrate([0, 700, 400, 700, 400], true);
   if (!conSonido) return;
   try {
@@ -27,6 +30,7 @@ export async function sonarOferta(conSonido: boolean, conVibracion: boolean) {
 
 export function callarOferta() {
   sonando = false;
+  soltarTimbre('app');
   if (Platform.OS !== 'web') Vibration.cancel();
   try { tono?.pause(); } catch { /* nada */ }
 }

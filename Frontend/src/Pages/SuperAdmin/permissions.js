@@ -46,10 +46,10 @@ export const ROLE_INFO = {
  * Tabs visibles por rol. El sidebar oculta los no permitidos.
  */
 export const NAV_BY_ROLE = {
-  owner:   ['home', 'leads', 'businesses', 'health', 'activation', 'embudo_pedidos', 'brands', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'partners', 'red_domis', 'red_tarifa', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_vacancies', 'crew_finance', 'team', 'audit', 'system', 'whatsapp', 'panel_live'],
-  admin:   ['home', 'leads', 'businesses', 'health', 'activation', 'embudo_pedidos', 'brands', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'partners', 'red_domis', 'red_tarifa', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_vacancies', 'crew_finance', 'audit', 'system', 'whatsapp', 'panel_live'],
-  support: ['home', 'leads', 'businesses', 'health', 'activation', 'embudo_pedidos', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'red_domis', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_vacancies', 'crew_finance', 'audit', 'system'],
-  auditor: ['home', 'leads', 'businesses', 'health', 'activation', 'embudo_pedidos', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'red_domis', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_vacancies', 'crew_finance', 'audit', 'system'],
+  owner:   ['home', 'leads', 'businesses', 'health', 'activation', 'embudo_pedidos', 'brands', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'partners', 'red_domis', 'red_tarifa', 'red_faltas', 'red_beneficios', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_vacancies', 'crew_finance', 'team', 'audit', 'system', 'whatsapp', 'panel_live'],
+  admin:   ['home', 'leads', 'businesses', 'health', 'activation', 'embudo_pedidos', 'brands', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'partners', 'red_domis', 'red_tarifa', 'red_faltas', 'red_beneficios', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_vacancies', 'crew_finance', 'audit', 'system', 'whatsapp', 'panel_live'],
+  support: ['home', 'leads', 'businesses', 'health', 'activation', 'embudo_pedidos', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'red_domis', 'red_faltas', 'red_beneficios', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_vacancies', 'crew_finance', 'audit', 'system'],
+  auditor: ['home', 'leads', 'businesses', 'health', 'activation', 'embudo_pedidos', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'red_domis', 'red_faltas', 'red_beneficios', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_vacancies', 'crew_finance', 'audit', 'system'],
 };
 
 /**

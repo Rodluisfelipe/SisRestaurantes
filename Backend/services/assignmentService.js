@@ -69,6 +69,15 @@ function scoreDriver(distanceKm, driver) {
  * Pick the best own-fleet driver for a destination.
  * Returns { driver, distanceKm } or null.
  */
+/* Desempate: el nivel del domi (y tener la aceptación automática) le
+   "descuenta" unos metros. Solo pesa entre domis a distancia parecida; el radio
+   máximo se mide siempre con la distancia real. */
+function bonoKm(driver) {
+  const { BONO_KM, BONO_AUTO_KM } = require('../utils/nivelesDomi');
+  const p = driver.prioridad || {};
+  return (BONO_KM[p.nivel] || 0) + (p.autoAcepta?.activo ? BONO_AUTO_KM : 0);
+}
+
 function pickDriver(drivers, destLat, destLon, mode, maxRadiusKm) {
   const scored = drivers
     .map((d) => {
@@ -81,10 +90,10 @@ function pickDriver(drivers, destLat, destLon, mode, maxRadiusKm) {
   if (!scored.length) return null;
 
   if (mode === 'auto_scored') {
-    scored.sort((a, b) => scoreDriver(a.distanceKm, a.driver) - scoreDriver(b.distanceKm, b.driver));
+    scored.sort((a, b) => (scoreDriver(a.distanceKm, a.driver) - bonoKm(a.driver) * 0.6) - (scoreDriver(b.distanceKm, b.driver) - bonoKm(b.driver) * 0.6));
   } else {
     // auto_nearest
-    scored.sort((a, b) => a.distanceKm - b.distanceKm);
+    scored.sort((a, b) => (a.distanceKm - bonoKm(a.driver)) - (b.distanceKm - bonoKm(b.driver)));
   }
   return scored[0];
 }
@@ -244,6 +253,15 @@ async function offerToDriver(order, business, driver, distanceKm, attempt = 1, t
     meta: { driverName: driver.name, distanceKm, attempt },
   });
 
+  // Aceptación automática del domi: queda suyo ya, sin oferta que responder
+  try {
+    if (await require('./autoAceptar').intentar({ order, business, driver, offer, tarifa })) {
+      return { offer, driver, delivery, automatica: true };
+    }
+  } catch (e) {
+    logger.warn('Aceptación automática falló; sigue como oferta', { orderId: String(order._id), error: e.message });
+  }
+
   try {
     socketService.emitToDeliveryPerson(String(driver._id), 'delivery:offer', {
       offerId: String(offer._id), orderId: String(order._id), orderNumber: order.orderNumber,
@@ -290,8 +308,8 @@ async function pickAndOffer(order, business) {
 
   if (pick) {
     const attempt = excluded.length + 1;
-    const { offer, driver } = await offerToDriver(order, business, pick.driver, pick.distanceKm, attempt);
-    return { ok: true, offered: true, offer, driver, distanceKm: pick.distanceKm };
+    const { offer, driver, automatica } = await offerToDriver(order, business, pick.driver, pick.distanceKm, attempt);
+    return { ok: true, offered: true, offer, driver, distanceKm: pick.distanceKm, automatica: !!automatica };
   }
 
   /* Sin domis propios libres → los independientes de la Red MenuBy que el
@@ -307,8 +325,8 @@ async function pickAndOffer(order, business) {
     const cerca = pickDriver(indep, lat, lon, 'auto_nearest', Math.max(settings.maxAssignRadiusKm || 8, 10));
     if (cerca) {
       const tarifa = await red.tarifaParaOferta({ order, business, driver: cerca.driver });
-      const { offer, driver } = await offerToDriver(order, business, cerca.driver, cerca.distanceKm, excluded.length + 1, tarifa);
-      return { ok: true, offered: true, offer, driver, distanceKm: cerca.distanceKm, red: true };
+      const { offer, driver, automatica } = await offerToDriver(order, business, cerca.driver, cerca.distanceKm, excluded.length + 1, tarifa);
+      return { ok: true, offered: true, offer, driver, distanceKm: cerca.distanceKm, red: true, automatica: !!automatica };
     }
   } catch (e) {
     logger.warn('No se pudo ofrecer a la Red MenuBy', { error: e.message, orderId: String(order._id) });
@@ -411,6 +429,13 @@ async function expireStaleOffers() {
     try {
       offer.state = 'expired'; offer.respondedAt = now; await offer.save();
       const order = await Order.findById(offer.orderId);
+      // Falta solo si su app SÍ le mostró la oferta (si no le llegó, no es culpa suya)
+      if (offer.vistaAt) {
+        const negocio = await BusinessConfig.findById(offer.businessId).select('businessName').lean();
+        await require('./desempenoDomi').registrarFaltaDe(offer.driverId, {
+          tipo: 'oferta_vencida', refId: offer._id, pedidoNumero: order?.orderNumber, negocio: negocio?.businessName || null,
+        });
+      }
       if (!order || order.deliveryPersonId) continue; // already handled
       const business = await BusinessConfig.findById(offer.businessId).lean();
       if (business) await pickAndOffer(order, business);
@@ -483,6 +508,7 @@ function startOfferSweeper(intervalMs = 10000) {
     expireStaleOffers().catch(() => {});
     expireStalePartnerOffers().catch(() => {});
     require('./envios').expirarOfertas().catch(() => {});
+    require('./autoAceptar').revisarArranques().catch(() => {});
   }, intervalMs);
   logger.info('Delivery offer sweeper started', { intervalMs });
 }
@@ -516,6 +542,8 @@ module.exports = {
   offerToPartner,
   assignToDriver,
   getAvailableDrivers,
+  pickDriver,
+  bonoKm,
   haversineKm,
   generateConfirmationCode,
 };
