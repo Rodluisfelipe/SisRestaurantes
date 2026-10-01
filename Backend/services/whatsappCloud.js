@@ -657,7 +657,40 @@ async function sendMedia({ account, to, buffer, mimeType, fileName, caption, sen
   return guardado;
 }
 
+/**
+ * Código de verificación (registro de domiciliarios). Va con una plantilla de
+ * categoría AUTENTICACIÓN de Meta: el código en el cuerpo y en el botón
+ * "Copiar código". No se guarda en la bandeja: es un secreto de un solo uso.
+ * @returns {Promise<string>} el wamid del mensaje
+ */
+async function enviarCodigoVerificacion({ account, to, codigo, plantilla, idioma }) {
+  const phone = normalizePhone(to);
+  if (!phone) {
+    const e = new Error('Número de destino inválido'); e.code = 'BAD_PHONE'; throw e;
+  }
+  const data = await graph(`${account.phoneNumberId}/messages`, {
+    token: account.getAccessToken(),
+    body: {
+      messaging_product: 'whatsapp',
+      to: phone,
+      type: 'template',
+      template: {
+        name: plantilla,
+        language: { code: idioma || 'es' },
+        components: [
+          { type: 'body', parameters: [{ type: 'text', text: String(codigo) }] },
+          { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: String(codigo) }] },
+        ],
+      },
+    },
+  });
+  const wamid = data?.messages?.[0]?.id;
+  if (!wamid) throw new Error('Meta no devolvió el identificador del mensaje');
+  return wamid;
+}
+
 module.exports = {
+  enviarCodigoVerificacion,
   registrarNumero,
   datosDelNumero,
   esCoexistencia,

@@ -9,7 +9,20 @@
  * la que llegue en una respuesta: ninguna pantalla tiene que acordarse.
  */
 
+import { getFromLocalStorage } from './sessionManager';
+
 const clave = (businessId) => `mb_cuenta:${businessId}`;
+
+/* Por ahora la cuenta también se abre con el teléfono que el cliente ya
+   escribió en este menú (el servidor no exige la llave): así los que piden
+   por WhatsApp o en el local ven sus sellos desde cualquier celular. */
+export function telefonoGuardado() {
+  try {
+    return String(getFromLocalStorage('customerPhone', '') || localStorage.getItem('customerPhone') || '').trim();
+  } catch {
+    return '';
+  }
+}
 
 /* El negocio del menú abierto. Solo el menú lo fija: el panel nunca manda llave. */
 let negocioActual = null;
@@ -40,7 +53,7 @@ export function olvidarLlave(businessId = negocioActual) {
 }
 
 export function tieneCuenta(businessId = negocioActual) {
-  return !!llaveDe(businessId);
+  return !!llaveDe(businessId) || !!telefonoGuardado();
 }
 
 /** ¿El servidor dijo que esta petición necesitaba la cuenta y no la había? */

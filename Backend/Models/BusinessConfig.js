@@ -241,7 +241,9 @@ const businessConfigSchema = new mongoose.Schema({
     address: {
       type: String,
       default: ""
-    }
+    },
+    // Fotos de la fachada: la app del domi las muestra para que encuentre el local
+    fotos: { type: [String], default: [] }
   },
   socialMedia: {
     facebook: socialMediaItemSchema,
@@ -374,6 +376,24 @@ const businessConfigSchema = new mongoose.Schema({
     partnerOfferTimeoutMin: {
       type: Number,
       default: 10
+    },
+    /* App del domi (v2). Cómo se le paga a cada domi propio por entrega:
+       'domicilio' = se queda con lo que pagó el cliente por el domicilio. */
+    driverPay: {
+      modo: { type: String, enum: ['domicilio', 'fijo', 'porcentaje', 'ninguno'], default: 'domicilio' },
+      valor: { type: Number, default: 0 }
+    },
+    // Cuántos pedidos puede llevar un domi a la vez (1 = uno por salida)
+    maxActivePerDriver: {
+      type: Number,
+      default: 1,
+      min: 1,
+      max: 5
+    },
+    // Pedir el código del día al recoger (prueba de que pasó por el local)
+    requirePickupCode: {
+      type: Boolean,
+      default: false
     }
   },
   // API key para Print Agent (auto-print de tiquetes)

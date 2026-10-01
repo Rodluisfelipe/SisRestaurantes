@@ -1,0 +1,23 @@
+{
+  "cli": { "version": ">= 16.0.0", "appVersionSource": "local" },
+  "build": {
+    "desarrollo": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "EXPO_PUBLIC_API_URL": "https://api.menuby.tech/api" }
+    },
+    "prueba": {
+      "distribution": "internal",
+      "channel": "prueba",
+      "android": { "buildType": "apk" },
+      "env": { "EXPO_PUBLIC_API_URL": "https://api.menuby.tech/api" }
+    },
+    "produccion": {
+      "channel": "produccion",
+      "android": { "buildType": "app-bundle" },
+      "env": { "EXPO_PUBLIC_API_URL": "https://api.menuby.tech/api" }
+    }
+  },
+  "submit": { "produccion": {} }
+}

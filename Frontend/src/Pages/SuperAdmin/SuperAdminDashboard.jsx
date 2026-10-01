@@ -22,6 +22,8 @@ import CrmLeads from "../../Components/SuperAdmin/CrmLeads";
 import SystemStatus from "../../Components/SuperAdmin/SystemStatus";
 import TeamManagement from "../../Components/SuperAdmin/TeamManagement";
 import CrewKYCManagement from "../../Components/SuperAdmin/CrewKYCManagement";
+import RedRepartidores from "../../Components/SuperAdmin/RedRepartidores";
+import TarifaRed from "../../Components/SuperAdmin/TarifaRed";
 import CrewFinanceManagement from "../../Components/SuperAdmin/CrewFinanceManagement";
 import CrewEmployersManagement from "../../Components/SuperAdmin/CrewEmployersManagement";
 import CrewPeopleManagement from "../../Components/SuperAdmin/CrewPeopleManagement";
@@ -115,6 +117,22 @@ const NAV_SECTIONS = [
       { id: 'referrals', label: 'Referidos', desc: 'Programa de referidos', icon: (
         <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+        </svg>
+      )},
+    ]
+  },
+  {
+    title: 'Domicilios',
+    items: [
+      { id: 'red_domis', label: 'Repartidores independientes', desc: 'Red MenuBy: revisar registros y asignar negocios', icon: (
+        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <circle cx="5.5" cy="17.5" r="2.5" /><circle cx="18.5" cy="17.5" r="2.5" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 17.5H8M15 6h2l3 5-4 1.5M8 17.5l-2-6h7l2 6M10 6l-2 6" />
+        </svg>
+      )},
+      { id: 'red_tarifa', label: 'Tarifa de la red', desc: 'Cuánto gana un independiente por pedido', icon: (
+        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       )},
     ]
@@ -538,6 +556,18 @@ function SuperAdminDashboard() {
             {currentView === 'referrals' && (
               <motion.div key="referrals" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
                 <ReferralManagement />
+              </motion.div>
+            )}
+
+            {currentView === 'red_domis' && (
+              <motion.div key="red_domis" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                <RedRepartidores />
+              </motion.div>
+            )}
+
+            {currentView === 'red_tarifa' && (
+              <motion.div key="red_tarifa" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                <TarifaRed />
               </motion.div>
             )}
 

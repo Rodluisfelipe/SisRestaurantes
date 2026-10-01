@@ -360,6 +360,27 @@ function initSocket(io) {
       emitToBusiness(businessId, 'domi:status', { deliveryPersonId, status: 'connected' });
     });
 
+    /* App del domi v2: entra con su token y se une a la sala de CADA registro
+       suyo (un domi puede trabajar para varios negocios). A diferencia de
+       'domi:join', aquí el servidor comprueba quién es antes de dejarlo oír. */
+    socket.on('domi2:join', async ({ token } = {}) => {
+      try {
+        const jwt = require('jsonwebtoken');
+        const dec = jwt.verify(String(token || ''), process.env.JWT_SECRET);
+        if (dec?.v !== 2 || !dec.tel || dec.tipo) return;
+        const { afiliaciones } = require('./domiApp');
+        const docs = await afiliaciones(dec.tel);
+        for (const d of docs) {
+          socket.join(`delivery:${d._id}`);
+          if (d.businessId) emitToBusiness(String(d.businessId), 'domi:status', { deliveryPersonId: String(d._id), status: 'connected' });
+        }
+        socket._domi2 = docs.map((d) => ({ id: String(d._id), businessId: d.businessId ? String(d.businessId) : null }));
+        socket.emit('domi2:listo', { salas: docs.length });
+      } catch {
+        socket.emit('domi2:error', { message: 'Sesión vencida' });
+      }
+    });
+
     // External partner company portal joins its room to receive order offers
     socket.on('partner:join', ({ partnerId }) => {
       if (!partnerId) return;

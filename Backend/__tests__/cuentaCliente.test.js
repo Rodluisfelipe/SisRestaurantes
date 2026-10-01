@@ -16,7 +16,14 @@ const NEGOCIO = '64b000000000000000000001';
 const OTRO = '64b000000000000000000002';
 const pedirCon = (llave) => ({ headers: llave ? { 'x-cuenta': llave } : {} });
 
+// Con la llave exigida (CUENTA_EXIGE_LLAVE=1, para cuando esté la verificación por código)
+const conLlaveExigida = () => {
+  beforeAll(() => { process.env.CUENTA_EXIGE_LLAVE = '1'; });
+  afterAll(() => { delete process.env.CUENTA_EXIGE_LLAVE; });
+};
+
 describe('la llave de la cuenta', () => {
+  conLlaveExigida();
   it('abre la cuenta de ese teléfono en ese negocio', () => {
     const llave = emitirLlave({ businessId: NEGOCIO, telefono: '300 123 4567' });
     expect(leerLlave(pedirCon(llave))).toEqual({ businessId: NEGOCIO, telefono: '300 123 4567' });
@@ -54,9 +61,15 @@ describe('la llave de la cuenta', () => {
   });
 });
 
-describe('requiereCuenta', () => {
+describe('requiereCuenta (llave exigida)', () => {
+  conLlaveExigida();
   const app = express();
   app.get('/cuenta', requiereCuenta, (req, res) => res.json(req.cuenta));
+
+  it('el teléfono en cabeceras no basta', async () => {
+    const r = await request(app).get('/cuenta').set('x-cuenta-negocio', NEGOCIO).set('x-cuenta-telefono', '3001234567');
+    expect(r.status).toBe(401);
+  });
 
   it('sin llave responde 401 SIN_CUENTA', async () => {
     const r = await request(app).get('/cuenta');
@@ -68,6 +81,33 @@ describe('requiereCuenta', () => {
     const llave = emitirLlave({ businessId: NEGOCIO, telefono: '3001234567' });
     const r = await request(app).get('/cuenta').set('x-cuenta', llave);
     expect(r.status).toBe(200);
+    expect(r.body).toEqual({ businessId: NEGOCIO, telefono: '3001234567' });
+  });
+});
+
+describe('sin llave exigida (por ahora): la cuenta se abre con el teléfono', () => {
+  const app = express();
+  app.get('/cuenta', requiereCuenta, (req, res) => res.json(req.cuenta));
+
+  it('abreCuenta deja ver la cuenta de cualquier teléfono, en cualquier celular', () => {
+    expect(abreCuenta(pedirCon(null), NEGOCIO, '3001234567')).toBe(true);
+    expect(abreCuenta(pedirCon(null), NEGOCIO, '  ')).toBe(false);
+  });
+
+  it('requiereCuenta usa el negocio y el teléfono que manda el menú', async () => {
+    const r = await request(app).get('/cuenta').set('x-cuenta-negocio', NEGOCIO).set('x-cuenta-telefono', '3001234567');
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ businessId: NEGOCIO, telefono: '3001234567' });
+  });
+
+  it('sin teléfono, o con un negocio que no es un id, sigue diciendo SIN_CUENTA', async () => {
+    expect((await request(app).get('/cuenta')).status).toBe(401);
+    expect((await request(app).get('/cuenta').set('x-cuenta-negocio', 'go-burger').set('x-cuenta-telefono', '3001234567')).status).toBe(401);
+  });
+
+  it('la llave vieja de un celular sigue sirviendo', async () => {
+    const llave = emitirLlave({ businessId: NEGOCIO, telefono: '3001234567' });
+    const r = await request(app).get('/cuenta').set('x-cuenta', llave);
     expect(r.body).toEqual({ businessId: NEGOCIO, telefono: '3001234567' });
   });
 });

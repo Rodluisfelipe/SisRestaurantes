@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { API_ENDPOINTS, CACHE_CONFIG } from '../config';
-import { llaveDe, guardarLlave } from '../utils/cuentaCliente';
+import { llaveDe, guardarLlave, negocioDeLaCuenta, telefonoGuardado } from '../utils/cuentaCliente';
 
 /**
  * Servicio centralizado para comunicación con el backend
@@ -45,6 +45,13 @@ api.interceptors.request.use(
     // La llave de "Mi cuenta" del menú abierto (ver utils/cuentaCliente).
     const llave = llaveDe();
     if (llave && !config.headers['X-Cuenta']) config.headers['X-Cuenta'] = llave;
+    // Y el teléfono del cliente: con él se abre la cuenta mientras no se exija la llave
+    const negocio = negocioDeLaCuenta();
+    const telefono = negocio ? telefonoGuardado() : '';
+    if (telefono && !config.headers['X-Cuenta-Telefono']) {
+      config.headers['X-Cuenta-Negocio'] = negocio;
+      config.headers['X-Cuenta-Telefono'] = telefono;
+    }
     return config;
   },
   (error) => {

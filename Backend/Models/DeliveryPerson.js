@@ -107,7 +107,35 @@ const deliveryPersonSchema = new mongoose.Schema({
   totalDeliveries: {
     type: Number,
     default: 0
-  }
+  },
+  /* Red MenuBy: domi independiente que se registró solo desde la app.
+     Pertenece a la empresa de plataforma "Red MenuBy" (partnerId) y solo
+     reparte para los negocios que el superadmin le asigne. Mientras su
+     registro no esté aprobado, no recibe nada. */
+  independiente: {
+    estado: { type: String, enum: ['pendiente', 'aprobado', 'rechazado', 'suspendido'], default: undefined },
+    documento: {
+      tipo: { type: String, enum: ['cc', 'ce', 'ppt', 'pasaporte'] },
+      numero: { type: String, trim: true, maxlength: 20 },
+      // Llaves privadas en Spaces: se ven solo con enlace firmado y temporal
+      frente: { type: String },
+      reverso: { type: String },
+    },
+    selfie: { type: String },
+    vehiculo: {
+      tipo: { type: String, enum: ['moto', 'bicicleta', 'carro', 'a_pie'] },
+      placa: { type: String, trim: true, uppercase: true, maxlength: 10 },
+    },
+    telefonoVerificadoAt: { type: Date },
+    // Correo verificado con el código del registro
+    email: { type: String, lowercase: true, trim: true, maxlength: 120 },
+    enviadoAt: { type: Date },
+    revisadoAt: { type: Date },
+    revisadoPor: { type: String },
+    motivo: { type: String, maxlength: 300 },
+  },
+  // Negocios para los que el superadmin habilitó a este domi independiente
+  negociosAsignados: [{ type: mongoose.Schema.Types.ObjectId, ref: 'BusinessConfig' }]
 }, { timestamps: true });
 
 // Hash the code before saving (store SHA-256, not plaintext)

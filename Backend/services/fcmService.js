@@ -112,7 +112,10 @@ async function sendData(token, data, notification = null) {
  */
 async function notifyOffer(driver, offer = {}) {
   if (!driver || !driver.fcmToken) return { ok: false, skipped: true };
-  const money = offer.totalAmount ? ` · $${Number(offer.totalAmount).toLocaleString('es-CO')}` : '';
+  // A un independiente le importa lo que gana, no el valor del pedido
+  const money = offer.ganancia
+    ? ` · Ganas $${Number(offer.ganancia).toLocaleString('es-CO')}`
+    : offer.totalAmount ? ` · $${Number(offer.totalAmount).toLocaleString('es-CO')}` : '';
   const res = await sendData(driver.fcmToken, {
     type: 'offer',
     offerId: offer.offerId,
@@ -121,8 +124,9 @@ async function notifyOffer(driver, offer = {}) {
     totalAmount: offer.totalAmount,
     distanceKm: offer.distanceKm != null ? Number(offer.distanceKm).toFixed(1) : undefined,
     timeoutSec: offer.timeoutSec,
+    businessName: offer.businessName,
   }, {
-    title: '🛵 ¡Nuevo pedido disponible!',
+    title: offer.businessName ? `🛵 Nuevo pedido · ${offer.businessName}` : '🛵 ¡Nuevo pedido disponible!',
     body: `${offer.address || 'Toca para ver el pedido'}${money}`,
   });
   // Clear a dead token so we stop trying

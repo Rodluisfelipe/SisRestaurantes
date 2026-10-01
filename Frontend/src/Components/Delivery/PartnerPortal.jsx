@@ -6,11 +6,13 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTT, Resp
 import {
   FaChartBar, FaClipboardList, FaCheckCircle, FaMotorcycle, FaStore,
   FaSignOutAlt, FaTruck, FaMapMarkerAlt, FaPhoneAlt, FaClock, FaStar,
-  FaLock, FaBars, FaTimes, FaUserPlus, FaMoneyBillWave, FaChevronRight
+  FaLock, FaBars, FaTimes, FaUserPlus, FaMoneyBillWave, FaChevronRight,
+  FaBoxOpen, FaUsers, FaTags, FaGlobe
 } from 'react-icons/fa';
 import api from '../../services/api';
 import { BACKEND_URL } from '../../config';
 import { Capa } from '../ui';
+import { ClientesView, CuadreView, EnviosView, PaginaView, TarifasView } from './PortalEnvios';
 
 const TOKEN_KEY = 'partner_token';
 
@@ -114,12 +116,26 @@ const NAV_SECTIONS = [
     ]
   },
   {
+    id: 'propios', label: 'Mis clientes',
+    items: [
+      { id: 'envios', label: 'Envíos', Icon: FaBoxOpen },
+      { id: 'clientes', label: 'Clientes', Icon: FaUsers },
+    ]
+  },
+  {
     id: 'team', label: 'Equipo',
-    items: [{ id: 'drivers', label: 'Repartidores', Icon: FaMotorcycle }]
+    items: [
+      { id: 'drivers', label: 'Repartidores', Icon: FaMotorcycle },
+      { id: 'cuadre', label: 'Cuadre de efectivo', Icon: FaMoneyBillWave },
+    ]
   },
   {
     id: 'settings', label: 'Configuración',
-    items: [{ id: 'company', label: 'Mi empresa', Icon: FaStore }]
+    items: [
+      { id: 'tarifas', label: 'Tarifas y zonas', Icon: FaTags },
+      { id: 'pagina', label: 'Mi página', Icon: FaGlobe },
+      { id: 'company', label: 'Mi empresa', Icon: FaStore },
+    ]
   },
 ];
 
@@ -131,6 +147,7 @@ function PortalApp({ token, initialPartner, onLogout }) {
   const [stats, setStats] = useState(null);
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [config, setConfig] = useState(null);
   const socketRef = useRef(null);
 
   const authCfg = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
@@ -157,6 +174,11 @@ function PortalApp({ token, initialPartner, onLogout }) {
 
   const refreshAll = useCallback(() => { loadOrders(); loadStats(); loadDrivers(); }, [loadOrders, loadStats, loadDrivers]);
 
+  // Página, tarifa y zonas para sus propios clientes
+  useEffect(() => {
+    api.get('/delivery-partners/portal/config', authCfg).then((r) => setConfig(r.data)).catch((err) => handle401(err));
+  }, [authCfg, handle401]);
+
   useEffect(() => {
     if (!partner) {
       api.get('/delivery-partners/portal/me', authCfg).then(r => setPartner(r.data)).catch(err => handle401(err));
@@ -176,6 +198,8 @@ function PortalApp({ token, initialPartner, onLogout }) {
     const socket = io(BACKEND_URL, { transports: ['websocket', 'polling'], reconnection: true });
     socketRef.current = socket;
     socket.on('connect', () => socket.emit('partner:join', { partnerId: pid }));
+    socket.on('envio:nuevo', (d) => toast.info(`Nuevo envío #${d?.numero || ''}`, { description: 'Uno de tus clientes pidió un domi' }));
+    socket.on('envio:sin_domi', (d) => toast.warning(`Envío #${d?.numero || ''} sin domiciliario`, { description: 'Nadie cercano conectado: asígnalo a mano' }));
     socket.on('partner:new_offer', () => {
       toast.info('Nuevo pedido ofrecido', { description: 'Tienes un pedido esperando respuesta' });
       loadOrders(); loadStats();
@@ -193,6 +217,11 @@ function PortalApp({ token, initialPartner, onLogout }) {
       case 'history': return <HistoryView authCfg={authCfg} handle401={handle401} />;
       case 'drivers': return <DriversView drivers={drivers} authCfg={authCfg} onChanged={loadDrivers} handle401={handle401} />;
       case 'company': return <CompanyView partner={partner} authCfg={authCfg} handle401={handle401} />;
+      case 'envios': return <EnviosView authCfg={authCfg} handle401={handle401} drivers={drivers} />;
+      case 'clientes': return <ClientesView authCfg={authCfg} handle401={handle401} slug={config?.slug} />;
+      case 'cuadre': return <CuadreView authCfg={authCfg} handle401={handle401} />;
+      case 'tarifas': return <TarifasView authCfg={authCfg} handle401={handle401} config={config} alGuardar={setConfig} />;
+      case 'pagina': return <PaginaView authCfg={authCfg} handle401={handle401} config={config} alGuardar={setConfig} />;
       default: return null;
     }
   })();

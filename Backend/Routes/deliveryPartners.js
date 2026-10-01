@@ -481,4 +481,68 @@ router.patch('/portal/drivers/:id', partnerAuth, async (req, res) => {
   }
 });
 
+/* ═══════════════════════ SUS CLIENTES PROPIOS (envíos por fuera de MenuBy) ═══════════════════════ */
+// La empresa usa la tecnología de MenuBy con sus demás clientes: les crea
+// usuario, ellos piden desde la página de la empresa y los domis de la
+// empresa los llevan con la misma app. Ver services/envios.js.
+
+const envios = require('../services/envios');
+const envolverEnvios = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
+  if (e instanceof envios.ErrorEnvio) return res.status(e.status).json({ message: e.message, codigo: e.codigo });
+  logger.error('Error en el portal (envíos)', e);
+  res.status(500).json({ message: 'Algo falló. Intenta de nuevo.' });
+});
+
+router.get('/portal/config', partnerAuth, envolverEnvios(async (req, res) => {
+  res.json(envios.configEmpresa(req.partner.toObject()));
+}));
+
+router.put('/portal/config', partnerAuth, envolverEnvios(async (req, res) => {
+  res.json(await envios.guardarConfigEmpresa(req.partner, req.body || {}));
+}));
+
+router.get('/portal/clientes', partnerAuth, envolverEnvios(async (req, res) => {
+  res.json(await envios.listarClientes(req.partner._id));
+}));
+
+router.post('/portal/clientes', partnerAuth, envolverEnvios(async (req, res) => {
+  res.status(201).json(await envios.crearCliente(req.partner._id, req.body || {}));
+}));
+
+router.put('/portal/clientes/:id', partnerAuth, envolverEnvios(async (req, res) => {
+  res.json(await envios.actualizarCliente(req.partner._id, req.params.id, req.body || {}));
+}));
+
+router.get('/portal/envios', partnerAuth, envolverEnvios(async (req, res) => {
+  res.json(await envios.listarEnviosEmpresa(req.partner, { estado: req.query.estado, limite: parseInt(req.query.limite, 10) || 100 }));
+}));
+
+router.post('/portal/envios/:id/asignar', partnerAuth, envolverEnvios(async (req, res) => {
+  res.json(await envios.asignarManual(req.partner, req.params.id, req.body?.driverId));
+}));
+
+router.post('/portal/envios/:id/cancelar', partnerAuth, envolverEnvios(async (req, res) => {
+  const Envio = require('../Models/Envio');
+  const e = require('mongoose').isValidObjectId(req.params.id) ? await Envio.findOne({ _id: req.params.id, partnerId: req.partner._id }) : null;
+  if (!e) return res.status(404).json({ message: 'Envío no encontrado.' });
+  res.json(await envios.cancelar(e, `la empresa (${req.partner.name})`));
+}));
+
+router.post('/portal/envios/:id/despachar', partnerAuth, envolverEnvios(async (req, res) => {
+  const Envio = require('../Models/Envio');
+  const e = require('mongoose').isValidObjectId(req.params.id) ? await Envio.findOne({ _id: req.params.id, partnerId: req.partner._id, estado: 'buscando' }) : null;
+  if (!e) return res.status(404).json({ message: 'Ese envío ya no está buscando domi.' });
+  await Envio.updateOne({ _id: e._id }, { $set: { rechazadoPor: [] } }); // volver a intentar con todos
+  const oferta = await envios.despachar(e._id);
+  res.json({ ofrecido: !!oferta });
+}));
+
+router.get('/portal/cuadre', partnerAuth, envolverEnvios(async (req, res) => {
+  res.json(await envios.cuadreEmpresa(req.partner));
+}));
+
+router.post('/portal/liquidar', partnerAuth, envolverEnvios(async (req, res) => {
+  res.json(await envios.liquidarEmpresa(req.partner, req.body || {}));
+}));
+
 module.exports = router;

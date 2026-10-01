@@ -12,14 +12,18 @@ const mongoose = require('mongoose');
  * A background sweeper expires stale pending offers and re-offers automatically.
  */
 const deliveryOfferSchema = new mongoose.Schema({
-  deliveryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Delivery', required: true, index: true },
-  orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true, index: true },
-  businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'BusinessConfig', required: true, index: true },
+  deliveryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Delivery', required: function () { return !this.envioId; }, index: true },
+  orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: function () { return !this.envioId; }, index: true },
+  businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'BusinessConfig', required: function () { return !this.envioId; }, index: true },
+  // Envío de una empresa de reparto a sus propios clientes (no es un pedido de MenuBy)
+  envioId: { type: mongoose.Schema.Types.ObjectId, ref: 'Envio', default: undefined, index: true },
   driverId: { type: mongoose.Schema.Types.ObjectId, ref: 'DeliveryPerson', required: true, index: true },
 
   state: { type: String, enum: ['pending', 'accepted', 'rejected', 'expired', 'superseded'], default: 'pending', index: true },
   attempt: { type: Number, default: 1 },       // nth offer for this delivery
   distanceKm: { type: Number, default: null },
+  // Red MenuBy: la tarifa calculada al ofrecer, que se congela al aceptar
+  tarifa: { type: mongoose.Schema.Types.Mixed, default: undefined },
 
   offeredAt: { type: Date, default: Date.now },
   expiresAt: { type: Date, required: true, index: true },

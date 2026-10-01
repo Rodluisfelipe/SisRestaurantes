@@ -483,7 +483,25 @@ async function sendPasswordResetEmail({ to, businessName, slug, resetUrl }) {
   return sendSystemEmail({ to, subject: 'Restablece tu contraseña — MenuBy', html });
 }
 
+/** Código para registrarse como domiciliario independiente (Red MenuBy). */
+async function sendCodigoRegistroDomi({ to, codigo }) {
+  const content = `
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:6px 0 12px">
+      <div style="width:56px;height:56px;border-radius:50%;background:#fef2f2;display:inline-block;line-height:56px;text-align:center;font-size:28px">🛵</div>
+    </td></tr></table>
+    <h2 style="color:#1e293b;font-size:19px;margin:0 0 8px;text-align:center;font-weight:700">Tu código para repartir con MenuBy</h2>
+    <p style="color:#64748b;font-size:14px;text-align:center;margin:0 0 18px;line-height:1.55">Escríbelo en la app para continuar tu registro. Vence en <strong style="color:#1e293b">10 minutos</strong>.</p>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:0 0 18px">
+      <div style="display:inline-block;background:#f8fafc;border:2px solid #e2e8f0;border-radius:14px;padding:14px 26px;font-size:34px;font-weight:800;letter-spacing:10px;color:#0f172a">${String(codigo)}</div>
+    </td></tr></table>
+    <p style="color:#94a3b8;font-size:12px;text-align:center;margin:0;line-height:1.5">Si no fuiste tú, ignora este correo. Nadie de MenuBy te va a pedir este código.</p>
+  `;
+  const html = baseTemplate(menubyConfig('MenuBy Go', '', MENUBY_LOGO), content);
+  return sendSystemEmail({ to, subject: `${codigo} es tu código de MenuBy Go`, html });
+}
+
 module.exports = {
+  sendCodigoRegistroDomi,
   sendEmail,
   sendTestEmail,
   sendSystemEmail,

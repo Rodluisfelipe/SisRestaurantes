@@ -35,17 +35,24 @@ const ONLINE_WINDOW_MS = 5 * 60 * 1000;
 /**
  * Gather available own-fleet drivers for a business with a usable last location.
  */
-async function getAvailableDrivers(businessId) {
+async function getAvailableDrivers(businessId, maxActivos = 1, porEmpresa = false) {
   const DeliveryPerson = require('../Models/DeliveryPerson');
   const since = new Date(Date.now() - ONLINE_WINDOW_MS);
-  return DeliveryPerson.find({
-    businessId,
+  const filtro = {
+    ...(porEmpresa ? { partnerId: businessId } : { businessId }),
     active: true,
     isOnline: true,
-    status: 'available',
     lastSeenAt: { $gte: since },
     'lastLocation.coordinates': { $exists: true, $ne: undefined },
-  }).lean();
+  };
+  /* Con un pedido por salida se conserva la regla de siempre. Si el negocio
+     deja llevar varios, cuenta la carga real y no el estado. */
+  if (maxActivos > 1) {
+    filtro.$or = [{ activeDeliveries: { $lt: maxActivos } }, { activeDeliveries: { $exists: false } }];
+  } else {
+    filtro.status = 'available';
+  }
+  return DeliveryPerson.find(filtro).lean();
 }
 
 /**
@@ -99,6 +106,15 @@ async function offerToPartner(order, business) {
     const partner = await DeliveryPartner.findOne({ _id: a.partnerId, active: true }).lean();
     if (!partner) continue;
 
+    /* Reparto automático (red de domis independientes): se le ofrece directo
+       a su domi disponible más cercano al LOCAL, que es a donde tiene que ir
+       primero. Si nadie de la empresa está libre, se pasa a la siguiente. */
+    if (partner.autoDispatch) {
+      const directo = await ofrecerADomiDeEmpresa(order, business, partner);
+      if (directo) return partner;
+      continue;
+    }
+
     const timeoutMin = business.deliverySettings?.partnerOfferTimeoutMin || 10;
     order.assignedPartnerId = partner._id;
     order.partnerStatus = 'offered';
@@ -128,6 +144,22 @@ async function offerToPartner(order, business) {
     return partner;
   }
   return null;
+}
+
+async function ofrecerADomiDeEmpresa(order, business, partner) {
+  const dsm = require('./deliveryStateMachine');
+  const delivery = await dsm.ensureDeliveryForOrder(order, {});
+  const excluded = await getExcludedDriverIds(delivery._id);
+  const drivers = (await getAvailableDrivers(partner._id, partner.maxActivePerDriver || 2, true))
+    .filter((d) => !excluded.includes(String(d._id)));
+  const local = business.location?.coordinates;
+  const lat = Number(local?.lat ?? order.deliveryCoordinates?.lat);
+  const lon = Number(local?.lng ?? local?.lon ?? order.deliveryCoordinates?.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  const pick = pickDriver(drivers, lat, lon, 'auto_scored', business.deliverySettings?.maxAssignRadiusKm);
+  if (!pick) return null;
+  await offerToDriver(order, business, pick.driver, pick.distanceKm, excluded.length + 1);
+  return pick.driver;
 }
 
 /**
@@ -193,7 +225,7 @@ async function getExcludedDriverIds(deliveryId) {
 }
 
 // Create an exclusive, time-boxed offer to one driver
-async function offerToDriver(order, business, driver, distanceKm, attempt = 1) {
+async function offerToDriver(order, business, driver, distanceKm, attempt = 1, tarifa = undefined) {
   const DeliveryOffer = require('../Models/DeliveryOffer');
   const dsm = require('./deliveryStateMachine');
   const socketService = require('./socketService');
@@ -204,7 +236,7 @@ async function offerToDriver(order, business, driver, distanceKm, attempt = 1) {
 
   const offer = await DeliveryOffer.create({
     deliveryId: delivery._id, orderId: order._id, businessId: order.businessId,
-    driverId: driver._id, distanceKm, attempt, expiresAt,
+    driverId: driver._id, distanceKm, attempt, expiresAt, tarifa,
   });
 
   await dsm.transition(delivery, 'offer', {
@@ -229,7 +261,7 @@ async function offerToDriver(order, business, driver, distanceKm, attempt = 1) {
     if (driver.fcmToken) {
       const fcm = require('./fcmService');
       await fcm.notifyOffer(driver, {
-        offerId: offer._id, orderId: order._id,
+        offerId: offer._id, orderId: order._id, businessName: business.businessName, ganancia: tarifa?.pagoDomi,
         address: order.address, totalAmount: order.totalAmount,
         distanceKm, timeoutSec,
       });
@@ -252,7 +284,7 @@ async function pickAndOffer(order, business) {
   const delivery = await dsm.ensureDeliveryForOrder(order, {});
   const excluded = await getExcludedDriverIds(delivery._id);
 
-  let drivers = await getAvailableDrivers(order.businessId);
+  let drivers = await getAvailableDrivers(order.businessId, settings.maxActivePerDriver || 1);
   drivers = drivers.filter(d => !excluded.includes(String(d._id)));
   const pick = pickDriver(drivers, coords.lat, coords.lon, mode, settings.maxAssignRadiusKm);
 
@@ -260,6 +292,26 @@ async function pickAndOffer(order, business) {
     const attempt = excluded.length + 1;
     const { offer, driver } = await offerToDriver(order, business, pick.driver, pick.distanceKm, attempt);
     return { ok: true, offered: true, offer, driver, distanceKm: pick.distanceKm };
+  }
+
+  /* Sin domis propios libres → los independientes de la Red MenuBy que el
+     superadmin asignó a este negocio, el más cercano al local primero, cada uno
+     con su tarifa calculada (y congelada si acepta). */
+  try {
+    const red = require('./red');
+    const indep = (await red.candidatosPara(order.businessId, settings.maxActivePerDriver || 2))
+      .filter((d) => !excluded.includes(String(d._id)));
+    const local = business.location?.coordinates;
+    const lat = Number(local?.lat ?? coords.lat);
+    const lon = Number(local?.lng ?? local?.lon ?? coords.lon);
+    const cerca = pickDriver(indep, lat, lon, 'auto_nearest', Math.max(settings.maxAssignRadiusKm || 8, 10));
+    if (cerca) {
+      const tarifa = await red.tarifaParaOferta({ order, business, driver: cerca.driver });
+      const { offer, driver } = await offerToDriver(order, business, cerca.driver, cerca.distanceKm, excluded.length + 1, tarifa);
+      return { ok: true, offered: true, offer, driver, distanceKm: cerca.distanceKm, red: true };
+    }
+  } catch (e) {
+    logger.warn('No se pudo ofrecer a la Red MenuBy', { error: e.message, orderId: String(order._id) });
   }
 
   // No more own drivers → partner fallback
@@ -305,6 +357,8 @@ async function acceptOffer(offer, driver) {
   order.deliveryPersonId = driver._id;
   order.deliveryAssignedAt = new Date();
   order.assignmentMethod = 'auto_offer';
+  // Red MenuBy: lo que el domi vio al aceptar es lo que gana
+  if (offer.tarifa) order.tarifaRed = { ...offer.tarifa, congeladaAt: new Date() };
   order.deliveryMode = 'profile';
   if (!order.confirmationCode) order.confirmationCode = generateConfirmationCode();
   order.status = 'inProgress';
@@ -352,7 +406,7 @@ async function expireStaleOffers() {
   const BusinessConfig = require('../Models/BusinessConfig');
 
   const now = new Date();
-  const stale = await DeliveryOffer.find({ state: 'pending', expiresAt: { $lt: now } }).limit(50);
+  const stale = await DeliveryOffer.find({ state: 'pending', envioId: { $exists: false }, expiresAt: { $lt: now } }).limit(50);
   for (const offer of stale) {
     try {
       offer.state = 'expired'; offer.respondedAt = now; await offer.save();
@@ -428,6 +482,7 @@ function startOfferSweeper(intervalMs = 10000) {
   setInterval(() => {
     expireStaleOffers().catch(() => {});
     expireStalePartnerOffers().catch(() => {});
+    require('./envios').expirarOfertas().catch(() => {});
   }, intervalMs);
   logger.info('Delivery offer sweeper started', { intervalMs });
 }

@@ -339,6 +339,27 @@ const orderSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  /* App del domi (v2): llegó donde el cliente, no pudo entregar, y la foto
+     que deja como prueba de entrega. */
+  deliveryArrivedCustomerAt: {
+    type: Date,
+    default: null
+  },
+  deliveryFailedAt: {
+    type: Date,
+    default: null
+  },
+  deliveryFailReason: {
+    type: String,
+    default: null
+  },
+  /* Red MenuBy: lo que gana el domi independiente por este pedido y lo que
+     paga el negocio, congelado cuando el domi aceptó la oferta. */
+  tarifaRed: { type: mongoose.Schema.Types.Mixed, default: undefined },
+  deliveryProofPhoto: {
+    type: String,
+    default: null
+  },
   trackingEnabled: {
     type: Boolean,
     default: false
@@ -496,6 +517,9 @@ orderSchema.index({ businessId: 1, status: 1 });
 orderSchema.index({ businessId: 1, tableNumber: 1 });
 orderSchema.index({ businessId: 1, sentToKitchen: 1 });
 orderSchema.index({ deliveryZoneId: 1 });
+/* App del domi: sus pedidos en curso, lo entregado hoy y lo que falta cuadrar
+   se consultan cada 15 s por domi. Solo los pedidos con domi asignado. */
+orderSchema.index({ deliveryPersonId: 1, deliveredAt: -1 }, { partialFilterExpression: { deliveryPersonId: { $type: 'objectId' } } });
 // customerToken already has index:true in field definition
 orderSchema.index({ businessId: 1, orderChannel: 1, status: 1 });
 orderSchema.index({ businessId: 1, bookingDate: 1 });

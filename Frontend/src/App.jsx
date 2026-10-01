@@ -20,6 +20,9 @@ const DomiPage = lazyConReintento(() => import("./Components/Delivery/DomiPage")
 const DeliveryTracker = lazyConReintento(() => import("./Components/Delivery/DeliveryTracker"));
 const DeliveryQRPage = lazyConReintento(() => import("./Components/Delivery/DeliveryQRPage"));
 const PartnerPortal = lazyConReintento(() => import("./Components/Delivery/PartnerPortal"));
+const EmpresaReparto = lazyConReintento(() => import("./Pages/Reparto/EmpresaReparto"));
+const PanelClienteReparto = lazyConReintento(() => import("./Pages/Reparto/PanelCliente"));
+const SeguimientoEnvio = lazyConReintento(() => import("./Pages/Reparto/SeguimientoEnvio"));
 const MenuByCatalog = lazyConReintento(() => import("./Pages/Catalog/MenuByCatalog"));
 const PortafolioPublico = lazyConReintento(() => import('./Components/PortafolioPublico'));
 const RestaurantDetail = lazyConReintento(() => import("./Pages/Catalog/RestaurantDetail"));
@@ -376,6 +379,11 @@ function App() {
             </Suspense>
           }
         />
+
+        {/* Empresas de reparto: su página, el panel de sus clientes y el seguimiento público */}
+        <Route path="/reparto/seguimiento/:token" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><SeguimientoEnvio /></Suspense>} />
+        <Route path="/reparto/:slug/panel" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><PanelClienteReparto /></Suspense>} />
+        <Route path="/reparto/:slug" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><EmpresaReparto /></Suspense>} />
 
         {/* Delivery: External partner company portal */}
         <Route

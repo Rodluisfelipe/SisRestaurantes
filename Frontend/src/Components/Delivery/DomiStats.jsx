@@ -9,6 +9,7 @@ import { BACKEND_URL } from '../../config';
 import AssignDeliveryModal from './AssignDeliveryModal';
 import DeliverySettingsModal from './DeliverySettingsModal';
 import DeliveryTimeline from './DeliveryTimeline';
+import CuadreDomis from './CuadreDomis';
 
 /* ── SVG Icons ── */
 const IC = {
@@ -800,6 +801,9 @@ export default function DomiStats() {
           </div>
         </div>
       </div>
+
+      {/* Cuadre de efectivo con los domiciliarios (app del domi v2) */}
+      <CuadreDomis />
 
       {/* Assign modal */}
       <AssignDeliveryModal

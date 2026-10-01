@@ -54,17 +54,32 @@ function leerLlave(req) {
   }
 }
 
-/** ¿La llave de esta petición abre la cuenta de ese teléfono en ese negocio? */
+/* Por ahora la llave NO se exige: la cuenta se abre con el teléfono, en
+   cualquier celular (los clientes que piden por WhatsApp o en el local nunca
+   reciben llave y no veían sus sellos). Cuando esté la verificación por
+   código, se vuelve a exigir con CUENTA_EXIGE_LLAVE=1. */
+const exigeLlave = () => process.env.CUENTA_EXIGE_LLAVE === '1';
+
+/** Sin llave: la cuenta que dice el menú (negocio y teléfono en cabeceras). */
+function cuentaPorTelefono(req) {
+  const businessId = String(req.headers?.['x-cuenta-negocio'] || '').trim();
+  const telefono = String(req.headers?.['x-cuenta-telefono'] || '').trim();
+  if (!/^[0-9a-f]{24}$/i.test(businessId) || !normalizarTelefono(telefono)) return null;
+  return { businessId, telefono };
+}
+
+/** ¿Esta petición abre la cuenta de ese teléfono en ese negocio? */
 function abreCuenta(req, businessId, telefono) {
+  if (!exigeLlave()) return !!(businessId && normalizarTelefono(telefono));
   const cuenta = leerLlave(req);
   if (!cuenta) return false;
   return cuenta.businessId === String(businessId)
     && normalizarTelefono(cuenta.telefono) === normalizarTelefono(telefono);
 }
 
-/** Middleware: sin llave válida no se entra. Deja la cuenta en `req.cuenta`. */
+/** Middleware: sin cuenta no se entra. Deja la cuenta en `req.cuenta`. */
 function requiereCuenta(req, res, next) {
-  const cuenta = leerLlave(req);
+  const cuenta = exigeLlave() ? leerLlave(req) : (cuentaPorTelefono(req) || leerLlave(req));
   if (!cuenta) {
     return res.status(401).json({
       codigo: 'SIN_CUENTA',

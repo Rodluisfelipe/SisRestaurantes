@@ -284,6 +284,12 @@ const completedOrderSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  deliveryArrivedStoreAt: { type: Date, default: null },
+  deliveryArrivedCustomerAt: { type: Date, default: null },
+  /* Red MenuBy: lo que gana el domi independiente por este pedido y lo que
+     paga el negocio, congelado cuando el domi aceptó la oferta. */
+  tarifaRed: { type: mongoose.Schema.Types.Mixed, default: undefined },
+  deliveryProofPhoto: { type: String, default: null },
   
   // Booking / appointment fields
   isBooking: {
@@ -336,6 +342,8 @@ const completedOrderSchema = new mongoose.Schema({
 
 // Indexes for faster queries
 completedOrderSchema.index({ businessId: 1, completedAt: -1 });
+// Ganancias y cuadre del domi (app v2): sus entregas por fecha.
+completedOrderSchema.index({ deliveryPersonId: 1, deliveredAt: -1 }, { partialFilterExpression: { deliveryPersonId: { $type: 'objectId' } } });
 completedOrderSchema.index({ businessId: 1, reportDate: 1 });
 completedOrderSchema.index({ businessId: 1, includedInReport: 1 });
 

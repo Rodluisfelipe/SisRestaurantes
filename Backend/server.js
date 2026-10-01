@@ -71,18 +71,27 @@ const server = http.createServer(app);
 
 // Inicializar socket.io
 const { Server } = require("socket.io");
+const { origenSocketPermitido } = require('./utils/origenSocket');
 const io = new Server(server, {
+  // La decisión de aceptar va aquí (ve el Host): la lista de orígenes, o el
+  // mismo origen del servidor, que es lo que manda la app nativa del domi.
+  allowRequest: (req, callback) => {
+    const origin = req.headers.origin;
+    const ok = origenSocketPermitido(origin, req.headers.host, ALLOWED_ORIGINS);
+    if (!ok) logger.warn(`Origen no permitido (Socket.io): ${origin}`);
+    callback(null, ok);
+  },
   cors: {
     origin: function (origin, callback) {
       // Permitir solicitudes sin origen
       if (!origin) return callback(null, true);
-      
+
       // Verificar si el origen está en la lista de permitidos
       if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
-        logger.warn(`Origen no permitido (Socket.io): ${origin}`);
-        callback(new Error('Not allowed by CORS'));
+        // Sin cabeceras CORS: un navegador de otra página no puede leer nada
+        callback(null, false);
       }
     },
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -122,7 +131,7 @@ app.use(cors({
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-business-id', 'x-customer-token', 'x-cuenta'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-business-id', 'x-customer-token', 'x-cuenta', 'x-cuenta-negocio', 'x-cuenta-telefono'],
   credentials: true,
   preflightContinue: false,
   optionsSuccessStatus: 204
@@ -247,6 +256,8 @@ app.use("/api/leads", require("./Routes/leadsPublico")); // Formulario "Te llama
 app.use("/api/errores-cliente", require("./Routes/erroresCliente")); // Errores de pantalla del navegador → logs, buscables por código
 app.use("/api/delivery-zones", require("./Routes/deliveryZones")); // Zonas de entrega
 app.use("/api/delivery-activos", require("./Routes/activos")); // Domiciliario con Activos (mensajería externa)
+app.use("/api/domi-app", require("./Routes/domiApp")); // App del domiciliario v2 + cuadre del panel
+app.use("/api/reparto", require("./Routes/reparto")); // Empresas de reparto: página pública, sus clientes y seguimiento
 app.use("/api/delivery-admin", require("./Routes/deliveryAdmin")); // Gestión de domiciliarios (admin)
 app.use("/api/delivery-partners", require("./Routes/deliveryPartners")); // Empresas externas de reparto (partners)
 app.use("/api/delivery", require("./Routes/deliveryPublic")); // Endpoints públicos de domiciliarios
@@ -281,6 +292,7 @@ app.use("/api/superadmin/panel-live", require("./Routes/panelLive"));
 // Rutas específicas para superadmin (integradas desde BackendSA)
 app.use("/api/superadmin/auth", require("./Routes/authSuperAdmin"));
 app.use("/api/superadmin/crm", require("./Routes/crm")); // CRM de leads de Menuby (con el WhatsApp de la plataforma)
+app.use("/api/superadmin/red", require("./Routes/superadminRed")); // Red MenuBy: domis independientes
 app.use("/api/superadmin/team", require("./Routes/superadminTeam"));
 app.use("/api/superadmin", require("./Routes/superadmin"));
 

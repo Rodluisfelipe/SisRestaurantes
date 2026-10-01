@@ -41,7 +41,7 @@ const RESERVED_SLUGS = new Set([
   'login', 'register', 'features', 'pricing', 'demo', 'contact', 'blog',
   'restaurantes', 'mesero', 'crew', 'favoritos', 'pedidos', 'checkout',
   'pago', 'payment', 'not-found', '404', 'terms', 'privacy',
-  'terminos', 'privacidad', 'whatsapp-conectado',
+  'terminos', 'privacidad', 'whatsapp-conectado', 'reparto',
 ]);
 
 // Known crawler user agents
@@ -56,7 +56,7 @@ const CRAWLER_PATTERNS = [
 
 // Paths that should never be intercepted
 const SKIP_PATHS = [
-  '/admin', '/superadmin', '/api',
+  '/admin', '/superadmin', '/api', '/reparto',
   '/manifest', '/sw.js', '/assets', '/favicon', '/logo',
   '/robots.txt', '/sitemap', '/_headers', '/_redirects'
 ];
