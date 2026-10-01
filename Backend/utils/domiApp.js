@@ -211,7 +211,27 @@ function coordenadas(x) {
   return Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0) ? { lat, lng } : null;
 }
 
+/**
+ * "Llegué donde el cliente" y "Entregado" solo se aceptan cerca de la
+ * dirección: así nadie marca la entrega desde la casa. 200 m porque el GPS en
+ * ciudad, entre edificios, se corre decenas de metros.
+ * Si el pedido no tiene punto en el mapa no hay contra qué comparar y pasa.
+ */
+const RADIO_ENTREGA_M = 200;
+const EXIGEN_CERCANIA = ['llegue_cliente', 'entregado'];
+
+function revisarCercania(tipo, ubicacion, destino, radio = RADIO_ENTREGA_M) {
+  if (!EXIGEN_CERCANIA.includes(tipo) || !destino) return { ok: true };
+  if (!ubicacion) return { ok: false, error: 'sin_ubicacion' };
+  const km = distanciaKm(ubicacion, destino);
+  if (km == null) return { ok: true };
+  const metros = Math.round(km * 1000);
+  return metros <= radio ? { ok: true, metros } : { ok: false, error: 'lejos_del_cliente', metros };
+}
+
 module.exports = {
+  RADIO_ENTREGA_M,
+  revisarCercania,
   esEfectivo,
   efectivoACobrar,
   normalizarReglaPago,

@@ -73,9 +73,19 @@ async function enlaceFirmado(llave, segundos = 300) {
   return getSignedUrl(s3(), new GetObjectCommand({ Bucket: BUCKET, Key: llave }), { expiresIn: segundos });
 }
 
+/** El archivo en sí (para sacar la foto de perfil de la selfie aprobada). */
+async function leerPrivado(llave) {
+  if (!llave) return null;
+  if (local()) {
+    try { return require('fs').readFileSync(require('path').join(carpetaLocal(), llave.replace(/\//g, '_'))); } catch { return null; }
+  }
+  const r = await s3().send(new GetObjectCommand({ Bucket: BUCKET, Key: llave }));
+  return Buffer.from(await r.Body.transformToByteArray());
+}
+
 async function borrarPrivado(llave) {
   if (!llave) return;
   try { await s3().send(new DeleteObjectCommand({ Bucket: BUCKET, Key: llave })); } catch { /* ya no estaba */ }
 }
 
-module.exports = { subirPrivado, enlaceFirmado, borrarPrivado, configurado };
+module.exports = { subirPrivado, enlaceFirmado, leerPrivado, borrarPrivado, configurado };

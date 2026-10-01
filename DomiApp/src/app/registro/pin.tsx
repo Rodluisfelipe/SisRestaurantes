@@ -1,6 +1,9 @@
 /**
  * Registro, paso 5: crear el PIN (dos veces) y enviar todo.
  * El PIN es con lo que va a entrar siempre, junto con su celular.
+ *
+ * Si el celular ya tiene cuenta (reparte con un negocio), no se crea otro PIN:
+ * se le pide el que ya usa. Así nadie se registra con un número ajeno.
  */
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -25,8 +28,10 @@ export default function RegistroPin() {
   const [primero, setPrimero] = useState('');
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
+  /** El celular ya tiene cuenta: se pide el PIN con el que ya entra */
+  const [pideActual, setPideActual] = useState(false);
 
-  const enviar = async (definitivo: string) => {
+  const enviar = async (definitivo: string, esActual = false) => {
     const r = useRegistro.getState();
     setEnviando(true);
     setError('');
@@ -39,6 +44,7 @@ export default function RegistroPin() {
       form.append('vehiculo', r.vehiculo || '');
       form.append('placa', r.placa);
       form.append('pin', definitivo);
+      if (esActual) form.append('pinActual', definitivo);
       if (r.frente) await adjuntar(form, 'frente', r.frente);
       if (r.reverso && r.tipoDocumento !== 'pasaporte') await adjuntar(form, 'reverso', r.reverso);
       if (r.selfie) await adjuntar(form, 'selfie', r.selfie);
@@ -49,7 +55,10 @@ export default function RegistroPin() {
       fallo();
       setPin('');
       setPrimero('');
-      if (e instanceof ErrorApi && e.codigo === 'pase') {
+      if (e instanceof ErrorApi && (e.codigo === 'ya_tiene_cuenta' || e.codigo === 'pin_actual')) {
+        setPideActual(true);
+        setError(e.codigo === 'pin_actual' ? e.message : '');
+      } else if (e instanceof ErrorApi && e.codigo === 'pase') {
         setError('Tu verificación venció. Vuelve a confirmar tu celular.');
         setTimeout(() => router.replace('/registro/celular'), 1800);
       } else {
@@ -66,6 +75,7 @@ export default function RegistroPin() {
     const n = pin + d;
     setPin(n);
     if (n.length < 4) return;
+    if (pideActual) { enviar(n, true); return; }
     if (!primero) {
       if (FACIL.test(n)) { fallo(); setError('Muy fácil de adivinar. Elige otro.'); setPin(''); return; }
       setPrimero(n);
@@ -80,8 +90,10 @@ export default function RegistroPin() {
     <PasoRegistro
       paso={6}
       total={6}
-      titulo={primero ? 'Repite tu PIN' : 'Crea tu PIN'}
-      ayuda="4 números que solo tú sepas. Con tu celular y este PIN entras siempre."
+      titulo={pideActual ? 'Escribe tu PIN de siempre' : primero ? 'Repite tu PIN' : 'Crea tu PIN'}
+      ayuda={pideActual
+        ? 'Este celular ya tiene cuenta en MenuBy Go. Escribe el PIN con el que entras: es el mismo para todo.'
+        : '4 números que solo tú sepas. Con tu celular y este PIN entras siempre.'}
       sinScroll>
       <View style={{ gap: 14, alignItems: 'center' }}>
         <Casillas valor={pin} error={!!error} />

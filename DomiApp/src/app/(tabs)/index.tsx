@@ -14,12 +14,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Boton, Icono, T, Tarjeta } from '@/componentes/base';
 import { Deslizar } from '@/componentes/Deslizar';
 import { Mapa } from '@/componentes/Mapa';
-import { fallo } from '@/lib/aviso';
+import { fallo, tocar } from '@/lib/aviso';
 import { pesos, km, minutos } from '@/lib/formato';
 import { planearRuta, type Parada } from '@/lib/ruta';
 import { aplicarPlan, useRutaCalles } from '@/lib/rutaCalles';
-import { puedeSuperponer } from '@/lib/sistema';
-import { permisosUbicacion } from '@/lib/ubicacion';
+import { puedeSuperponer, xiaomiListo } from '@/lib/sistema';
+import { permisosUbicacion, ubicacionPrecisa } from '@/lib/ubicacion';
 import { permisoNotificaciones } from '@/lib/notificaciones';
 import { ErrorApi, pedidosVisibles, useApp } from '@/estado/app';
 import { color, radio, sombra } from '@/tema';
@@ -34,6 +34,8 @@ export default function Ruta() {
   const [cambiando, setCambiando] = useState(false);
   const [error, setError] = useState('');
   const [altoPanel, setAltoPanel] = useState(320);
+  const [seguirme, setSeguirme] = useState(false);
+  const [buscandoGps, setBuscandoGps] = useState(false);
 
   const pedidos = useMemo(() => pedidosVisibles(servidor, locales), [servidor, locales]);
   const hayRed = useApp((s) => s.hayRed);
@@ -44,7 +46,7 @@ export default function Ruta() {
   const enLinea = enLineaLocal ?? !!servidor?.cuenta.enLinea;
 
   useEffect(() => {
-    Promise.all([permisosUbicacion(), permisoNotificaciones()]).then(([u, n]) => setFaltanPermisos(!u.segundoPlano || !u.gpsEncendido || !n || !puedeSuperponer()));
+    Promise.all([permisosUbicacion(), permisoNotificaciones()]).then(([u, n]) => setFaltanPermisos(!u.segundoPlano || !u.gpsEncendido || !n || !puedeSuperponer() || !xiaomiListo()));
   }, [servidor?.servidorAt]);
 
   const conectar = async (valor: boolean) => {
@@ -60,11 +62,31 @@ export default function Ruta() {
     }
   };
 
+  /* Centrar: pide una lectura nueva, la más precisa, y deja el mapa pegado al
+     domi con zoom de calle. Tocar otra vez vuelve a mostrar toda la ruta. */
+  const centrar = async () => {
+    tocar();
+    if (seguirme) { setSeguirme(false); return; }
+    setSeguirme(true);
+    setBuscandoGps(true);
+    const p = await ubicacionPrecisa();
+    setBuscandoGps(false);
+    if (p) useApp.getState().ponerUbicacion({ lat: p.lat, lng: p.lng }, p.simulada);
+  };
+
   const abrirParada = (p: Parada) => router.push({ pathname: '/pedido/[id]', params: { id: p.pedidoIds[0] } });
 
   return (
     <View style={s.fondo}>
-      <Mapa yo={yo} paradas={paradas} trazo={plan?.trazo} margen={{ arriba: arriba + 90, abajo: altoPanel }} />
+      <Mapa yo={yo} paradas={paradas} trazo={plan?.trazo} margen={{ arriba: arriba + 90, abajo: altoPanel }} seguir={seguirme} />
+
+      <Pressable
+        testID="centrar-gps"
+        accessibilityLabel={seguirme ? 'Ver toda la ruta' : 'Centrar en mi ubicación'}
+        onPress={centrar}
+        style={[s.centrar, { bottom: altoPanel + 14 }, seguirme && { backgroundColor: color.info }]}>
+        <Icono nombre={buscandoGps ? 'crosshairs' : seguirme ? 'map-marker-path' : 'crosshairs-gps'} tam={26} tinte={seguirme ? '#fff' : color.tinta} />
+      </Pressable>
 
       {/* Arriba: estado y plata de hoy */}
       <View style={[s.arriba, { top: arriba + 10 }]}>
@@ -209,6 +231,10 @@ function Radar() {
 const s = StyleSheet.create({
   fondo: { flex: 1, backgroundColor: color.fondo },
   arriba: { position: 'absolute', left: 14, right: 14, flexDirection: 'row', gap: 10 },
+  centrar: {
+    position: 'absolute', right: 16, width: 56, height: 56, borderRadius: 28, backgroundColor: color.superficie,
+    alignItems: 'center', justifyContent: 'center', ...sombra.flotante,
+  },
   estado: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, height: 64, borderRadius: radio.l, ...sombra.flotante },
   hoy: { backgroundColor: color.superficie, borderRadius: radio.l, paddingHorizontal: 16, justifyContent: 'center', minWidth: 104, ...sombra.flotante },
   panel: {

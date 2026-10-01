@@ -19,7 +19,7 @@ const PAYMENT_LABELS = {
 };
 
 import { socket, socketDiagnostic, forceReconnect } from '../services/socket';
-import AssignDeliveryModal from './Delivery/AssignDeliveryModal';
+import EnviarADomi from './Delivery/EnviarADomi';
 import ModalDespacho from './Admin/ModalDespacho';
 import RastreoEnvio from './RastreoEnvio';
 import { esTienda } from '../utils/tienda';
@@ -1110,17 +1110,7 @@ function ModernOrdersDashboard() {
         )}
       </AnimatePresence>
 
-      <AssignDeliveryModal 
-        isOpen={!!assignDomiOrder}
-        onClose={() => setAssignDomiOrder(null)}
-        order={assignDomiOrder}
-        businessId={businessId}
-        onAssigned={(data) => {
-          // You could optionally do something here, like optimistic update
-          // updateOrderStatus(assignDomiOrder._id, ORDER_STATUS.IN_PROGRESS); 
-          // Since it will be reflected via Socket anyway, doing nothing is also fine.
-        }}
-      />
+      {assignDomiOrder && <EnviarADomi order={assignDomiOrder} onClose={() => setAssignDomiOrder(null)} />}
 
       {despachando && (
         <ModalDespacho

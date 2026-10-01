@@ -11,6 +11,8 @@ const mongoose = require('mongoose');
 const domiCuentaSchema = new mongoose.Schema({
   // Celular en 10 dígitos (sin 57)
   telefono: { type: String, required: true, unique: true, trim: true },
+  // El PIN de la persona (uno solo, para todos sus negocios). Ver utils/pinDomi.js
+  pinHash: { type: String, default: null },
   // Sesión larga: hash del token de renovación vigente (rota en cada uso)
   refreshHash: { type: String, default: null },
   // Candado: un PIN de 4 dígitos se adivina en minutos sin esto

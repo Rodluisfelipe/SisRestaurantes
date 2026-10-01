@@ -42,6 +42,38 @@ class DomiSistemaModule : Module() {
       contexto.startActivity(intent)
     }
 
+    /**
+     * Xiaomi (MIUI/HyperOS) tiene permisos propios encima de los de Android:
+     * "Mostrar ventanas emergentes en segundo plano" (10021) y "Mostrar en
+     * pantalla de bloqueo" (10020). Apagados, la oferta suena pero la app no
+     * se abre. En otras marcas responde que todo está bien.
+     */
+    Function("permisosXiaomi") {
+      if (!esXiaomi()) return@Function mapOf("aplica" to false, "segundoPlano" to true, "bloqueo" to true)
+      mapOf("aplica" to true, "segundoPlano" to opMiuiPermitida(10021), "bloqueo" to opMiuiPermitida(10020))
+    }
+
+    /** La pantalla de permisos de Xiaomi para esta app ("Otros permisos"). */
+    Function("abrirPermisosXiaomi") {
+      val paquete = contexto.packageName
+      val intentos = listOf(
+        Intent("miui.intent.action.APP_PERM_EDITOR")
+          .setClassName("com.miui.securitycenter", "com.miui.permcenter.permissions.PermissionsEditorActivity")
+          .putExtra("extra_pkgname", paquete),
+        Intent("miui.intent.action.APP_PERM_EDITOR")
+          .setClassName("com.miui.securitycenter", "com.miui.permcenter.permissions.AppPermissionsEditorActivity")
+          .putExtra("extra_pkgname", paquete),
+        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$paquete"))
+      )
+      for (intent in intentos) {
+        try {
+          contexto.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+          return@Function true
+        } catch (e: Exception) { /* la siguiente */ }
+      }
+      false
+    }
+
     /** Trae la app al frente aunque el domi esté en otra app (requiere el permiso de arriba). */
     Function("traerAlFrente") {
       val intent = contexto.packageManager.getLaunchIntentForPackage(contexto.packageName)
@@ -78,6 +110,21 @@ class DomiSistemaModule : Module() {
         "ganchos" to ganchos()
       )
     }
+  }
+
+  private fun esXiaomi(): Boolean {
+    val m = Build.MANUFACTURER.lowercase()
+    return m.contains("xiaomi") || m.contains("redmi") || m.contains("poco")
+  }
+
+  /** ¿MIUI permite esta operación suya? (no está en el SDK: se pregunta por reflexión). */
+  private fun opMiuiPermitida(op: Int): Boolean = try {
+    val ops = contexto.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+    val metodo = ops.javaClass.getMethod("checkOpNoThrow", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, String::class.java)
+    val modo = metodo.invoke(ops, op, android.os.Process.myUid(), contexto.packageName) as Int
+    modo == android.app.AppOpsManager.MODE_ALLOWED
+  } catch (e: Exception) {
+    true // si no se puede saber, no se le pide nada al domi
   }
 
   /** Huellas SHA-256 de la llave con que se firmó ESTA copia de la app. */

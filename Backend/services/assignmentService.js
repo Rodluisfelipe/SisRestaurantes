@@ -504,6 +504,7 @@ async function autoAssignOrder(order, business) {
 }
 
 module.exports = {
+  generateConfirmationCode,
   autoAssignOrder,
   pickAndOffer,
   offerToDriver,

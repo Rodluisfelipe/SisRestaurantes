@@ -140,3 +140,31 @@ describe('distancias', () => {
     expect(d.coordenadas({ lat: 0, lng: 0 })).toBeNull();
   });
 });
+
+describe('revisarCercania: entregar solo cerca del cliente', () => {
+  const { revisarCercania, RADIO_ENTREGA_M } = require('../utils/domiApp');
+  const cliente = { lat: 4.8612, lng: -74.061 };
+
+  test('cerca de la dirección (dentro del radio) pasa', () => {
+    // ~110 m al norte
+    expect(revisarCercania('entregado', { lat: 4.8622, lng: -74.061 }, cliente)).toMatchObject({ ok: true });
+    expect(revisarCercania('llegue_cliente', cliente, cliente)).toMatchObject({ ok: true, metros: 0 });
+  });
+
+  test('lejos de la dirección no deja entregar y dice a cuántos metros está', () => {
+    const r = revisarCercania('entregado', { lat: 4.8712, lng: -74.061 }, cliente); // ~1,1 km
+    expect(r.ok).toBe(false);
+    expect(r.error).toBe('lejos_del_cliente');
+    expect(r.metros).toBeGreaterThan(RADIO_ENTREGA_M);
+  });
+
+  test('sin ubicación del domi no se puede comprobar: no deja', () => {
+    expect(revisarCercania('llegue_cliente', null, cliente)).toEqual({ ok: false, error: 'sin_ubicacion' });
+  });
+
+  test('pedido sin punto en el mapa, o pasos que no son de entrega, pasan', () => {
+    expect(revisarCercania('entregado', { lat: 4.9, lng: -74 }, null)).toEqual({ ok: true });
+    expect(revisarCercania('recogido', null, cliente)).toEqual({ ok: true });
+    expect(revisarCercania('no_entregado', null, cliente)).toEqual({ ok: true });
+  });
+});

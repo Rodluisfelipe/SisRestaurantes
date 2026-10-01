@@ -16,7 +16,11 @@ export type PropsMapa = {
   margen?: { arriba: number; abajo: number };
   /** La ruta por las calles ([lng, lat]); sin ella se dibuja la línea recta punteada */
   trazo?: [number, number][] | null;
+  /** Centrado en el domi con zoom de calle, siguiéndolo; si no, se ve toda la ruta */
+  seguir?: boolean;
 };
+
+export const ZOOM_SEGUIR = 17.5;
 
 export function encuadre(yo: Punto | null, paradas: Parada[], trazo?: [number, number][] | null):
   | { tipo: 'centro'; centro: [number, number]; zoom: number }

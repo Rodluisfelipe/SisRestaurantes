@@ -18,6 +18,14 @@ import type { Punto } from './tipos';
 
 export const TAREA_GPS = 'menuby-domi-gps';
 
+/* Con la app atrás, el GPS llega por la tarea y no por la pantalla: se avisa
+   aquí para que el mapa y el aviso de "estás quieto" sigan al día. */
+type AlPunto = (p: Punto, simulada: boolean) => void;
+let alPuntoAtras: AlPunto | null = null;
+export function alPuntoEnSegundoPlano(fn: AlPunto | null) {
+  alPuntoAtras = fn;
+}
+
 TaskManager.defineTask<{ locations: Location.LocationObject[] }>(TAREA_GPS, async ({ data, error }) => {
   if (error || !data?.locations?.length) return;
   const puntos: PuntoGps[] = data.locations.map((l) => ({
@@ -29,6 +37,8 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(TAREA_GPS, asyn
     simulada: l.mocked === true,
   }));
   await encolarGps(puntos);
+  const ultimo = puntos[puntos.length - 1];
+  alPuntoAtras?.({ lat: ultimo.lat, lng: ultimo.lng }, !!ultimo.simulada);
   if (await sesionActual()) await vaciar();
 });
 
@@ -58,6 +68,16 @@ export async function ubicacionActual(): Promise<Punto | null> {
     const u = await Location.getLastKnownPositionAsync({ maxAge: 60_000 })
       ?? await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
     return u ? { lat: u.coords.latitude, lng: u.coords.longitude } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Una lectura nueva con la máxima precisión (para el botón de centrar el mapa). */
+export async function ubicacionPrecisa(): Promise<(Punto & { simulada: boolean }) | null> {
+  try {
+    const u = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.BestForNavigation });
+    return { lat: u.coords.latitude, lng: u.coords.longitude, simulada: u.mocked === true };
   } catch {
     return null;
   }

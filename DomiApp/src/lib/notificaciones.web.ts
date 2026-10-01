@@ -6,3 +6,4 @@ export async function permisoNotificaciones() { return true; }
 export async function pedirNotificaciones() { return true; }
 export async function registrarToken() { return false; }
 export function escucharAvisos(_alLlegar: () => void) { return () => {}; }
+export async function avisarAlDomi(_titulo: string, _cuerpo: string) {}

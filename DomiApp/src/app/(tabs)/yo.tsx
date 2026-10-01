@@ -1,14 +1,17 @@
-/** Yo: perfil, dónde trabajo, cómo quiero que suene y navegue, y salir. */
-import * as ImagePicker from 'expo-image-picker';
+/**
+ * Yo: perfil, dónde trabajo, cómo quiero que suene y navegue, y salir.
+ *
+ * La foto no se cambia desde aquí: es la selfie que se verificó en el registro
+ * (o la que puso el negocio), para que el local y el cliente reconozcan a
+ * quien llega.
+ */
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Boton, Icono, T, Tarjeta, type NombreIcono } from '@/componentes/base';
 import { tocar } from '@/lib/aviso';
 import { celularBonito } from '@/lib/formato';
-import { llamar } from '@/lib/api';
 import { pedidosVisibles, useApp } from '@/estado/app';
 import { color, radio } from '@/tema';
 
@@ -16,25 +19,7 @@ export default function Yo() {
   const servidor = useApp((s) => s.servidor);
   const locales = useApp((s) => s.locales);
   const ajustes = useApp((s) => s.ajustes);
-  const [subiendo, setSubiendo] = useState(false);
   const cuenta = servidor?.cuenta;
-
-  const cambiarFoto = async () => {
-    try {
-      const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.6 });
-      if (r.canceled || !r.assets[0]) return;
-      setSubiendo(true);
-      const form = new FormData();
-      if (Platform.OS === 'web') form.append('foto', await (await fetch(r.assets[0].uri)).blob(), 'perfil.jpg');
-      else form.append('foto', { uri: r.assets[0].uri, name: 'perfil.jpg', type: 'image/jpeg' } as unknown as Blob);
-      await llamar('/domi-app/perfil/foto', { formulario: form, tiempo: 60_000 });
-      await useApp.getState().refrescar();
-    } catch {
-      /* se intenta otra vez */
-    } finally {
-      setSubiendo(false);
-    }
-  };
 
   const salir = () => {
     const activos = pedidosVisibles(servidor, locales).length;
@@ -51,12 +36,11 @@ export default function Yo() {
     <SafeAreaView style={s.fondo} edges={['top']}>
       <ScrollView contentContainerStyle={s.cuerpo}>
         <View style={s.perfil}>
-          <Pressable onPress={cambiarFoto} style={s.foto} testID="foto-perfil">
+          <View style={s.foto} testID="foto-perfil">
             {cuenta?.foto
               ? <Image source={{ uri: cuenta.foto }} style={s.foto} contentFit="cover" />
               : <Icono nombre="account" tam={44} tinte={color.tintaSuave} />}
-            <View style={s.camara}><Icono nombre={subiendo ? 'progress-upload' : 'camera'} tam={16} tinte="#fff" /></View>
-          </Pressable>
+          </View>
           <T v="titulo" centro>{cuenta?.nombre || 'Domiciliario'}</T>
           <T v="cuerpo" c={color.tintaSuave}>{celularBonito(cuenta?.telefono || '')}</T>
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
@@ -126,7 +110,6 @@ const s = StyleSheet.create({
   cuerpo: { padding: 18, gap: 12, paddingBottom: 40 },
   perfil: { alignItems: 'center', gap: 4, paddingVertical: 10 },
   foto: { width: 104, height: 104, borderRadius: 52, backgroundColor: color.superficie, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: color.borde },
-  camara: { position: 'absolute', right: 0, bottom: 2, width: 32, height: 32, borderRadius: 16, backgroundColor: color.tinta, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: color.fondo },
   dato: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: color.superficie, paddingHorizontal: 12, paddingVertical: 7, borderRadius: radio.total },
   logo: { width: 44, height: 44, borderRadius: radio.m },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56 },

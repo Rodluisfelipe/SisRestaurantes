@@ -1,0 +1,22 @@
+# Lo que se sube a Expo (EAS Build) para compilar MenuBy Go.
+# El repositorio tiene todo MenuBy: solo hace falta la carpeta DomiApp.
+# (Con este archivo, EAS ya no usa .gitignore: todo lo ignorado va aquí.)
+
+/*
+!/DomiApp
+
+# Dentro de DomiApp, lo que se genera en cada equipo
+/DomiApp/node_modules/
+/DomiApp/android/
+/DomiApp/ios/
+/DomiApp/.expo/
+/DomiApp/dist/
+/DomiApp/web-build/
+/DomiApp/diseno/
+/DomiApp/modules/*/android/build/
+/DomiApp/modules/*/android/.cxx/
+/DomiApp/**/*.apk
+/DomiApp/**/*.aab
+/DomiApp/.env*.local
+/DomiApp/*.jks
+/DomiApp/*.keystore

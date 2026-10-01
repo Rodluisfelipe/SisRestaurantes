@@ -1,23 +1,43 @@
 {
-  "cli": { "version": ">= 16.0.0", "appVersionSource": "local" },
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
+  },
   "build": {
     "desarrollo": {
       "developmentClient": true,
       "distribution": "internal",
-      "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://api.menuby.tech/api" }
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.menuby.tech/api",
+        "EXPO_PUBLIC_USE_RN_FETCH": "1"
+      }
     },
     "prueba": {
       "distribution": "internal",
       "channel": "prueba",
-      "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://api.menuby.tech/api" }
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.menuby.tech/api",
+        "EXPO_PUBLIC_USE_RN_FETCH": "1"
+      }
     },
     "produccion": {
       "channel": "produccion",
-      "android": { "buildType": "app-bundle" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://api.menuby.tech/api" }
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.menuby.tech/api",
+        "EXPO_PUBLIC_USE_RN_FETCH": "1"
+      }
     }
   },
-  "submit": { "produccion": {} }
+  "submit": {
+    "produccion": {}
+  }
 }

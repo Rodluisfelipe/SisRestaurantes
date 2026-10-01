@@ -9,7 +9,7 @@ import type { GeoJSONSource, Map as MapaGL, Marker } from 'maplibre-gl';
 import { useEffect, useRef } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { StyleSheet, View } from 'react-native';
-import { encuadre, ESTILO_MAPA, lineaRuta, Pin, Yo, type PropsMapa } from './mapaComun';
+import { encuadre, ESTILO_MAPA, lineaRuta, Pin, Yo, ZOOM_SEGUIR, type PropsMapa } from './mapaComun';
 
 const VERSION = '6.11.2';
 type Libreria = typeof import('maplibre-gl');
@@ -32,7 +32,7 @@ function cargarMaplibre(): Promise<Libreria> {
   return cargando;
 }
 
-export function Mapa({ yo, paradas, margen = { arriba: 120, abajo: 320 }, trazo }: PropsMapa) {
+export function Mapa({ yo, paradas, margen = { arriba: 120, abajo: 320 }, trazo, seguir }: PropsMapa) {
   const caja = useRef<HTMLDivElement | null>(null);
   const mapa = useRef<MapaGL | null>(null);
   const lib = useRef<Libreria | null>(null);
@@ -84,14 +84,16 @@ export function Mapa({ yo, paradas, margen = { arriba: 120, abajo: 320 }, trazo 
         m.setPaintProperty('ruta-linea', 'line-width', porCalles ? 5 : 4);
         m.setPaintProperty('ruta-linea', 'line-dasharray', porCalles ? [1, 0] : [0.2, 2]);
       }
-      const v = encuadre(yo, paradas, trazo);
+      const v = seguir && yo
+        ? { tipo: 'centro' as const, centro: [yo.lng, yo.lat] as [number, number], zoom: ZOOM_SEGUIR }
+        : encuadre(yo, paradas, trazo);
       const padding = { top: margen.arriba + 30, bottom: margen.abajo + 30, left: 50, right: 50 };
       if (v?.tipo === 'limites') m.fitBounds([[v.limites[0], v.limites[1]], [v.limites[2], v.limites[3]]], { padding, duration: 600, maxZoom: 16 });
       if (v?.tipo === 'centro') m.easeTo({ center: v.centro, zoom: v.zoom, padding, duration: 600 });
     };
     pendiente.current = pintar;
     pintar();
-  }, [yo, paradas, margen.arriba, margen.abajo, trazo]);
+  }, [yo, paradas, margen.arriba, margen.abajo, trazo, seguir]);
 
   return (
     <View style={StyleSheet.absoluteFill}>

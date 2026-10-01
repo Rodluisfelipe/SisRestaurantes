@@ -6,7 +6,8 @@
  *  - la conexión en vivo y las notificaciones;
  *  - no dejar que la pantalla se apague con pedidos en curso;
  *  - si cae una oferta con el domi en otra app, abrirse encima de ella;
- *  - con GPS falso, desconectarlo.
+ *  - con GPS falso, desconectarlo;
+ *  - si lleva un rato quieto yendo al local o al cliente, avisarle.
  */
 import NetInfo from '@react-native-community/netinfo';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
@@ -15,9 +16,10 @@ import { AppState, Platform } from 'react-native';
 import { encolarGps, vaciar } from '@/lib/cola';
 import { REFRESCO_MS } from '@/lib/config';
 import { escucharAvisos, registrarToken } from '@/lib/notificaciones';
+import { useAvisoQuieto } from '@/lib/useAvisoQuieto';
 import { traerAlFrente } from '@/lib/sistema';
 import { conectarEnVivo, desconectarEnVivo } from '@/lib/tiempoReal';
-import { ponerModoGps, seguir } from '@/lib/ubicacion';
+import { alPuntoEnSegundoPlano, ponerModoGps, seguir } from '@/lib/ubicacion';
 import { pedidosVisibles, useApp } from '@/estado/app';
 
 export function Motor() {
@@ -32,6 +34,15 @@ export function Motor() {
   const gpsSimulado = useApp((s) => s.gpsSimulado);
   const ofertas = servidor?.ofertas;
   const ofertasVistas = useRef(new Set<string>());
+  const yo = useApp((s) => s.ubicacion);
+  useAvisoQuieto(pedidos, yo);
+
+  // Con la app atrás, la pantalla se entera del GPS por la tarea de segundo plano
+  useEffect(() => {
+    if (!sesion) return undefined;
+    alPuntoEnSegundoPlano((p, simulada) => useApp.getState().ponerUbicacion(p, simulada));
+    return () => alPuntoEnSegundoPlano(null);
+  }, [sesion]);
 
   // Refresco periódico + al volver a la app
   useEffect(() => {

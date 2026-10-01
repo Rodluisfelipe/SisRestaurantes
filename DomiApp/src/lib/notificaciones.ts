@@ -71,6 +71,16 @@ export async function registrarToken(): Promise<boolean> {
   }
 }
 
+/** Un aviso al domi desde el propio celular (suena aunque esté en otra app). */
+export async function avisarAlDomi(titulo: string, cuerpo: string) {
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: { title: titulo, body: cuerpo, sound: 'default', data: { type: 'aviso' } },
+      trigger: Platform.OS === 'android' ? { channelId: CANAL_AVISOS } : null,
+    });
+  } catch { /* sin permiso de avisos: nada que hacer */ }
+}
+
 /** Llamado cuando llega o se toca un aviso: la app refresca y muestra la oferta. */
 export function escucharAvisos(alLlegar: () => void) {
   const a = Notifications.addNotificationReceivedListener(() => alLlegar());

@@ -28,6 +28,15 @@ export function ubicacionActual(): Promise<Punto | null> {
   });
 }
 
+export function alPuntoEnSegundoPlano(_fn: unknown) {
+  /* sin segundo plano en web */
+}
+
+export async function ubicacionPrecisa(): Promise<(Punto & { simulada: boolean }) | null> {
+  const p = await ubicacionActual();
+  return p ? { ...p, simulada: false } : null;
+}
+
 export async function seguir(alMoverse: (p: Punto & { rumbo: number | null; simulada: boolean }) => void) {
   const g = geo();
   if (!g) return () => {};

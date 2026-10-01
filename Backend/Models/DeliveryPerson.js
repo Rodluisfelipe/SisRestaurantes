@@ -56,7 +56,7 @@ const deliveryPersonSchema = new mongoose.Schema({
     trim: true,
     maxlength: 100
   },
-  // Profile photo URL (DigitalOcean Spaces) — set by the driver from the app
+  // Profile photo URL (DigitalOcean Spaces). Independent drivers: the selfie verified at registration (copied on approval); the driver cannot change it
   photo: {
     type: String,
     default: null

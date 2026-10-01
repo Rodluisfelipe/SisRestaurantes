@@ -46,6 +46,9 @@ export async function abrirAjustesUbicacion() {
   }
 }
 
+/** Xiaomi, Redmi y POCO: tienen su propio ahorro de batería, que Android no ve. */
+export const esXiaomi = /xiaomi|redmi|poco/i.test(Device.manufacturer || '');
+
 /** Pasos extra según la marca (lo de "Sin restricciones" no basta en estas). */
 export function pasosDeMarca(): { marca: string; pasos: string[] } | null {
   const m = (Device.manufacturer || '').toLowerCase();
@@ -56,6 +59,7 @@ export function pasosDeMarca(): { marca: string; pasos: string[] } | null {
         'Abre Ajustes → Aplicaciones → MenuBy Go.',
         'Toca "Ahorro de batería" y elige "Sin restricciones".',
         'Activa "Inicio automático".',
+        'En "Otros permisos", activa "Mostrar ventanas emergentes mientras se ejecuta en segundo plano" y "Mostrar en pantalla de bloqueo": sin eso la app no se abre sola cuando cae un pedido.',
         'En la pantalla de apps recientes, deja presionada MenuBy Go y toca el candado.',
       ],
     };

@@ -1,10 +1,12 @@
 /** Mapa nativo (MapLibre). La versión de navegador está en Mapa.web.tsx. */
 import { Camera, GeoJSONSource, Layer, Map, Marker } from '@maplibre/maplibre-react-native';
 import { StyleSheet } from 'react-native';
-import { encuadre, ESTILO_MAPA, lineaRuta, Pin, Yo, type PropsMapa } from './mapaComun';
+import { encuadre, ESTILO_MAPA, lineaRuta, Pin, Yo, ZOOM_SEGUIR, type PropsMapa } from './mapaComun';
 
-export function Mapa({ yo, paradas, margen = { arriba: 120, abajo: 320 }, trazo }: PropsMapa) {
-  const vista = encuadre(yo, paradas, trazo);
+export function Mapa({ yo, paradas, margen = { arriba: 120, abajo: 320 }, trazo, seguir }: PropsMapa) {
+  const vista = seguir && yo
+    ? { tipo: 'centro' as const, centro: [yo.lng, yo.lat] as [number, number], zoom: ZOOM_SEGUIR }
+    : encuadre(yo, paradas, trazo);
   const relleno = { top: margen.arriba + 30, bottom: margen.abajo + 30, left: 50, right: 50 };
   const linea = lineaRuta(yo, paradas, trazo);
   const porCalles = !!trazo && trazo.length > 1;

@@ -8,10 +8,11 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Boton, Icono, T, type NombreIcono } from '@/componentes/base';
 import { PasoRegistro } from '@/componentes/PasoRegistro';
 import { tocar } from '@/lib/aviso';
+import { abrirAjustesApp } from '@/lib/bateria';
 import { useRegistro } from '@/estado/datosRegistro';
 import { color, radio } from '@/tema';
 
@@ -26,6 +27,14 @@ export default function RegistroFotos() {
     tocar();
     try {
       const permiso = await ImagePicker.requestCameraPermissionsAsync();
+      /* La selfie será la foto de perfil y no se puede cambiar después: se toma
+         en el momento con la cámara, nunca de la galería. */
+      if (clave === 'selfie' && !permiso.granted) {
+        const texto = 'La selfie se toma con la cámara en este momento. Permite el uso de la cámara para continuar.';
+        if (Platform.OS === 'web') { window.alert(texto); return; }
+        Alert.alert('Necesitamos tu cámara', texto, [{ text: 'Cancelar', style: 'cancel' }, { text: 'Abrir ajustes', onPress: () => abrirAjustesApp() }]);
+        return;
+      }
       let res: ImagePicker.ImagePickerResult;
       if (permiso.granted) {
         res = await ImagePicker.launchCameraAsync({
@@ -49,7 +58,7 @@ export default function RegistroFotos() {
       pie={<Boton prueba="fotos-continuar" texto="Continuar" icono="arrow-right" tipo="oscuro" desactivado={!listo} alTocar={() => router.push('/registro/pin')} />}>
       <Foto clave="frente" titulo={pasaporte ? 'Página de la foto del pasaporte' : 'Documento por delante'} ayuda="Todo el documento dentro de la foto" icono="card-account-details-outline" uri={r.frente} alTomar={tomar} />
       {!pasaporte && <Foto clave="reverso" titulo="Documento por detrás" ayuda="Que se lea el código de barras" icono="card-bulleted-outline" uri={r.reverso} alTomar={tomar} />}
-      <Foto clave="selfie" titulo="Una selfie" ayuda="Tu cara de frente, sin gafas ni gorra" icono="face-recognition" uri={r.selfie} alTomar={tomar} />
+      <Foto clave="selfie" titulo="Una selfie" ayuda="Tu cara de frente, sin gafas ni gorra. Será tu foto de perfil y no se puede cambiar" icono="face-recognition" uri={r.selfie} alTomar={tomar} />
     </PasoRegistro>
   );
 }

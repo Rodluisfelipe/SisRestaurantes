@@ -15,6 +15,7 @@ const mongoose = require('mongoose');
 const logger = require('../utils/logger');
 const reglas = require('../utils/domiApp');
 const seguridad = require('../utils/seguridadDomi');
+const { hashPin, pinCorrecto } = require('../utils/pinDomi');
 
 const DeliveryPerson = require('../Models/DeliveryPerson');
 const DeliveryPartner = require('../Models/DeliveryPartner');
@@ -69,19 +70,23 @@ async function entrar({ telefono, pin, clave, dispositivo }) {
   }
 
   const docs = await afiliaciones(tel);
-  let valido = false;
-  for (const d of docs) {
-    if (pin && /^\d{4}$/.test(String(pin)) && d.verifyCode(String(pin))) { valido = true; break; }
-    if (clave && d.passwordHash && await d.verifyPassword(String(clave))) { valido = true; break; }
+  // Un solo PIN por persona; los PIN viejos de cada negocio solo valen la primera vez
+  // Sin ningún perfil activo no hay a qué entrar (p. ej. un registro aún en revisión)
+  let valido = docs.length > 0 && !!pin && pinCorrecto(pin, cuenta, docs);
+  if (!valido && clave && docs.length) {
+    for (const d of docs) {
+      if (d.passwordHash && await d.verifyPassword(String(clave))) { valido = true; break; }
+    }
   }
 
   if (!cuenta) cuenta = new DomiCuenta({ telefono: tel });
+  if (valido && pin && !cuenta.pinHash) cuenta.pinHash = hashPin(pin);
 
   /* Independiente de la Red MenuBy que todavía no puede trabajar: con su PIN
      correcto se le dice en qué va su registro, en vez de "PIN incorrecto". */
   if (!valido) {
     const inactivos = await DeliveryPerson.find({ phone: { $in: reglas.variantesTelefono(tel) }, active: false, 'independiente.estado': { $in: ['pendiente', 'rechazado', 'suspendido'] } });
-    const suyo = inactivos.find((d) => pin && d.verifyCode(String(pin)));
+    const suyo = inactivos.find((d) => pin && pinCorrecto(pin, cuenta, [d]));
     if (suyo) {
       const e = suyo.independiente.estado;
       const mensaje = {
@@ -323,12 +328,14 @@ async function estado(domi) {
 
   const [hoy, cuadres] = await Promise.all([resumenHoy(domi, negocios, empresas), cuadre(domi)]);
 
-  const principal = docs.find((d) => d.photo) || docs[0];
+  // Nombre y foto: los verificados en el registro (selfie) mandan sobre perfiles viejos
+  const verificado = docs.find((d) => d.independiente?.estado === 'aprobado');
+  const principal = verificado || docs.find((d) => d.photo) || docs[0];
   return {
     cuenta: {
       nombre: principal.name,
       telefono: domi.telefono,
-      foto: principal.photo || null,
+      foto: principal.photo || docs.find((d) => d.photo)?.photo || null,
       calificacion: Math.round(Math.min(...docs.map((d) => d.rating ?? 5)) * 10) / 10,
       enLinea: docs.some((d) => d.isOnline),
       totalEntregas: docs.reduce((s, d) => s + (d.totalDeliveries || 0), 0),
@@ -672,6 +679,10 @@ async function ejecutar(domi, ev) {
   if (puede.yaEstaba) return { ok: true, yaEstaba: true, estado: actual, businessId };
   if (!puede.aplicar) return { ok: false, error: puede.motivo, estado: actual, definitivo: true, businessId };
 
+  const destino = reglas.coordenadas(order.deliveryCoordinates) || reglas.coordenadas(order.deliveryZoneInfo?.coordinates);
+  const cerca = reglas.revisarCercania(ev.tipo, ev.ubicacion, destino);
+  if (!cerca.ok) return { ok: false, error: cerca.error, metros: cerca.metros, estado: actual, definitivo: true, businessId };
+
   const dsm = require('./deliveryStateMachine');
   const socketService = require('./socketService');
   const driverId = String(order.deliveryPersonId);
@@ -790,16 +801,6 @@ async function subirFotoEntrega(domi, pedidoId, archivo) {
   return { url };
 }
 
-async function subirFotoPerfil(domi, archivo) {
-  if (!archivo?.buffer) throw new ErrorDomi(400, 'No llegó la foto.');
-  const { uploadImage, isSpacesConfigured } = require('./imageUploadService');
-  if (!isSpacesConfigured()) throw new ErrorDomi(503, 'La subida de fotos no está disponible.');
-  const r = await uploadImage(archivo.buffer, 'domi-photos', { maxWidth: 400, quality: 80 });
-  const url = r?.url || r;
-  await DeliveryPerson.updateMany({ _id: { $in: domi.ids } }, { $set: { photo: url } });
-  return { url };
-}
-
 /* ═══════════════════════ Panel del negocio ═══════════════════════ */
 
 /** Cuadre de todos los domis que le han entregado a este negocio. */
@@ -914,7 +915,6 @@ module.exports = {
   responderOferta,
   aplicarEventos,
   subirFotoEntrega,
-  subirFotoPerfil,
   cuadreNegocio,
   liquidar,
   liquidacionesNegocio,

@@ -46,7 +46,7 @@ const DeliveryZoneManager = lazyConReintento(() => import("../Components/Deliver
 const PaymentConfig = lazyConReintento(() => import("../Components/Admin/PaymentConfig"));
 const PrinterSettings = lazyConReintento(() => import("../Components/PrinterSettings"));
 const PrintAgentConfig = lazyConReintento(() => import("../Components/Admin/PrintAgentConfig"));
-const DomiStats = lazyConReintento(() => import("../Components/Delivery/DomiStats"));
+const SeccionDomis = lazyConReintento(() => import("../Components/Delivery/SeccionDomis"));
 const ProductManager = lazyConReintento(() => import("../Components/Admin/ProductManager"));
 const InventoryManager = lazyConReintento(() => import("../Components/Admin/InventoryManager"));
 const Devoluciones = lazyConReintento(() => import("../Components/Admin/Devoluciones"));
@@ -639,7 +639,7 @@ function Admin() {
                 {activeTab === 'delivery' && (
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Domicilios" onGoBack={() => setActiveTab('dashboard')}>
-                      <DomiStats />
+                      <SeccionDomis />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}

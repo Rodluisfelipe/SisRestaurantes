@@ -36,4 +36,6 @@ export const CLAVES = {
   cola: 'domi.cola.v1',
   ajustes: 'domi.ajustes.v1',
   permisosVistos: 'domi.permisos.v1',
+  /* Xiaomi no deja ver su ahorro de batería: el domi confirma que lo quitó */
+  bateriaXiaomi: 'domi.bateria-xiaomi.v1',
 } as const;

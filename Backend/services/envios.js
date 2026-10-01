@@ -513,6 +513,8 @@ async function aplicarEvento(envio, ev) {
   const partnerId = String(envio.partnerId);
   if (puede.yaEstaba) return { ok: true, yaEstaba: true, estado: actual, partnerId };
   if (!puede.aplicar) return { ok: false, error: puede.motivo, estado: actual, definitivo: true, partnerId };
+  const cerca = reglas.revisarCercania(ev.tipo, ev.ubicacion, reglas.coordenadas(envio.destino?.ubicacion));
+  if (!cerca.ok) return { ok: false, error: cerca.error, metros: cerca.metros, estado: actual, definitivo: true, partnerId };
 
   const nota = (t) => envio.historial.push({ estado: envio.estado, nota: t, at: ev.at });
   if (ev.tipo === 'llegue_local') { envio.deliveryArrivedStoreAt = ev.at; nota('El domi llegó a recoger'); }

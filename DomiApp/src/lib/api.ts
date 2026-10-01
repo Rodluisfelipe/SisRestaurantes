@@ -102,7 +102,9 @@ export async function llamar<T = any>(ruta: string, op: Opciones = {}, reintento
       headers,
       body: op.formulario ?? (op.cuerpo !== undefined ? JSON.stringify(op.cuerpo) : undefined),
     }, op.tiempo ?? 20_000);
-  } catch {
+  } catch (e) {
+    // Queda en el registro del celular: así un error que no es de red no se esconde como "Sin conexión"
+    console.warn('[api]', ruta, e instanceof Error ? e.message : e);
     throw new ErrorApi(0, 'Sin conexión');
   }
 

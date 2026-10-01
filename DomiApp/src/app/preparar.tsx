@@ -10,18 +10,23 @@ import { useCallback, useEffect, useState } from 'react';
 import { AppState, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Boton, Icono, T, Tarjeta, type NombreIcono } from '@/componentes/base';
-import { abrirAjusteBateria, abrirAjustesApp, abrirAjustesUbicacion, bateriaRestringida, pasosDeMarca } from '@/lib/bateria';
+import { abrirAjusteBateria, abrirAjustesApp, abrirAjustesUbicacion, bateriaRestringida, esXiaomi, pasosDeMarca } from '@/lib/bateria';
 import { permisoNotificaciones, pedirNotificaciones, registrarToken } from '@/lib/notificaciones';
 import { permisosUbicacion, pedirSegundoPlano } from '@/lib/ubicacion';
-import { CLAVES, guardar } from '@/lib/almacen';
-import { abrirPermisoSuperponer, hayModuloSistema, puedeSuperponer } from '@/lib/sistema';
+import { CLAVES, guardar, leer } from '@/lib/almacen';
+import { abrirPermisoSuperponer, abrirPermisosXiaomi, hayModuloSistema, puedeSuperponer, xiaomiListo } from '@/lib/sistema';
 import { color, radio } from '@/tema';
 
-type Revision = { ubicacion: boolean; gps: boolean; avisos: boolean; bateria: boolean; encima: boolean };
+type Revision = { ubicacion: boolean; gps: boolean; avisos: boolean; bateria: boolean; encima: boolean; xiaomi: boolean; bateriaXiaomi: boolean };
 
 async function leerRevision(): Promise<Revision> {
-  const [u, avisos, restringida] = await Promise.all([permisosUbicacion(), permisoNotificaciones(), bateriaRestringida()]);
-  return { ubicacion: u.segundoPlano, gps: u.gpsEncendido, avisos, bateria: !restringida, encima: puedeSuperponer() };
+  const [u, avisos, restringida, bateriaXiaomi] = await Promise.all([
+    permisosUbicacion(), permisoNotificaciones(), bateriaRestringida(), leer<boolean>(CLAVES.bateriaXiaomi, false),
+  ]);
+  return {
+    ubicacion: u.segundoPlano, gps: u.gpsEncendido, avisos, bateria: !restringida,
+    encima: puedeSuperponer(), xiaomi: xiaomiListo(), bateriaXiaomi: !esXiaomi || bateriaXiaomi,
+  };
 }
 
 export default function Preparar() {
@@ -50,7 +55,7 @@ export default function Preparar() {
     revisar();
   };
 
-  const listo = !!r && r.ubicacion && r.gps && r.avisos && r.encima;
+  const listo = !!r && r.ubicacion && r.gps && r.avisos && r.encima && r.xiaomi && r.bateriaXiaomi;
   const terminar = async () => {
     await guardar(CLAVES.permisosVistos, true);
     router.replace('/');
@@ -103,6 +108,41 @@ export default function Preparar() {
             prueba="permiso-encima"
           />
         )}
+        {/* Solo aparece en Xiaomi / Redmi / POCO con el permiso apagado */}
+        {r && !r.xiaomi && (
+          <Item
+            icono="cellphone-cog"
+            titulo="Permisos de Xiaomi"
+            porque="Tu Xiaomi tiene un bloqueo extra: sin él, el pedido suena pero la app no se abre. Toca el botón y activa «Mostrar ventanas emergentes mientras se ejecuta en segundo plano» y «Mostrar en pantalla de bloqueo»."
+            ok={false}
+            boton="Abrir permisos de Xiaomi"
+            alTocar={abrirPermisosXiaomi}
+            prueba="permiso-xiaomi"
+          />
+        )}
+        {/* Xiaomi corta el internet de las apps en segundo plano y no deja saber
+            si lo está haciendo: se muestra siempre hasta que el domi confirme */}
+        {esXiaomi && marca && (
+          <Item
+            icono="battery-alert-variant-outline"
+            titulo="Ahorro de batería de Xiaomi"
+            porque="Tu Xiaomi le corta el internet a la app cuando no la estás viendo, y así no te llegan los pedidos. Haz estos pasos una sola vez:"
+            ok={r?.bateriaXiaomi}
+            boton="Abrir ajustes de la app"
+            alTocar={abrirAjustesApp}
+            prueba="bateria-xiaomi"
+          >
+            <View style={s.marca}>
+              {marca.pasos.map((p, i) => (
+                <View key={i} style={{ flexDirection: 'row', gap: 8 }}>
+                  <T v="fuerte" c={color.marca}>{i + 1}.</T>
+                  <T v="pequeno" style={{ flex: 1 }}>{p}</T>
+                </View>
+              ))}
+              <Boton texto="Ya lo hice" tipo="claro" compacto icono="check" alTocar={async () => { await guardar(CLAVES.bateriaXiaomi, true); revisar(); }} style={{ marginTop: 6 }} />
+            </View>
+          </Item>
+        )}
         {Platform.OS === 'android' && (
           <Item
             icono="battery-heart-variant"
@@ -113,7 +153,7 @@ export default function Preparar() {
             alTocar={abrirAjusteBateria}
             recomendado
           >
-            {marca && (
+            {marca && !esXiaomi && (
               <View style={s.marca}>
                 <T v="etiqueta" c={color.tintaSuave}>En tu {marca.marca} además:</T>
                 {marca.pasos.map((p, i) => (

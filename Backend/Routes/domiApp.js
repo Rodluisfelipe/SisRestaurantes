@@ -14,13 +14,16 @@
  *   POST /pedidos/:id/foto  foto de prueba de entrega
  *   GET  /ganancias         por día
  *   GET  /cuadre            efectivo y pagos pendientes, por negocio
- *   POST /perfil/foto
  *
  * Panel (sesión del negocio):
  *   GET  /negocio/cuadre           cuánto trae cada domi y cuánto se le debe
  *   POST /negocio/liquidar         cerrar el cuadre de un domi
  *   GET  /negocio/liquidaciones
  *   GET|PUT /negocio/reglas        cómo se paga, cuántos pedidos a la vez, fotos del local
+ *   GET|POST /negocio/domis        sus domiciliarios (y los de la Red asignados); crear
+ *   PATCH /negocio/domis/:id       nombre / activo · POST /negocio/domis/:id/pin
+ *   GET  /negocio/pedidos/:id/domis      quién puede llevar este pedido
+ *   POST /negocio/pedidos/:id/asignar | /automatico | /quitar
  */
 const express = require('express');
 const rateLimit = require('express-rate-limit');
@@ -160,10 +163,6 @@ router.post('/pedidos/:id/foto', app, foto.single('foto'), envolver(async (req, 
   res.json(await servicio.subirFotoEntrega(req.domi, req.params.id, req.file));
 }));
 
-router.post('/perfil/foto', app, foto.single('foto'), envolver(async (req, res) => {
-  res.json(await servicio.subirFotoPerfil(req.domi, req.file));
-}));
-
 router.get('/ganancias', app, envolver(async (req, res) => {
   res.json(await servicio.ganancias(req.domi, { desde: req.query.desde, hasta: req.query.hasta }));
 }));
@@ -212,6 +211,68 @@ router.put('/negocio/reglas', tenantAuth, envolver(async (req, res) => {
   if (!businessId) return;
   if (req.user?.role === 'staff') return res.status(403).json({ message: 'Solo el administrador cambia cómo se paga a los domis' });
   res.json(await servicio.guardarReglasNegocio(businessId, req.body || {}));
+}));
+
+/* ═══════════ Panel: domiciliarios y enviar pedidos (services/panelDomis.js) ═══════════ */
+
+const panel = require('../services/panelDomis');
+const envolverPanel = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
+  if (e instanceof panel.ErrorPanel) return res.status(e.status).json({ message: e.message, codigo: e.codigo });
+  logger.error('Error en domiciliarios del panel', e, req);
+  res.status(500).json({ message: 'Algo falló. Intenta de nuevo.' });
+});
+const soloAdmin = (req, res) => {
+  if (req.user?.role === 'staff') { res.status(403).json({ message: 'Solo el administrador maneja los domiciliarios' }); return false; }
+  return true;
+};
+const quien = (req) => req.user?.name || req.user?.username || '';
+
+router.get('/negocio/domis', tenantAuth, envolverPanel(async (req, res) => {
+  const businessId = negocioDe(req, res);
+  if (!businessId) return;
+  res.json(await panel.listarDomis(businessId));
+}));
+
+router.post('/negocio/domis', tenantAuth, envolverPanel(async (req, res) => {
+  const businessId = negocioDe(req, res);
+  if (!businessId || !soloAdmin(req, res)) return;
+  res.status(201).json(await panel.crearDomi(businessId, req.body || {}));
+}));
+
+router.patch('/negocio/domis/:id', tenantAuth, envolverPanel(async (req, res) => {
+  const businessId = negocioDe(req, res);
+  if (!businessId || !soloAdmin(req, res)) return;
+  res.json(await panel.editarDomi(businessId, req.params.id, req.body || {}));
+}));
+
+router.post('/negocio/domis/:id/pin', tenantAuth, envolverPanel(async (req, res) => {
+  const businessId = negocioDe(req, res);
+  if (!businessId || !soloAdmin(req, res)) return;
+  res.json(await panel.cambiarPin(businessId, req.params.id, req.body?.pin));
+}));
+
+router.get('/negocio/pedidos/:id/domis', tenantAuth, envolverPanel(async (req, res) => {
+  const businessId = negocioDe(req, res);
+  if (!businessId) return;
+  res.json(await panel.candidatos(businessId, req.params.id));
+}));
+
+router.post('/negocio/pedidos/:id/asignar', tenantAuth, envolverPanel(async (req, res) => {
+  const businessId = negocioDe(req, res);
+  if (!businessId) return;
+  res.json(await panel.asignar(businessId, req.params.id, req.body?.driverId, quien(req)));
+}));
+
+router.post('/negocio/pedidos/:id/automatico', tenantAuth, envolverPanel(async (req, res) => {
+  const businessId = negocioDe(req, res);
+  if (!businessId) return;
+  res.json(await panel.automatico(businessId, req.params.id));
+}));
+
+router.post('/negocio/pedidos/:id/quitar', tenantAuth, envolverPanel(async (req, res) => {
+  const businessId = negocioDe(req, res);
+  if (!businessId) return;
+  res.json(await panel.quitar(businessId, req.params.id, quien(req)));
 }));
 
 module.exports = router;

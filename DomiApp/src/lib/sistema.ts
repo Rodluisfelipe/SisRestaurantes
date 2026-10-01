@@ -22,6 +22,8 @@ type Nativo = {
   traerAlFrente(): boolean;
   mostrarSobreBloqueo(activo: boolean): Promise<void>;
   integridad(): Promise<ReporteIntegridad>;
+  permisosXiaomi(): { aplica: boolean; segundoPlano: boolean; bloqueo: boolean };
+  abrirPermisosXiaomi(): boolean;
 };
 
 const nativo = requireOptionalNativeModule<Nativo>('DomiSistema');
@@ -43,6 +45,23 @@ export function traerAlFrente(): boolean {
 
 export async function mostrarSobreBloqueo(activo: boolean) {
   try { await nativo?.mostrarSobreBloqueo(activo); } catch { /* sin actividad a la vista */ }
+}
+
+/**
+ * Xiaomi tiene permisos propios: sin "ventanas emergentes en segundo plano"
+ * la oferta suena pero la app no se abre sola. true = no hace falta nada.
+ */
+export function xiaomiListo(): boolean {
+  try {
+    const p = nativo?.permisosXiaomi();
+    return !p || !p.aplica || (p.segundoPlano && p.bloqueo);
+  } catch {
+    return true;
+  }
+}
+
+export function abrirPermisosXiaomi() {
+  try { nativo?.abrirPermisosXiaomi(); } catch { /* sin pantalla de permisos */ }
 }
 
 export async function reporteIntegridad(): Promise<ReporteIntegridad | null> {

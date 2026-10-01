@@ -35,6 +35,8 @@ export const MENSAJE_ERROR: Record<string, string> = {
   cerrado: 'Este pedido ya se cerró.',
   no_es_tuyo: 'Este pedido ya no está a tu nombre.',
   muy_viejo: 'Ese paso quedó guardado hace demasiado tiempo y ya no se puede enviar.',
+  lejos_del_cliente: 'Estás lejos de la dirección del cliente. Acércate para marcar la entrega.',
+  sin_ubicacion: 'No tenemos tu ubicación. Revisa que el GPS esté encendido e intenta de nuevo.',
 };
 
 type Estado = {
@@ -229,6 +231,9 @@ alResultado((r: ResultadoEvento) => {
   let mensaje = MENSAJE_ERROR[r.error || ''] || 'No se pudo guardar ese paso.';
   if (r.error === 'codigo_incorrecto' && r.intentosRestantes != null) {
     mensaje = `El código no es correcto. Te quedan ${r.intentosRestantes} ${r.intentosRestantes === 1 ? 'intento' : 'intentos'}.`;
+  }
+  if (r.error === 'lejos_del_cliente' && r.metros != null) {
+    mensaje = `Estabas a ${r.metros < 1000 ? `${r.metros} m` : `${(r.metros / 1000).toFixed(1).replace('.', ',')} km`} de la dirección. Acércate para marcar la entrega.`;
   }
   if (pedidoId) delete locales[pedidoId];
   useApp.setState({ locales, errores: pedidoId ? { ...s.errores, [pedidoId]: mensaje } : s.errores });

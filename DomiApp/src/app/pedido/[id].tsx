@@ -65,6 +65,29 @@ function Pie({ children }: { children: React.ReactNode }) {
   return <SafeAreaView edges={['bottom']} style={s.pie}>{children}</SafeAreaView>;
 }
 
+/* Igual que el servidor (Backend/utils/domiApp.js): llegar y entregar solo
+   cerca de la dirección. Sin punto en el mapa no hay contra qué comparar. */
+const RADIO_ENTREGA_M = 200;
+
+function useCercaDelCliente(p: Pedido): { listo: boolean; aviso: string } {
+  const yo = useApp((s) => s.ubicacion);
+  if (!p.cliente.ubicacion) return { listo: true, aviso: '' };
+  if (!yo) return { listo: false, aviso: 'Buscando tu ubicación…' };
+  const m = Math.round((distanciaKm(yo, p.cliente.ubicacion) ?? 0) * 1000);
+  if (m <= RADIO_ENTREGA_M) return { listo: true, aviso: '' };
+  return { listo: false, aviso: `Estás a ${m < 1000 ? `${m} m` : km(m / 1000)} de la dirección. Acércate para continuar.` };
+}
+
+function AvisoLejos({ texto }: { texto: string }) {
+  if (!texto) return null;
+  return (
+    <View style={s.lejos} testID="aviso-lejos">
+      <Icono nombre="map-marker-distance" tam={18} tinte={color.tinta} />
+      <T v="pequeno" style={{ flex: 1 }}>{texto}</T>
+    </View>
+  );
+}
+
 function useDistancia(destino: Pedido['cliente']['ubicacion']) {
   const yo = useApp((s) => s.ubicacion);
   const d = distanciaKm(yo, destino);
@@ -192,6 +215,7 @@ function HaciaCliente({ p }: { p: Pedido }) {
   const navegador = useApp((s) => s.ajustes.navegador);
   const d = useDistancia(p.cliente.ubicacion);
   const nombre = primerNombre(p.cliente.nombre);
+  const cerca = useCercaDelCliente(p);
   const mensaje = `Hola ${nombre}, soy tu domiciliario de ${p.negocio?.nombre || 'tu pedido'}. Voy en camino${d != null ? `, llego en unos ${Math.max(2, Math.round((d * 60) / 22))} min` : ''}.`;
   return (
     <>
@@ -218,7 +242,8 @@ function HaciaCliente({ p }: { p: Pedido }) {
         <Boton texto="No pude entregar" tipo="fantasma" compacto icono="alert-octagon-outline" alTocar={() => router.push({ pathname: '/no-entregado/[id]', params: { id: p.id } })} />
       </ScrollView>
       <Pie>
-        <Deslizar prueba="deslizar-llegue-cliente" texto={`Llegué donde ${nombre}`} alConfirmar={() => useApp.getState().avanzar(p, 'llegue_cliente')} />
+        <AvisoLejos texto={cerca.aviso} />
+        <Deslizar prueba="deslizar-llegue-cliente" texto={`Llegué donde ${nombre}`} desactivado={!cerca.listo} alConfirmar={() => useApp.getState().avanzar(p, 'llegue_cliente')} />
       </Pie>
     </>
   );
@@ -227,6 +252,7 @@ function HaciaCliente({ p }: { p: Pedido }) {
 /* ── 4. Con el cliente ── */
 function ConCliente({ p }: { p: Pedido }) {
   const nombre = primerNombre(p.cliente.nombre);
+  const cerca = useCercaDelCliente(p);
   return (
     <>
       <ScrollView contentContainerStyle={s.cuerpo}>
@@ -247,7 +273,8 @@ function ConCliente({ p }: { p: Pedido }) {
         <Boton texto="No pude entregar" tipo="fantasma" compacto icono="alert-octagon-outline" alTocar={() => router.push({ pathname: '/no-entregado/[id]', params: { id: p.id } })} />
       </ScrollView>
       <Pie>
-        <Deslizar prueba="deslizar-entregar" texto="Entregar pedido" fondo={color.dinero} icono="package-variant-closed-check" alConfirmar={() => router.push({ pathname: '/entregar/[id]', params: { id: p.id } })} />
+        <AvisoLejos texto={cerca.aviso} />
+        <Deslizar prueba="deslizar-entregar" texto="Entregar pedido" fondo={color.dinero} icono="package-variant-closed-check" desactivado={!cerca.listo} alConfirmar={() => router.push({ pathname: '/entregar/[id]', params: { id: p.id } })} />
       </Pie>
     </>
   );
@@ -299,6 +326,7 @@ const s = StyleSheet.create({
   nota: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', padding: 14, borderRadius: radio.m, backgroundColor: color.efectivoSuave },
   cobro: { flexDirection: 'row', gap: 12, alignItems: 'center', shadowOpacity: 0, elevation: 0, backgroundColor: color.fondo },
   cobroGrande: { backgroundColor: color.efectivo, borderRadius: radio.l, padding: 20, gap: 2 },
+  lejos: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, marginBottom: 10, borderRadius: radio.m, backgroundColor: color.efectivoSuave },
   fotoLocal: { width: 220, height: 140, borderRadius: radio.m, backgroundColor: color.borde },
   fotoGrande: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center' },
   cerrarFoto: { position: 'absolute', bottom: 50, flexDirection: 'row', gap: 8, alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12, borderRadius: radio.total, backgroundColor: 'rgba(255,255,255,0.15)' },

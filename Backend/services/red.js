@@ -21,6 +21,8 @@ const DeliveryPerson = require('../Models/DeliveryPerson');
 const DeliveryPartner = require('../Models/DeliveryPartner');
 const DomiVerificacion = require('../Models/DomiVerificacion');
 const ConfigRed = require('../Models/ConfigRed');
+const DomiCuenta = require('../Models/DomiCuenta');
+const { hashPin, pinCorrecto } = require('../utils/pinDomi');
 
 const VENCE_CODIGO_MS = 10 * 60 * 1000;
 const ESPERA_REENVIO_MS = 60 * 1000;
@@ -178,8 +180,6 @@ async function registrar(datos, archivos) {
   if (!VEHICULOS.includes(datos.vehiculo)) throw new ErrorRed(400, 'Elige en qué vas a repartir.');
   const placa = String(datos.placa || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 10);
   if (['moto', 'carro'].includes(datos.vehiculo) && placa.length < 5) throw new ErrorRed(400, 'Escribe la placa del vehículo.');
-  if (!/^\d{4}$/.test(String(datos.pin || ''))) throw new ErrorRed(400, 'El PIN debe tener 4 números.');
-  if (/^(\d)\1{3}$|^(1234|4321|0000)$/.test(String(datos.pin))) throw new ErrorRed(400, 'Ese PIN es muy fácil de adivinar. Elige otro.');
   if (!archivos?.frente?.buffer || !archivos?.selfie?.buffer) throw new ErrorRed(400, 'Faltan las fotos del documento y tu selfie.');
   if (datos.tipoDocumento !== 'pasaporte' && !archivos?.reverso?.buffer) throw new ErrorRed(400, 'Falta la foto del reverso del documento.');
 
@@ -194,6 +194,32 @@ async function registrar(datos, archivos) {
   if (doc?.independiente?.estado === 'suspendido') throw new ErrorRed(403, 'Tu cuenta está suspendida. Escríbenos para revisarla.', 'suspendido');
   const otroDoc = await DeliveryPerson.findOne({ 'independiente.documento.numero': numero, partnerId: red._id, phone: { $nin: variantes } }).lean();
   if (otroDoc) throw new ErrorRed(409, 'Ese documento ya está registrado con otro celular.', 'documento');
+
+  /* ¿Este celular ya tiene cuenta (reparte con un negocio o empresa)? El código
+     llegó al correo, no prueba que el celular sea suyo: para unirse a la Red
+     tiene que poner el PIN con el que ya entra. Sin eso, alguien podría
+     registrarse con un número ajeno y ver los pedidos de esa persona. */
+  const cuenta = await DomiCuenta.findOne({ telefono: tel });
+  const perfiles = await DeliveryPerson.find({ phone: { $in: variantes }, partnerId: { $ne: red._id } }).select('code').lean();
+  const yaTieneCuenta = !!cuenta?.pinHash || perfiles.length > 0;
+  let pin = String(datos.pin || '');
+  if (yaTieneCuenta) {
+    if (cuenta?.bloqueadaHasta && cuenta.bloqueadaHasta > new Date()) throw new ErrorRed(429, 'Demasiados intentos con el PIN. Espera unos minutos.', 'bloqueada');
+    const actual = String(datos.pinActual || '');
+    if (!actual) throw new ErrorRed(409, 'Este celular ya tiene cuenta en MenuBy Go. Escribe el PIN con el que entras.', 'ya_tiene_cuenta');
+    if (!pinCorrecto(actual, cuenta, perfiles)) {
+      if (cuenta) {
+        cuenta.fallos = (cuenta.fallos || 0) + 1;
+        if (cuenta.fallos >= 5) { cuenta.fallos = 0; cuenta.bloqueadaHasta = new Date(Date.now() + 15 * 60000); }
+        await cuenta.save();
+      }
+      throw new ErrorRed(403, 'Ese no es el PIN con el que entras con este celular.', 'pin_actual');
+    }
+    pin = actual;
+  } else {
+    if (!/^\d{4}$/.test(pin)) throw new ErrorRed(400, 'El PIN debe tener 4 números.');
+    if (/^(\d)\1{3}$|^(1234|4321|0000)$/.test(pin)) throw new ErrorRed(400, 'Ese PIN es muy fácil de adivinar. Elige otro.');
+  }
 
   const { subirPrivado, configurado } = require('./archivosPrivados');
   if (!configurado()) throw new ErrorRed(503, 'No podemos recibir fotos en este momento. Intenta más tarde.');
@@ -214,19 +240,25 @@ async function registrar(datos, archivos) {
     enviadoAt: new Date(),
   };
   if (!doc) {
-    doc = new DeliveryPerson({ partnerId: red._id, phone: tel, name: nombre, code: String(datos.pin), active: false, independiente });
+    doc = new DeliveryPerson({ partnerId: red._id, phone: tel, name: nombre, code: pin, active: false, independiente });
   } else {
     // Reenvío después de un rechazo: se borran las fotos viejas
     const { borrarPrivado } = require('./archivosPrivados');
     const viejo = doc.independiente || {};
     [viejo.documento?.frente, viejo.documento?.reverso, viejo.selfie].forEach((k) => borrarPrivado(k));
     doc.name = nombre;
-    doc.code = String(datos.pin);
+    doc.code = pin;
     doc.active = false;
     doc.independiente = independiente;
   }
   await doc.save();
-  logger.info('Registro de domi independiente recibido', { id: String(doc._id) });
+  // El PIN de la persona: el que ya tenía, o el nuevo si es su primera cuenta
+  if (!cuenta?.pinHash) {
+    await DomiCuenta.updateOne({ telefono: tel }, { $set: { pinHash: hashPin(pin), fallos: 0, bloqueadaHasta: null } }, { upsert: true });
+  } else if (cuenta.fallos) {
+    await DomiCuenta.updateOne({ _id: cuenta._id }, { $set: { fallos: 0 } });
+  }
+  logger.info('Registro de domi independiente recibido', { id: String(doc._id), yaTeniaCuenta: yaTieneCuenta });
   return { estado: 'pendiente' };
 }
 
@@ -316,10 +348,29 @@ async function decidir(id, accion, { motivo, quien } = {}) {
   d.independiente.motivo = accion === 'aprobar' ? undefined : String(motivo).trim().slice(0, 300);
   d.active = estado === 'aprobado';
   if (estado !== 'aprobado') { d.isOnline = false; d.refreshTokenHash = null; }
+  // La foto de perfil es la selfie que se verificó: el domi no la puede cambiar
+  if (estado === 'aprobado') await fotoDePerfilDesdeSelfie(d);
   await d.save();
   avisarDomi(d, estado, d.independiente.motivo).catch(() => {});
   logger.info('Registro de domi independiente revisado', { id: String(d._id), estado, quien });
   return { estado };
+}
+
+/**
+ * Copia pública y pequeña de la selfie del registro, para mostrarla como foto
+ * de perfil (al negocio, al cliente). La selfie original sigue privada.
+ * Si falla no frena la aprobación: queda sin foto y se puede reintentar.
+ */
+async function fotoDePerfilDesdeSelfie(d) {
+  try {
+    const original = await require('./archivosPrivados').leerPrivado(d.independiente?.selfie);
+    if (!original) return;
+    const { uploadImage } = require('./imageUploadService');
+    const r = await uploadImage(original, 'domi-photos', { maxWidth: 400, quality: 80 });
+    d.photo = r?.url || r;
+  } catch (e) {
+    logger.warn('No se pudo poner la selfie como foto de perfil', { id: String(d._id), error: e.message });
+  }
 }
 
 /** Un aviso al celular (si ya tiene la app con notificaciones). */
@@ -414,7 +465,7 @@ async function tarifaParaOferta({ order, business, driver }) {
 async function candidatosPara(businessId, maxActivos) {
   const red = await obtenerRed();
   const desde = new Date(Date.now() - 5 * 60000);
-  return DeliveryPerson.find({
+  const lista = await DeliveryPerson.find({
     partnerId: red._id,
     active: true,
     'independiente.estado': 'aprobado',
@@ -424,6 +475,10 @@ async function candidatosPara(businessId, maxActivos) {
     'lastLocation.coordinates': { $exists: true },
     $or: [{ activeDeliveries: { $lt: maxActivos } }, { activeDeliveries: { $exists: false } }],
   }).lean();
+  // Si ya es domi propio de este negocio, le llega como propio: no dos veces
+  const propios = await DeliveryPerson.find({ businessId, active: true }).select('phone').lean();
+  const telsPropios = new Set(propios.flatMap((p) => variantesTelefono(p.phone)));
+  return lista.filter((d) => !variantesTelefono(d.phone).some((t) => telsPropios.has(t)));
 }
 
 module.exports = {

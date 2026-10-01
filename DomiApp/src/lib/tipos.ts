@@ -137,4 +137,6 @@ export type ResultadoEvento = {
   repetido?: boolean;
   definitivo?: boolean;
   intentosRestantes?: number;
+  /** Con "lejos_del_cliente": a cuántos metros de la dirección estaba */
+  metros?: number;
 };

@@ -9,7 +9,6 @@ import {
 import { ORDER_STATUS } from '../utils/constants';
 import { pasosDelPedido, TONOS_PASO, totalDelPedido, pesos } from '../utils/pedidos';
 import api from '../services/api';
-import { SECCIONES_OCULTAS } from '../utils/seccionesOcultas';
 import DomiciliarioActivos from './DomiciliarioActivos';
 
 const PAYMENT_LABELS = {
@@ -38,12 +37,12 @@ function OrderCard({
   const nextSteps = pasosDelPedido(order);
   const total = totalDelPedido(order);
 
-  /* Un domicilio también necesita repartidor mientras está confirmado o en
-     preparación, no solo en `inProgress`, que era el único estado que lo
-     mostraba. */
-  const needsDelivery = !SECCIONES_OCULTAS.has('delivery') && order.orderType === 'delivery'
-    && !order.deliveryToken && !order.deliveryPersonId && !order.confirmationCode
-    && [S.CONFIRMED, S.PREPARING, S.IN_PROGRESS].includes(order.status);
+  /* Domicilio sin domiciliario (MenuBy Go): "Asignar". Con domiciliario que
+     aún no lo recoge: "Cambiar", por si hay que pasárselo a otro. */
+  const domicilioAbierto = order.orderType === 'delivery' && !isTerminal
+    && [S.PENDING, S.CONFIRMED, S.PREPARING, S.READY, S.IN_PROGRESS].filter(Boolean).includes(order.status);
+  const needsDelivery = domicilioAbierto && !order.deliveryPersonId;
+  const cambiarDomi = domicilioAbierto && !!order.deliveryPersonId && !order.deliveryPickedAt;
 
   /* Tiendas: un envío no se "asigna a un domiciliario", se entrega a una
      transportadora y queda un número de guía. Mientras no lo tenga, despachar
@@ -272,6 +271,11 @@ function OrderCard({
                   <FaMotorcycle className="text-sm" /> Asignar domiciliario
                 </button>
               )}
+              {cambiarDomi && !tienda && (
+                <button onClick={() => onAssignDelivery(order)} className="w-full flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 h-9 rounded-xl text-xs font-bold transition-colors active:scale-[0.97]">
+                  <FaMotorcycle className="text-sm" /> Domiciliario asignado · Ver o cambiar
+                </button>
+              )}
 
               {porDespachar && (
                 <button onClick={() => onDespachar?.(order)} className="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 text-white h-10 rounded-xl text-xs font-bold transition-colors active:scale-[0.97]">
@@ -391,8 +395,8 @@ function OrderCard({
                 </>
               )}
 
-              {needsDelivery && !tienda && (
-                <button onClick={() => onAssignDelivery(order)} className="p-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors" title="Asignar domiciliario">
+              {(needsDelivery || cambiarDomi) && !tienda && (
+                <button onClick={() => onAssignDelivery(order)} className="p-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors" title={cambiarDomi ? 'Ver o cambiar domiciliario' : 'Asignar domiciliario'}>
                   <FaMotorcycle className="text-xs" />
                 </button>
               )}
