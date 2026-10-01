@@ -64,7 +64,9 @@ function Fila({ d, accion, textoAccion, ocupado, maxActivos, etiqueta }) {
 }
 
 export default function EnviarADomi({ order, onClose, onIrADomis }) {
-  const { businessConfig } = useBusinessConfig();
+  // businessId en cada llamada: desde el superadmin la sesión no trae negocio
+  const { businessConfig, businessId } = useBusinessConfig();
+  const negocio = { params: { businessId } };
   const [datos, setDatos] = useState(null);
   const [error, setError] = useState('');
   const [ocupado, setOcupado] = useState(false);
@@ -72,13 +74,13 @@ export default function EnviarADomi({ order, onClose, onIrADomis }) {
   const cargar = useCallback(async () => {
     if (!order?._id) return;
     try {
-      const { data } = await api.get(`/domi-app/negocio/pedidos/${order._id}/domis`);
+      const { data } = await api.get(`/domi-app/negocio/pedidos/${order._id}/domis`, negocio);
       setDatos(data);
       setError('');
     } catch (e) {
       setError(e.response?.data?.message || 'No se pudo cargar la lista de domiciliarios.');
     }
-  }, [order?._id]);
+  }, [order?._id, businessId]);
 
   // Al abrir y cada 5 s: así se ve cuando el domi acepta o se conecta
   useEffect(() => {
@@ -103,16 +105,16 @@ export default function EnviarADomi({ order, onClose, onIrADomis }) {
   };
 
   const asignar = (d) => hacer(
-    () => api.post(`/domi-app/negocio/pedidos/${order._id}/asignar`, { driverId: d.id }),
+    () => api.post(`/domi-app/negocio/pedidos/${order._id}/asignar`, { driverId: d.id, businessId }),
     (r) => (r.estado === 'asignado' ? `${d.nombre} lleva el pedido #${order.orderNumber}` : `Se le ofreció a ${d.nombre}: espera que acepte`),
   );
   const automatico = () => hacer(
-    () => api.post(`/domi-app/negocio/pedidos/${order._id}/automatico`),
+    () => api.post(`/domi-app/negocio/pedidos/${order._id}/automatico`, { businessId }),
     (r) => `Se le ofreció a ${r.nombre || 'el domiciliario más cercano'}`,
   );
   const quitar = () => {
     if (!window.confirm('¿Quitarle este pedido al domiciliario?')) return;
-    hacer(() => api.post(`/domi-app/negocio/pedidos/${order._id}/quitar`), 'Pedido sin domiciliario');
+    hacer(() => api.post(`/domi-app/negocio/pedidos/${order._id}/quitar`, { businessId }), 'Pedido sin domiciliario');
   };
   const ofrecerEmpresa = (e) => hacer(
     () => api.post(`/delivery-admin/restaurants/${businessConfig.slug}/orders/${order._id}/assign-partner`, { partnerId: e.id }),

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import api from '../../services/api';
+import { useBusinessConfig } from '../../Context/BusinessContext';
 
 /**
  * Cuadre de efectivo con los domiciliarios.
@@ -28,6 +29,7 @@ const MAX_FOTOS = 3;
 
 /** Fotos de la fachada: la app del domi las muestra al ir a recoger. */
 function FotosLocal({ fotos, alCambiar }) {
+  const { businessId } = useBusinessConfig();
   const [subiendo, setSubiendo] = useState(false);
 
   const subir = async (e) => {
@@ -40,7 +42,7 @@ function FotosLocal({ fotos, alCambiar }) {
       datos.append('image', archivo);
       datos.append('folder', 'fachadas');
       datos.append('maxWidth', '1200');
-      const { data } = await api.post('/upload/image', datos, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const { data } = await api.post('/upload/image', datos, { headers: { 'Content-Type': 'multipart/form-data' }, params: { businessId } });
       await alCambiar([...fotos, data.url].slice(0, MAX_FOTOS));
     } catch {
       toast.error('No se pudo subir la foto');
@@ -79,6 +81,8 @@ function FotosLocal({ fotos, alCambiar }) {
 }
 
 export default function CuadreDomis() {
+  // businessId en cada llamada: desde el superadmin la sesión no trae negocio
+  const { businessId } = useBusinessConfig();
   const [cuadre, setCuadre] = useState(null);
   const [reglas, setReglas] = useState(null);
   const [historial, setHistorial] = useState([]);
@@ -90,9 +94,9 @@ export default function CuadreDomis() {
   const cargar = useCallback(async () => {
     try {
       const [c, r, h] = await Promise.all([
-        api.get('/domi-app/negocio/cuadre'),
-        api.get('/domi-app/negocio/reglas'),
-        api.get('/domi-app/negocio/liquidaciones', { params: { limite: 15 } }),
+        api.get('/domi-app/negocio/cuadre', { params: { businessId } }),
+        api.get('/domi-app/negocio/reglas', { params: { businessId } }),
+        api.get('/domi-app/negocio/liquidaciones', { params: { limite: 15, businessId } }),
       ]);
       setCuadre(c.data);
       setReglas(r.data);
@@ -100,7 +104,7 @@ export default function CuadreDomis() {
     } catch {
       setCuadre([]);
     }
-  }, []);
+  }, [businessId]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -108,7 +112,7 @@ export default function CuadreDomis() {
     const nuevas = { ...reglas, ...cambio, driverPay: { ...reglas.driverPay, ...(cambio.driverPay || {}) } };
     setReglas(nuevas);
     try {
-      const { data } = await api.put('/domi-app/negocio/reglas', nuevas);
+      const { data } = await api.put('/domi-app/negocio/reglas', { ...nuevas, businessId });
       setReglas(data);
       toast.success('Guardado');
       cargar();
@@ -122,7 +126,7 @@ export default function CuadreDomis() {
     if (!confirmar) return;
     setGuardando(true);
     try {
-      await api.post('/domi-app/negocio/liquidar', { driverId: confirmar.driverId, nota });
+      await api.post('/domi-app/negocio/liquidar', { driverId: confirmar.driverId, nota, businessId });
       toast.success(`Cuadre de ${confirmar.nombre} cerrado`);
       setConfirmar(null);
       setNota('');

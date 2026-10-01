@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { FaMotorcycle, FaPlus, FaTimes } from 'react-icons/fa';
 import api from '../../services/api';
+import { useBusinessConfig } from '../../Context/BusinessContext';
 import CuadreDomis from './CuadreDomis';
 
 /**
@@ -39,6 +40,7 @@ function Estado({ d }) {
 }
 
 function FormularioNuevo({ alCrear, alCerrar }) {
+  const { businessId } = useBusinessConfig();
   const [f, setF] = useState({ nombre: '', telefono: '', pin: '' });
   const [enviando, setEnviando] = useState(false);
   const poner = (k) => (e) => setF((x) => ({ ...x, [k]: k === 'nombre' ? e.target.value : e.target.value.replace(/\D/g, '').slice(0, k === 'pin' ? 4 : 10) }));
@@ -47,7 +49,7 @@ function FormularioNuevo({ alCrear, alCerrar }) {
     e.preventDefault();
     setEnviando(true);
     try {
-      const { data } = await api.post('/domi-app/negocio/domis', f);
+      const { data } = await api.post('/domi-app/negocio/domis', { ...f, businessId });
       toast.success(data.yaTeniaCuenta
         ? `${f.nombre} ya usaba MenuBy Go: entra con su celular y su PIN de siempre.`
         : data.reactivado ? `${f.nombre} está activo otra vez.` : `Listo. ${f.nombre} entra a MenuBy Go con su celular y el PIN ${f.pin}.`);
@@ -90,11 +92,12 @@ function FormularioNuevo({ alCrear, alCerrar }) {
 }
 
 function FilaDomi({ d, editable, alCambiar }) {
+  const { businessId } = useBusinessConfig();
   const [menu, setMenu] = useState(false);
 
   const activar = async () => {
     try {
-      await api.patch(`/domi-app/negocio/domis/${d.id}`, { activo: !d.activo });
+      await api.patch(`/domi-app/negocio/domis/${d.id}`, { activo: !d.activo, businessId });
       toast.success(d.activo ? `${d.nombre} desactivado: ya no recibe tus pedidos.` : `${d.nombre} activo otra vez.`);
       alCambiar();
     } catch (e) {
@@ -107,7 +110,7 @@ function FilaDomi({ d, editable, alCambiar }) {
     const pin = window.prompt(`Nuevo PIN de 4 números para ${d.nombre}:`);
     if (!pin) return;
     try {
-      await api.post(`/domi-app/negocio/domis/${d.id}/pin`, { pin: pin.trim() });
+      await api.post(`/domi-app/negocio/domis/${d.id}/pin`, { pin: pin.trim(), businessId });
       toast.success(`PIN cambiado. ${d.nombre} entra con el nuevo PIN.`);
     } catch (e) {
       toast.error(e.response?.data?.message || 'No se pudo cambiar el PIN.');
@@ -118,7 +121,7 @@ function FilaDomi({ d, editable, alCambiar }) {
     const nombre = window.prompt('Nombre del domiciliario:', d.nombre);
     if (!nombre || nombre.trim() === d.nombre) return;
     try {
-      await api.patch(`/domi-app/negocio/domis/${d.id}`, { nombre });
+      await api.patch(`/domi-app/negocio/domis/${d.id}`, { nombre, businessId });
       alCambiar();
     } catch (e) {
       toast.error(e.response?.data?.message || 'No se pudo cambiar el nombre.');
@@ -156,17 +159,19 @@ function FilaDomi({ d, editable, alCambiar }) {
 }
 
 export default function SeccionDomis() {
+  // businessId en cada llamada: desde el superadmin la sesión no trae negocio
+  const { businessId } = useBusinessConfig();
   const [datos, setDatos] = useState(null);
   const [nuevo, setNuevo] = useState(false);
 
   const cargar = useCallback(async () => {
     try {
-      const { data } = await api.get('/domi-app/negocio/domis');
+      const { data } = await api.get('/domi-app/negocio/domis', { params: { businessId } });
       setDatos(data);
     } catch {
       setDatos({ propios: [], red: [], maxActivos: 1 });
     }
-  }, []);
+  }, [businessId]);
 
   // Cada 15 s: quién se conecta y quién sale a ruta
   useEffect(() => {
